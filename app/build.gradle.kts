@@ -45,15 +45,24 @@ android {
         }
     }
 
-    val moduleVersionCode = 100
+    // 版本号配置
+    val majorVersion = 1
+    val minorVersion = 0
+    val patchVersion = 0
+
+    val releaseVersionCode = majorVersion * 10000 + minorVersion * 100 + patchVersion
+    val betaVersionCode = releaseVersionCode + 50
+    val debugVersionCode = releaseVersionCode + 99
+    val baseVersionName = "$majorVersion.$minorVersion.$patchVersion"
+
     val minSupportedUserSettingsVersionCode = 20
 
     defaultConfig {
         applicationId = "com.xiyunmn.puredupan.hook"
         minSdk = 24
         targetSdk = 36
-        versionCode = moduleVersionCode
-        versionName = "1.0.0"
+        versionCode = releaseVersionCode
+        versionName = baseVersionName
         buildConfigField(
             "int",
             "MIN_SUPPORTED_USER_SETTINGS_VERSION_CODE",
@@ -66,19 +75,53 @@ android {
     }
 
     buildTypes {
-        release {
-            signingConfig = signingConfigs.findByName("release")
-            if (signingConfig == null) {
-                project.logger.lifecycle(
-                    "[WangPanHook] :app:release uses unsigned output (no release keystore configured)."
-                )
-            }
+        debug {
+            versionNameSuffix = "-debug"
+            versionCode = debugVersionCode
+            isDebuggable = true
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
+
+        create("beta") {
+            versionNameSuffix = "-beta"
+            versionCode = betaVersionCode
+            isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            matchingFallbacks += listOf("release")
+        }
+
+        release {
+            versionCode = releaseVersionCode
+            signingConfig = signingConfigs.findByName("release")
+            if (signingConfig == null) {
+                project.logger.lifecycle(
+                    "[WangPanHook] :app:release uses unsigned output (no release keystore configured)."
+                )
+            }
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    // 自定义APK输出文件名
+    applicationVariants.all {
+        outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val appName = "PureDuPan"
+            val version = versionName
+            val buildType = buildType.name
+            output.outputFileName = "${appName}-v${version}-${buildType}.apk"
         }
     }
     compileOptions {
