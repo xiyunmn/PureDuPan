@@ -134,38 +134,22 @@ android {
     }
 }
 
-afterEvaluate {
-    android.applicationVariants.all {
-        val variant = this
-        variant.outputs
-            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
-            .forEach { output ->
-                val appName = "PureDuPan"
-                val versionName = variant.versionName
-                val buildType = variant.buildType.name
-                output.outputFileName = "${appName}-v${versionName}-${buildType}.apk"
-            }
-    }
-}
-
 androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
-            val appName = "PureDuPan"
-            val versionName = variant.name.let {
-                when {
-                    it.contains("debug", ignoreCase = true) -> "${android.defaultConfig.versionName}-debug"
-                    it.contains("beta", ignoreCase = true) -> "${android.defaultConfig.versionName}-beta"
-                    else -> android.defaultConfig.versionName
-                }
-            }
             val buildType = variant.buildType ?: "release"
+            val versionName = when (buildType) {
+                "debug" -> "${majorVersion}.${minorVersion}.${patchVersion}-debug"
+                "beta" -> "${majorVersion}.${minorVersion}.${patchVersion}-beta"
+                else -> "${majorVersion}.${minorVersion}.${patchVersion}"
+            }
+            val versionCode = when (buildType) {
+                "debug" -> debugVersionCode
+                "beta" -> betaVersionCode
+                else -> releaseVersionCode
+            }
             output.versionName.set(versionName)
-            output.versionCode.set(when (buildType) {
-                "debug" -> 10099
-                "beta" -> 10050
-                else -> 10000
-            })
+            output.versionCode.set(versionCode)
         }
     }
 }
