@@ -134,16 +134,18 @@ android {
     }
 }
 
-android.applicationVariants.all {
-    val variant = this
-    variant.outputs
-        .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
-        .forEach { output ->
-            val appName = "PureDuPan"
-            val versionName = variant.versionName
-            val buildType = variant.buildType.name
-            output.outputFileName = "${appName}-v${versionName}-${buildType}.apk"
-        }
+afterEvaluate {
+    android.applicationVariants.all {
+        val variant = this
+        variant.outputs
+            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
+            .forEach { output ->
+                val appName = "PureDuPan"
+                val versionName = variant.versionName
+                val buildType = variant.buildType.name
+                output.outputFileName = "${appName}-v${versionName}-${buildType}.apk"
+            }
+    }
 }
 
 androidComponents {
