@@ -315,6 +315,20 @@ object SettingsMenuHook {
                         SettingsDebugActions.showClearLogsConfirmDialog(context)
                     },
                 ),
+                SwitchItem(
+                    UiText.Settings.RESET_MODULE_SETTINGS_LABEL,
+                    UiText.Settings.RESET_MODULE_SETTINGS_DESC,
+                    null,
+                    true,
+                    false,
+                    UiText.Settings.ACTION_ICON_RESET,
+                    showSwitch = false,
+                    onActionClick = {
+                        SettingsDebugActions.showResetModuleSettingsConfirmDialog(context) {
+                            restartHostApp(context)
+                        }
+                    },
+                ),
             )
 
             val groups = mutableListOf(
@@ -598,7 +612,7 @@ object SettingsMenuHook {
                 null,
                 padding,
                 true,
-                prefs.getBoolean(ConfigManager.KEY_REMOVE_HOME_FAB, true),
+                prefs.getBoolean(ConfigManager.KEY_REMOVE_HOME_FAB, false),
             )
             root.addView(createCustomHideWidgetSectionTitle(context, padding))
             root.addView(fabRow)
@@ -662,14 +676,14 @@ object SettingsMenuHook {
             val replaceAiRow = createSwitchRow(
                 context, prefs, UiText.Settings.REPLACE_BOTTOM_AI_LABEL,
                 UiText.Settings.REPLACE_BOTTOM_AI_DESC, null, padding, true,
-                prefs.getBoolean(ConfigManager.KEY_REPLACE_BOTTOM_AI, true),
+                prefs.getBoolean(ConfigManager.KEY_REPLACE_BOTTOM_AI, false),
             )
             val replaceAiSwitch = findSwitchView(replaceAiRow)
             root.addView(replaceAiRow)
             val badgeRow = createSwitchRow(
                 context, prefs, UiText.Settings.BLOCK_BOTTOM_BADGE_LABEL,
                 UiText.Settings.BLOCK_BOTTOM_BADGE_DESC, null, padding, true,
-                prefs.getBoolean(ConfigManager.KEY_BLOCK_BOTTOM_BADGE, true),
+                prefs.getBoolean(ConfigManager.KEY_BLOCK_BOTTOM_BADGE, false),
             )
             root.addView(badgeRow)
             root.addView(createDivider(context, padding))
@@ -1292,7 +1306,7 @@ object SettingsMenuHook {
                 null,
                 padding,
                 true,
-                prefs.getBoolean(ConfigManager.KEY_HIDE_RENEW_BUTTON, true),
+                prefs.getBoolean(ConfigManager.KEY_HIDE_RENEW_BUTTON, false),
             )
             val gameCenterRow = createSwitchRow(
                 context,
@@ -1302,7 +1316,7 @@ object SettingsMenuHook {
                 null,
                 padding,
                 true,
-                prefs.getBoolean(ConfigManager.KEY_REMOVE_GAME_CENTER, true),
+                prefs.getBoolean(ConfigManager.KEY_REMOVE_GAME_CENTER, false),
             )
             val bannerRow = createSwitchRow(
                 context,
@@ -1312,7 +1326,7 @@ object SettingsMenuHook {
                 null,
                 padding,
                 true,
-                prefs.getBoolean(ConfigManager.KEY_REMOVE_ABOUT_ME_BANNER, true),
+                prefs.getBoolean(ConfigManager.KEY_REMOVE_ABOUT_ME_BANNER, false),
             )
             val serviceRow = createSwitchRow(
                 context,
@@ -1322,7 +1336,7 @@ object SettingsMenuHook {
                 null,
                 padding,
                 true,
-                prefs.getBoolean(ConfigManager.KEY_REMOVE_MY_SERVICE, true),
+                prefs.getBoolean(ConfigManager.KEY_REMOVE_MY_SERVICE, false),
             )
             val coinCenterBubbleRow = createSwitchRow(
                 context,
@@ -2211,16 +2225,16 @@ object SettingsMenuHook {
     private fun hasAnySharePageCustomizeOptionEnabled(
         prefs: android.content.SharedPreferences,
     ): Boolean {
-        return prefs.getBoolean(ConfigManager.KEY_REMOVE_HOME_FAB, true)
+        return prefs.getBoolean(ConfigManager.KEY_REMOVE_HOME_FAB, false)
     }
 
     private fun hasAnyMyPageCustomizeOptionEnabled(
         prefs: android.content.SharedPreferences,
     ): Boolean {
-        return prefs.getBoolean(ConfigManager.KEY_HIDE_RENEW_BUTTON, true) ||
-            prefs.getBoolean(ConfigManager.KEY_REMOVE_GAME_CENTER, true) ||
-            prefs.getBoolean(ConfigManager.KEY_REMOVE_ABOUT_ME_BANNER, true) ||
-            prefs.getBoolean(ConfigManager.KEY_REMOVE_MY_SERVICE, true) ||
+        return prefs.getBoolean(ConfigManager.KEY_HIDE_RENEW_BUTTON, false) ||
+            prefs.getBoolean(ConfigManager.KEY_REMOVE_GAME_CENTER, false) ||
+            prefs.getBoolean(ConfigManager.KEY_REMOVE_ABOUT_ME_BANNER, false) ||
+            prefs.getBoolean(ConfigManager.KEY_REMOVE_MY_SERVICE, false) ||
             prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE, false) ||
             prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_SIGN_IN_DOT, false) ||
             prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET, false) ||
@@ -2233,8 +2247,8 @@ object SettingsMenuHook {
     private fun hasAnyBottomBarCustomizeOptionEnabled(
         prefs: android.content.SharedPreferences,
     ): Boolean {
-        return prefs.getBoolean(ConfigManager.KEY_REPLACE_BOTTOM_AI, true) ||
-            prefs.getBoolean(ConfigManager.KEY_BLOCK_BOTTOM_BADGE, true) ||
+        return prefs.getBoolean(ConfigManager.KEY_REPLACE_BOTTOM_AI, false) ||
+            prefs.getBoolean(ConfigManager.KEY_BLOCK_BOTTOM_BADGE, false) ||
             prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_FILE, false) ||
             prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_SHARE, false) ||
             prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_VIP, false) ||
@@ -2615,6 +2629,7 @@ object SettingsMenuHook {
         }
 
         val sw = Switch(context).apply {
+            var reverting = false
             isChecked = if (enabled && prefKey != null) {
                 resolveSwitchChecked(prefs, prefKey, linkedPrefKeys, defaultValue)
             } else {
@@ -2640,13 +2655,22 @@ object SettingsMenuHook {
             )
 
             setOnCheckedChangeListener { _, isChecked ->
-                if (enabled) {
+                if (enabled && !reverting) {
                     if (prefKey != null) {
                         val editor = prefs.edit().putBoolean(prefKey, isChecked)
                         for (linkedPrefKey in linkedPrefKeys) {
                             editor.putBoolean(linkedPrefKey, isChecked)
                         }
-                        editor.apply()
+                        if (!editor.commit()) {
+                            reverting = true
+                            this.isChecked = !isChecked
+                            reverting = false
+                            Toast.makeText(
+                                context,
+                                UiText.Settings.SETTINGS_SAVE_FAILED,
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
                     }
                 }
             }

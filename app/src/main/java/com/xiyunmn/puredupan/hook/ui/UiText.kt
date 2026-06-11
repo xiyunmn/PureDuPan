@@ -118,17 +118,23 @@ object UiText {
         const val FOLLOW_SYSTEM_NIGHT_MODE_LABEL = "夜间模式跟随系统"
         const val FOLLOW_SYSTEM_NIGHT_MODE_DESC = "接管宿主换肤机制，使宿主界面主题与系统主题实时同步"
         const val PERFORMANCE_OPTIMIZE_LABEL = "性能优化"
-        const val PERFORMANCE_OPTIMIZE_DESC = "管理启动后置初始化、启动预取、运行时服务和广告激励链路；可能造成功能异常，谨慎启用"
+        const val PERFORMANCE_OPTIMIZE_DESC = "可能造成功能异常，谨慎启用"
         const val PERFORMANCE_OPTIMIZE_DIALOG_TITLE = "性能优化"
         const val PERFORMANCE_OPTIMIZE_SAVED = "性能优化配置已保存"
-        const val DETAILED_LOGGING_LABEL = "日志和快照"
-        const val DETAILED_LOGGING_DESC = "输出详细 Hook 日志和配置快照，日志通常位于 /data/user/0/com.baidu.netdisk/cache/wangpanhook/logs/"
+        const val DETAILED_LOGGING_LABEL = "输出详细日志"
+        const val DETAILED_LOGGING_DESC = "输出更详细的 Hook 调试日志，日志通常位于 /data/user/0/com.baidu.netdisk/cache/wangpanhook/logs/"
         const val CLEAR_LOGS_LABEL = "清理日志"
         const val CLEAR_LOGS_DESC = "删除 /data/user/0/com.baidu.netdisk/cache/wangpanhook/logs/ 下的模块日志文件；多用户环境以确认框显示路径为准"
         const val CLEAR_LOGS_CONFIRM_TITLE = "清理日志"
         const val CLEAR_LOGS_CONFIRM_MESSAGE = "将删除 APP 缓存目录中的模块日志文件。"
         const val CLEAR_LOGS_SUCCESS = "日志已清理"
         const val CLEAR_LOGS_FAILED = "部分日志清理失败"
+        const val RESET_MODULE_SETTINGS_LABEL = "重置模块设置"
+        const val RESET_MODULE_SETTINGS_DESC = "清空模块保存的配置并恢复默认选项，确认后将重启百度网盘"
+        const val RESET_MODULE_SETTINGS_CONFIRM_TITLE = "重置模块设置"
+        const val RESET_MODULE_SETTINGS_CONFIRM_MESSAGE = "将清空 PureDuPan 模块配置并恢复默认选项。"
+        const val RESET_MODULE_SETTINGS_SUCCESS = "模块设置已重置，正在重启百度网盘"
+        const val RESET_MODULE_SETTINGS_FAILED = "模块设置重置失败"
         const val PERFORMANCE_GROUP_POST_INIT = "启动后置初始化"
         const val PERFORMANCE_GROUP_STARTUP_PREFETCH = "启动异步预取"
         const val PERFORMANCE_GROUP_RUNTIME_SERVICE = "运行时服务/进程唤起"
@@ -162,6 +168,7 @@ object UiText {
         const val ACTION_ICON_SETTINGS = "⚙"
         const val ACTION_ICON_GALLERY = "相册"
         const val ACTION_ICON_CLEAR = "清除"
+        const val ACTION_ICON_RESET = "重置"
         const val BOTTOM_BAR_DIALOG_TITLE = "底栏定制"
         const val CUSTOM_HIDE_TEXT_WIDGET_SECTION_TITLE = "自定义隐藏控件文本"
         const val HIDE_ABOUT_ME_MANAGE_SPACE_TEXT_LABEL = "管理空间"
@@ -204,6 +211,7 @@ object UiText {
         const val BUTTON_CANCEL = "取消"
         const val SAVE_AND_RESTART = "保存并重启"
         const val SETTINGS_SAVED_RESTARTING = "设置已保存，正在重启网盘"
+        const val SETTINGS_SAVE_FAILED = "模块设置保存失败"
         private const val RESTART_HINT = "，重启网盘后生效"
 
         const val RESTRICTED_FEATURES_LOCKED_HINT = "高级功能已隐藏，连续点击版本号5次解锁"
@@ -255,7 +263,7 @@ object UiText {
             moduleBuildType: String,
             moduleVersion: String,
         ): String {
-            return "网盘 $hostVersion$hostBuildType   模块 $moduleVersion$moduleBuildType"
+            return "百度网盘 $hostVersion$hostBuildType   模块 $moduleVersion$moduleBuildType"
         }
     }
 }

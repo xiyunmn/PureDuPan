@@ -14,6 +14,8 @@ internal object HookFileLogger {
     private const val MAIN_LOG_FILE = "wangpanhook.log"
     private const val ERROR_LOG_FILE = "wangpanhook-error.log"
     private const val MAX_LOG_BYTES = 512 * 1024L
+    private const val MAX_LOG_DIR_BYTES = 2 * 1024 * 1024L
+    private const val MAX_LOG_FILE_COUNT = 16
     private const val MAX_PENDING_LINES = 200
 
     private val lock = Any()
@@ -56,6 +58,7 @@ internal object HookFileLogger {
             while (pendingLines.isNotEmpty()) {
                 appendLineLocked(pendingLines.removeFirst())
             }
+            pruneLogDirLocked(targetDir)
         }
     }
 
@@ -121,6 +124,7 @@ internal object HookFileLogger {
         }.onFailure { t ->
             Log.w("WangPanHook", "[HookFileLogger] append failed: ${t.message}")
         }
+        pruneLogDirLocked(dir)
     }
 
     private fun appendToErrorLogLocked(line: String) {
@@ -133,6 +137,7 @@ internal object HookFileLogger {
         }.onFailure { t ->
             Log.w("WangPanHook", "[HookFileLogger] append error log failed: ${t.message}")
         }
+        pruneLogDirLocked(dir)
     }
 
     private fun writeHeaderLocked(context: Context) {
@@ -182,6 +187,36 @@ internal object HookFileLogger {
             Log.w("WangPanHook", "[HookFileLogger] rotate failed: ${t.message}")
         }
     }
+
+    private fun pruneLogDirLocked(dir: File) {
+        val files = dir.listFiles()
+            ?.filter { it.isFile }
+            ?.map { LogFileCandidate(it, it.lastModified(), it.length()) }
+            ?: return
+        var totalBytes = files.sumOf { it.length }
+        if (totalBytes <= MAX_LOG_DIR_BYTES && files.size <= MAX_LOG_FILE_COUNT) return
+
+        val candidates = files
+            .sortedWith(compareBy<LogFileCandidate> { it.lastModified }.thenBy { it.file.name })
+            .toMutableList()
+        while (
+            candidates.isNotEmpty() &&
+            (totalBytes > MAX_LOG_DIR_BYTES || candidates.size > MAX_LOG_FILE_COUNT)
+        ) {
+            val oldest = candidates.removeAt(0)
+            if (oldest.file.delete()) {
+                totalBytes -= oldest.length
+            } else {
+                Log.w("WangPanHook", "[HookFileLogger] prune failed: ${oldest.file.name}")
+            }
+        }
+    }
+
+    private data class LogFileCandidate(
+        val file: File,
+        val lastModified: Long,
+        val length: Long,
+    )
 
     private fun logFileForProcess(dir: File): File {
         val name = processName

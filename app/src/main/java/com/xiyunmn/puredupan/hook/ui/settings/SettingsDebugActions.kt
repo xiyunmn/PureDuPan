@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.Toast
+import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.ui.UiText
@@ -42,6 +43,35 @@ internal object SettingsDebugActions {
         } catch (t: Throwable) {
             Toast.makeText(context, UiText.Settings.CLEAR_LOGS_FAILED, Toast.LENGTH_SHORT).show()
             XposedCompat.logW("[SettingsDebugActions] showClearLogsConfirmDialog failed: ${t.message}")
+        }
+    }
+
+    fun showResetModuleSettingsConfirmDialog(context: Context, onRestart: () -> Unit) {
+        try {
+            AlertDialog.Builder(context, dialogThemeFor(context))
+                .setTitle(UiText.Settings.RESET_MODULE_SETTINGS_CONFIRM_TITLE)
+                .setMessage(UiText.Settings.RESET_MODULE_SETTINGS_CONFIRM_MESSAGE)
+                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
+                .setPositiveButton(UiText.Settings.ACTION_ICON_RESET) { _, _ ->
+                    val success = ConfigManager.resetUserSettings(context)
+                    val text = if (success) {
+                        UiText.Settings.RESET_MODULE_SETTINGS_SUCCESS
+                    } else {
+                        UiText.Settings.RESET_MODULE_SETTINGS_FAILED
+                    }
+                    Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+                    if (success) {
+                        onRestart()
+                    }
+                }
+                .show()
+                .window
+                ?.let { window ->
+                    applyDialogCardStyle(window)
+                }
+        } catch (t: Throwable) {
+            Toast.makeText(context, UiText.Settings.RESET_MODULE_SETTINGS_FAILED, Toast.LENGTH_SHORT).show()
+            XposedCompat.logW("[SettingsDebugActions] showResetModuleSettingsConfirmDialog failed: ${t.message}")
         }
     }
 

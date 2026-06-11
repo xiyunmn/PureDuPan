@@ -197,7 +197,7 @@ object ConfigManager {
     fun readHomeTopPromotionHidden(p: SharedPreferences): Boolean {
         return p.getBoolean(
             KEY_HIDE_HOME_TOP_PROMOTION,
-            p.getBoolean(KEY_HOME_TOP_PROMOTION_LEGACY, true),
+            p.getBoolean(KEY_HOME_TOP_PROMOTION_LEGACY, false),
         )
     }
 
@@ -247,8 +247,9 @@ object ConfigManager {
     fun getPrefs(context: Context): SharedPreferences {
         prefs?.let { return it }
         init(context)
-        return prefs ?: (context.applicationContext ?: context)
-            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs?.let { return it }
+        val appCtx = context.applicationContext ?: context
+        return appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
     fun getModuleStatePrefs(context: Context): SharedPreferences {
@@ -324,12 +325,12 @@ object ConfigManager {
                 p.getBoolean(KEY_HIDE_HOME_SAVE_SECTION, false) ||
                 p.getBoolean(KEY_HIDE_HOME_RECENT_SECTION, false)
         val hasSharePageOptionEnabled =
-            p.getBoolean(KEY_REMOVE_HOME_FAB, true)
+            p.getBoolean(KEY_REMOVE_HOME_FAB, false)
         val hasMyPageOptionEnabled =
-            p.getBoolean(KEY_HIDE_RENEW_BUTTON, true) ||
-                p.getBoolean(KEY_REMOVE_GAME_CENTER, true) ||
-                p.getBoolean(KEY_REMOVE_ABOUT_ME_BANNER, true) ||
-                p.getBoolean(KEY_REMOVE_MY_SERVICE, true) ||
+            p.getBoolean(KEY_HIDE_RENEW_BUTTON, false) ||
+                p.getBoolean(KEY_REMOVE_GAME_CENTER, false) ||
+                p.getBoolean(KEY_REMOVE_ABOUT_ME_BANNER, false) ||
+                p.getBoolean(KEY_REMOVE_MY_SERVICE, false) ||
                 p.getBoolean(KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE, false) ||
                 p.getBoolean(KEY_HIDE_ABOUT_ME_SIGN_IN_DOT, false) ||
                 p.getBoolean(KEY_HIDE_ABOUT_ME_AI_COIN_ASSET, false) ||
@@ -338,8 +339,8 @@ object ConfigManager {
                 p.getBoolean(KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, false) ||
                 p.getBoolean(KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false)
         val hasBottomBarOptionEnabled =
-            p.getBoolean(KEY_REPLACE_BOTTOM_AI, true) ||
-                p.getBoolean(KEY_BLOCK_BOTTOM_BADGE, true) ||
+            p.getBoolean(KEY_REPLACE_BOTTOM_AI, false) ||
+                p.getBoolean(KEY_BLOCK_BOTTOM_BADGE, false) ||
                 p.getBoolean(KEY_HIDE_TAB_FILE, false) ||
                 p.getBoolean(KEY_HIDE_TAB_SHARE, false) ||
                 p.getBoolean(KEY_HIDE_TAB_VIP, false) ||
@@ -362,13 +363,13 @@ object ConfigManager {
 
         return SettingsSnapshot(
             isDetailedLoggingEnabled = featureBoolean(KEY_ENABLE_DETAILED_LOGGING),
-            isSplashInterstitialBlockEnabled = p.getBoolean(KEY_BLOCK_SPLASH_INTERSTITIAL, true),
-            isInAppDialogBlocked = p.getBoolean(KEY_BLOCK_IN_APP_DIALOG, true),
-            isUpdateDialogBlocked = p.getBoolean(KEY_BLOCK_UPDATE_DIALOG, true),
-            isFullScreenBackupBlocked = p.getBoolean(KEY_BLOCK_FULL_SCREEN_BACKUP, true),
-            isSharePushGuideBlocked = p.getBoolean(KEY_BLOCK_SHARE_PUSH_GUIDE, true),
-            isAppStoreReviewBlocked = p.getBoolean(KEY_BLOCK_APP_STORE_REVIEW, true),
-            isBottomAiReplaced = p.getBoolean(KEY_REPLACE_BOTTOM_AI, true),
+            isSplashInterstitialBlockEnabled = p.getBoolean(KEY_BLOCK_SPLASH_INTERSTITIAL, false),
+            isInAppDialogBlocked = p.getBoolean(KEY_BLOCK_IN_APP_DIALOG, false),
+            isUpdateDialogBlocked = p.getBoolean(KEY_BLOCK_UPDATE_DIALOG, false),
+            isFullScreenBackupBlocked = p.getBoolean(KEY_BLOCK_FULL_SCREEN_BACKUP, false),
+            isSharePushGuideBlocked = p.getBoolean(KEY_BLOCK_SHARE_PUSH_GUIDE, false),
+            isAppStoreReviewBlocked = p.getBoolean(KEY_BLOCK_APP_STORE_REVIEW, false),
+            isBottomAiReplaced = p.getBoolean(KEY_REPLACE_BOTTOM_AI, false),
             isHomeCustomizeEnabled = p.getBoolean(KEY_HOME_CUSTOMIZE, hasHomeCustomizeOptionEnabled),
             isHomeTopPromotionHidden = readHomeTopPromotionHidden(p),
             isHomeSearchPlaceholderHidden = p.getBoolean(KEY_HIDE_HOME_SEARCH_PLACEHOLDER, false),
@@ -379,19 +380,19 @@ object ConfigManager {
             isHomeRecentSectionHidden = p.getBoolean(KEY_HIDE_HOME_RECENT_SECTION, false),
             isSharePageCustomizeEnabled = p.getBoolean(KEY_SHARE_PAGE_CUSTOMIZE, hasSharePageOptionEnabled),
             isMyPageCustomizeEnabled = p.getBoolean(KEY_MY_PAGE_CUSTOMIZE, hasMyPageOptionEnabled),
-            isGameCenterRemoved = p.getBoolean(KEY_REMOVE_GAME_CENTER, true),
-            isAboutMeBannerRemoved = p.getBoolean(KEY_REMOVE_ABOUT_ME_BANNER, true),
-            isMyServiceRemoved = p.getBoolean(KEY_REMOVE_MY_SERVICE, true),
+            isGameCenterRemoved = p.getBoolean(KEY_REMOVE_GAME_CENTER, false),
+            isAboutMeBannerRemoved = p.getBoolean(KEY_REMOVE_ABOUT_ME_BANNER, false),
+            isMyServiceRemoved = p.getBoolean(KEY_REMOVE_MY_SERVICE, false),
             isAboutMeCoinCenterBubbleHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE, false),
             isAboutMeSignInDotHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_SIGN_IN_DOT, false),
             isAboutMeManageSpaceTextHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT, false),
             isAboutMeRewardTextHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_REWARD_TEXT, false),
             isAboutMeAccountExitTextHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, false),
             isAboutMeStarSkinTextHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false),
-            isHomeFabRemoved = p.getBoolean(KEY_REMOVE_HOME_FAB, true),
-            isRenewButtonHidden = p.getBoolean(KEY_HIDE_RENEW_BUTTON, true),
-            isBottomBarBadgeBlocked = p.getBoolean(KEY_BLOCK_BOTTOM_BADGE, true),
-            isAlbumBackupBarBlocked = p.getBoolean(KEY_BLOCK_ALBUM_BACKUP_BAR, true),
+            isHomeFabRemoved = p.getBoolean(KEY_REMOVE_HOME_FAB, false),
+            isRenewButtonHidden = p.getBoolean(KEY_HIDE_RENEW_BUTTON, false),
+            isBottomBarBadgeBlocked = p.getBoolean(KEY_BLOCK_BOTTOM_BADGE, false),
+            isAlbumBackupBarBlocked = p.getBoolean(KEY_BLOCK_ALBUM_BACKUP_BAR, false),
             isAboutMeAiCoinAssetHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_AI_COIN_ASSET, false),
             isMemberCardCustomizeEnabled = p.getBoolean(KEY_MEMBER_CARD_CUSTOMIZE, hasMemberCardOptionEnabled),
             isMemberCardBackgroundReplaced = memberCardBackgroundReplaced,
@@ -547,10 +548,29 @@ object ConfigManager {
     }
 
     fun setDisclaimerAccepted(context: Context) {
-        getPrefs(context).edit().putBoolean(KEY_DISCLAIMER_ACCEPTED, true).apply()
+        val p = getPrefs(context)
+        if (p.edit().putBoolean(KEY_DISCLAIMER_ACCEPTED, true).commit()) {
+            refreshUserSettingsSnapshot(p)
+        }
     }
 
     fun setRestrictedFeaturesUnlocked(context: Context, unlocked: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_RESTRICTED_FEATURES_UNLOCKED, unlocked).apply()
+        val p = getPrefs(context)
+        if (p.edit().putBoolean(KEY_RESTRICTED_FEATURES_UNLOCKED, unlocked).commit()) {
+            refreshUserSettingsSnapshot(p)
+        }
+    }
+
+    fun resetUserSettings(context: Context): Boolean {
+        val p = getPrefs(context)
+        val success = p.edit()
+            .clear()
+            .putInt(KEY_USER_SETTINGS_VERSION_CODE, BuildConfig.VERSION_CODE)
+            .commit()
+        if (success) {
+            val snapshot = refreshUserSettingsSnapshot(p)
+            logSettingsSnapshot("resetUserSettings", snapshot)
+        }
+        return success
     }
 }
