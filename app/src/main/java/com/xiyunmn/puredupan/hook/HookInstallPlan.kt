@@ -1,0 +1,327 @@
+﻿package com.xiyunmn.puredupan.hook
+
+import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
+import com.xiyunmn.puredupan.hook.core.Constants
+import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.feature.ad.AppStoreReviewBlockHook
+import com.xiyunmn.puredupan.hook.feature.ad.BusinessOpDialogBlockHook
+import com.xiyunmn.puredupan.hook.feature.ad.FullScreenBackupBlockHook
+import com.xiyunmn.puredupan.hook.feature.ad.LuckyCouponBlockHook
+import com.xiyunmn.puredupan.hook.feature.ad.SharePushGuideBlockHook
+import com.xiyunmn.puredupan.hook.feature.ad.SplashLifeHolderFastFinishHook
+import com.xiyunmn.puredupan.hook.feature.ad.SplashInterstitialBlockHook
+import com.xiyunmn.puredupan.hook.feature.ad.SvipIconGuideBlockHook
+import com.xiyunmn.puredupan.hook.feature.ad.UpdateDialogBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.AigcBackgroundComponentBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.AdSdkInitBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.B2fGuidancePrefetchBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.DatapackSocketRegisterBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.DynamicPluginAutoDownloadBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.GarbageCleanServiceRegisterBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.IconResourceDownloadBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.IncentiveBusinessServiceBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.MediaBrowserServiceAutostartBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.OemPushServiceBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.SwanPreloadBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.ThumbnailOperatorServiceBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.VideoAdPreloadBlockHook
+import com.xiyunmn.puredupan.hook.feature.ui.AlbumBackupBarBlockHook
+import com.xiyunmn.puredupan.hook.feature.ui.BottomAiTabReplaceHook
+import com.xiyunmn.puredupan.hook.feature.ui.BottomBarBadgeBlockHook
+import com.xiyunmn.puredupan.hook.feature.ui.BottomBarSimplifyFeature
+import com.xiyunmn.puredupan.hook.feature.ui.FormalUiEntryHook
+import com.xiyunmn.puredupan.hook.feature.ui.AboutMeGodModeHook
+import com.xiyunmn.puredupan.hook.feature.ui.GameCenterRemoveHook
+import com.xiyunmn.puredupan.hook.feature.ui.GameCenterRuntimeBlockHook
+import com.xiyunmn.puredupan.hook.feature.ui.MemberCardCustomizeHook
+import com.xiyunmn.puredupan.hook.feature.ui.NewHomeFabRemoveHook
+import com.xiyunmn.puredupan.hook.feature.ui.RenewButtonHideHook
+import com.xiyunmn.puredupan.hook.feature.ui.SettingsImagePickerResultHook
+import com.xiyunmn.puredupan.hook.feature.ui.SystemNightModeSyncHook
+import com.xiyunmn.puredupan.hook.feature.ui.HomeCustomizeHook
+import com.xiyunmn.puredupan.hook.feature.ui.HomeUploadEntryHook
+
+internal data class HookInstallEntry(
+    val id: String,
+    val install: (ClassLoader) -> Unit,
+)
+
+internal data class HookInstallPlan(
+    val processName: String,
+    val phase: String,
+    val entries: List<HookInstallEntry>,
+) {
+    fun isEmpty(): Boolean = entries.isEmpty()
+}
+
+internal object HookInstaller {
+    fun install(plan: HookInstallPlan, cl: ClassLoader) {
+        if (plan.entries.isEmpty()) {
+            XposedCompat.logD("[HookInstallPlan] ${plan.phase}: empty for process=${plan.processName}")
+            return
+        }
+        for (entry in plan.entries) {
+            try {
+                XposedCompat.logD("[HookInstallPlan] Installing ${entry.id} (${plan.phase})...")
+                entry.install(cl)
+            } catch (t: Throwable) {
+                XposedCompat.log(
+                    "[HookInstallPlan] ${entry.id} install FAILED (${plan.phase}): ${t.message}",
+                )
+                XposedCompat.log(t)
+            }
+        }
+    }
+}
+
+internal object HookInstallPlanner {
+    private data class DerivedSettings(
+        val hasMemberCardCustomizeOption: Boolean,
+        val hasHomeCustomizeOption: Boolean,
+        val hasBottomBarTabOption: Boolean,
+    )
+
+    private data class HookSpec(
+        val id: String,
+        val enabled: (PlanContext, SettingsSnapshot, DerivedSettings) -> Boolean,
+        val install: (ClassLoader) -> Unit,
+    )
+
+    private class PlanContext(
+        val processName: String,
+    ) {
+        val isMain: Boolean = processName == Constants.TARGET_PACKAGE
+        val isPushService: Boolean = processName == "${Constants.TARGET_PACKAGE}:pushservice"
+        val supportsOemPushHook: Boolean = isMain || isPushService
+    }
+
+    private val postAttachSpecs = listOf(
+        HookSpec("FormalUiEntryHook", { context, _, _ ->
+            context.isMain
+        }) { cl -> FormalUiEntryHook.hook(cl) },
+        HookSpec("SettingsImagePickerResultHook", { context, _, _ ->
+            context.isMain
+        }) { cl -> SettingsImagePickerResultHook.hook(cl) },
+        HookSpec("RenewButtonHideHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isMyPageCustomizeEnabled &&
+                settings.isRenewButtonHidden
+        }) { cl -> RenewButtonHideHook.hook(cl) },
+        HookSpec("SplashInterstitialBlockHook", { context, settings, _ ->
+            context.isMain && settings.isSplashInterstitialBlockEnabled
+        }) { cl -> SplashInterstitialBlockHook.hook(cl) },
+        HookSpec("SplashLifeHolderFastFinishHook", { context, settings, _ ->
+            context.isMain && settings.isSplashInterstitialBlockEnabled
+        }) { cl -> SplashLifeHolderFastFinishHook.hook(cl) },
+        HookSpec("BusinessOpDialogBlockHook", { context, settings, _ ->
+            context.isMain && settings.isInAppDialogBlocked
+        }) { cl -> BusinessOpDialogBlockHook.hook(cl) },
+        HookSpec("LuckyCouponBlockHook", { context, settings, _ ->
+            context.isMain && settings.isInAppDialogBlocked
+        }) { cl -> LuckyCouponBlockHook.hook(cl) },
+        HookSpec("UpdateDialogBlockHook", { context, settings, _ ->
+            context.isMain && settings.isUpdateDialogBlocked
+        }) { cl -> UpdateDialogBlockHook.hook(cl) },
+        HookSpec("FullScreenBackupBlockHook", { context, settings, _ ->
+            context.isMain && settings.isFullScreenBackupBlocked
+        }) { cl -> FullScreenBackupBlockHook.hook(cl) },
+        HookSpec("SvipIconGuideBlockHook", { context, settings, _ ->
+            context.isMain && settings.isFullScreenBackupBlocked
+        }) { cl -> SvipIconGuideBlockHook.hook(cl) },
+        HookSpec("SharePushGuideBlockHook", { context, settings, _ ->
+            context.isMain && settings.isSharePushGuideBlocked
+        }) { cl -> SharePushGuideBlockHook.hook(cl) },
+        HookSpec("AppStoreReviewBlockHook", { context, settings, _ ->
+            context.isMain && settings.isAppStoreReviewBlocked
+        }) { cl -> AppStoreReviewBlockHook.hook(cl) },
+        HookSpec("BottomAiTabReplaceHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isBottomBarCustomEnabled &&
+                settings.isBottomAiReplaced
+        }) { cl -> BottomAiTabReplaceHook.hook(cl) },
+        HookSpec("BottomBarBadgeBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isBottomBarCustomEnabled &&
+                settings.isBottomBarBadgeBlocked
+        }) { cl -> BottomBarBadgeBlockHook.hook(cl) },
+        HookSpec("HomeCustomizeHook", { context, settings, derived ->
+            context.isMain &&
+                settings.isHomeCustomizeEnabled &&
+                derived.hasHomeCustomizeOption
+        }) { cl -> HomeCustomizeHook.hook(cl) },
+        HookSpec("GameCenterRuntimeBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isMyPageCustomizeEnabled &&
+                settings.isGameCenterRemoved
+        }) { cl -> GameCenterRuntimeBlockHook.hook(cl) },
+        HookSpec("GameCenterRemoveHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isMyPageCustomizeEnabled &&
+                settings.isGameCenterRemoved
+        }) { cl -> GameCenterRemoveHook.hook(cl) },
+        HookSpec("AboutMeGodModeHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isMyPageCustomizeEnabled &&
+                (
+                    settings.isAboutMeBannerRemoved ||
+                        settings.isMyServiceRemoved ||
+                        settings.isAboutMeCoinCenterBubbleHidden ||
+                        settings.isAboutMeSignInDotHidden ||
+                        settings.isAboutMeAiCoinAssetHidden ||
+                        settings.isAboutMeManageSpaceTextHidden ||
+                        settings.isAboutMeRewardTextHidden ||
+                        settings.isAboutMeAccountExitTextHidden ||
+                        settings.isAboutMeStarSkinTextHidden
+                )
+        }) { cl -> AboutMeGodModeHook.hook(cl) },
+        HookSpec("MemberCardCustomizeHook", { context, settings, derived ->
+            context.isMain &&
+                settings.isMemberCardCustomizeEnabled &&
+                derived.hasMemberCardCustomizeOption
+        }) { cl -> MemberCardCustomizeHook.hook(cl) },
+        HookSpec("NewHomeFabRemoveHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isSharePageCustomizeEnabled &&
+                settings.isHomeFabRemoved
+        }) { cl -> NewHomeFabRemoveHook.hook(cl) },
+        HookSpec("AlbumBackupBarBlockHook", { context, settings, _ ->
+            context.isMain && settings.isAlbumBackupBarBlocked
+        }) { cl -> AlbumBackupBarBlockHook.hook(cl) },
+        HookSpec("BottomBarSimplifyFeature", { context, settings, derived ->
+            context.isMain &&
+                settings.isBottomBarCustomEnabled &&
+                derived.hasBottomBarTabOption
+        }) { cl -> BottomBarSimplifyFeature.hook(cl) },
+        HookSpec("GarbageCleanServiceRegisterBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isGarbageCleanServiceRegisterDisabled
+        }) { cl -> GarbageCleanServiceRegisterBlockHook.hook(cl) },
+        HookSpec("DatapackSocketRegisterBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isDatapackSocketRegisterDisabled
+        }) { cl -> DatapackSocketRegisterBlockHook.hook(cl) },
+        HookSpec("AigcBackgroundComponentBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isAigcBackgroundComponentDisabled
+        }) { cl -> AigcBackgroundComponentBlockHook.hook(cl) },
+        HookSpec("DynamicPluginAutoDownloadBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isDynamicPluginAutoDownloadDisabled
+        }) { cl -> DynamicPluginAutoDownloadBlockHook.hook(cl) },
+        HookSpec("OemPushServiceBlockHook", { context, settings, _ ->
+            context.supportsOemPushHook &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isOemPushServiceDisabled
+        }) { cl -> OemPushServiceBlockHook.hook(cl) },
+        HookSpec("VideoAdPreloadBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isVideoAdPreloadDisabled
+        }) { cl -> VideoAdPreloadBlockHook.hook(cl) },
+        HookSpec("AdSdkInitBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isAdSdkInitDisabled
+        }) { cl -> AdSdkInitBlockHook.hook(cl) },
+        HookSpec("SwanPreloadBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isSwanPreloadDisabled
+        }) { cl -> SwanPreloadBlockHook.hook(cl) },
+        HookSpec("ThumbnailOperatorServiceBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isThumbnailOperatorServiceDisabled
+        }) { cl -> ThumbnailOperatorServiceBlockHook.hook(cl) },
+        HookSpec("IncentiveBusinessServiceBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isIncentiveBusinessServiceDisabled
+        }) { cl -> IncentiveBusinessServiceBlockHook.hook(cl) },
+        HookSpec("MediaBrowserServiceAutostartBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isMediaBrowserServiceAutostartDisabled
+        }) { cl -> MediaBrowserServiceAutostartBlockHook.hook(cl) },
+        HookSpec("IconResourceDownloadBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isIconResourceDownloadDisabled
+        }) { cl -> IconResourceDownloadBlockHook.hook(cl) },
+        HookSpec("B2fGuidancePrefetchBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isB2fGuidancePrefetchDisabled
+        }) { cl -> B2fGuidancePrefetchBlockHook.hook(cl) },
+        HookSpec("SystemNightModeSyncHook", { context, _, _ ->
+            context.isMain
+        }) { cl -> SystemNightModeSyncHook.hook(cl) },
+        HookSpec("HomeUploadEntryHook", { context, _, _ ->
+            context.isMain
+        }) { cl -> HomeUploadEntryHook.hook(cl) },
+    )
+
+    fun shouldHandleProcess(processName: String): Boolean {
+        return isMainProcess(processName) || isPushServiceProcess(processName)
+    }
+
+    fun shouldInstallAttachHook(processName: String): Boolean {
+        return isMainProcess(processName) || isPushServiceProcess(processName)
+    }
+
+    private fun isMainProcess(processName: String): Boolean {
+        return processName == Constants.TARGET_PACKAGE
+    }
+
+    private fun isPushServiceProcess(processName: String): Boolean {
+        return processName == "${Constants.TARGET_PACKAGE}:pushservice"
+    }
+
+    fun staticPlan(processName: String): HookInstallPlan {
+        return HookInstallPlan(processName, "static", emptyList())
+    }
+
+    fun postAttachPlan(
+        processName: String,
+        settings: SettingsSnapshot,
+    ): HookInstallPlan {
+        val context = PlanContext(processName)
+        val derived = deriveSettings(settings)
+        val entries = postAttachSpecs
+            .filter { spec -> spec.enabled(context, settings, derived) }
+            .map { spec -> HookInstallEntry(spec.id, spec.install) }
+        return HookInstallPlan(processName, "postAttach", entries)
+    }
+
+    private fun deriveSettings(settings: SettingsSnapshot): DerivedSettings {
+        return DerivedSettings(
+            hasMemberCardCustomizeOption = settings.isMemberCardBackgroundReplaced ||
+                settings.isMemberCardSizeAdjusted ||
+                settings.isMemberCardOperationHidden ||
+                settings.isMemberCardBenefitHidden ||
+                settings.isMemberCardBenefitBarHidden ||
+                settings.isMemberCardSvipLevelHidden ||
+                settings.isMemberCardSvipStatusHidden ||
+                settings.isMemberCardRenewButtonHidden ||
+                settings.isMemberCardClickRemoved ||
+                settings.isMemberCardBackgroundViewedOnClick,
+            hasHomeCustomizeOption = settings.isHomeTopPromotionHidden ||
+                settings.isHomeSearchPlaceholderHidden ||
+                settings.isHomeSearchAigcIconHidden ||
+                settings.isHomeFeedTipHidden ||
+                settings.isHomeMemoriesSectionHidden ||
+                settings.isHomeSaveSectionHidden ||
+                settings.isHomeRecentSectionHidden,
+            hasBottomBarTabOption = settings.isBottomBarTabFileHidden ||
+                settings.isBottomBarTabShareHidden ||
+                settings.isBottomBarTabVipHidden ||
+                settings.isBottomBarTabHomeHidden ||
+                settings.isBottomBarTabMineHidden,
+        )
+    }
+
+}

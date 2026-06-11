@@ -1,0 +1,7 @@
+name=PureDuPan
+description=净化百度网盘界面元素，并提供一些扩展增强功能
+author=xiyunmn
+version=1.0.0
+minApiVersion=101
+targetApiVersion=101
+staticScope=false
