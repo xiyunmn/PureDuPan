@@ -1,24 +1,24 @@
-name: 构建Debug版本
+name: Build Debug
 
 on:
-  workflow_dispatch:  # 仅手动触发
+  workflow_dispatch:
 
 jobs:
   build:
-    name: 构建Debug APK
+    name: Build Debug APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: 检出代码
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 设置JDK 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: 设置Gradle缓存
+      - name: Set up Gradle cache
         uses: actions/cache@v4
         with:
           path: |
@@ -28,13 +28,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: 授予Gradle执行权限
+      - name: Make Gradle executable
         run: chmod +x gradlew
 
-      - name: 构建Debug APK
+      - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: 上传Debug APK
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: PureDuPan-debug

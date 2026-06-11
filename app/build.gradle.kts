@@ -2,6 +2,15 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+val majorVersion = 1
+val minorVersion = 0
+val patchVersion = 0
+
+val releaseVersionCode = majorVersion * 10000 + minorVersion * 100 + patchVersion
+val betaVersionCode = releaseVersionCode + 50
+val debugVersionCode = releaseVersionCode + 99
+val baseVersionName = "$majorVersion.$minorVersion.$patchVersion"
+
 android {
     namespace = "com.xiyunmn.puredupan.hook"
     buildFeatures {
@@ -44,16 +53,6 @@ android {
             minorApiLevel = 1
         }
     }
-
-    // 版本号配置
-    val majorVersion = 1
-    val minorVersion = 0
-    val patchVersion = 0
-
-    val releaseVersionCode = majorVersion * 10000 + minorVersion * 100 + patchVersion
-    val betaVersionCode = releaseVersionCode + 50
-    val debugVersionCode = releaseVersionCode + 99
-    val baseVersionName = "$majorVersion.$minorVersion.$patchVersion"
 
     val minSupportedUserSettingsVersionCode = 20
 

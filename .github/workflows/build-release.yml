@@ -1,24 +1,24 @@
-name: 构建Release版本
+name: Build Release
 
 on:
-  workflow_dispatch:  # 仅手动触发
+  workflow_dispatch:
 
 jobs:
   build:
-    name: 构建Release APK
+    name: Build Release APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: 检出代码
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 设置JDK 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: 设置Gradle缓存
+      - name: Set up Gradle cache
         uses: actions/cache@v4
         with:
           path: |
@@ -28,22 +28,22 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: 解码签名密钥
+      - name: Decode signing keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > key.jks
 
-      - name: 授予Gradle执行权限
+      - name: Make Gradle executable
         run: chmod +x gradlew
 
-      - name: 构建Release APK
+      - name: Build Release APK
         env:
-          RELEASE_STORE_FILE: ../key.jks
-          RELEASE_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          ORG_GRADLE_PROJECT_RELEASE_STORE_FILE: ../key.jks
+          ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease --stacktrace
 
-      - name: 上传Release APK
+      - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
           name: PureDuPan-release
