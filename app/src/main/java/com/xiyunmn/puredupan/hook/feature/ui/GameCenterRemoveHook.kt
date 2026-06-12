@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * 游戏中心移除 Hook。
@@ -13,7 +14,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
  * 受 [ConfigManager.KEY_REMOVE_GAME_CENTER] 控制，默认开启。
  */
 object GameCenterRemoveHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -21,7 +22,7 @@ object GameCenterRemoveHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val clazz = XposedCompat.findClassOrNull(
@@ -43,17 +44,13 @@ object GameCenterRemoveHook {
                 if (isEnabled()) null else it.proceed()
             }
             XposedCompat.log("[GameCenterRemoveHook] hook INSTALLED")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[GameCenterRemoveHook] FAILED: ${t.message}")
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[GameCenterRemoveHook] FAILED: ${e.message}")
         }
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
     private fun isEnabled(): Boolean =
         ConfigManager.isMyPageCustomizeEnabled && ConfigManager.isGameCenterRemoved
 
-    private fun resetHooked() { synchronized(this) { hooked = false } }
 }

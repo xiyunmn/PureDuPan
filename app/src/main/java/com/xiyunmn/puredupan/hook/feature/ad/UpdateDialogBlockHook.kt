@@ -1,8 +1,10 @@
 package com.xiyunmn.puredupan.hook.feature.ad
 
 import com.xiyunmn.puredupan.hook.config.ConfigManager
+import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookUtils
 
 /**
  * Blocks the in-app software update dialog.
@@ -11,7 +13,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
  * avoids touching BaseDialogBuilder, which is shared by many unrelated host dialogs.
  */
 object UpdateDialogBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!ConfigManager.isUpdateDialogBlocked) {
@@ -19,7 +21,7 @@ object UpdateDialogBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val clazz = XposedCompat.findClassOrNull(
@@ -38,7 +40,7 @@ object UpdateDialogBlockHook {
                 method.isAccessible = true
                 mod.hook(method).intercept { chain ->
                     if (ConfigManager.isUpdateDialogBlocked) {
-                        defaultReturnValue(method.returnType)
+                        HookUtils.getDefaultReturnValue(method.returnType)
                     } else {
                         chain.proceed()
                     }
@@ -47,19 +49,24 @@ object UpdateDialogBlockHook {
             }
 
             if (installed == 0) {
-                resetHooked()
+                hookState.reset()
                 XposedCompat.log("[UpdateDialogBlockHook] showLCVersionDialog NOT FOUND")
                 return
             }
 
             XposedCompat.log("[UpdateDialogBlockHook] hooks INSTALLED: count=$installed")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[UpdateDialogBlockHook] FAILED: ${t.message}")
+        } catch (e: ReflectiveOperationException) {
+            hookState.reset()
+            XposedCompat.log("[UpdateDialogBlockHook] FAILED (reflection): ${e.javaClass.simpleName}: ${e.message}")
+            XposedCompat.log(e)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[UpdateDialogBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
-    private fun defaultReturnValue(type: Class<*>): Any? {
+    private fun HookUtils.getDefaultReturnValue(type: Class<*>): Any? {
         return when (type) {
             java.lang.Boolean.TYPE -> false
             java.lang.Byte.TYPE -> 0.toByte()
@@ -71,13 +78,5 @@ object UpdateDialogBlockHook {
             java.lang.Character.TYPE -> 0.toChar()
             else -> null
         }
-    }
-
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
     }
 }

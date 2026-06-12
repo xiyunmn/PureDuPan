@@ -2,6 +2,7 @@ package com.xiyunmn.puredupan.hook.feature.performance
 
 import android.content.Intent
 import com.xiyunmn.puredupan.hook.config.ConfigManager
+import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 
@@ -9,7 +10,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
  * Blocks ad SDK download services before they initialize large runtime delegates.
  */
 object AdSdkInitBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     private const val START_NOT_STICKY = 2
 
@@ -19,7 +20,7 @@ object AdSdkInitBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             var installedCount = 0
@@ -91,15 +92,19 @@ object AdSdkInitBlockHook {
 
             if (installedCount == 0) {
                 XposedCompat.log("[AdSdkInitBlockHook] no hooks installed")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
             XposedCompat.log("[AdSdkInitBlockHook] hooks INSTALLED: count=$installedCount")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[AdSdkInitBlockHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: ReflectiveOperationException) {
+            hookState.reset()
+            XposedCompat.log("[AdSdkInitBlockHook] FAILED (reflection): ${e.javaClass.simpleName}: ${e.message}")
+            XposedCompat.log(e)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[AdSdkInitBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
@@ -111,17 +116,9 @@ object AdSdkInitBlockHook {
             } else {
                 XposedCompat.callMethod(service, "stopSelf")
             }
-        } catch (t: Throwable) {
-            XposedCompat.logD("[AdSdkInitBlockHook] stopSelf ignored: ${t.message}")
+        } catch (e: Exception) {
+            XposedCompat.logD("[AdSdkInitBlockHook] stopSelf ignored: ${e.message}")
         }
-    }
-
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
     }
 
     private fun isEnabled(): Boolean =

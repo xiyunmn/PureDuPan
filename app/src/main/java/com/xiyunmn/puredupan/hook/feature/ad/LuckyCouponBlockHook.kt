@@ -1,8 +1,10 @@
 package com.xiyunmn.puredupan.hook.feature.ad
 
 import com.xiyunmn.puredupan.hook.config.ConfigManager
+import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookUtils
 import java.lang.reflect.Method
 
 /**
@@ -12,7 +14,7 @@ import java.lang.reflect.Method
  * If so, this hook attaches to the inherited show method and filters by targetClass.isInstance().
  */
 object LuckyCouponBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!ConfigManager.isInAppDialogBlocked) {
@@ -20,7 +22,7 @@ object LuckyCouponBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val targetClass = XposedCompat.findClassOrNull(
@@ -35,7 +37,7 @@ object LuckyCouponBlockHook {
                 targetClass,
                 StableBaiduPanHookPoints.DIALOG_SHOW_METHOD,
             ) ?: run {
-                resetHooked()
+                hookState.reset()
                 XposedCompat.log("[LuckyCouponBlockHook] show method NOT FOUND")
                 return
             }
@@ -46,7 +48,7 @@ object LuckyCouponBlockHook {
                     targetClass.isInstance(chain.thisObject)
                 ) {
                     XposedCompat.logD("[LuckyCouponBlockHook] ReceiveCouponDialogV3.show blocked")
-                    return@intercept defaultReturnValue(method.returnType)
+                    return@intercept HookUtils.getDefaultReturnValue(method.returnType)
                 }
                 chain.proceed()
             }
@@ -55,9 +57,14 @@ object LuckyCouponBlockHook {
                 "[LuckyCouponBlockHook] hook INSTALLED: " +
                     "${method.declaringClass.name}.${method.name}"
             )
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[LuckyCouponBlockHook] FAILED: ${t.message}")
+        } catch (e: ReflectiveOperationException) {
+            hookState.reset()
+            XposedCompat.log("[LuckyCouponBlockHook] FAILED (reflection): ${e.javaClass.simpleName}: ${e.message}")
+            XposedCompat.log(e)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[LuckyCouponBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
@@ -73,7 +80,7 @@ object LuckyCouponBlockHook {
         return null
     }
 
-    private fun defaultReturnValue(type: Class<*>): Any? {
+    private fun HookUtils.getDefaultReturnValue(type: Class<*>): Any? {
         return when (type) {
             java.lang.Boolean.TYPE -> false
             java.lang.Byte.TYPE -> 0.toByte()
@@ -85,13 +92,5 @@ object LuckyCouponBlockHook {
             java.lang.Character.TYPE -> 0.toChar()
             else -> null
         }
-    }
-
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
     }
 }

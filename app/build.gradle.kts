@@ -11,6 +11,24 @@ val betaVersionCode = releaseVersionCode + 50
 val debugVersionCode = releaseVersionCode + 99
 val baseVersionName = "$majorVersion.$minorVersion.$patchVersion"
 
+fun versionNameForBuildType(buildType: String) = when (buildType) {
+    "debug" -> "$baseVersionName-debug"
+    "beta" -> "$baseVersionName-beta"
+    else -> baseVersionName
+}
+
+fun versionCodeForBuildType(buildType: String) = when (buildType) {
+    "debug" -> debugVersionCode
+    "beta" -> betaVersionCode
+    else -> releaseVersionCode
+}
+
+fun apkFileNameForBuildType(buildType: String) = when (buildType) {
+    "debug" -> "PureDuPan-v${baseVersionName}-debug.apk"
+    "beta" -> "PureDuPan-v${baseVersionName}-beta.apk"
+    else -> "PureDuPan-v${baseVersionName}-release.apk"
+}
+
 android {
     namespace = "com.xiyunmn.puredupan.hook"
     buildFeatures {
@@ -137,19 +155,55 @@ androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
             val buildType = variant.buildType ?: "release"
-            val versionName = when (buildType) {
-                "debug" -> "${majorVersion}.${minorVersion}.${patchVersion}-debug"
-                "beta" -> "${majorVersion}.${minorVersion}.${patchVersion}-beta"
-                else -> "${majorVersion}.${minorVersion}.${patchVersion}"
-            }
-            val versionCode = when (buildType) {
-                "debug" -> debugVersionCode
-                "beta" -> betaVersionCode
-                else -> releaseVersionCode
-            }
-            output.versionName.set(versionName)
-            output.versionCode.set(versionCode)
+            output.versionName.set(versionNameForBuildType(buildType))
+            output.versionCode.set(versionCodeForBuildType(buildType))
         }
+    }
+}
+
+listOf("debug", "beta", "release").forEach { buildType ->
+    val capitalizedBuildType = buildType.replaceFirstChar { it.uppercase() }
+    val apkFileName = apkFileNameForBuildType(buildType)
+    val apkDirProvider = layout.buildDirectory.dir("outputs/apk/$buildType")
+    val renameTask = tasks.register("rename${capitalizedBuildType}Apk") {
+        inputs.dir(apkDirProvider)
+        outputs.file(apkDirProvider.map { it.file(apkFileName) })
+
+        doLast {
+            val apkDir = apkDirProvider.get().asFile
+            if (!apkDir.isDirectory) {
+                return@doLast
+            }
+
+            val target = apkDir.resolve(apkFileName)
+            val sourceApks = apkDir.listFiles { file ->
+                file.isFile && file.extension == "apk" && file.name != apkFileName
+            }.orEmpty()
+
+            if (sourceApks.isEmpty()) {
+                return@doLast
+            }
+            if (sourceApks.size > 1) {
+                throw GradleException(
+                    "Expected one APK in ${apkDir.path}, found: ${sourceApks.joinToString { it.name }}"
+                )
+            }
+
+            val sourceApk = sourceApks.single()
+            sourceApk.copyTo(target, overwrite = true)
+            sourceApk.delete()
+
+            val metadataFile = apkDir.resolve("output-metadata.json")
+            if (metadataFile.isFile) {
+                metadataFile.writeText(
+                    metadataFile.readText().replace(sourceApk.name, target.name)
+                )
+            }
+        }
+    }
+
+    tasks.matching { it.name == "assemble$capitalizedBuildType" }.configureEach {
+        finalizedBy(renameTask)
     }
 }
 

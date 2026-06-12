@@ -8,6 +8,7 @@ import android.widget.TextView
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 import java.util.Collections
 import java.util.WeakHashMap
 
@@ -32,11 +33,11 @@ object AboutMeGodModeHook {
 
     private val attachedDecorViews = Collections.newSetFromMap(WeakHashMap<View, Boolean>())
 
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val targetClass = XposedCompat.findClassOrNull(
@@ -44,7 +45,7 @@ object AboutMeGodModeHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[AboutMeGodModeHook] AboutMeActivity class NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -54,7 +55,7 @@ object AboutMeGodModeHook {
                 Bundle::class.java,
             ) ?: run {
                 XposedCompat.log("[AboutMeGodModeHook] onCreate NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -70,10 +71,10 @@ object AboutMeGodModeHook {
             hookSetActivityEntry(targetClass, cl)
 
             XposedCompat.log("[AboutMeGodModeHook] hook INSTALLED: ${StableBaiduPanHookPoints.ABOUT_ME_ACTIVITY}")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[AboutMeGodModeHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[AboutMeGodModeHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
@@ -121,8 +122,8 @@ object AboutMeGodModeHook {
             val activity = thisObject as? Activity ?: return
             attachGodModeListener(activity)
             XposedCompat.logD("[AboutMeGodModeHook] scheduled from $source")
-        } catch (t: Throwable) {
-            XposedCompat.logD("[AboutMeGodModeHook] schedule failed: ${t.message}")
+        } catch (e: Exception) {
+            XposedCompat.logD("[AboutMeGodModeHook] schedule failed: ${e.message}")
         }
     }
 
@@ -245,11 +246,4 @@ object AboutMeGodModeHook {
             )
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 }

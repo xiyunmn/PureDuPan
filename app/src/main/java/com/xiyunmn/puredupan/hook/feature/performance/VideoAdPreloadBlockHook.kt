@@ -4,12 +4,13 @@ import android.content.Context
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * Blocks only foreground-resume video front ad material preloading.
  */
 object VideoAdPreloadBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -17,7 +18,7 @@ object VideoAdPreloadBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val clazz = XposedCompat.findClassOrNull(
@@ -25,7 +26,7 @@ object VideoAdPreloadBlockHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[VideoAdPreloadBlockHook] AdvertiseSDK class NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -35,7 +36,7 @@ object VideoAdPreloadBlockHook {
                 Context::class.java,
             ) ?: run {
                 XposedCompat.log("[VideoAdPreloadBlockHook] downloadVideoFrontAd(Context) NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -49,20 +50,14 @@ object VideoAdPreloadBlockHook {
             }
 
             XposedCompat.log("[VideoAdPreloadBlockHook] hook INSTALLED")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[VideoAdPreloadBlockHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[VideoAdPreloadBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
 
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 
     private fun isEnabled(): Boolean =
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isVideoAdPreloadDisabled

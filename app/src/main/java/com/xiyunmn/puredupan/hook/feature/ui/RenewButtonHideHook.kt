@@ -8,6 +8,7 @@ import android.widget.TextView
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 import java.util.Collections
 import java.util.WeakHashMap
 
@@ -21,7 +22,7 @@ object RenewButtonHideHook {
     private val renewTexts = setOf("去续费", "续费")
     private val attachedActivities = Collections.newSetFromMap(WeakHashMap<Activity, Boolean>())
 
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -29,7 +30,7 @@ object RenewButtonHideHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val activityClass = XposedCompat.findClassOrNull(
@@ -53,16 +54,16 @@ object RenewButtonHideHook {
                 val result = chain.proceed()
                 try {
                     attachRenewButtonWatcher(chain.thisObject as? Activity)
-                } catch (t: Throwable) {
-                    XposedCompat.logD("[RenewButtonHideHook] attach failed: ${t.message}")
+                } catch (e: Exception) {
+                    XposedCompat.logD("[RenewButtonHideHook] attach failed: ${e.message}")
                 }
                 result
             }
 
             XposedCompat.log("[RenewButtonHideHook] hook INSTALLED: AboutMeActivity.onCreate")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[RenewButtonHideHook] FAILED: ${t.message}")
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[RenewButtonHideHook] FAILED: ${e.message}")
         }
     }
 
@@ -125,11 +126,4 @@ object RenewButtonHideHook {
     private fun isEnabled(): Boolean =
         ConfigManager.isMyPageCustomizeEnabled && ConfigManager.isRenewButtonHidden
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 }

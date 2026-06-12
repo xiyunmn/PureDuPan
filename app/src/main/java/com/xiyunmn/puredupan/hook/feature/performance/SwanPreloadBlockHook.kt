@@ -5,12 +5,13 @@ import android.os.Bundle
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * Blocks Swan mini-program runtime preloading without disabling user-initiated Swan launches.
  */
 object SwanPreloadBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -18,7 +19,7 @@ object SwanPreloadBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val preloadHelperClass = XposedCompat.findClassOrNull(
@@ -26,7 +27,7 @@ object SwanPreloadBlockHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[SwanPreloadBlockHook] SwanAppPreloadHelper NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
             val swanClientPuppetClass = XposedCompat.findClassOrNull(
@@ -34,7 +35,7 @@ object SwanPreloadBlockHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[SwanPreloadBlockHook] SwanClientPuppet NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -84,15 +85,15 @@ object SwanPreloadBlockHook {
 
             if (installedCount == 0) {
                 XposedCompat.log("[SwanPreloadBlockHook] no hooks installed")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
             XposedCompat.log("[SwanPreloadBlockHook] hooks INSTALLED: count=$installedCount")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[SwanPreloadBlockHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[SwanPreloadBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
@@ -118,13 +119,7 @@ object SwanPreloadBlockHook {
         return 1
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
 
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 
     private fun isEnabled(): Boolean =
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isSwanPreloadDisabled

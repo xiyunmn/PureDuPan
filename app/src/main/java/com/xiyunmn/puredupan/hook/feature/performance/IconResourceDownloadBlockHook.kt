@@ -3,12 +3,13 @@ package com.xiyunmn.puredupan.hook.feature.performance
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * Blocks only the startup async icon resource background download.
  */
 object IconResourceDownloadBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -16,7 +17,7 @@ object IconResourceDownloadBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val clazz = XposedCompat.findClassOrNull(
@@ -24,7 +25,7 @@ object IconResourceDownloadBlockHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[IconResourceDownloadBlockHook] IconDownloadManager class NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -33,7 +34,7 @@ object IconResourceDownloadBlockHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[IconResourceDownloadBlockHook] kotlin Function2 class NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -44,7 +45,7 @@ object IconResourceDownloadBlockHook {
                 function2Class,
             ) ?: run {
                 XposedCompat.log("[IconResourceDownloadBlockHook] startDownload(Function2, Function2) NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -58,20 +59,14 @@ object IconResourceDownloadBlockHook {
             }
 
             XposedCompat.log("[IconResourceDownloadBlockHook] hook INSTALLED")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[IconResourceDownloadBlockHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[IconResourceDownloadBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
 
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 
     private fun isEnabled(): Boolean =
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isIconResourceDownloadDisabled

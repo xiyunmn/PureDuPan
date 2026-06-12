@@ -2,21 +2,22 @@ package com.xiyunmn.puredupan.hook.feature.ui
 
 import android.view.View
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
 
 object HomeUploadEntryHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val fragmentClass = XposedCompat.findClassOrNull(
                 "com.baidu.netdisk.home25ai.fragment.HomeSearchboxFragment", cl
             )
             if (fragmentClass == null) {
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -27,7 +28,7 @@ object HomeUploadEntryHook {
                 android.os.Bundle::class.java
             )
             if (onCreateViewMethod == null) {
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -47,20 +48,10 @@ object HomeUploadEntryHook {
                 } catch (_: Throwable) {}
                 result
             }
-        } catch (t: Throwable) {
-            resetHooked()
-            throw t
+        } catch (e: Exception) {
+            hookState.reset()
+            throw e
         }
     }
 
-    @Synchronized
-    private fun tryMarkHooked(): Boolean {
-        if (hooked) return false
-        hooked = true
-        return true
-    }
-
-    private fun resetHooked() {
-        hooked = false
-    }
 }

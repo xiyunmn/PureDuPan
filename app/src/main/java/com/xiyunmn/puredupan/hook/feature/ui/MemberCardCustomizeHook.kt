@@ -34,6 +34,7 @@ import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.ui.UiText
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.ui.ZoomableImageView
@@ -80,7 +81,7 @@ object MemberCardCustomizeHook {
     private val appliedBackgrounds = Collections.synchronizedMap(WeakHashMap<ImageView, AppliedBackground>())
     private val originalSizes = Collections.synchronizedMap(WeakHashMap<View, OriginalSize>())
 
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         val snapshot = ConfigManager.snapshot()
@@ -89,7 +90,7 @@ object MemberCardCustomizeHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val fragmentClass = XposedCompat.findClassOrNull(
@@ -97,7 +98,7 @@ object MemberCardCustomizeHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[MemberCardCustomizeHook] AboutMeTopFragmentHeteromo class NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -108,7 +109,7 @@ object MemberCardCustomizeHook {
                 Bundle::class.java,
             ) ?: run {
                 XposedCompat.log("[MemberCardCustomizeHook] onViewCreated(View, Bundle) NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -116,18 +117,18 @@ object MemberCardCustomizeHook {
                 val result = chain.proceed()
                 try {
                     attachMemberCardWatcher(chain.args.firstOrNull() as? View)
-                } catch (t: Throwable) {
-                    XposedCompat.logD("[MemberCardCustomizeHook] attach failed: ${t.message}")
+                } catch (e: Exception) {
+                    XposedCompat.logD("[MemberCardCustomizeHook] attach failed: ${e.message}")
                 }
                 result
             }
             hookOnCreateView(fragmentClass)
 
             XposedCompat.log("[MemberCardCustomizeHook] hook INSTALLED")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[MemberCardCustomizeHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[MemberCardCustomizeHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
@@ -151,8 +152,8 @@ object MemberCardCustomizeHook {
                     applyMemberCardCustomization(root)
                     attachMemberCardWatcher(root)
                 }
-            } catch (t: Throwable) {
-                XposedCompat.logD("[MemberCardCustomizeHook] onCreateView apply failed: ${t.message}")
+            } catch (e: Exception) {
+                XposedCompat.logD("[MemberCardCustomizeHook] onCreateView apply failed: ${e.message}")
             }
             result
         }
@@ -348,8 +349,8 @@ object MemberCardCustomizeHook {
                 )
             }
             XposedCompat.logD("[MemberCardCustomizeHook] custom background preview opened")
-        } catch (t: Throwable) {
-            XposedCompat.logW("[MemberCardCustomizeHook] open custom background failed: ${t.message}")
+        } catch (e: Exception) {
+            XposedCompat.logW("[MemberCardCustomizeHook] open custom background failed: ${e.message}")
         }
     }
 
@@ -660,8 +661,8 @@ object MemberCardCustomizeHook {
             }
             val blurRadius = snapshot.memberCardBackgroundBlurRadius.coerceIn(0, 25)
             return if (blurRadius > 0) boxBlur(transformed, blurRadius) else transformed
-        } catch (t: Throwable) {
-            XposedCompat.logW("[MemberCardCustomizeHook] load custom background failed: ${t.message}")
+        } catch (e: Exception) {
+            XposedCompat.logW("[MemberCardCustomizeHook] load custom background failed: ${e.message}")
             return null
         }
     }
@@ -746,8 +747,8 @@ object MemberCardCustomizeHook {
             resolver.openInputStream(uri)?.use { stream ->
                 BitmapFactory.decodeStream(stream, null, options)
             }
-        } catch (t: Throwable) {
-            XposedCompat.logW("[MemberCardCustomizeHook] load original background preview failed: ${t.message}")
+        } catch (e: Exception) {
+            XposedCompat.logW("[MemberCardCustomizeHook] load original background preview failed: ${e.message}")
             null
         }
     }
@@ -815,9 +816,9 @@ object MemberCardCustomizeHook {
                 resolver.delete(targetUri, null, null)
             }
             saved
-        } catch (t: Throwable) {
+        } catch (e: Exception) {
             resolver.delete(targetUri, null, null)
-            throw t
+            throw e
         }
     }
 
@@ -908,9 +909,9 @@ object MemberCardCustomizeHook {
                 resolver.delete(uri, null, null)
             }
             saved
-        } catch (t: Throwable) {
+        } catch (e: Exception) {
             resolver.delete(uri, null, null)
-            throw t
+            throw e
         }
     }
 
@@ -1013,11 +1014,4 @@ object MemberCardCustomizeHook {
         return root.findViewById(id)
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 }

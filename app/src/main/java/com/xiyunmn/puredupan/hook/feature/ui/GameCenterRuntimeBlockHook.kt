@@ -3,12 +3,13 @@ package com.xiyunmn.puredupan.hook.feature.ui
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * Blocks only game center display decisions and config requests from About Me.
  */
 object GameCenterRuntimeBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -16,7 +17,7 @@ object GameCenterRuntimeBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val viewModelClass = XposedCompat.findClassOrNull(
@@ -24,7 +25,7 @@ object GameCenterRuntimeBlockHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[GameCenterRuntimeBlockHook] GameCenterViewModel class NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -70,26 +71,19 @@ object GameCenterRuntimeBlockHook {
 
             if (installedCount == 0) {
                 XposedCompat.log("[GameCenterRuntimeBlockHook] no hooks installed")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
             XposedCompat.log("[GameCenterRuntimeBlockHook] hooks INSTALLED: count=$installedCount")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[GameCenterRuntimeBlockHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[GameCenterRuntimeBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
 
     private fun isEnabled(): Boolean =
         ConfigManager.isMyPageCustomizeEnabled && ConfigManager.isGameCenterRemoved
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 }

@@ -2,6 +2,7 @@ package com.xiyunmn.puredupan.hook.feature.ad
 
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
+import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import java.lang.reflect.Method
 
@@ -12,7 +13,7 @@ import java.lang.reflect.Method
  * dismisses the target dialog. This avoids breaking tab-switch Handler logic at show(...).
  */
 object SharePushGuideBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!ConfigManager.isSharePushGuideBlocked) {
@@ -20,7 +21,7 @@ object SharePushGuideBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val targetClass = XposedCompat.findClassOrNull(
@@ -35,7 +36,7 @@ object SharePushGuideBlockHook {
                 targetClass,
                 StableBaiduPanHookPoints.SHARE_TAB_PUSH_GUIDE_ON_START_METHOD,
             ) ?: run {
-                resetHooked()
+                hookState.reset()
                 XposedCompat.log("[SharePushGuideBlockHook] onStart method NOT FOUND")
                 return
             }
@@ -55,9 +56,14 @@ object SharePushGuideBlockHook {
                 "[SharePushGuideBlockHook] hook INSTALLED: " +
                     "${method.declaringClass.name}.${method.name}"
             )
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[SharePushGuideBlockHook] FAILED: ${t.message}")
+        } catch (e: ReflectiveOperationException) {
+            hookState.reset()
+            XposedCompat.log("[SharePushGuideBlockHook] FAILED (reflection): ${e.javaClass.simpleName}: ${e.message}")
+            XposedCompat.log(e)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[SharePushGuideBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
@@ -87,13 +93,5 @@ object SharePushGuideBlockHook {
             }
         }
         return null
-    }
-
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
     }
 }

@@ -1,8 +1,10 @@
 package com.xiyunmn.puredupan.hook.feature.ad
 
 import com.xiyunmn.puredupan.hook.config.ConfigManager
+import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookUtils
 import java.lang.reflect.Method
 
 /**
@@ -13,7 +15,7 @@ import java.lang.reflect.Method
  * business display entry avoids touching the tab-switch Handler or broad dialog infrastructure.
  */
 object AppStoreReviewBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!ConfigManager.isAppStoreReviewBlocked) {
@@ -21,7 +23,7 @@ object AppStoreReviewBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             var installed = 0
@@ -39,7 +41,7 @@ object AppStoreReviewBlockHook {
                     mod.hook(method).intercept { chain ->
                         if (ConfigManager.isAppStoreReviewBlocked) {
                             XposedCompat.logD("[AppStoreReviewBlockHook] showCenterDialog blocked")
-                            defaultReturnValue(method.returnType)
+                            HookUtils.getDefaultReturnValue(method.returnType)
                         } else {
                             chain.proceed()
                         }
@@ -66,7 +68,7 @@ object AppStoreReviewBlockHook {
                             dialogClass.isInstance(chain.thisObject)
                         ) {
                             XposedCompat.logD("[AppStoreReviewBlockHook] AppStoreReviewDialog.show blocked")
-                            return@intercept defaultReturnValue(showMethod.returnType)
+                            return@intercept HookUtils.getDefaultReturnValue(showMethod.returnType)
                         }
                         chain.proceed()
                     }
@@ -79,19 +81,24 @@ object AppStoreReviewBlockHook {
             }
 
             if (installed == 0) {
-                resetHooked()
+                hookState.reset()
                 XposedCompat.log("[AppStoreReviewBlockHook] no hooks installed")
                 return
             }
 
             XposedCompat.log("[AppStoreReviewBlockHook] hooks INSTALLED: count=$installed")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[AppStoreReviewBlockHook] FAILED: ${t.message}")
+        } catch (e: ReflectiveOperationException) {
+            hookState.reset()
+            XposedCompat.log("[AppStoreReviewBlockHook] FAILED (reflection): ${e.javaClass.simpleName}: ${e.message}")
+            XposedCompat.log(e)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[AppStoreReviewBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
-    private fun defaultReturnValue(type: Class<*>): Any? {
+    private fun HookUtils.getDefaultReturnValue(type: Class<*>): Any? {
         return when (type) {
             java.lang.Boolean.TYPE -> false
             java.lang.Byte.TYPE -> 0.toByte()
@@ -115,13 +122,5 @@ object AppStoreReviewBlockHook {
             }
         }
         return null
-    }
-
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
     }
 }

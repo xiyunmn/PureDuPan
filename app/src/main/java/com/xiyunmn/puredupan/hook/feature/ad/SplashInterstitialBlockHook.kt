@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.feature.ad
 import android.app.Activity
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
+import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 
 /**
@@ -15,7 +16,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
  * 破坏宿主自身的状态栏/沉浸式初始化。
  */
 object SplashInterstitialBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!ConfigManager.isSplashInterstitialBlockEnabled) {
@@ -23,7 +24,7 @@ object SplashInterstitialBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             var installed = 0
@@ -49,17 +50,16 @@ object SplashInterstitialBlockHook {
                 XposedCompat.log("[SplashInterstitialBlockHook] AdvertiseHotStartManager class NOT FOUND")
             }
 
-            if (installed == 0) { resetHooked(); return }
+            if (installed == 0) { hookState.reset(); return }
             XposedCompat.log("[SplashInterstitialBlockHook] hooks INSTALLED: count=$installed")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[SplashInterstitialBlockHook] FAILED: ${t.message}")
+        } catch (e: ReflectiveOperationException) {
+            hookState.reset()
+            XposedCompat.log("[SplashInterstitialBlockHook] FAILED (reflection): ${e.javaClass.simpleName}: ${e.message}")
+            XposedCompat.log(e)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[SplashInterstitialBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
-
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() { synchronized(this) { hooked = false } }
 }

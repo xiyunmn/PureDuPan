@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.View
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
 
 /**
@@ -19,18 +20,18 @@ import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
 object FormalUiEntryHook {
     private const val SCAN_ICON_ID_NAME = "self_qrcode_scan_icon"
 
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val activityClass = XposedCompat.findClassOrNull(
                 StableBaiduPanHookPoints.ABOUT_ME_ACTIVITY, cl
             )
             if (activityClass == null) {
-                resetHooked()
+                hookState.reset()
                 XposedCompat.log(
                     "[FormalUiEntryHook] AboutMeActivity class NOT FOUND: " +
                         StableBaiduPanHookPoints.ABOUT_ME_ACTIVITY
@@ -42,7 +43,7 @@ object FormalUiEntryHook {
                 activityClass, "onCreate", Bundle::class.java
             )
             if (onCreateMethod == null) {
-                resetHooked()
+                hookState.reset()
                 XposedCompat.log("[FormalUiEntryHook] AboutMeActivity.onCreate NOT FOUND")
                 return
             }
@@ -51,18 +52,18 @@ object FormalUiEntryHook {
                 val result = chain.proceed()
                 try {
                     bindScanIconLongPress(chain.thisObject as? Activity)
-                } catch (t: Throwable) {
+                } catch (e: Exception) {
                     XposedCompat.logD {
-                        "[FormalUiEntryHook] bind failed (non-fatal): ${t.message}"
+                        "[FormalUiEntryHook] bind failed (non-fatal): ${e.message}"
                     }
                 }
                 result
             }
             XposedCompat.log("[FormalUiEntryHook] hook INSTALLED: ${StableBaiduPanHookPoints.ABOUT_ME_ACTIVITY}.onCreate")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[FormalUiEntryHook] install FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[FormalUiEntryHook] install FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
@@ -94,9 +95,9 @@ object FormalUiEntryHook {
         scanIconView.setOnLongClickListener {
             try {
                 SettingsMenuHook.showModuleSettingsDialog(activity, activity.classLoader)
-            } catch (t: Throwable) {
+            } catch (e: Exception) {
                 XposedCompat.logW(
-                    "[FormalUiEntryHook] show settings dialog failed: ${t.message}"
+                    "[FormalUiEntryHook] show settings dialog failed: ${e.message}"
                 )
             }
             true
@@ -106,15 +107,4 @@ object FormalUiEntryHook {
         )
     }
 
-    private fun tryMarkHooked(): Boolean {
-        synchronized(this) {
-            if (hooked) return false
-            hooked = true
-            return true
-        }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 }

@@ -4,17 +4,18 @@ import android.app.Activity
 import android.content.Intent
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
 
 /**
  * Receives image picker results launched from the module settings panel in AboutMeActivity.
  */
 object SettingsImagePickerResultHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val activityClass = XposedCompat.findClassOrNull(
@@ -22,7 +23,7 @@ object SettingsImagePickerResultHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[SettingsImagePickerResultHook] AboutMeActivity class NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -34,7 +35,7 @@ object SettingsImagePickerResultHook {
                 Intent::class.java,
             ) ?: run {
                 XposedCompat.log("[SettingsImagePickerResultHook] onActivityResult NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -47,25 +48,18 @@ object SettingsImagePickerResultHook {
                         resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
                         data = chain.args.getOrNull(2) as? Intent,
                     )
-                } catch (t: Throwable) {
-                    XposedCompat.logD("[SettingsImagePickerResultHook] handle result failed: ${t.message}")
+                } catch (e: Exception) {
+                    XposedCompat.logD("[SettingsImagePickerResultHook] handle result failed: ${e.message}")
                 }
                 result
             }
 
             XposedCompat.log("[SettingsImagePickerResultHook] hook INSTALLED")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[SettingsImagePickerResultHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[SettingsImagePickerResultHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 }

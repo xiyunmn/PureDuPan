@@ -2,13 +2,15 @@ package com.xiyunmn.puredupan.hook.feature.ad
 
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
+import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookUtils
 
 /**
  * Blocks the full-screen SVIP exclusive icon guide shown from AboutMeActivity.
  */
 object SvipIconGuideBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!ConfigManager.isFullScreenBackupBlocked) {
@@ -16,7 +18,7 @@ object SvipIconGuideBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val clazz = XposedCompat.findClassOrNull(
@@ -35,7 +37,7 @@ object SvipIconGuideBlockHook {
                 method.isAccessible = true
                 mod.hook(method).intercept { chain ->
                     if (ConfigManager.isFullScreenBackupBlocked) {
-                        defaultReturnValue(method.returnType)
+                        HookUtils.getDefaultReturnValue(method.returnType)
                     } else {
                         chain.proceed()
                     }
@@ -44,19 +46,24 @@ object SvipIconGuideBlockHook {
             }
 
             if (installed == 0) {
-                resetHooked()
+                hookState.reset()
                 XposedCompat.log("[SvipIconGuideBlockHook] showGuide NOT FOUND")
                 return
             }
 
             XposedCompat.log("[SvipIconGuideBlockHook] hooks INSTALLED: count=$installed")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[SvipIconGuideBlockHook] FAILED: ${t.message}")
+        } catch (e: ReflectiveOperationException) {
+            hookState.reset()
+            XposedCompat.log("[SvipIconGuideBlockHook] FAILED (reflection): ${e.javaClass.simpleName}: ${e.message}")
+            XposedCompat.log(e)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[SvipIconGuideBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
-    private fun defaultReturnValue(type: Class<*>): Any? {
+    private fun HookUtils.getDefaultReturnValue(type: Class<*>): Any? {
         return when (type) {
             java.lang.Boolean.TYPE -> false
             java.lang.Byte.TYPE -> 0.toByte()
@@ -68,13 +75,5 @@ object SvipIconGuideBlockHook {
             java.lang.Character.TYPE -> 0.toChar()
             else -> null
         }
-    }
-
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
     }
 }

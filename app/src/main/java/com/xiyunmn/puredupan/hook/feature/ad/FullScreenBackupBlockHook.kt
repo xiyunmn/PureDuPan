@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.feature.ad
 import android.app.Activity
 import android.os.Bundle
 import com.xiyunmn.puredupan.hook.config.ConfigManager
+import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 
@@ -14,7 +15,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
  * page may never receive the route callback that continues into MainActivity.
  */
 object FullScreenBackupBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!ConfigManager.isFullScreenBackupBlocked) {
@@ -22,7 +23,7 @@ object FullScreenBackupBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val clazz = XposedCompat.findClassOrNull(
@@ -59,9 +60,14 @@ object FullScreenBackupBlockHook {
             }
 
             XposedCompat.log("[FullScreenBackupBlockHook] hook INSTALLED: NewQuickSettingsActivity.onCreate")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[FullScreenBackupBlockHook] FAILED: ${t.message}")
+        } catch (e: ReflectiveOperationException) {
+            hookState.reset()
+            XposedCompat.log("[FullScreenBackupBlockHook] FAILED (reflection): ${e.javaClass.simpleName}: ${e.message}")
+            XposedCompat.log(e)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[FullScreenBackupBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
@@ -80,13 +86,5 @@ object FullScreenBackupBlockHook {
         } catch (_: Throwable) {
             // Optional visual polish only.
         }
-    }
-
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
     }
 }

@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.feature.ui
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * 首页悬浮球逻辑层拦截 Hook。
@@ -14,7 +15,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
  * 受 [ConfigManager.KEY_REMOVE_HOME_FAB] 控制，默认开启。
  */
 object NewHomeFabRemoveHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -22,7 +23,7 @@ object NewHomeFabRemoveHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val targetClass = XposedCompat.findClassOrNull(
@@ -55,17 +56,13 @@ object NewHomeFabRemoveHook {
             }
 
             XposedCompat.log("[NewHomeFabRemoveHook] hook INSTALLED")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[NewHomeFabRemoveHook] FAILED: ${t.message}")
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[NewHomeFabRemoveHook] FAILED: ${e.message}")
         }
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
 
-    private fun resetHooked() { synchronized(this) { hooked = false } }
     private fun isEnabled(): Boolean =
         ConfigManager.isSharePageCustomizeEnabled && ConfigManager.isHomeFabRemoved
 }

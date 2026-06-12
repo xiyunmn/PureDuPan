@@ -3,13 +3,14 @@ package com.xiyunmn.puredupan.hook.feature.performance
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 import java.lang.reflect.Method
 
 /**
  * Blocks only AIGC widget background refresh and startup resource unzip routes.
  */
 object AigcBackgroundComponentBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -17,7 +18,7 @@ object AigcBackgroundComponentBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val clazz = XposedCompat.findClassOrNull(
@@ -25,7 +26,7 @@ object AigcBackgroundComponentBlockHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[AigcBackgroundComponentBlockHook] AigcCloudContext Companion class NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -37,7 +38,7 @@ object AigcBackgroundComponentBlockHook {
 
             if (methods.isEmpty()) {
                 XposedCompat.log("[AigcBackgroundComponentBlockHook] no AIGC background methods found")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -55,10 +56,10 @@ object AigcBackgroundComponentBlockHook {
             }
 
             XposedCompat.log("[AigcBackgroundComponentBlockHook] hooks INSTALLED: count=${methods.size}")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[AigcBackgroundComponentBlockHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[AigcBackgroundComponentBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
@@ -78,13 +79,7 @@ object AigcBackgroundComponentBlockHook {
         }
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
 
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 
     private fun isEnabled(): Boolean =
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isAigcBackgroundComponentDisabled

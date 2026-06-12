@@ -8,7 +8,7 @@ import com.xiyunmn.puredupan.hook.feature.ad.BusinessOpDialogBlockHook
 import com.xiyunmn.puredupan.hook.feature.ad.FullScreenBackupBlockHook
 import com.xiyunmn.puredupan.hook.feature.ad.LuckyCouponBlockHook
 import com.xiyunmn.puredupan.hook.feature.ad.SharePushGuideBlockHook
-import com.xiyunmn.puredupan.hook.feature.ad.SplashLifeHolderFastFinishHook
+import com.xiyunmn.puredupan.hook.feature.ad.SplashBypassCore
 import com.xiyunmn.puredupan.hook.feature.ad.SplashInterstitialBlockHook
 import com.xiyunmn.puredupan.hook.feature.ad.SvipIconGuideBlockHook
 import com.xiyunmn.puredupan.hook.feature.ad.UpdateDialogBlockHook
@@ -20,7 +20,7 @@ import com.xiyunmn.puredupan.hook.feature.performance.DynamicPluginAutoDownloadB
 import com.xiyunmn.puredupan.hook.feature.performance.GarbageCleanServiceRegisterBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.IconResourceDownloadBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.IncentiveBusinessServiceBlockHook
-import com.xiyunmn.puredupan.hook.feature.performance.MediaBrowserServiceAutostartBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.AudioCircleViewAutostartBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.OemPushServiceBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.SwanPreloadBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.ThumbnailOperatorServiceBlockHook
@@ -64,11 +64,25 @@ internal object HookInstaller {
             try {
                 XposedCompat.logD("[HookInstallPlan] Installing ${entry.id} (${plan.phase})...")
                 entry.install(cl)
-            } catch (t: Throwable) {
+            } catch (e: ReflectiveOperationException) {
+                // 反射相关异常：方法/类不存在，通常是版本不兼容
                 XposedCompat.log(
-                    "[HookInstallPlan] ${entry.id} install FAILED (${plan.phase}): ${t.message}",
+                    "[HookInstallPlan] ${entry.id} install FAILED (${plan.phase}): ${e.javaClass.simpleName}: ${e.message}",
                 )
-                XposedCompat.log(t)
+                XposedCompat.log(e)
+            } catch (e: Exception) {
+                // 其他可恢复异常
+                XposedCompat.log(
+                    "[HookInstallPlan] ${entry.id} install FAILED (${plan.phase}): ${e.message}",
+                )
+                XposedCompat.log(e)
+            } catch (e: Error) {
+                // 严重错误：OOM, StackOverflow 等
+                XposedCompat.logE(
+                    "[HookInstallPlan] ${entry.id} install FATAL ERROR (${plan.phase}): ${e.javaClass.simpleName}: ${e.message}",
+                )
+                XposedCompat.log(e)
+                // 不中断其他 Hook 的安装，但记录严重错误
             }
         }
     }
@@ -110,9 +124,9 @@ internal object HookInstallPlanner {
         HookSpec("SplashInterstitialBlockHook", { context, settings, _ ->
             context.isMain && settings.isSplashInterstitialBlockEnabled
         }) { cl -> SplashInterstitialBlockHook.hook(cl) },
-        HookSpec("SplashLifeHolderFastFinishHook", { context, settings, _ ->
+        HookSpec("SplashBypassCore", { context, settings, _ ->
             context.isMain && settings.isSplashInterstitialBlockEnabled
-        }) { cl -> SplashLifeHolderFastFinishHook.hook(cl) },
+        }) { cl -> SplashBypassCore.hook(cl) },
         HookSpec("BusinessOpDialogBlockHook", { context, settings, _ ->
             context.isMain && settings.isInAppDialogBlocked
         }) { cl -> BusinessOpDialogBlockHook.hook(cl) },
@@ -242,11 +256,11 @@ internal object HookInstallPlanner {
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isIncentiveBusinessServiceDisabled
         }) { cl -> IncentiveBusinessServiceBlockHook.hook(cl) },
-        HookSpec("MediaBrowserServiceAutostartBlockHook", { context, settings, _ ->
+        HookSpec("AudioCircleViewAutostartBlockHook", { context, settings, _ ->
             context.isMain &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isMediaBrowserServiceAutostartDisabled
-        }) { cl -> MediaBrowserServiceAutostartBlockHook.hook(cl) },
+        }) { cl -> AudioCircleViewAutostartBlockHook.hook(cl) },
         HookSpec("IconResourceDownloadBlockHook", { context, settings, _ ->
             context.isMain &&
                 settings.isPerformanceOptimizeEnabled &&

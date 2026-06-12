@@ -9,13 +9,15 @@ import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam
 import io.github.libxposed.api.XposedModuleInterface.PackageLoadedParam
 import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam
 import com.xiyunmn.puredupan.hook.BuildConfig
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 class MainHook : XposedModule() {
 
-    @Volatile private var sAppContext: Context? = null
-    @Volatile private var sAttachHookInstalled = false
-    @Volatile private var sStaticHooksInstalled = false
-    @Volatile private var sPostAttachStaticHooksInstalled = false
+    private val sAppContext = AtomicReference<Context?>(null)
+    private val sAttachHookInstalled = AtomicBoolean(false)
+    private val sStaticHooksInstalled = AtomicBoolean(false)
+    private val sPostAttachStaticHooksInstalled = AtomicBoolean(false)
     private var processName: String = ""
 
     override fun onModuleLoaded(param: ModuleLoadedParam) {
@@ -57,15 +59,19 @@ class MainHook : XposedModule() {
         val staticPlan = HookInstallPlanner.staticPlan(processName)
         if (staticPlan.isEmpty()) {
             XposedCompat.logD("[MainHook] static hook plan empty for process=$processName, skip")
-        } else if (markStaticHooksInstalled()) {
+        } else if (sStaticHooksInstalled.compareAndSet(false, true)) {
             try {
                 XposedCompat.log("[MainHook] initialized. version=${BuildConfig.VERSION_NAME}(${BuildConfig.VERSION_CODE})")
                 HookInstaller.install(staticPlan, cl)
                 XposedCompat.log("[MainHook] All static hooks dispatched.")
-            } catch (t: Throwable) {
-                synchronized(this) { sStaticHooksInstalled = false }
-                XposedCompat.log("[MainHook] static hook install FAILED: ${t.message}")
-                XposedCompat.log(t)
+            } catch (e: Exception) {
+                sStaticHooksInstalled.set(false)
+                XposedCompat.log("[MainHook] static hook install FAILED: ${e.message}")
+                XposedCompat.log(e)
+            } catch (e: Error) {
+                sStaticHooksInstalled.set(false)
+                XposedCompat.logE("[MainHook] static hook install FATAL ERROR: ${e.message}")
+                throw e
             }
         } else {
             XposedCompat.log("[MainHook] static hooks already installed, skip duplicate install")
@@ -76,7 +82,7 @@ class MainHook : XposedModule() {
             return
         }
 
-        if (!markAttachHookInstalled()) {
+        if (!sAttachHookInstalled.compareAndSet(false, true)) {
             XposedCompat.log("[MainHook] Application.attach hook already installed, skip")
             return
         }
@@ -92,16 +98,16 @@ class MainHook : XposedModule() {
                 val result = chain.proceed()
                 XposedCompat.log("[MainHook] > Application.attach proceed() returned")
 
-                if (sAppContext == null) {
+                if (sAppContext.get() == null) {
                     val app = chain.thisObject as? android.app.Application
                     if (app != null) {
-                        sAppContext = app
+                        sAppContext.set(app)
                         ConfigManager.init(app)
                         XposedCompat.log("[MainHook] > ConfigManager initialized, app=${app.packageName}")
                     }
                 }
 
-                if (markPostAttachStaticHooksInstalled()) {
+                if (sPostAttachStaticHooksInstalled.compareAndSet(false, true)) {
                     HookInstaller.install(
                         HookInstallPlanner.postAttachPlan(
                             processName = processName,
@@ -114,35 +120,18 @@ class MainHook : XposedModule() {
                 result
             }
             XposedCompat.log("[MainHook] Application.attach hook INSTALLED")
-        } catch (t: Throwable) {
-            synchronized(this) { sAttachHookInstalled = false }
-            XposedCompat.log("[MainHook] FAILED to hook Application.attach: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            sAttachHookInstalled.set(false)
+            XposedCompat.log("[MainHook] FAILED to hook Application.attach: ${e.message}")
+            XposedCompat.log(e)
+        } catch (e: Error) {
+            sAttachHookInstalled.set(false)
+            XposedCompat.logE("[MainHook] FATAL ERROR in Application.attach hook: ${e.message}")
+            throw e
         }
     }
 
-    private fun markAttachHookInstalled(): Boolean {
-        synchronized(this) {
-            if (sAttachHookInstalled) return false
-            sAttachHookInstalled = true
-            return true
-        }
-    }
-
-    private fun markStaticHooksInstalled(): Boolean {
-        synchronized(this) {
-            if (sStaticHooksInstalled) return false
-            sStaticHooksInstalled = true
-            return true
-        }
-    }
-
-    private fun markPostAttachStaticHooksInstalled(): Boolean {
-        synchronized(this) {
-            if (sPostAttachStaticHooksInstalled) return false
-            sPostAttachStaticHooksInstalled = true
-            return true
-        }
-    }
+    // Removed: markAttachHookInstalled, markStaticHooksInstalled, markPostAttachStaticHooksInstalled
+    // These are now replaced by AtomicBoolean.compareAndSet() inline
 
 }

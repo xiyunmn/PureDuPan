@@ -4,12 +4,13 @@ import android.content.Intent
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * Blocks the incentive business service before it starts schedulers and ad reward jobs.
  */
 object IncentiveBusinessServiceBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     private const val START_NOT_STICKY = 2
 
@@ -19,7 +20,7 @@ object IncentiveBusinessServiceBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val serviceClass = XposedCompat.findClassOrNull(
@@ -27,7 +28,7 @@ object IncentiveBusinessServiceBlockHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[IncentiveBusinessServiceBlockHook] BusinessService NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -92,15 +93,15 @@ object IncentiveBusinessServiceBlockHook {
 
             if (installedCount == 0) {
                 XposedCompat.log("[IncentiveBusinessServiceBlockHook] no hooks installed")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
             XposedCompat.log("[IncentiveBusinessServiceBlockHook] hooks INSTALLED: count=$installedCount")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[IncentiveBusinessServiceBlockHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[IncentiveBusinessServiceBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
@@ -112,18 +113,12 @@ object IncentiveBusinessServiceBlockHook {
             } else {
                 XposedCompat.callMethod(service, "stopSelf")
             }
-        } catch (t: Throwable) {
-            XposedCompat.logD("[IncentiveBusinessServiceBlockHook] stopSelf ignored: ${t.message}")
+        } catch (e: Exception) {
+            XposedCompat.logD("[IncentiveBusinessServiceBlockHook] stopSelf ignored: ${e.message}")
         }
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
 
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 
     private fun isEnabled(): Boolean =
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isIncentiveBusinessServiceDisabled

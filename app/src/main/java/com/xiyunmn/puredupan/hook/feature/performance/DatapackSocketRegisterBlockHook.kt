@@ -3,12 +3,13 @@ package com.xiyunmn.puredupan.hook.feature.performance
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * Blocks only the DataPack module socket registration.
  */
 object DatapackSocketRegisterBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -16,7 +17,7 @@ object DatapackSocketRegisterBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val clazz = XposedCompat.findClassOrNull(
@@ -24,7 +25,7 @@ object DatapackSocketRegisterBlockHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[DatapackSocketRegisterBlockHook] DatapackContext Companion class NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -33,7 +34,7 @@ object DatapackSocketRegisterBlockHook {
                 StableBaiduPanHookPoints.DATAPACK_REGISTER_SOCKET_METHOD,
             ) ?: run {
                 XposedCompat.log("[DatapackSocketRegisterBlockHook] registerSocket NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -47,20 +48,14 @@ object DatapackSocketRegisterBlockHook {
             }
 
             XposedCompat.log("[DatapackSocketRegisterBlockHook] hook INSTALLED")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[DatapackSocketRegisterBlockHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[DatapackSocketRegisterBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
 
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 
     private fun isEnabled(): Boolean =
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isDatapackSocketRegisterDisabled

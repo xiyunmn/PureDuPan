@@ -4,12 +4,13 @@ import android.content.Context
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * Blocks only the startup-time garbage clean component service registration.
  */
 object GarbageCleanServiceRegisterBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -17,7 +18,7 @@ object GarbageCleanServiceRegisterBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val clazz = XposedCompat.findClassOrNull(
@@ -27,7 +28,7 @@ object GarbageCleanServiceRegisterBlockHook {
                 XposedCompat.log(
                     "[GarbageCleanServiceRegisterBlockHook] GrabagecleanContext Companion class NOT FOUND",
                 )
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -39,7 +40,7 @@ object GarbageCleanServiceRegisterBlockHook {
                 XposedCompat.log(
                     "[GarbageCleanServiceRegisterBlockHook] registerGarbageCleanService NOT FOUND",
                 )
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -55,20 +56,14 @@ object GarbageCleanServiceRegisterBlockHook {
             }
 
             XposedCompat.log("[GarbageCleanServiceRegisterBlockHook] hook INSTALLED")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[GarbageCleanServiceRegisterBlockHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[GarbageCleanServiceRegisterBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
 
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 
     private fun isEnabled(): Boolean =
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isGarbageCleanServiceRegisterDisabled

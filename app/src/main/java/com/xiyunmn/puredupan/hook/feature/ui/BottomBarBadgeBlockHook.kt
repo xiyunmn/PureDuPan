@@ -3,6 +3,8 @@ package com.xiyunmn.puredupan.hook.feature.ui
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookUtils
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * Blocks bottom-tab red-dot/text badges.
@@ -11,7 +13,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
  * Secondary source: MainActivityPresenter.drawUpdateIndicator().
  */
 object BottomBarBadgeBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -19,7 +21,7 @@ object BottomBarBadgeBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             var installed = 0
@@ -32,7 +34,7 @@ object BottomBarBadgeBlockHook {
                     method.isAccessible = true
                     mod.hook(method).intercept { chain ->
                         if (isEnabled()) {
-                            defaultReturnValue(method.returnType)
+                            HookUtils.getDefaultReturnValue(method.returnType)
                         } else {
                             chain.proceed()
                         }
@@ -49,7 +51,7 @@ object BottomBarBadgeBlockHook {
                     method.isAccessible = true
                     mod.hook(method).intercept { chain ->
                         if (isEnabled()) {
-                            defaultReturnValue(method.returnType)
+                            HookUtils.getDefaultReturnValue(method.returnType)
                         } else {
                             chain.proceed()
                         }
@@ -59,19 +61,19 @@ object BottomBarBadgeBlockHook {
             } ?: XposedCompat.log("[BottomBarBadgeBlockHook] MainActivityPresenter class NOT FOUND")
 
             if (installed == 0) {
-                resetHooked()
+                hookState.reset()
                 XposedCompat.log("[BottomBarBadgeBlockHook] no hooks installed")
                 return
             }
 
             XposedCompat.log("[BottomBarBadgeBlockHook] hooks INSTALLED: count=$installed")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[BottomBarBadgeBlockHook] FAILED: ${t.message}")
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[BottomBarBadgeBlockHook] FAILED: ${e.message}")
         }
     }
 
-    private fun defaultReturnValue(type: Class<*>): Any? {
+    private fun HookUtils.getDefaultReturnValue(type: Class<*>): Any? {
         return when (type) {
             java.lang.Boolean.TYPE -> false
             java.lang.Byte.TYPE -> 0.toByte()
@@ -85,13 +87,6 @@ object BottomBarBadgeBlockHook {
         }
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 
     private fun isEnabled(): Boolean =
         ConfigManager.isBottomBarCustomEnabled && ConfigManager.isBottomBarBadgeBlocked

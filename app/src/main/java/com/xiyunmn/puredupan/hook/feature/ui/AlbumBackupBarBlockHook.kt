@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * Hides the file-tab album backup guide bar without breaking FloatingBarManager.
@@ -14,7 +15,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
  * concrete AlbumBackupBarView / its inner backup layouts.
  */
 object AlbumBackupBarBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     private val targetViewIds = setOf("album_backup_layout", "backup_layout")
 
@@ -24,7 +25,7 @@ object AlbumBackupBarBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             var installed = 0
@@ -82,15 +83,15 @@ object AlbumBackupBarBlockHook {
             } ?: XposedCompat.log("[AlbumBackupBarBlockHook] AlbumBackupBarView class NOT FOUND")
 
             if (installed == 0) {
-                resetHooked()
+                hookState.reset()
                 XposedCompat.log("[AlbumBackupBarBlockHook] no hooks installed")
                 return
             }
 
             XposedCompat.log("[AlbumBackupBarBlockHook] hooks INSTALLED: count=$installed")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[AlbumBackupBarBlockHook] FAILED: ${t.message}")
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[AlbumBackupBarBlockHook] FAILED: ${e.message}")
         }
     }
 
@@ -133,16 +134,9 @@ object AlbumBackupBarBlockHook {
             }
             view.requestLayout()
             XposedCompat.logD("[AlbumBackupBarBlockHook] album backup bar collapsed")
-        } catch (t: Throwable) {
-            XposedCompat.logW("[AlbumBackupBarBlockHook] collapse failed: ${t.message}")
+        } catch (e: Exception) {
+            XposedCompat.logW("[AlbumBackupBarBlockHook] collapse failed: ${e.message}")
         }
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 }

@@ -1,5 +1,6 @@
 ﻿package com.xiyunmn.puredupan.hook.feature.ui
 
+import com.xiyunmn.puredupan.hook.core.HookState
 import android.app.Activity
 import android.content.res.Configuration
 import android.os.Handler
@@ -7,6 +8,7 @@ import android.os.Looper
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookUtils
 import com.xiyunmn.puredupan.hook.ui.HostThemeChangeDispatcher
 import java.lang.ref.WeakReference
 import java.lang.reflect.InvocationHandler
@@ -34,7 +36,7 @@ object SystemNightModeSyncHook {
     private const val AVATAR_REFRESH_STABLE_DELAY_MS = 600L
     private const val AVATAR_REFRESH_DEBOUNCE_MS = 500L
 
-    @Volatile private var hooked = false
+    private val hookState = HookState()
     @Volatile private var refreshTabSkinHooked = false
     @Volatile private var settingsActivityHooked = false
     @Volatile private var changeSkinObserverHooked = false
@@ -50,7 +52,7 @@ object SystemNightModeSyncHook {
 
     internal fun hook(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val baseActivityClass = XposedCompat.findClassOrNull(BASE_ACTIVITY, cl)
@@ -101,7 +103,7 @@ object SystemNightModeSyncHook {
                     "onConfigurationChanged + MainActivity.refreshTabSkin + ChangeSkinKt.changeSkin observer",
             )
         } catch (t: Throwable) {
-            resetHooked()
+            hookState.reset()
             XposedCompat.log("[SystemNightModeSyncHook] FAILED: ${t.message}")
         }
     }
@@ -337,7 +339,7 @@ object SystemNightModeSyncHook {
                     }
                 }
             }
-            defaultReturnValue(method.returnType)
+            HookUtils.getDefaultReturnValue(method.returnType)
         }
 
         return Proxy.newProxyInstance(
@@ -552,7 +554,7 @@ object SystemNightModeSyncHook {
         return null
     }
 
-    private fun defaultReturnValue(type: Class<*>): Any? {
+    private fun HookUtils.getDefaultReturnValue(type: Class<*>): Any? {
         return when (type) {
             java.lang.Boolean.TYPE -> false
             java.lang.Byte.TYPE -> 0.toByte()
@@ -566,11 +568,4 @@ object SystemNightModeSyncHook {
         }
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 }

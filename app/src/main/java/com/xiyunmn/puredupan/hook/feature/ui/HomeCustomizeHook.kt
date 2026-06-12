@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 import java.util.Collections
 import java.util.WeakHashMap
 
@@ -73,7 +74,7 @@ object HomeCustomizeHook {
 
     private val attachedRoots = Collections.newSetFromMap(WeakHashMap<View, Boolean>())
 
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!hasEnabledOption()) {
@@ -81,7 +82,7 @@ object HomeCustomizeHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             var installedCount = 0
@@ -93,14 +94,14 @@ object HomeCustomizeHook {
 
             if (installedCount == 0) {
                 XposedCompat.log("[HomeCustomizeHook] no hooks installed")
-                resetHooked()
+                hookState.reset()
                 return
             }
             XposedCompat.log("[HomeCustomizeHook] hooks INSTALLED: count=$installedCount")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[HomeCustomizeHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[HomeCustomizeHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
@@ -591,10 +592,6 @@ object HomeCustomizeHook {
         return ConfigManager.isHomeCustomizeEnabled && target.isHidden()
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
-    private fun resetHooked() { synchronized(this) { hooked = false } }
 
     private data class HomeSectionTarget(
         val label: String,

@@ -3,12 +3,13 @@ package com.xiyunmn.puredupan.hook.feature.performance
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * Blocks auto download/install decisions for selected edge dynamic plugin types only.
  */
 object DynamicPluginAutoDownloadBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     private val blockedPluginTypes = setOf(
         24, // OCR_SCAN_MODEL_V5
@@ -26,7 +27,7 @@ object DynamicPluginAutoDownloadBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val pluginClass = XposedCompat.findClassOrNull(
@@ -34,7 +35,7 @@ object DynamicPluginAutoDownloadBlockHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[DynamicPluginAutoDownloadBlockHook] DynamicPlugin class NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -56,15 +57,15 @@ object DynamicPluginAutoDownloadBlockHook {
 
             if (installedCount == 0) {
                 XposedCompat.log("[DynamicPluginAutoDownloadBlockHook] no hooks installed")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
             XposedCompat.log("[DynamicPluginAutoDownloadBlockHook] hooks INSTALLED: count=$installedCount")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[DynamicPluginAutoDownloadBlockHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[DynamicPluginAutoDownloadBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
@@ -127,13 +128,7 @@ object DynamicPluginAutoDownloadBlockHook {
         }.getOrNull()
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
 
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 
     private fun isEnabled(): Boolean =
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isDynamicPluginAutoDownloadDisabled

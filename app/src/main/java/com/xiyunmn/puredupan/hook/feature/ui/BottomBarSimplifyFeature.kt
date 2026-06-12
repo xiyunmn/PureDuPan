@@ -6,6 +6,7 @@ import android.view.View
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * 底栏定制 Feature。
@@ -16,7 +17,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
  * 受 [ConfigManager.KEY_CUSTOM_BOTTOM_BAR] 主开关及 5 个子开关控制。
  */
 object BottomBarSimplifyFeature {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     /** Tab 资源 ID 名称 → 对应的隐藏开关读取器 */
     private data class TabTarget(
@@ -39,7 +40,7 @@ object BottomBarSimplifyFeature {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             val activityClass = XposedCompat.findClassOrNull(
@@ -63,18 +64,18 @@ object BottomBarSimplifyFeature {
                 val result = chain.proceed()
                 try {
                     applyTabVisibility(chain.thisObject as? Activity)
-                } catch (t: Throwable) {
+                } catch (e: Exception) {
                     XposedCompat.logD {
-                        "[BottomBarSimplifyFeature] applyTabVisibility failed (non-fatal): ${t.message}"
+                        "[BottomBarSimplifyFeature] applyTabVisibility failed (non-fatal): ${e.message}"
                     }
                 }
                 result
             }
 
             XposedCompat.log("[BottomBarSimplifyFeature] hook INSTALLED: ${StableBaiduPanHookPoints.MAIN_ACTIVITY}.onCreate")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[BottomBarSimplifyFeature] install FAILED: ${t.message}")
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[BottomBarSimplifyFeature] install FAILED: ${e.message}")
         }
     }
 
@@ -113,9 +114,9 @@ object BottomBarSimplifyFeature {
                         "[BottomBarSimplifyFeature] ${tab.label} tab view not in hierarchy (resId=$resId)"
                     )
                 }
-            } catch (t: Throwable) {
+            } catch (e: Exception) {
                 XposedCompat.logD(
-                    "[BottomBarSimplifyFeature] ${tab.label} tab hide failed: ${t.message}"
+                    "[BottomBarSimplifyFeature] ${tab.label} tab hide failed: ${e.message}"
                 )
             }
         }
@@ -127,15 +128,4 @@ object BottomBarSimplifyFeature {
         }
     }
 
-    private fun tryMarkHooked(): Boolean {
-        synchronized(this) {
-            if (hooked) return false
-            hooked = true
-            return true
-        }
-    }
-
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 }

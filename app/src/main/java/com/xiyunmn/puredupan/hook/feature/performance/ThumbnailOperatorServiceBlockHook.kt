@@ -4,12 +4,13 @@ import android.content.Context
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
  * Blocks the client-compute thumbnail operator before it starts the operator process.
  */
 object ThumbnailOperatorServiceBlockHook {
-    @Volatile private var hooked = false
+    private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -17,7 +18,7 @@ object ThumbnailOperatorServiceBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!tryMarkHooked()) return
+        if (!hookState.markInstalled()) return
 
         try {
             var installedCount = 0
@@ -26,7 +27,7 @@ object ThumbnailOperatorServiceBlockHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[ThumbnailOperatorServiceBlockHook] ClientComputeManager NOT FOUND")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
@@ -52,15 +53,15 @@ object ThumbnailOperatorServiceBlockHook {
 
             if (installedCount == 0) {
                 XposedCompat.log("[ThumbnailOperatorServiceBlockHook] no hooks installed")
-                resetHooked()
+                hookState.reset()
                 return
             }
 
             XposedCompat.log("[ThumbnailOperatorServiceBlockHook] hooks INSTALLED: count=$installedCount")
-        } catch (t: Throwable) {
-            resetHooked()
-            XposedCompat.log("[ThumbnailOperatorServiceBlockHook] FAILED: ${t.message}")
-            XposedCompat.log(t)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[ThumbnailOperatorServiceBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
         }
     }
 
@@ -112,13 +113,7 @@ object ThumbnailOperatorServiceBlockHook {
         return 1
     }
 
-    private fun tryMarkHooked(): Boolean = synchronized(this) {
-        if (hooked) false else { hooked = true; true }
-    }
 
-    private fun resetHooked() {
-        synchronized(this) { hooked = false }
-    }
 
     private fun isEnabled(): Boolean =
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isThumbnailOperatorServiceDisabled
