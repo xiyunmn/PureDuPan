@@ -28,6 +28,7 @@ internal class IntSliderControl(
 internal class MemberCardBackgroundImageControl(
     val row: View,
     val switch: Switch,
+    val updateSelectedUri: (String?) -> Unit,
 )
 
 internal data class SwitchRuntimeSupport(

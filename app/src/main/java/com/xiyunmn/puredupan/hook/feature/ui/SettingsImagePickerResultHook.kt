@@ -8,53 +8,68 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
 
 /**
- * Receives image picker results launched from the module settings panel in AboutMeActivity.
+ * Receives image picker results launched from module settings entry points.
  */
 object SettingsImagePickerResultHook {
     private val hookState = HookState()
+    private val resultHostClasses = listOf(
+        StableBaiduPanHookPoints.ABOUT_ME_ACTIVITY,
+        StableBaiduPanHookPoints.NEW_ABOUT_ME_ACTIVITY,
+        StableBaiduPanHookPoints.HOME_ACTIVITY,
+        StableBaiduPanHookPoints.MAIN_ACTIVITY,
+    )
 
     internal fun hook(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
         if (!hookState.markInstalled()) return
 
         try {
-            val activityClass = XposedCompat.findClassOrNull(
-                StableBaiduPanHookPoints.ABOUT_ME_ACTIVITY,
-                cl,
-            ) ?: run {
-                XposedCompat.log("[SettingsImagePickerResultHook] AboutMeActivity class NOT FOUND")
-                hookState.reset()
-                return
-            }
+            var installedCount = 0
 
-            val method = XposedCompat.findMethodOrNull(
-                activityClass,
-                "onActivityResult",
-                Int::class.javaPrimitiveType!!,
-                Int::class.javaPrimitiveType!!,
-                Intent::class.java,
-            ) ?: run {
-                XposedCompat.log("[SettingsImagePickerResultHook] onActivityResult NOT FOUND")
-                hookState.reset()
-                return
-            }
-
-            mod.hook(method).intercept { chain ->
-                val result = chain.proceed()
-                try {
-                    SettingsMenuHook.handleMemberCardBackgroundImageResult(
-                        context = chain.thisObject as? Activity,
-                        requestCode = chain.args.getOrNull(0) as? Int ?: -1,
-                        resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
-                        data = chain.args.getOrNull(2) as? Intent,
-                    )
-                } catch (e: Exception) {
-                    XposedCompat.logD("[SettingsImagePickerResultHook] handle result failed: ${e.message}")
+            for (className in resultHostClasses) {
+                val activityClass = XposedCompat.findClassOrNull(className, cl)
+                if (activityClass == null) {
+                    XposedCompat.logD("[SettingsImagePickerResultHook] class NOT FOUND: $className")
+                    continue
                 }
-                result
+
+                val method = XposedCompat.findMethodOrNull(
+                    activityClass,
+                    "onActivityResult",
+                    Int::class.javaPrimitiveType!!,
+                    Int::class.javaPrimitiveType!!,
+                    Intent::class.java,
+                )
+                if (method == null) {
+                    XposedCompat.logD("[SettingsImagePickerResultHook] onActivityResult NOT FOUND: $className")
+                    continue
+                }
+
+                mod.hook(method).intercept { chain ->
+                    val result = chain.proceed()
+                    try {
+                        SettingsMenuHook.handleMemberCardBackgroundImageResult(
+                            context = chain.thisObject as? Activity,
+                            requestCode = chain.args.getOrNull(0) as? Int ?: -1,
+                            resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
+                            data = chain.args.getOrNull(2) as? Intent,
+                        )
+                    } catch (e: Exception) {
+                        XposedCompat.logD("[SettingsImagePickerResultHook] handle result failed: ${e.message}")
+                    }
+                    result
+                }
+                installedCount++
+                XposedCompat.logD("[SettingsImagePickerResultHook] onActivityResult hooked: $className")
             }
 
-            XposedCompat.log("[SettingsImagePickerResultHook] hook INSTALLED")
+            if (installedCount == 0) {
+                XposedCompat.log("[SettingsImagePickerResultHook] no onActivityResult hooks installed")
+                hookState.reset()
+                return
+            }
+
+            XposedCompat.log("[SettingsImagePickerResultHook] hooks INSTALLED: $installedCount")
         } catch (e: Exception) {
             hookState.reset()
             XposedCompat.log("[SettingsImagePickerResultHook] FAILED: ${e.message}")

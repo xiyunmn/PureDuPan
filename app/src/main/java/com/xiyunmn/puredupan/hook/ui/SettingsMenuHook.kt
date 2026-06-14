@@ -47,6 +47,7 @@ internal const val REQUEST_MEMBER_CARD_BACKGROUND_IMAGE = 0x4D31
 
 object SettingsMenuHook {
     @Volatile private var versionTapCount = 0
+    @Volatile private var memberCardBackgroundSelectionListener: ((String) -> Unit)? = null
 
     internal fun launchMemberCardBackgroundPicker(context: Context) {
         try {
@@ -97,6 +98,7 @@ object SettingsMenuHook {
             .putInt(ConfigManager.KEY_MEMBER_CARD_BACKGROUND_OFFSET_Y_PERMILLE, 0)
             .apply()
 
+        memberCardBackgroundSelectionListener?.invoke(uri.toString())
         showMemberCardBackgroundEditorDialog(context, uri.toString())
         Toast.makeText(
             context,
@@ -1743,6 +1745,14 @@ object SettingsMenuHook {
                 }
             }
 
+            val selectionListener: (String) -> Unit = { uriString ->
+                backgroundUriCleared = false
+                backgroundSwitch.isChecked = true
+                backgroundImageControl.updateSelectedUri(uriString)
+                updateViewBackgroundClickRow()
+            }
+            memberCardBackgroundSelectionListener = selectionListener
+
             backgroundSwitch.setOnCheckedChangeListener { _, _ ->
                 updateViewBackgroundClickRow()
             }
@@ -1849,6 +1859,11 @@ object SettingsMenuHook {
                         Toast.LENGTH_SHORT
                     ).show()
                     dialog.dismiss()
+                }
+            }
+            dialog.setOnDismissListener {
+                if (memberCardBackgroundSelectionListener === selectionListener) {
+                    memberCardBackgroundSelectionListener = null
                 }
             }
             showStableSubDialog(dialog, density)
@@ -2397,7 +2412,7 @@ object SettingsMenuHook {
             UiStyle.paintScanActionButton(this, density, tokens.textSecondary)
             setOnClickListener {
                 enabledSwitch.isChecked = false
-                display.text = UiText.Settings.MEMBER_CARD_BACKGROUND_NONE
+                display.text = memberCardBackgroundDisplayText(null)
                 adjustButton.updateButtonEnabledState(false)
                 onClear()
             }
@@ -2416,6 +2431,10 @@ object SettingsMenuHook {
         return MemberCardBackgroundImageControl(
             row = root,
             switch = enabledSwitch,
+            updateSelectedUri = { uri ->
+                display.text = memberCardBackgroundDisplayText(uri)
+                adjustButton.updateButtonEnabledState(!uri.isNullOrBlank())
+            },
         )
     }
 

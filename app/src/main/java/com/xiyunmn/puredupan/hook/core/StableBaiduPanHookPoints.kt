@@ -10,6 +10,7 @@ object StableBaiduPanHookPoints {
     /** 主 Activity 类名 */
     const val MAIN_ACTIVITY = "com.baidu.netdisk.ui.MainActivity"
     const val HOME_ACTIVITY = "com.baidu.netdisk.homepage.HomeActivity"
+    const val NEW_ABOUT_ME_ACTIVITY = "com.baidu.netdisk.ui.aboutme.NewAboutMeActivity"
 
     /** "我的" 页面 - 游戏中心 Fragment */
     const val ABOUT_ME_GAME_CENTER_FRAGMENT =
