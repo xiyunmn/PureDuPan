@@ -158,6 +158,16 @@ object SettingsMenuHook {
 
             // 仅解锁后显示
             if (ConfigManager.areRestrictedFeaturesUnlocked) {
+                adBlockItems.add(
+                    SwitchItem(
+                        UiText.Settings.ACCELERATE_INTL_SPLASH_STARTUP_LABEL,
+                        UiText.Settings.ACCELERATE_INTL_SPLASH_STARTUP_DESC,
+                        ConfigManager.KEY_ACCELERATE_INTL_SPLASH_STARTUP,
+                        hostCapabilities.supportsLaunchHandoffOptimize,
+                        false,
+                        visible = isFeatureVisible(context, ConfigManager.KEY_ACCELERATE_INTL_SPLASH_STARTUP),
+                    )
+                )
                 if (!hostCapabilities.supportsStandaloneHotStartSplashRemove) {
                     adBlockItems.add(
                         SwitchItem(

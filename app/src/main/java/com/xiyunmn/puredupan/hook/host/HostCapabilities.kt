@@ -4,6 +4,7 @@ internal data class HostCapabilities(
     val supportsOemPushHook: Boolean = false,
     val supportsHotStartSplashAd: Boolean = true,
     val supportsStandaloneHotStartSplashRemove: Boolean = false,
+    val supportsLaunchHandoffOptimize: Boolean = false,
     val supportsUpdateDialogBlock: Boolean = true,
     val supportsSvipIconGuideBlock: Boolean = true,
     val supportsSharePushGuideBlock: Boolean = true,

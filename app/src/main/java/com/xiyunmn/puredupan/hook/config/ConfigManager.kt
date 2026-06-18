@@ -75,6 +75,7 @@ object ConfigManager {
     const val KEY_REMOVE_MEMBER_CARD_CLICK = "remove_member_card_click"
     const val KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK = "view_member_card_background_on_click"
     const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = "follow_system_night_mode"
+    const val KEY_ACCELERATE_INTL_SPLASH_STARTUP = "accelerate_intl_splash_startup"
     const val KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER = "disable_garbage_clean_service_register"
     const val KEY_DISABLE_DATAPACK_SOCKET_REGISTER = "disable_datapack_socket_register"
     const val KEY_DISABLE_AIGC_BACKGROUND_COMPONENT = "disable_aigc_background_component"
@@ -158,6 +159,8 @@ object ConfigManager {
     val isFollowSystemNightModeEnabled: Boolean get() = settingsSnapshot.isFollowSystemNightModeEnabled
     val isPerformanceOptimizeEnabled: Boolean
         get() = settingsSnapshot.isPerformanceOptimizeEnabled
+    val isIntlSplashStartupAccelerateEnabled: Boolean
+        get() = settingsSnapshot.isIntlSplashStartupAccelerateEnabled
     val isGarbageCleanServiceRegisterDisabled: Boolean
         get() = settingsSnapshot.isGarbageCleanServiceRegisterDisabled
     val isDatapackSocketRegisterDisabled: Boolean
@@ -468,6 +471,10 @@ object ConfigManager {
             isMemberCardBackgroundViewedOnClick = memberCardBackgroundViewedOnClick,
             isFollowSystemNightModeEnabled = featureBoolean(KEY_FOLLOW_SYSTEM_NIGHT_MODE, false),
             isPerformanceOptimizeEnabled = p.getBoolean(KEY_PERFORMANCE_OPTIMIZE, hasPerformanceOptionEnabled),
+            isIntlSplashStartupAccelerateEnabled = featureBoolean(
+                KEY_ACCELERATE_INTL_SPLASH_STARTUP,
+                false,
+            ),
             isGarbageCleanServiceRegisterDisabled = featureBoolean(
                 KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER,
                 false,

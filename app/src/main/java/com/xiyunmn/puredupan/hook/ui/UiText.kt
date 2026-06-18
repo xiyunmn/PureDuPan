@@ -125,6 +125,8 @@ object UiText {
         const val PERFORMANCE_OPTIMIZE_DESC = "可能造成功能异常，谨慎启用"
         const val PERFORMANCE_OPTIMIZE_DIALOG_TITLE = "性能优化"
         const val PERFORMANCE_OPTIMIZE_SAVED = "性能优化配置已保存"
+        const val ACCELERATE_INTL_SPLASH_STARTUP_LABEL = "加快开屏启动"
+        const val ACCELERATE_INTL_SPLASH_STARTUP_DESC = "仅国际版。保留 DefaultMainActivity 和 Navigate 的主题链路，仅加速 Navigate 跳转 MainActivity 后的退出时序，减少启动图停留时间"
         const val DETAILED_LOGGING_LABEL = "输出详细日志"
         const val DETAILED_LOGGING_DESC = "输出更详细的 Hook 调试日志，日志通常位于宿主应用缓存目录下的 wangpanhook/logs/"
         const val EXPERIMENTAL_DEXKIT_LABEL = "启用 DexKit 实验解析"

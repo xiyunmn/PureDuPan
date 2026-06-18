@@ -24,6 +24,7 @@ import com.xiyunmn.puredupan.hook.feature.performance.ThumbnailOperatorServiceBl
 import com.xiyunmn.puredupan.hook.feature.performance.VideoAdPreloadBlockHook
 import com.xiyunmn.puredupan.hook.feature.startup.SplashBypassCore
 import com.xiyunmn.puredupan.hook.feature.startup.SplashInterstitialBlockHook
+import com.xiyunmn.puredupan.hook.feature.startup.intl.IntlLaunchHandoffOptimizeHook
 import com.xiyunmn.puredupan.hook.feature.startup.hotstart.HotStartSplashRemoveHook
 import com.xiyunmn.puredupan.hook.feature.ui.AlbumBackupBarBlockHook
 import com.xiyunmn.puredupan.hook.feature.ui.BottomAiTabReplaceHook
@@ -225,6 +226,11 @@ internal object HookInstallPlanner {
                 settings.isBottomBarCustomEnabled &&
                 derived.hasBottomBarTabOption
         }) { cl -> BottomBarSimplifyFeature.hook(cl) },
+        HookSpec("IntlLaunchHandoffOptimizeHook", { context, settings, _ ->
+            context.isMain &&
+                context.host.capabilities.supportsLaunchHandoffOptimize &&
+                settings.isIntlSplashStartupAccelerateEnabled
+        }) { cl -> IntlLaunchHandoffOptimizeHook.hook(cl) },
         HookSpec("GarbageCleanServiceRegisterBlockHook", { context, settings, _ ->
             context.isMain &&
                 context.host.capabilities.supportsGarbageCleanServiceOptimize &&

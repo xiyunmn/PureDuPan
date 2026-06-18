@@ -31,6 +31,7 @@ internal object HostRegistry {
             supportsOemPushHook = false,
             supportsHotStartSplashAd = true,
             supportsStandaloneHotStartSplashRemove = true,
+            supportsLaunchHandoffOptimize = true,
             supportsUpdateDialogBlock = false,
             supportsSvipIconGuideBlock = false,
             supportsSharePushGuideBlock = false,

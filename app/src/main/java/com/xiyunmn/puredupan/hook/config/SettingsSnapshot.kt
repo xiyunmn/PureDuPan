@@ -65,6 +65,7 @@ data class SettingsSnapshot(
 
     // Performance optimize
     val isPerformanceOptimizeEnabled: Boolean = false,
+    val isIntlSplashStartupAccelerateEnabled: Boolean = false,
     val isGarbageCleanServiceRegisterDisabled: Boolean = false,
     val isDatapackSocketRegisterDisabled: Boolean = false,
     val isAigcBackgroundComponentDisabled: Boolean = false,
