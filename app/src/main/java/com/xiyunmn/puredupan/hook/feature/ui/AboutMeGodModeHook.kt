@@ -30,6 +30,7 @@ object AboutMeGodModeHook {
     private const val TEXT_REWARD = "领奖励"
     private const val TEXT_ACCOUNT_EXIT = "账号、退出"
     private const val TEXT_STAR_SKIN = "明星皮肤上线啦"
+    private const val TEXT_FREE_DATA_CARD = "免流量卡、领无限空间"
 
     private val attachedDecorViews = Collections.newSetFromMap(WeakHashMap<View, Boolean>())
 
@@ -194,6 +195,9 @@ object AboutMeGodModeHook {
         if (config.isAboutMeStarSkinTextHidden) {
             hideTextView(root, TEXT_STAR_SKIN, "star_skin_text")
         }
+        if (config.isAboutMeFreeDataCardTextHidden) {
+            hideTextView(root, TEXT_FREE_DATA_CARD, "free_data_card_text")
+        }
     }
 
     private fun hideViewByEntryName(activity: Activity, root: View, entryName: String, label: String) {
@@ -242,7 +246,8 @@ object AboutMeGodModeHook {
                     snapshot.isAboutMeManageSpaceTextHidden ||
                     snapshot.isAboutMeRewardTextHidden ||
                     snapshot.isAboutMeAccountExitTextHidden ||
-                    snapshot.isAboutMeStarSkinTextHidden
+                    snapshot.isAboutMeStarSkinTextHidden ||
+                    snapshot.isAboutMeFreeDataCardTextHidden
             )
     }
 

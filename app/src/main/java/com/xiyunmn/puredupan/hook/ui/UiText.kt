@@ -185,6 +185,8 @@ object UiText {
         const val HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT_DESC = "隐藏「设置与服务」里的“账号、退出”控件文本入口"
         const val HIDE_ABOUT_ME_STAR_SKIN_TEXT_LABEL = "明星皮肤上线啦"
         const val HIDE_ABOUT_ME_STAR_SKIN_TEXT_DESC = "隐藏「个性设置」里的“明星皮肤上线啦”控件文本入口"
+        const val HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT_LABEL = "免流量卡、领无限空间"
+        const val HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT_DESC = "隐藏「我的」页中的“免流量卡、领无限空间”控件文本入口"
         const val BOTTOM_BAR_TAB_SECTION_TITLE = "自定义隐藏底栏Tab"
         const val BOTTOM_BAR_HIDE_TAB_HOME_LABEL = "「首页」"
         const val BOTTOM_BAR_HIDE_TAB_FILE_LABEL = "「文件」"

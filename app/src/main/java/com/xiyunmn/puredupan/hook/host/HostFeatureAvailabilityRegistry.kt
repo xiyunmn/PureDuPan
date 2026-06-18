@@ -12,6 +12,7 @@ internal object HostFeatureAvailabilityRegistry {
     private val cnDisabledKeys = setOf(
         ConfigManager.KEY_HIDE_TAB_AIGC,
         ConfigManager.KEY_HIDE_HOME_BANNER,
+        ConfigManager.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT,
     )
 
     private val intlDisabledKeys = setOf(

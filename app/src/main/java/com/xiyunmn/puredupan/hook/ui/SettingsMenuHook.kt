@@ -1570,6 +1570,16 @@ object SettingsMenuHook {
                 true,
                 prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false),
             )
+            val freeDataCardTextRow = createSwitchRow(
+                context,
+                prefs,
+                UiText.Settings.HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT_LABEL,
+                UiText.Settings.HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT_DESC,
+                null,
+                padding,
+                true,
+                prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT, false),
+            )
 
             addTitledSection(
                 root = root,
@@ -1598,6 +1608,7 @@ object SettingsMenuHook {
                     ConfigManager.KEY_HIDE_ABOUT_ME_REWARD_TEXT to rewardTextRow,
                     ConfigManager.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT to accountExitTextRow,
                     ConfigManager.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT to starSkinTextRow,
+                    ConfigManager.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT to freeDataCardTextRow,
                 ),
                 addDividerBefore = root.childCount > 0,
             )
@@ -1613,6 +1624,7 @@ object SettingsMenuHook {
             val rewardTextSwitch = findSwitchView(rewardTextRow)
             val accountExitTextSwitch = findSwitchView(accountExitTextRow)
             val starSkinTextSwitch = findSwitchView(starSkinTextRow)
+            val freeDataCardTextSwitch = findSwitchView(freeDataCardTextRow)
             if (
                 renewSwitch == null ||
                 gameCenterSwitch == null ||
@@ -1624,7 +1636,8 @@ object SettingsMenuHook {
                 manageSpaceTextSwitch == null ||
                 rewardTextSwitch == null ||
                 accountExitTextSwitch == null ||
-                starSkinTextSwitch == null
+                starSkinTextSwitch == null ||
+                freeDataCardTextSwitch == null
             ) {
                 XposedCompat.logW("[SettingsMenuHook] showMyPageCustomizeDialog failed: switch view missing")
                 return
@@ -1660,7 +1673,9 @@ object SettingsMenuHook {
                             isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT) &&
                             accountExitTextSwitch.isChecked ||
                             isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT) &&
-                            starSkinTextSwitch.isChecked
+                            starSkinTextSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT) &&
+                            freeDataCardTextSwitch.isChecked
                     prefs.edit()
                         .putBoolean(ConfigManager.KEY_MY_PAGE_CUSTOMIZE, hasEnabledMyPageOption)
                         .putBoolean(ConfigManager.KEY_HIDE_RENEW_BUTTON, renewSwitch.isChecked)
@@ -1683,6 +1698,10 @@ object SettingsMenuHook {
                             accountExitTextSwitch.isChecked,
                         )
                         .putBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, starSkinTextSwitch.isChecked)
+                        .putBoolean(
+                            ConfigManager.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT,
+                            freeDataCardTextSwitch.isChecked,
+                        )
                         .apply()
                     Toast.makeText(
                         context,
@@ -2520,7 +2539,9 @@ object SettingsMenuHook {
             isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, false) ||
             isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT) &&
-            prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false)
+            prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT) &&
+            prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT, false)
     }
 
     private fun hasAnyBottomBarCustomizeOptionEnabled(

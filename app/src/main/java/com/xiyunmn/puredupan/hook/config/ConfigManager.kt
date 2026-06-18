@@ -46,6 +46,7 @@ object ConfigManager {
     const val KEY_HIDE_ABOUT_ME_REWARD_TEXT = "hide_about_me_reward_text"
     const val KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT = "hide_about_me_account_exit_text"
     const val KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT = "hide_about_me_star_skin_text"
+    const val KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT = "hide_about_me_free_data_card_text"
     const val KEY_REMOVE_HOME_FAB = "remove_home_fab"
     const val KEY_HIDE_RENEW_BUTTON = "hide_renew_button"
     const val KEY_BLOCK_BOTTOM_BADGE = "block_bottom_badge"
@@ -129,6 +130,7 @@ object ConfigManager {
     val isAboutMeRewardTextHidden: Boolean get() = settingsSnapshot.isAboutMeRewardTextHidden
     val isAboutMeAccountExitTextHidden: Boolean get() = settingsSnapshot.isAboutMeAccountExitTextHidden
     val isAboutMeStarSkinTextHidden: Boolean get() = settingsSnapshot.isAboutMeStarSkinTextHidden
+    val isAboutMeFreeDataCardTextHidden: Boolean get() = settingsSnapshot.isAboutMeFreeDataCardTextHidden
     val isHomeFabRemoved: Boolean get() = settingsSnapshot.isHomeFabRemoved
     val isRenewButtonHidden: Boolean get() = settingsSnapshot.isRenewButtonHidden
     val isBottomBarBadgeBlocked: Boolean get() = settingsSnapshot.isBottomBarBadgeBlocked
@@ -366,7 +368,8 @@ object ConfigManager {
                 featureBoolean(KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT, false) ||
                 featureBoolean(KEY_HIDE_ABOUT_ME_REWARD_TEXT, false) ||
                 featureBoolean(KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, false) ||
-                featureBoolean(KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false)
+                featureBoolean(KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false) ||
+                featureBoolean(KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT, false)
         val hasBottomBarOptionEnabled =
             featureBoolean(KEY_REPLACE_BOTTOM_AI, false) ||
                 featureBoolean(KEY_BLOCK_BOTTOM_BADGE, false) ||
@@ -422,6 +425,7 @@ object ConfigManager {
             isAboutMeRewardTextHidden = featureBoolean(KEY_HIDE_ABOUT_ME_REWARD_TEXT, false),
             isAboutMeAccountExitTextHidden = featureBoolean(KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, false),
             isAboutMeStarSkinTextHidden = featureBoolean(KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false),
+            isAboutMeFreeDataCardTextHidden = featureBoolean(KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT, false),
             isHomeFabRemoved = featureBoolean(KEY_REMOVE_HOME_FAB, false),
             isRenewButtonHidden = featureBoolean(KEY_HIDE_RENEW_BUTTON, false),
             isBottomBarBadgeBlocked = featureBoolean(KEY_BLOCK_BOTTOM_BADGE, false),

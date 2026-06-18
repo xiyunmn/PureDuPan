@@ -36,6 +36,7 @@ data class SettingsSnapshot(
     val isAboutMeRewardTextHidden: Boolean = false,
     val isAboutMeAccountExitTextHidden: Boolean = false,
     val isAboutMeStarSkinTextHidden: Boolean = false,
+    val isAboutMeFreeDataCardTextHidden: Boolean = false,
     val isHomeFabRemoved: Boolean = false,
     val isRenewButtonHidden: Boolean = false,
     val isBottomBarBadgeBlocked: Boolean = false,
