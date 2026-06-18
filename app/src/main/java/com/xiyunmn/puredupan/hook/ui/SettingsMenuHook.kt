@@ -1977,23 +1977,32 @@ object SettingsMenuHook {
             root.addView(createDivider(context, padding))
             root.addView(removeCardClickRow)
             root.addView(viewBackgroundOnClickRow)
+            val memberCardHideRows = if (isIntlHost) {
+                visibleRows(
+                    context,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT to firstBenefitRow,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT to secondBenefitRow,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT to thirdBenefitRow,
+                    memberCardSvipLevelKey to svipLevelRow,
+                    memberCardRenewButtonKey to renewButtonRow,
+                )
+            } else {
+                visibleRows(
+                    context,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_OPERATION to operationRow,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT to benefitRow,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT_BAR to benefitBarRow,
+                    memberCardSvipLevelKey to svipLevelRow,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_STATUS to svipStatusRow,
+                    memberCardRenewButtonKey to renewButtonRow,
+                )
+            }
             addTitledSection(
                 root = root,
                 context = context,
                 padding = padding,
                 titleView = createCustomHideWidgetSectionTitle(context, padding),
-                rows = visibleRows(
-                    context,
-                    ConfigManager.KEY_HIDE_MEMBER_CARD_OPERATION to operationRow,
-                    ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT to benefitRow,
-                    ConfigManager.KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT to firstBenefitRow,
-                    ConfigManager.KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT to secondBenefitRow,
-                    ConfigManager.KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT to thirdBenefitRow,
-                    ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT_BAR to benefitBarRow,
-                    memberCardSvipLevelKey to svipLevelRow,
-                    ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_STATUS to svipStatusRow,
-                    memberCardRenewButtonKey to renewButtonRow,
-                ),
+                rows = memberCardHideRows,
                 addDividerBefore = true,
             )
 

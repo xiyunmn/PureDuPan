@@ -100,6 +100,8 @@ object StableBaiduPanHookPoints {
     /** "我的" 页面底部 Fragment (横幅广告 / 我的服务 所在) */
     const val ABOUT_ME_BOTTOM_FRAGMENT =
         "com.baidu.netdisk.ui.aboutme.view.AboutMeBottomFragment"
+    const val ABOUT_ME_TOP_FRAGMENT =
+        "com.baidu.netdisk.ui.aboutme.view.AboutMeTopFragment"
     const val ABOUT_ME_TOP_FRAGMENT_HETEROMO =
         "com.baidu.netdisk.ui.aboutme.view.AboutMeTopFragmentHeteromo"
     const val ABOUT_ME_TOP_FRAGMENT_ON_VIEW_CREATED_METHOD = "onViewCreated"

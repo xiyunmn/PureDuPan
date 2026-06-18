@@ -43,9 +43,10 @@ import java.util.WeakHashMap
 import kotlin.math.max
 
 /**
- * Customizes only the VIP card area in AboutMeTopFragmentHeteromo.
+ * Customizes only the VIP card area in AboutMeTopFragment for the intl host.
  */
 object IntlMemberCardCustomizeHook {
+    private const val MEMBER_CARD_ACTIVITY_CONTAINER_ID = "about_me_top"
     private const val MEMBER_CARD_ROOT_ID = "cl_aboutme_top"
     private const val MEMBER_CARD_BACKGROUND_ID = "iv_bg"
     private const val MEMBER_CARD_OPERATION_ID = "operation_layout"
@@ -70,6 +71,15 @@ object IntlMemberCardCustomizeHook {
     private const val MEMBER_CARD_SVIP_STATUS_ID = "tv_duration_content"
     private const val MEMBER_CARD_RENEW_BUTTON_ID = "tv_enter"
     private const val MEMBER_CARD_RENEW_DIVIDER_ID = "enter_line"
+    private val MEMBER_CARD_CLICK_TARGET_IDS = listOf(
+        MEMBER_CARD_ACTIVITY_CONTAINER_ID,
+        MEMBER_CARD_ROOT_ID,
+        MEMBER_CARD_FIRST_BENEFIT_ID,
+        MEMBER_CARD_SECOND_BENEFIT_ID,
+        MEMBER_CARD_THIRD_BENEFIT_ID,
+        MEMBER_CARD_UNLOCK_SVIP_ROOT_ID,
+        MEMBER_CARD_RENEW_BUTTON_ID,
+    )
 
     private val attachedRoots = Collections.newSetFromMap(WeakHashMap<View, Boolean>())
     private data class AppliedBackground(
@@ -97,10 +107,10 @@ object IntlMemberCardCustomizeHook {
 
         try {
             val fragmentClass = XposedCompat.findClassOrNull(
-                StableBaiduPanHookPoints.ABOUT_ME_TOP_FRAGMENT_HETEROMO,
+                StableBaiduPanHookPoints.ABOUT_ME_TOP_FRAGMENT,
                 cl,
             ) ?: run {
-                XposedCompat.log("[MemberCardCustomizeHook] AboutMeTopFragmentHeteromo class NOT FOUND")
+                XposedCompat.log("[IntlMemberCardCustomizeHook] AboutMeTopFragment class NOT FOUND")
                 hookState.reset()
                 return
             }
@@ -111,7 +121,7 @@ object IntlMemberCardCustomizeHook {
                 View::class.java,
                 Bundle::class.java,
             ) ?: run {
-                XposedCompat.log("[MemberCardCustomizeHook] onViewCreated(View, Bundle) NOT FOUND")
+                XposedCompat.log("[IntlMemberCardCustomizeHook] onViewCreated(View, Bundle) NOT FOUND")
                 hookState.reset()
                 return
             }
@@ -121,16 +131,16 @@ object IntlMemberCardCustomizeHook {
                 try {
                     attachMemberCardWatcher(chain.args.firstOrNull() as? View)
                 } catch (e: Exception) {
-                    XposedCompat.logD("[MemberCardCustomizeHook] attach failed: ${e.message}")
+                    XposedCompat.logD("[IntlMemberCardCustomizeHook] attach failed: ${e.message}")
                 }
                 result
             }
             hookOnCreateView(fragmentClass)
 
-            XposedCompat.log("[MemberCardCustomizeHook] hook INSTALLED")
+            XposedCompat.log("[IntlMemberCardCustomizeHook] hook INSTALLED")
         } catch (e: Exception) {
             hookState.reset()
-            XposedCompat.log("[MemberCardCustomizeHook] FAILED: ${e.message}")
+            XposedCompat.log("[IntlMemberCardCustomizeHook] FAILED: ${e.message}")
             XposedCompat.log(e)
         }
     }
@@ -144,7 +154,7 @@ object IntlMemberCardCustomizeHook {
             ViewGroup::class.java,
             Bundle::class.java,
         ) ?: run {
-            XposedCompat.logD("[MemberCardCustomizeHook] onCreateView NOT FOUND, skipped")
+            XposedCompat.logD("[IntlMemberCardCustomizeHook] onCreateView NOT FOUND, skipped")
             return
         }
         mod.hook(method).intercept { chain ->
@@ -156,7 +166,7 @@ object IntlMemberCardCustomizeHook {
                     attachMemberCardWatcher(root)
                 }
             } catch (e: Exception) {
-                XposedCompat.logD("[MemberCardCustomizeHook] onCreateView apply failed: ${e.message}")
+                XposedCompat.logD("[IntlMemberCardCustomizeHook] onCreateView apply failed: ${e.message}")
             }
             result
         }
@@ -183,7 +193,7 @@ object IntlMemberCardCustomizeHook {
             true
         }
 
-        XposedCompat.log("[MemberCardCustomizeHook] watcher attached")
+        XposedCompat.log("[IntlMemberCardCustomizeHook] watcher attached")
     }
 
     private fun applyMemberCardCustomization(root: View) {
@@ -192,8 +202,26 @@ object IntlMemberCardCustomizeHook {
 
         val resources = root.resources ?: return
         val packageName = root.context?.packageName ?: return
+        val hostRoot = root.rootView ?: root
         val cardRoot = findViewByEntryName(root, resources, packageName, MEMBER_CARD_ROOT_ID) ?: root
-        applyCardClickBehavior(cardRoot, snapshot)
+        val activityCardRoot = findViewByEntryName(
+            hostRoot,
+            resources,
+            packageName,
+            MEMBER_CARD_ACTIVITY_CONTAINER_ID,
+        )
+        applyCardClickBehavior(
+            searchRoot = hostRoot,
+            resources = resources,
+            packageName = packageName,
+            snapshot = snapshot,
+            primaryTargets = listOf(activityCardRoot, cardRoot),
+        )
+
+        activityCardRoot?.let {
+            applyCardSize(it, snapshot, recordDefault = true)
+        }
+        applyCardSize(cardRoot, snapshot, recordDefault = activityCardRoot == null)
 
         val background = findViewByEntryName(root, resources, packageName, MEMBER_CARD_BACKGROUND_ID)
         if (background != null) {
@@ -257,11 +285,15 @@ object IntlMemberCardCustomizeHook {
         }
 
         if (
+            snapshot.isMemberCardFirstBenefitHidden &&
             snapshot.isMemberCardSecondBenefitHidden &&
             snapshot.isMemberCardThirdBenefitHidden
         ) {
             hideByEntryName(root, resources, packageName, MEMBER_CARD_BENEFIT_DIVIDER_ID) {
                 XposedCompat.logD("[MemberCardCustomizeHook] member card benefit divider hidden")
+            }
+            hideByEntryName(root, resources, packageName, MEMBER_CARD_BENEFIT_BAR_ID) {
+                XposedCompat.logD("[IntlMemberCardCustomizeHook] intl member card benefit container hidden")
             }
         }
 
@@ -317,19 +349,38 @@ object IntlMemberCardCustomizeHook {
             )
     }
 
-    private fun applyCardClickBehavior(cardRoot: View, snapshot: SettingsSnapshot) {
+    private fun applyCardClickBehavior(
+        searchRoot: View,
+        resources: android.content.res.Resources,
+        packageName: String,
+        snapshot: SettingsSnapshot,
+        primaryTargets: List<View?>,
+    ) {
+        val clickTargets = linkedSetOf<View>()
+        primaryTargets.filterNotNullTo(clickTargets)
+        for (idName in MEMBER_CARD_CLICK_TARGET_IDS) {
+            findViewByEntryName(searchRoot, resources, packageName, idName)?.let(clickTargets::add)
+        }
+        if (clickTargets.isEmpty()) return
+
         when {
             snapshot.isMemberCardClickRemoved -> {
-                cardRoot.isClickable = true
-                cardRoot.setOnClickListener {
-                    XposedCompat.logD("[MemberCardCustomizeHook] member card click removed")
+                clickTargets.forEach { target ->
+                    target.isEnabled = true
+                    target.isClickable = true
+                    target.setOnClickListener {
+                        XposedCompat.logD("[IntlMemberCardCustomizeHook] member card click removed")
+                    }
                 }
             }
             snapshot.isMemberCardBackgroundViewedOnClick -> {
                 snapshot.memberCardBackgroundUri?.takeIf { it.isNotBlank() } ?: return
-                cardRoot.isClickable = true
-                cardRoot.setOnClickListener {
-                    openCustomBackgroundImage(cardRoot)
+                clickTargets.forEach { target ->
+                    target.isEnabled = true
+                    target.isClickable = true
+                    target.setOnClickListener {
+                        openCustomBackgroundImage(target)
+                    }
                 }
             }
         }
@@ -560,12 +611,18 @@ object IntlMemberCardCustomizeHook {
         return hidden
     }
 
-    private fun applyCardSize(background: View, snapshot: SettingsSnapshot) {
+    private fun applyCardSize(
+        background: View,
+        snapshot: SettingsSnapshot,
+        recordDefault: Boolean = false,
+    ) {
         val params = background.layoutParams ?: return
         val original = originalSizes.getOrPut(background) {
             OriginalSize(params.width, params.height)
         }
-        recordDefaultMemberCardBackgroundSize(background, original)
+        if (recordDefault) {
+            recordDefaultMemberCardBackgroundSize(background, original)
+        }
 
         val density = background.resources?.displayMetrics?.density ?: return
         val targetWidth = if (snapshot.isMemberCardSizeAdjusted && snapshot.memberCardWidthDp > 0) {
