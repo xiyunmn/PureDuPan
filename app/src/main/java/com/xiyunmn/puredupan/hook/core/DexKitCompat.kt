@@ -12,18 +12,37 @@ import org.luckypray.dexkit.DexKitBridge
 internal object DexKitCompat {
     private const val LIB_NAME = "dexkit"
     private const val LIB_FILE_NAME = "libdexkit.so"
-    private const val CACHE_SCHEMA = 1
+    private const val CACHE_SCHEMA = 5
     private const val CACHE_PREFIX = "dexkit_method_cache_v$CACHE_SCHEMA"
+    private const val STATUS_PREFIX = "dexkit_target_status_v$CACHE_SCHEMA"
+    private const val KEY_FORCE_FULL_SCAN = "dexkit_force_full_scan"
+    private const val KEY_FORCE_FULL_SCAN_REASON = "dexkit_force_full_scan_reason"
     private const val STATUS_FOUND = "found"
     private const val STATUS_NOT_FOUND = "not_found"
+    private const val TARGET_STATE_SUCCESS = "success"
+    private const val TARGET_STATE_ERROR = "error"
+    private const val TARGET_STATE_SCANNING = "scanning"
 
     @Volatile private var loadState: LoadState = LoadState.Unknown
     private val memoryCache = ConcurrentHashMap<String, CacheEntry>()
+    private val scanAllowed = object : ThreadLocal<Boolean>() {
+        override fun initialValue(): Boolean = false
+    }
 
     data class MethodRef(
         val className: String,
         val methodName: String,
     )
+
+    data class TargetStatus(
+        val id: String,
+        val state: String,
+        val detail: String?,
+        val updatedAt: Long,
+    ) {
+        val success: Boolean
+            get() = state == TARGET_STATE_SUCCESS
+    }
 
     sealed class CachedResult<out T> {
         data class Found<T>(val value: T) : CachedResult<T>()
@@ -47,11 +66,16 @@ internal object DexKitCompat {
     fun <T> withBridge(
         tag: String,
         cl: ClassLoader,
-        useMemoryDexFile: Boolean = false,
+        useMemoryDexFile: Boolean = true,
         block: (DexKitBridge) -> T,
     ): T? {
+        if (scanAllowed.get() != true) {
+            XposedCompat.logD("[$tag] DexKit scan skipped outside warm-up")
+            return null
+        }
         if (!ensureLoaded(tag)) return null
         return try {
+            XposedCompat.logD("[$tag] DexKit bridge create: useMemoryDexFile=$useMemoryDexFile")
             DexKitBridge.create(cl, useMemoryDexFile).use(block)
         } catch (t: UnsatisfiedLinkError) {
             markUnavailable("${t.javaClass.simpleName}: ${t.message}")
@@ -60,6 +84,16 @@ internal object DexKitCompat {
         } catch (t: Throwable) {
             XposedCompat.logW("[$tag] DexKit bridge failed: ${t.message}")
             null
+        }
+    }
+
+    fun <T> runWithScanningAllowed(block: () -> T): T {
+        val previous = scanAllowed.get() == true
+        scanAllowed.set(true)
+        return try {
+            block()
+        } finally {
+            scanAllowed.set(previous)
         }
     }
 
@@ -104,18 +138,19 @@ internal object DexKitCompat {
     }
 
     fun putCachedMethod(tag: String, resolverId: String, ref: MethodRef?) {
+        if (ref == null) {
+            clearCachedMethod(tag, resolverId)
+            XposedCompat.logD("[$tag] DexKit cache not written: $resolverId unresolved")
+            return
+        }
         val fingerprint = hostFingerprint() ?: return
         val keyPrefix = cacheKeyPrefix(resolverId)
-        val entry = if (ref == null) {
-            CacheEntry(fingerprint = fingerprint, status = STATUS_NOT_FOUND)
-        } else {
-            CacheEntry(
-                fingerprint = fingerprint,
-                status = STATUS_FOUND,
-                className = ref.className,
-                methodName = ref.methodName,
-            )
-        }
+        val entry = CacheEntry(
+            fingerprint = fingerprint,
+            status = STATUS_FOUND,
+            className = ref.className,
+            methodName = ref.methodName,
+        )
         val prefs = statePrefs() ?: return
         prefs.edit()
             .putString("$keyPrefix.fingerprint", entry.fingerprint)
@@ -124,8 +159,9 @@ internal object DexKitCompat {
             .putString("$keyPrefix.methodName", entry.methodName)
             .apply()
         memoryCache[resolverId] = entry
-        val value = ref?.let { "${it.className}.${it.methodName}" } ?: "not found"
+        val value = "${ref.className}.${ref.methodName}"
         XposedCompat.logD("[$tag] DexKit cache updated: $resolverId -> $value")
+        recordTargetStatus(tag, resolverId, TARGET_STATE_SUCCESS, value)
     }
 
     fun clearCachedMethod(tag: String, resolverId: String) {
@@ -138,6 +174,80 @@ internal object DexKitCompat {
             ?.apply()
         memoryCache.remove(resolverId)
         XposedCompat.logD("[$tag] DexKit cache cleared: $resolverId")
+    }
+
+    fun clearCachedMethods(tag: String, resolverIds: Collection<String>) {
+        val prefs = statePrefs() ?: return
+        val editor = prefs.edit()
+        resolverIds.forEach { resolverId ->
+            val keyPrefix = cacheKeyPrefix(resolverId)
+            editor
+                .remove("$keyPrefix.fingerprint")
+                .remove("$keyPrefix.status")
+                .remove("$keyPrefix.className")
+                .remove("$keyPrefix.methodName")
+            removeTargetStatus(editor, resolverId)
+            memoryCache.remove(resolverId)
+        }
+        editor.apply()
+        XposedCompat.logD("[$tag] DexKit caches cleared: ${resolverIds.joinToString()}")
+    }
+
+    fun markFullScanPending(reason: String) {
+        statePrefs()?.edit()
+            ?.putBoolean(KEY_FORCE_FULL_SCAN, true)
+            ?.putString(KEY_FORCE_FULL_SCAN_REASON, reason)
+            ?.apply()
+        XposedCompat.logD("[DexKitCompat] full scan pending: $reason")
+    }
+
+    fun consumeFullScanPending(): Boolean {
+        val prefs = statePrefs() ?: return false
+        if (!prefs.getBoolean(KEY_FORCE_FULL_SCAN, false)) return false
+        val reason = prefs.getString(KEY_FORCE_FULL_SCAN_REASON, null).orEmpty()
+        prefs.edit()
+            .remove(KEY_FORCE_FULL_SCAN)
+            .remove(KEY_FORCE_FULL_SCAN_REASON)
+            .apply()
+        XposedCompat.log("[DexKitCompat] consuming pending full scan: $reason")
+        return true
+    }
+
+    fun markTargetScanning(tag: String, resolverId: String) {
+        recordTargetStatus(tag, resolverId, TARGET_STATE_SCANNING, "scanning")
+    }
+
+    fun markTargetSuccess(tag: String, resolverId: String, detail: String?) {
+        recordTargetStatus(
+            tag,
+            resolverId,
+            TARGET_STATE_SUCCESS,
+            detail?.takeIf { it.isNotBlank() } ?: "resolved or fallback available",
+        )
+    }
+
+    fun markTargetError(tag: String, resolverId: String, detail: String?) {
+        recordTargetStatus(
+            tag,
+            resolverId,
+            TARGET_STATE_ERROR,
+            detail?.takeIf { it.isNotBlank() } ?: "scan failed",
+        )
+    }
+
+    fun readTargetStatus(resolverId: String): TargetStatus? {
+        val fingerprint = hostFingerprint() ?: return null
+        val prefs = statePrefs() ?: return null
+        val keyPrefix = targetStatusKeyPrefix(resolverId)
+        val storedFingerprint = prefs.getString("$keyPrefix.fingerprint", null) ?: return null
+        if (storedFingerprint != fingerprint) return null
+        val state = prefs.getString("$keyPrefix.state", null) ?: return null
+        return TargetStatus(
+            id = resolverId,
+            state = state,
+            detail = prefs.getString("$keyPrefix.detail", null),
+            updatedAt = prefs.getLong("$keyPrefix.updatedAt", 0L),
+        )
     }
 
     private fun ensureLoaded(tag: String): Boolean {
@@ -226,6 +336,38 @@ internal object DexKitCompat {
     private fun cacheKeyPrefix(resolverId: String): String =
         "$CACHE_PREFIX.${resolverId.replace(Regex("[^A-Za-z0-9_.-]"), "_")}"
 
+    private fun recordTargetStatus(
+        tag: String,
+        resolverId: String,
+        state: String,
+        detail: String?,
+    ) {
+        val fingerprint = hostFingerprint() ?: return
+        val keyPrefix = targetStatusKeyPrefix(resolverId)
+        statePrefs()?.edit()
+            ?.putString("$keyPrefix.fingerprint", fingerprint)
+            ?.putString("$keyPrefix.state", state)
+            ?.putString("$keyPrefix.detail", detail)
+            ?.putLong("$keyPrefix.updatedAt", System.currentTimeMillis())
+            ?.apply()
+        XposedCompat.logD("[$tag] DexKit status updated: $resolverId -> $state, $detail")
+    }
+
+    private fun removeTargetStatus(
+        editor: android.content.SharedPreferences.Editor,
+        resolverId: String,
+    ) {
+        val keyPrefix = targetStatusKeyPrefix(resolverId)
+        editor
+            .remove("$keyPrefix.fingerprint")
+            .remove("$keyPrefix.state")
+            .remove("$keyPrefix.detail")
+            .remove("$keyPrefix.updatedAt")
+    }
+
+    private fun targetStatusKeyPrefix(resolverId: String): String =
+        "$STATUS_PREFIX.${resolverId.replace(Regex("[^A-Za-z0-9_.-]"), "_")}"
+
     private fun hostFingerprint(): String? {
         val context = ConfigManager.getAppContext() ?: return null
         val packageName = context.packageName
@@ -246,6 +388,7 @@ internal object DexKitCompat {
             @Suppress("DEPRECATION")
             info.versionCode.toLong()
         }
-        return "$CACHE_SCHEMA|$packageName|${info.versionName.orEmpty()}|$versionCode"
+        return "$CACHE_SCHEMA|$packageName|${info.versionName.orEmpty()}|$versionCode|" +
+            "${BuildConfig.VERSION_NAME}|${BuildConfig.VERSION_CODE}"
     }
 }

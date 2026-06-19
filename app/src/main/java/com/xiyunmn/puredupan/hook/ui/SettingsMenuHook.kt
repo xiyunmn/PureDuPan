@@ -11,6 +11,9 @@ import android.graphics.Typeface
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -25,6 +28,8 @@ import android.widget.TextView
 import android.widget.Toast
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.Constants
+import com.xiyunmn.puredupan.hook.core.DexKitCacheWarmUp
+import com.xiyunmn.puredupan.hook.core.DexKitCompat
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.host.HostFeatureAvailabilityRegistry
 import com.xiyunmn.puredupan.hook.host.HostFlavor
@@ -352,9 +357,13 @@ object SettingsMenuHook {
                     UiText.Settings.EXPERIMENTAL_DEXKIT_LABEL,
                     UiText.Settings.EXPERIMENTAL_DEXKIT_DESC,
                     ConfigManager.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
-                    true,
+                    isIntlHost(context),
                     false,
-                    visible = hostCapabilities.supportsStandaloneHotStartSplashRemove,
+                    actionIcon = DexKitCacheWarmUp.summaryText(),
+                    onActionClick = {
+                        SettingsDebugActions.showDexKitStatusDialog(context)
+                    },
+                    visible = isIntlHost(context),
                 ),
                 SwitchItem(
                     UiText.Settings.DETAILED_LOGGING_LABEL,
@@ -1082,8 +1091,7 @@ object SettingsMenuHook {
                 UiText.Settings.BLOCK_INTL_STORY_DOUYIN_INIT_DESC,
                 null,
                 padding,
-                hostCapabilities(context).supportsIntlStoryDouyinInitBlock &&
-                    prefs.getBoolean(ConfigManager.KEY_ENABLE_EXPERIMENTAL_DEXKIT, false),
+                hostCapabilities(context).supportsIntlStoryDouyinInitBlock,
                 prefs.getBoolean(ConfigManager.KEY_BLOCK_INTL_STORY_DOUYIN_INIT, false),
             )
             val intlNonCoreDiffSocketDelayRow = createSwitchRow(
@@ -2642,6 +2650,9 @@ object SettingsMenuHook {
     private fun hostCapabilities(context: Context) =
         HostRegistry.requireByPackageName(context.packageName).capabilities
 
+    private fun isIntlHost(context: Context): Boolean =
+        HostRegistry.resolveByPackageName(context.packageName)?.flavor == HostFlavor.BAIDU_INTL
+
     private fun isFeatureVisible(context: Context, featureKey: String?): Boolean {
         if (featureKey.isNullOrBlank()) return true
         return ConfigManager.isFeatureAvailable(featureKey)
@@ -3245,7 +3256,7 @@ object SettingsMenuHook {
 
         if (description != null) {
             val tvDesc = TextView(context).apply {
-                text = description
+                text = emphasizeDexKitHint(description, tokens)
                 textSize = 11.5f
                 setTextColor(if (enabled) tokens.textSecondary else tokens.textMuted)
                 setPadding(0, (3 * density).toInt(), (14 * density).toInt(), 0)
@@ -3328,6 +3339,11 @@ object SettingsMenuHook {
                                 UiText.Settings.SETTINGS_SAVE_FAILED,
                                 Toast.LENGTH_SHORT,
                             ).show()
+                        } else if (
+                            prefKey == ConfigManager.KEY_ENABLE_EXPERIMENTAL_DEXKIT &&
+                            isChecked
+                        ) {
+                            DexKitCompat.markFullScanPending("dexkit switch enabled from settings")
                         }
                     }
                 }
@@ -3336,6 +3352,23 @@ object SettingsMenuHook {
         row.addView(sw)
 
         return row
+    }
+
+    private fun emphasizeDexKitHint(
+        description: String,
+        tokens: UiStyle.Tokens,
+    ): CharSequence {
+        val phrase = "启用 DexKit 解析后生效"
+        val start = description.indexOf(phrase)
+        if (start < 0) return description
+        return SpannableString(description).apply {
+            setSpan(
+                ForegroundColorSpan(tokens.accent),
+                start,
+                start + phrase.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+            )
+        }
     }
 
     private fun resolveSwitchChecked(

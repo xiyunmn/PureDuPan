@@ -2,6 +2,7 @@
 
 import android.content.Context
 import com.xiyunmn.puredupan.hook.config.ConfigManager
+import com.xiyunmn.puredupan.hook.core.DexKitCacheWarmUp
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.host.HostProfile
 import com.xiyunmn.puredupan.hook.host.HostRegistry
@@ -115,13 +116,20 @@ class MainHook : XposedModule() {
                 }
 
                 if (sPostAttachStaticHooksInstalled.compareAndSet(false, true)) {
+                    val settings = ConfigManager.snapshot()
                     HookInstaller.install(
                         HookInstallPlanner.postAttachPlan(
                             host = host,
                             processName = processName,
-                            settings = ConfigManager.snapshot(),
+                            settings = settings,
                         ),
                         cl,
+                    )
+                    DexKitCacheWarmUp.startIfNeeded(
+                        host = host,
+                        processName = processName,
+                        settings = settings,
+                        classLoader = cl,
                     )
                 }
 

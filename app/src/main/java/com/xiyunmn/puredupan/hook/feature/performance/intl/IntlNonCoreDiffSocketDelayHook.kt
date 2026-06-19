@@ -12,10 +12,11 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.HashMap
 import org.luckypray.dexkit.query.FindMethod
-import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object IntlNonCoreDiffSocketDelayHook {
+    const val SOCKET_REGISTER_CACHE_ID = "intl_non_core_diff_socket_register"
+
     // Current-version compatibility path only. The class name is verified with
     // action constants and method shape before use, and DexKit can resolve it
     // semantically when the obfuscated name changes.
@@ -177,6 +178,10 @@ internal object IntlNonCoreDiffSocketDelayHook {
         }
     }
 
+    internal fun warmUpDexKitCache(cl: ClassLoader): Boolean {
+        return resolveSocketRegisterMethod(cl) != null
+    }
+
     private fun resolveSocketRegisterMethod(cl: ClassLoader): Method? {
         return resolveSocketRegisterMethodWithDexKit(cl)
             ?: resolveSocketRegisterMethodByKnownClass(cl)
@@ -228,7 +233,6 @@ internal object IntlNonCoreDiffSocketDelayHook {
             return null
         }
 
-        val requiredActions = requiredSocketActions()
         val scanned = DexKitCompat.withBridge(TAG, cl) { bridge ->
                 bridge.setThreadNum(1)
                 bridge.findMethod(
@@ -236,11 +240,7 @@ internal object IntlNonCoreDiffSocketDelayHook {
                         .matcher(
                             MethodMatcher.create()
                                 .returnType(Void.TYPE)
-                                .paramTypes(String::class.java, function1Class)
-                                .declaredClass(
-                                    ClassMatcher.create()
-                                        .usingEqStrings(requiredActions),
-                                ),
+                                .paramTypes(String::class.java, function1Class),
                         ),
                 ).map { methodData ->
                     DexMethodCandidate(
@@ -513,5 +513,4 @@ internal object IntlNonCoreDiffSocketDelayHook {
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isIntlNonCoreDiffSocketDelayed
 
     private const val TAG = "IntlNonCoreDiffSocketDelayHook"
-    private const val SOCKET_REGISTER_CACHE_ID = "intl_non_core_diff_socket_register"
 }

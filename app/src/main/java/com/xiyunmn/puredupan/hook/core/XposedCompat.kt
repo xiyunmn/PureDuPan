@@ -40,7 +40,9 @@ object XposedCompat {
     fun currentPackageName(): String? = currentPackageName
 
     internal fun initializeFileLogging(context: Context) {
-        HookFileLogger.initialize(context)
+        if (ConfigManager.shouldOutputDetailedLogs()) {
+            HookFileLogger.initialize(context)
+        }
     }
 
     internal fun clearLogFiles(context: Context?): HookFileLogger.ClearResult {
@@ -67,14 +69,14 @@ object XposedCompat {
 
         android.util.Log.println(priority, LOG_TAG, msg)
         module?.log(priority, LOG_TAG, msg)
-        HookFileLogger.write(priority, LOG_TAG, msg)
+        writeFileLogIfEnabled(priority, msg)
     }
 
     fun logD(msg: String) {
         if (!ConfigManager.shouldOutputDetailedLogs()) return
         android.util.Log.d(LOG_TAG, msg)
         module?.log(android.util.Log.DEBUG, LOG_TAG, msg)
-        HookFileLogger.write(android.util.Log.DEBUG, LOG_TAG, msg)
+        writeFileLogIfEnabled(android.util.Log.DEBUG, msg)
     }
 
     inline fun logD(msg: () -> String) {
@@ -85,13 +87,13 @@ object XposedCompat {
     fun logW(msg: String) {
         android.util.Log.w(LOG_TAG, msg)
         module?.log(android.util.Log.WARN, LOG_TAG, msg)
-        HookFileLogger.write(android.util.Log.WARN, LOG_TAG, msg)
+        writeFileLogIfEnabled(android.util.Log.WARN, msg)
     }
 
     fun logE(msg: String) {
         android.util.Log.e(LOG_TAG, msg)
         module?.log(android.util.Log.ERROR, LOG_TAG, msg)
-        HookFileLogger.write(android.util.Log.ERROR, LOG_TAG, msg)
+        writeFileLogIfEnabled(android.util.Log.ERROR, msg)
     }
 
     fun log(t: Throwable) {
@@ -101,7 +103,7 @@ object XposedCompat {
         // Always output summary
         android.util.Log.e(LOG_TAG, summary)
         module?.log(android.util.Log.ERROR, LOG_TAG, summary)
-        HookFileLogger.write(android.util.Log.ERROR, LOG_TAG, summary)
+        writeFileLogIfEnabled(android.util.Log.ERROR, summary)
 
         // Always output stack trace (truncated in release mode)
         val truncated = if (ConfigManager.shouldOutputDetailedLogs()) {
@@ -112,7 +114,12 @@ object XposedCompat {
 
         android.util.Log.e(LOG_TAG, truncated)
         module?.log(android.util.Log.ERROR, LOG_TAG, truncated)
-        HookFileLogger.write(android.util.Log.ERROR, LOG_TAG, truncated)
+        writeFileLogIfEnabled(android.util.Log.ERROR, truncated)
+    }
+
+    private fun writeFileLogIfEnabled(priority: Int, msg: String) {
+        if (!ConfigManager.shouldOutputDetailedLogs()) return
+        HookFileLogger.write(priority, LOG_TAG, msg)
     }
 
     private fun isSuccessfulHookInstallLog(msg: String): Boolean {

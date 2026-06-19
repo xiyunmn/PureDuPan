@@ -11,10 +11,11 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import org.luckypray.dexkit.query.FindMethod
-import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object IntlStoryDouyinInitBlockHook {
+    const val STORY_INIT_CACHE_ID = "intl_story_douyin_story_init"
+
     private const val DOUYIN_OPEN_API_FACTORY_CLASS_NAME =
         "com.bytedance.sdk.open.douyin.DouYinOpenApiFactory"
     private const val DOUYIN_OPEN_CONFIG_CLASS_NAME = "com.bytedance.sdk.open.douyin.DouYinOpenConfig"
@@ -22,6 +23,7 @@ internal object IntlStoryDouyinInitBlockHook {
     private val storySemanticTokens = listOf(
         "initStory",
         "application",
+        "initDouyinSdk",
         "BaiduNetDiskModules_Story",
     )
 
@@ -151,6 +153,10 @@ internal object IntlStoryDouyinInitBlockHook {
         }
     }
 
+    internal fun warmUpDexKitCache(cl: ClassLoader): Boolean {
+        return resolveStoryInitMethod(cl) != null
+    }
+
     private fun resolveStoryInitMethod(cl: ClassLoader): Method? {
         if (!ConfigManager.isExperimentalDexKitEnabled) {
             XposedCompat.logD("[IntlStoryDouyinInitBlockHook] story init DexKit resolve skipped: config disabled")
@@ -173,11 +179,7 @@ internal object IntlStoryDouyinInitBlockHook {
                             MethodMatcher.create()
                                 .modifiers(Modifier.STATIC)
                                 .returnType(Void.TYPE)
-                                .paramTypes(Application::class.java)
-                                .declaredClass(
-                                    ClassMatcher.create()
-                                        .usingStrings(storySemanticTokens),
-                                ),
+                                .paramTypes(Application::class.java),
                         ),
                 ).map { methodData ->
                     DexMethodCandidate(
@@ -233,9 +235,8 @@ internal object IntlStoryDouyinInitBlockHook {
     }
 
     private fun resolveStoryInitRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
-        if (!ref.className.startsWith("com.baidu.netdisk.newstory.")) return null
         val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
-        if (!metadataContains(clazz, "initStory")) return null
+        if (!metadataContainsAll(clazz, storySemanticTokens)) return null
         return clazz.declaredMethods.firstOrNull { method ->
             method.name == ref.methodName &&
                 Modifier.isStatic(method.modifiers) &&
@@ -276,14 +277,21 @@ internal object IntlStoryDouyinInitBlockHook {
         return candidates.single().apply { isAccessible = true }
     }
 
-    private fun metadataContains(clazz: Class<*>, token: String): Boolean {
+    private fun metadataContainsAll(clazz: Class<*>, tokens: Collection<String>): Boolean {
+        val metadataTokens = metadataTokens(clazz)
+        return tokens.all { token ->
+            metadataTokens.any { it == token || it.startsWith(token) }
+        }
+    }
+
+    private fun metadataTokens(clazz: Class<*>): Set<String> {
         val metadata = clazz.declaredAnnotations.firstOrNull {
             it.annotationClass.java.name == "kotlin.Metadata"
-        } ?: return false
+        } ?: return emptySet()
         val d2 = runCatching {
             metadata.annotationClass.java.getDeclaredMethod("d2").invoke(metadata) as? Array<*>
-        }.getOrNull() ?: return false
-        return d2.any { it == token }
+        }.getOrNull() ?: return emptySet()
+        return d2.filterIsInstance<String>().toSet()
     }
 
     private fun shouldBlockStoryInit(): Boolean {
@@ -434,5 +442,4 @@ internal object IntlStoryDouyinInitBlockHook {
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isIntlStoryDouyinInitBlocked
 
     private const val TAG = "IntlStoryDouyinInitBlockHook"
-    private const val STORY_INIT_CACHE_ID = "intl_story_douyin_story_init"
 }

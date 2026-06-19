@@ -5,8 +5,10 @@ import android.content.SharedPreferences
 import com.xiyunmn.puredupan.hook.BuildConfig
 import com.xiyunmn.puredupan.hook.config.model.FeatureAvailabilityState
 import com.xiyunmn.puredupan.hook.config.model.FeatureAvailabilityStatus
+import com.xiyunmn.puredupan.hook.core.DexKitCompat
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.host.HostFeatureAvailabilityRegistry
+import com.xiyunmn.puredupan.hook.host.HostFlavor
 import com.xiyunmn.puredupan.hook.host.HostRegistry
 
 object ConfigManager {
@@ -246,10 +248,12 @@ object ConfigManager {
                 HostFeatureAvailabilityRegistry.featureStatusMapFor(appCtx.packageName),
             )
             migrateLegacyPrefsIfNeeded(appCtx, p, targetPrefsName)
-            XposedCompat.initializeFileLogging(appCtx)
             ensureUserSettingsVersion(p)
 
             val snapshot = refreshUserSettingsSnapshot(p)
+            if (snapshot.isDetailedLoggingEnabled) {
+                XposedCompat.initializeFileLogging(appCtx)
+            }
             logSettingsSnapshot("init", snapshot)
             ensurePrefsListener(p)
         }
@@ -273,7 +277,14 @@ object ConfigManager {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, _ ->
             synchronized(this@ConfigManager) {
                 if (prefs !== sharedPrefs) return@OnSharedPreferenceChangeListener
+                val wasDexKitEnabled = settingsSnapshot.isExperimentalDexKitEnabled
                 val snapshot = refreshUserSettingsSnapshot(sharedPrefs)
+                if (!wasDexKitEnabled && snapshot.isExperimentalDexKitEnabled) {
+                    DexKitCompat.markFullScanPending("dexkit switch enabled")
+                }
+                if (snapshot.isDetailedLoggingEnabled) {
+                    appContext?.let { XposedCompat.initializeFileLogging(it) }
+                }
                 logSettingsSnapshot("prefsChanged", snapshot)
             }
         }
@@ -449,8 +460,9 @@ object ConfigManager {
                 featureBoolean(KEY_BLOCK_INTL_ALBUM_AI_INIT, false)
 
         return SettingsSnapshot(
-            isDetailedLoggingEnabled = featureBoolean(KEY_ENABLE_DETAILED_LOGGING),
-            isExperimentalDexKitEnabled = p.getBoolean(KEY_ENABLE_EXPERIMENTAL_DEXKIT, false),
+            isDetailedLoggingEnabled = p.getBoolean(KEY_ENABLE_DETAILED_LOGGING, false),
+            isExperimentalDexKitEnabled = p.getBoolean(KEY_ENABLE_EXPERIMENTAL_DEXKIT, false) &&
+                isCurrentHostIntl(),
             isSplashInterstitialBlockEnabled = featureBoolean(KEY_BLOCK_SPLASH_INTERSTITIAL, false),
             isHotStartSplashRemoveEnabled = featureBoolean(KEY_REMOVE_HOT_START_SPLASH, false),
             isInAppDialogBlocked = featureBoolean(KEY_BLOCK_IN_APP_DIALOG, false),
@@ -631,6 +643,11 @@ object ConfigManager {
             isBottomBarTabMineHidden = featureBoolean(KEY_HIDE_TAB_MINE, false),
             areRestrictedFeaturesUnlocked = p.getBoolean(KEY_RESTRICTED_FEATURES_UNLOCKED, false),
         )
+    }
+
+    private fun isCurrentHostIntl(): Boolean {
+        val packageName = appContext?.packageName ?: XposedCompat.currentPackageName() ?: return false
+        return HostRegistry.resolveByPackageName(packageName)?.flavor == HostFlavor.BAIDU_INTL
     }
 
     private fun Int.floorMod360(): Int {

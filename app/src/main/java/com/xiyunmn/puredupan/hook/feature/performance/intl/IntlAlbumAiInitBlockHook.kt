@@ -11,10 +11,11 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import org.luckypray.dexkit.query.FindMethod
-import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object IntlAlbumAiInitBlockHook {
+    const val DIRECT_ALBUM_AI_INIT_CACHE_ID = "intl_album_ai_direct_init"
+
     private const val ALBUM_CONTEXT_CLASS_NAME =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_service_album.AlbumContext"
     private const val ALBUM_COMPANION_CLASS_NAME =
@@ -41,11 +42,13 @@ internal object IntlAlbumAiInitBlockHook {
 
     private val albumSemanticTokens = listOf(
         "initAlbumService",
+        "application",
         "startAiPanelActivity",
         "startAiSearchActivity",
         "getImagePreviewNlpActivityIntent",
         "jumpAiLabActivity",
         "showShareDialog",
+        "BaiduNetDiskModules_business_album",
     )
 
     private data class StableInitFallback(
@@ -112,6 +115,11 @@ internal object IntlAlbumAiInitBlockHook {
         }
     }
 
+    internal fun warmUpDexKitCache(cl: ClassLoader): Boolean {
+        return resolveDirectAlbumAiInitMethod(cl) != null ||
+            resolveStableInitFallbackMethods(cl).isNotEmpty()
+    }
+
     private fun hookStableInitMethods(cl: ClassLoader): Int {
         var installed = 0
         installed += hookNamedInitMethods(ALBUM_CONTEXT_CLASS_NAME, cl)
@@ -122,18 +130,8 @@ internal object IntlAlbumAiInitBlockHook {
 
     private fun hookNamedInitMethods(className: String, cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
-        val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
-            XposedCompat.logD("[IntlAlbumAiInitBlockHook] class NOT FOUND: $className")
-            return 0
-        }
-
         var installed = 0
-        for (method in clazz.declaredMethods) {
-            if (method.name != INIT_ALBUM_SERVICE_METHOD_NAME) continue
-            if (method.returnType != Void.TYPE) continue
-            if (method.parameterTypes.size != 1) continue
-            if (!Application::class.java.isAssignableFrom(method.parameterTypes[0])) continue
-            method.isAccessible = true
+        for (method in resolveNamedInitMethods(className, cl, logMissing = true)) {
             mod.hook(method).intercept { chain ->
                 val application = chain.args.firstOrNull() as? Application
                 if (application == null || !shouldBlockInit()) {
@@ -155,6 +153,38 @@ internal object IntlAlbumAiInitBlockHook {
             installed++
         }
         return installed
+    }
+
+    private fun resolveStableInitFallbackMethods(cl: ClassLoader): List<Method> {
+        return listOf(
+            ALBUM_CONTEXT_CLASS_NAME,
+            ALBUM_COMPANION_CLASS_NAME,
+            ALBUM_AGGREGATE_CLASS_NAME,
+        ).flatMap { className ->
+            resolveNamedInitMethods(className, cl, logMissing = false)
+        }
+    }
+
+    private fun resolveNamedInitMethods(
+        className: String,
+        cl: ClassLoader,
+        logMissing: Boolean,
+    ): List<Method> {
+        val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
+            if (logMissing) {
+                XposedCompat.logD("[IntlAlbumAiInitBlockHook] class NOT FOUND: $className")
+            }
+            return emptyList()
+        }
+
+        return clazz.declaredMethods.filter { method ->
+            method.name == INIT_ALBUM_SERVICE_METHOD_NAME &&
+                method.returnType == Void.TYPE &&
+                method.parameterTypes.size == 1 &&
+                Application::class.java.isAssignableFrom(method.parameterTypes[0])
+        }.onEach { method ->
+            method.isAccessible = true
+        }
     }
 
     private fun hookDirectInitMethod(method: Method): Boolean {
@@ -306,6 +336,11 @@ internal object IntlAlbumAiInitBlockHook {
     }
 
     private fun resolveDirectAlbumAiInitMethod(cl: ClassLoader): Method? {
+        if (!ConfigManager.isExperimentalDexKitEnabled) {
+            XposedCompat.logD("[IntlAlbumAiInitBlockHook] direct DexKit resolve skipped: config disabled")
+            return null
+        }
+
         when (val cached = DexKitCompat.getCachedMethod(TAG, DIRECT_ALBUM_AI_INIT_CACHE_ID) { ref ->
             resolveDirectAlbumAiInitRef(cl, ref)
         }) {
@@ -318,16 +353,11 @@ internal object IntlAlbumAiInitBlockHook {
                 bridge.setThreadNum(1)
                 bridge.findMethod(
                     FindMethod.create()
-                        .excludePackages("rubik.generate")
                         .matcher(
                             MethodMatcher.create()
                                 .modifiers(Modifier.STATIC)
                                 .returnType(Void.TYPE)
-                                .paramTypes(Application::class.java)
-                                .declaredClass(
-                                    ClassMatcher.create()
-                                        .usingStrings(albumSemanticTokens),
-                                ),
+                                .paramTypes(Application::class.java),
                         ),
                 ).map { methodData ->
                     DexMethodCandidate(
@@ -396,7 +426,9 @@ internal object IntlAlbumAiInitBlockHook {
 
     private fun isExpectedAlbumAiComponentClass(clazz: Class<*>): Boolean {
         val tokens = metadataTokens(clazz)
-        return albumSemanticTokens.all { token -> token in tokens }
+        return albumSemanticTokens.all { token ->
+            tokens.any { it == token || it.startsWith(token) }
+        }
     }
 
     private fun metadataTokens(clazz: Class<*>): Set<String> {
@@ -413,5 +445,4 @@ internal object IntlAlbumAiInitBlockHook {
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isIntlAlbumAiInitBlocked
 
     private const val TAG = "IntlAlbumAiInitBlockHook"
-    private const val DIRECT_ALBUM_AI_INIT_CACHE_ID = "intl_album_ai_direct_init"
 }
