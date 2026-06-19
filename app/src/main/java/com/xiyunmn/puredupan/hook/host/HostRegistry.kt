@@ -53,6 +53,7 @@ internal object HostRegistry {
             supportsIntlOfflinePackageSyncDelay = true,
             supportsIntlFeedPreloadDelay = true,
             supportsIntlTaskScoreRefreshDelay = true,
+            supportsIntlStoryDouyinInitBlock = true,
             supportsMemberCardCustomize = true,
         ),
     )

@@ -190,6 +190,8 @@ object UiText {
         const val DELAY_INTL_FEED_PRELOAD_DESC = "仅国际版。启动期先跳过首页 Feed 预加载，首页稳定后用原参数自动恢复，手动刷新与后续加载不拦截"
         const val DELAY_INTL_TASK_SCORE_REFRESH_LABEL = "延后任务积分刷新"
         const val DELAY_INTL_TASK_SCORE_REFRESH_DESC = "仅国际版。启动期先跳过任务积分/会员频道的非强制刷新，首页稳定后或进入会员任务入口前自动恢复；强制刷新不拦截"
+        const val BLOCK_INTL_STORY_DOUYIN_INIT_LABEL = "阻止 Story/DouYin 初始化"
+        const val BLOCK_INTL_STORY_DOUYIN_INIT_DESC = "仅国际版。启动期阻止 Story 视频预加载、Story UI 服务与 DouYin SDK 初始化；进入 Story/短视频或 DouYin 分享/授权入口时按需恢复"
         const val ACTION_ICON_SETTINGS = "⚙"
         const val ACTION_ICON_GALLERY = "相册"
         const val ACTION_ICON_CLEAR = "清除"

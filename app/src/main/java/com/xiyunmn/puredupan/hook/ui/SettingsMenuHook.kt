@@ -1075,6 +1075,16 @@ object SettingsMenuHook {
                 hostCapabilities(context).supportsIntlTaskScoreRefreshDelay,
                 prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_TASK_SCORE_REFRESH, false),
             )
+            val intlStoryDouyinInitBlockRow = createSwitchRow(
+                context,
+                prefs,
+                UiText.Settings.BLOCK_INTL_STORY_DOUYIN_INIT_LABEL,
+                UiText.Settings.BLOCK_INTL_STORY_DOUYIN_INIT_DESC,
+                null,
+                padding,
+                hostCapabilities(context).supportsIntlStoryDouyinInitBlock,
+                prefs.getBoolean(ConfigManager.KEY_BLOCK_INTL_STORY_DOUYIN_INIT, false),
+            )
             addTitledSection(
                 root = root,
                 context = context,
@@ -1089,6 +1099,7 @@ object SettingsMenuHook {
                     ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC to intlOfflinePackageSyncDelayRow,
                     ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD to intlFeedPreloadDelayRow,
                     ConfigManager.KEY_DELAY_INTL_TASK_SCORE_REFRESH to intlTaskScoreRefreshDelayRow,
+                    ConfigManager.KEY_BLOCK_INTL_STORY_DOUYIN_INIT to intlStoryDouyinInitBlockRow,
                 ),
             )
             addTitledSection(
@@ -1176,6 +1187,7 @@ object SettingsMenuHook {
             val intlOfflinePackageSyncDelaySwitch = findSwitchView(intlOfflinePackageSyncDelayRow)
             val intlFeedPreloadDelaySwitch = findSwitchView(intlFeedPreloadDelayRow)
             val intlTaskScoreRefreshDelaySwitch = findSwitchView(intlTaskScoreRefreshDelayRow)
+            val intlStoryDouyinInitBlockSwitch = findSwitchView(intlStoryDouyinInitBlockRow)
             if (
                 garbageCleanSwitch == null ||
                 datapackSocketSwitch == null ||
@@ -1192,7 +1204,8 @@ object SettingsMenuHook {
                 b2fGuidancePrefetchSwitch == null ||
                 intlOfflinePackageSyncDelaySwitch == null ||
                 intlFeedPreloadDelaySwitch == null ||
-                intlTaskScoreRefreshDelaySwitch == null
+                intlTaskScoreRefreshDelaySwitch == null ||
+                intlStoryDouyinInitBlockSwitch == null
             ) {
                 XposedCompat.logW("[SettingsMenuHook] showPerformanceOptimizeDialog failed: switch view missing")
                 return
@@ -1222,7 +1235,8 @@ object SettingsMenuHook {
                             b2fGuidancePrefetchSwitch.isChecked ||
                             intlOfflinePackageSyncDelaySwitch.isChecked ||
                             intlFeedPreloadDelaySwitch.isChecked ||
-                            intlTaskScoreRefreshDelaySwitch.isChecked
+                            intlTaskScoreRefreshDelaySwitch.isChecked ||
+                            intlStoryDouyinInitBlockSwitch.isChecked
                     prefs.edit()
                         .putBoolean(ConfigManager.KEY_PERFORMANCE_OPTIMIZE, hasEnabledPerformanceOption)
                         .putBoolean(
@@ -1288,6 +1302,10 @@ object SettingsMenuHook {
                         .putBoolean(
                             ConfigManager.KEY_DELAY_INTL_TASK_SCORE_REFRESH,
                             intlTaskScoreRefreshDelaySwitch.isChecked,
+                        )
+                        .putBoolean(
+                            ConfigManager.KEY_BLOCK_INTL_STORY_DOUYIN_INIT,
+                            intlStoryDouyinInitBlockSwitch.isChecked,
                         )
                         .apply()
                     Toast.makeText(
@@ -2804,7 +2822,9 @@ object SettingsMenuHook {
             isFeatureVisible(context, ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD) &&
             prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD, false) ||
             isFeatureVisible(context, ConfigManager.KEY_DELAY_INTL_TASK_SCORE_REFRESH) &&
-            prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_TASK_SCORE_REFRESH, false)
+            prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_TASK_SCORE_REFRESH, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_BLOCK_INTL_STORY_DOUYIN_INIT) &&
+            prefs.getBoolean(ConfigManager.KEY_BLOCK_INTL_STORY_DOUYIN_INIT, false)
     }
 
     private fun createMemberCardBackgroundImageRow(

@@ -87,6 +87,7 @@ data class SettingsSnapshot(
     val isIntlOfflinePackageSyncDelayed: Boolean = false,
     val isIntlFeedPreloadDelayed: Boolean = false,
     val isIntlTaskScoreRefreshDelayed: Boolean = false,
+    val isIntlStoryDouyinInitBlocked: Boolean = false,
 
     // Bottom bar customization
     val isBottomBarCustomEnabled: Boolean = false,

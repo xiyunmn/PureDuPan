@@ -97,6 +97,7 @@ object ConfigManager {
     const val KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC = "delay_intl_offline_package_sync"
     const val KEY_DELAY_INTL_FEED_PRELOAD = "delay_intl_feed_preload"
     const val KEY_DELAY_INTL_TASK_SCORE_REFRESH = "delay_intl_task_score_refresh"
+    const val KEY_BLOCK_INTL_STORY_DOUYIN_INIT = "block_intl_story_douyin_init"
     const val KEY_PERFORMANCE_OPTIMIZE = "performance_optimize"
     const val KEY_RESTRICTED_FEATURES_UNLOCKED = "restricted_features_unlocked"
     const val KEY_DISCLAIMER_ACCEPTED = "disclaimer_accepted"
@@ -206,6 +207,8 @@ object ConfigManager {
         get() = settingsSnapshot.isIntlFeedPreloadDelayed
     val isIntlTaskScoreRefreshDelayed: Boolean
         get() = settingsSnapshot.isIntlTaskScoreRefreshDelayed
+    val isIntlStoryDouyinInitBlocked: Boolean
+        get() = settingsSnapshot.isIntlStoryDouyinInitBlocked
     val areRestrictedFeaturesUnlocked: Boolean
         get() = settingsSnapshot.areRestrictedFeaturesUnlocked
 
@@ -422,7 +425,8 @@ object ConfigManager {
                 featureBoolean(KEY_DISABLE_B2F_GUIDANCE_PREFETCH, false) ||
                 featureBoolean(KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC, false) ||
                 featureBoolean(KEY_DELAY_INTL_FEED_PRELOAD, false) ||
-                featureBoolean(KEY_DELAY_INTL_TASK_SCORE_REFRESH, false)
+                featureBoolean(KEY_DELAY_INTL_TASK_SCORE_REFRESH, false) ||
+                featureBoolean(KEY_BLOCK_INTL_STORY_DOUYIN_INIT, false)
 
         return SettingsSnapshot(
             isDetailedLoggingEnabled = featureBoolean(KEY_ENABLE_DETAILED_LOGGING),
@@ -572,6 +576,10 @@ object ConfigManager {
             ),
             isIntlTaskScoreRefreshDelayed = featureBoolean(
                 KEY_DELAY_INTL_TASK_SCORE_REFRESH,
+                false,
+            ),
+            isIntlStoryDouyinInitBlocked = featureBoolean(
+                KEY_BLOCK_INTL_STORY_DOUYIN_INIT,
                 false,
             ),
             isBottomBarCustomEnabled = p.getBoolean(KEY_CUSTOM_BOTTOM_BAR, hasBottomBarOptionEnabled),
