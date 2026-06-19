@@ -1055,6 +1055,16 @@ object SettingsMenuHook {
                 hostCapabilities(context).supportsIntlOfflinePackageSyncDelay,
                 prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC, false),
             )
+            val intlFeedPreloadDelayRow = createSwitchRow(
+                context,
+                prefs,
+                UiText.Settings.DELAY_INTL_FEED_PRELOAD_LABEL,
+                UiText.Settings.DELAY_INTL_FEED_PRELOAD_DESC,
+                null,
+                padding,
+                hostCapabilities(context).supportsIntlFeedPreloadDelay,
+                prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD, false),
+            )
             addTitledSection(
                 root = root,
                 context = context,
@@ -1067,6 +1077,7 @@ object SettingsMenuHook {
                 rows = visibleRows(
                     context,
                     ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC to intlOfflinePackageSyncDelayRow,
+                    ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD to intlFeedPreloadDelayRow,
                 ),
             )
             addTitledSection(
@@ -1152,6 +1163,7 @@ object SettingsMenuHook {
             val iconResourceDownloadSwitch = findSwitchView(iconResourceDownloadRow)
             val b2fGuidancePrefetchSwitch = findSwitchView(b2fGuidancePrefetchRow)
             val intlOfflinePackageSyncDelaySwitch = findSwitchView(intlOfflinePackageSyncDelayRow)
+            val intlFeedPreloadDelaySwitch = findSwitchView(intlFeedPreloadDelayRow)
             if (
                 garbageCleanSwitch == null ||
                 datapackSocketSwitch == null ||
@@ -1166,7 +1178,8 @@ object SettingsMenuHook {
                 mediaBrowserServiceAutostartSwitch == null ||
                 iconResourceDownloadSwitch == null ||
                 b2fGuidancePrefetchSwitch == null ||
-                intlOfflinePackageSyncDelaySwitch == null
+                intlOfflinePackageSyncDelaySwitch == null ||
+                intlFeedPreloadDelaySwitch == null
             ) {
                 XposedCompat.logW("[SettingsMenuHook] showPerformanceOptimizeDialog failed: switch view missing")
                 return
@@ -1194,7 +1207,8 @@ object SettingsMenuHook {
                             mediaBrowserServiceAutostartSwitch.isChecked ||
                             iconResourceDownloadSwitch.isChecked ||
                             b2fGuidancePrefetchSwitch.isChecked ||
-                            intlOfflinePackageSyncDelaySwitch.isChecked
+                            intlOfflinePackageSyncDelaySwitch.isChecked ||
+                            intlFeedPreloadDelaySwitch.isChecked
                     prefs.edit()
                         .putBoolean(ConfigManager.KEY_PERFORMANCE_OPTIMIZE, hasEnabledPerformanceOption)
                         .putBoolean(
@@ -1252,6 +1266,10 @@ object SettingsMenuHook {
                         .putBoolean(
                             ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC,
                             intlOfflinePackageSyncDelaySwitch.isChecked,
+                        )
+                        .putBoolean(
+                            ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD,
+                            intlFeedPreloadDelaySwitch.isChecked,
                         )
                         .apply()
                     Toast.makeText(
@@ -2764,7 +2782,9 @@ object SettingsMenuHook {
             isFeatureVisible(context, ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH, false) ||
             isFeatureVisible(context, ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC) &&
-            prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC, false)
+            prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD) &&
+            prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD, false)
     }
 
     private fun createMemberCardBackgroundImageRow(

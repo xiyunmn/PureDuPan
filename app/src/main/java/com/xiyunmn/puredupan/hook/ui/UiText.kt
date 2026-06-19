@@ -186,6 +186,8 @@ object UiText {
         const val DISABLE_B2F_GUIDANCE_PREFETCH_DESC = "阻止启动异步阶段预拉取回流引导和运营弹窗数据；不清理引导状态，相关弹窗可能减少或按需变慢"
         const val DELAY_INTL_OFFLINE_PACKAGE_SYNC_LABEL = "延后 H5 离线包同步"
         const val DELAY_INTL_OFFLINE_PACKAGE_SYNC_DESC = "仅国际版。启动期先跳过 H5 离线包配置监听和自动下载队列，首页稳定后或进入 H5 页面前自动恢复"
+        const val DELAY_INTL_FEED_PRELOAD_LABEL = "延后首页 Feed 预加载"
+        const val DELAY_INTL_FEED_PRELOAD_DESC = "仅国际版。启动期先跳过首页 Feed 预加载，首页稳定后用原参数自动恢复，手动刷新与后续加载不拦截"
         const val ACTION_ICON_SETTINGS = "⚙"
         const val ACTION_ICON_GALLERY = "相册"
         const val ACTION_ICON_CLEAR = "清除"

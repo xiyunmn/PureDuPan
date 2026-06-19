@@ -95,6 +95,7 @@ object ConfigManager {
     const val KEY_DISABLE_ICON_RESOURCE_DOWNLOAD = "disable_icon_resource_download"
     const val KEY_DISABLE_B2F_GUIDANCE_PREFETCH = "disable_b2f_guidance_prefetch"
     const val KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC = "delay_intl_offline_package_sync"
+    const val KEY_DELAY_INTL_FEED_PRELOAD = "delay_intl_feed_preload"
     const val KEY_PERFORMANCE_OPTIMIZE = "performance_optimize"
     const val KEY_RESTRICTED_FEATURES_UNLOCKED = "restricted_features_unlocked"
     const val KEY_DISCLAIMER_ACCEPTED = "disclaimer_accepted"
@@ -200,6 +201,8 @@ object ConfigManager {
         get() = settingsSnapshot.isB2fGuidancePrefetchDisabled
     val isIntlOfflinePackageSyncDelayed: Boolean
         get() = settingsSnapshot.isIntlOfflinePackageSyncDelayed
+    val isIntlFeedPreloadDelayed: Boolean
+        get() = settingsSnapshot.isIntlFeedPreloadDelayed
     val areRestrictedFeaturesUnlocked: Boolean
         get() = settingsSnapshot.areRestrictedFeaturesUnlocked
 
@@ -414,7 +417,8 @@ object ConfigManager {
                 featureBoolean(KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART, false) ||
                 featureBoolean(KEY_DISABLE_ICON_RESOURCE_DOWNLOAD, false) ||
                 featureBoolean(KEY_DISABLE_B2F_GUIDANCE_PREFETCH, false) ||
-                featureBoolean(KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC, false)
+                featureBoolean(KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC, false) ||
+                featureBoolean(KEY_DELAY_INTL_FEED_PRELOAD, false)
 
         return SettingsSnapshot(
             isDetailedLoggingEnabled = featureBoolean(KEY_ENABLE_DETAILED_LOGGING),
@@ -556,6 +560,10 @@ object ConfigManager {
             ),
             isIntlOfflinePackageSyncDelayed = featureBoolean(
                 KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC,
+                false,
+            ),
+            isIntlFeedPreloadDelayed = featureBoolean(
+                KEY_DELAY_INTL_FEED_PRELOAD,
                 false,
             ),
             isBottomBarCustomEnabled = p.getBoolean(KEY_CUSTOM_BOTTOM_BAR, hasBottomBarOptionEnabled),

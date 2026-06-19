@@ -20,6 +20,7 @@ internal object HostFeatureAvailabilityRegistry {
         ConfigManager.KEY_HIDE_INTL_MEMBER_CARD_SVIP_LEVEL,
         ConfigManager.KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON,
         ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC,
+        ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD,
     )
 
     private val intlDisabledKeys = setOf(
