@@ -11,13 +11,11 @@ import java.lang.reflect.Method
 internal object IntlOfflinePackageSyncDelayHook {
     private const val DYNAMIC_CONTEXT_CLASS_NAME =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_dynamic.DynamicContext"
-    private const val DYNAMIC_PROVIDER_CLASS_NAME = "com.baidu.netdisk.dynamic.main.provider.C_"
     private const val FAST_WEB_VIEW_CLIENT_CLASS_NAME = "com.baidu.netdisk.webview.FastWebViewClient"
     private const val OFFLINE_H5_PACKAGE_ACTIVITY_CLASS_NAME =
         "com.baidu.netdisk.ui.webview.OfflineH5PackageActivity"
     private const val MAIN_ACTIVITY_CLASS_NAME = "com.baidu.netdisk.ui.MainActivity"
     private const val START_SYNC_METHOD_NAME = "startSyncOfflinePackages"
-    private const val PROVIDER_START_SYNC_METHOD_NAME = "d"
     private const val HOME_STABLE_RESTORE_DELAY_MS = 2500L
 
     private val hookState = HookState()
@@ -79,15 +77,11 @@ internal object IntlOfflinePackageSyncDelayHook {
     }
 
     private fun resolveStartSyncMethod(cl: ClassLoader): Method? {
+        // Prefer the Rubik generated context. The provider implementation class is a short
+        // obfuscated name in the intl host, so relying on it would not survive version changes.
         val contextClass = XposedCompat.findClassOrNull(DYNAMIC_CONTEXT_CLASS_NAME, cl)
-        val contextMethod = contextClass?.let {
+        return contextClass?.let {
             XposedCompat.findMethodOrNull(it, START_SYNC_METHOD_NAME)
-        }
-        if (contextMethod != null) return contextMethod
-
-        val providerClass = XposedCompat.findClassOrNull(DYNAMIC_PROVIDER_CLASS_NAME, cl)
-        return providerClass?.let {
-            XposedCompat.findMethodOrNull(it, PROVIDER_START_SYNC_METHOD_NAME)
         }
     }
 
