@@ -6,8 +6,6 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 
 internal object IntlHotStartSplashRemoveHook {
-    private const val STABLE_CLASS_NAME = "f6.e"
-    private const val STABLE_METHOD_NAME = "q"
     private const val SPLASH_AD_ACTIVITY_CLASS_NAME = "com.baidu.netdisk.advertise.ui.SplashAdActivity"
 
     private val hookState = HookState()
@@ -20,10 +18,7 @@ internal object IntlHotStartSplashRemoveHook {
         try {
             hookSplashAdActivity(cl)
 
-            val stableMethod = XposedCompat.findClassOrNull(STABLE_CLASS_NAME, cl)?.let {
-                XposedCompat.findMethodOrNull(it, STABLE_METHOD_NAME, Activity::class.java)
-            }
-            val resolvedMethod = stableMethod ?: resolveWithDexKit(cl)
+            val resolvedMethod = resolveWithDexKit(cl)
 
             if (resolvedMethod == null) {
                 XposedCompat.log("[IntlHotStartSplashRemoveHook] hot start entry NOT FOUND, fallback only")

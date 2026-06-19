@@ -5,15 +5,25 @@ import android.app.Application
 import android.content.Intent
 import android.os.Bundle
 import com.xiyunmn.puredupan.hook.config.ConfigManager
+import com.xiyunmn.puredupan.hook.core.DexKitCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
+import org.luckypray.dexkit.query.FindMethod
+import org.luckypray.dexkit.query.matchers.ClassMatcher
+import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object IntlStoryDouyinInitBlockHook {
-    private const val NEW_STORY_COMPONENT_CLASS_NAME = "com.baidu.netdisk.newstory.component.c"
-    private const val DOUYIN_OPEN_API_FACTORY_CLASS_NAME = "com.bytedance.sdk.open.douyin.a"
+    private const val DOUYIN_OPEN_API_FACTORY_CLASS_NAME =
+        "com.bytedance.sdk.open.douyin.DouYinOpenApiFactory"
     private const val DOUYIN_OPEN_CONFIG_CLASS_NAME = "com.bytedance.sdk.open.douyin.DouYinOpenConfig"
+
+    private val storySemanticTokens = listOf(
+        "initStory",
+        "application",
+        "BaiduNetDiskModules_Story",
+    )
 
     private val storyEntryActivityClassNames = listOf(
         "com.baidu.netdisk.newstory.calendar.ui.view.StorySetActivity",
@@ -38,6 +48,15 @@ internal object IntlStoryDouyinInitBlockHook {
         "com.baidu.netdisk.newstory.ui.view.DouYinEntryActivity",
         "com.bytedance.sdk.open.douyin.ui.DouYinWebAuthorizeActivity",
         "com.baidu.sapi2.activity.social.DouyinSSOLoginActivity",
+    )
+
+    private data class DexMethodCandidate(
+        val className: String,
+        val methodName: String,
+        val returnTypeName: String,
+        val paramTypeNames: List<String>,
+        val isConstructor: Boolean,
+        val modifiers: Int,
     )
 
     private val hookState = HookState()
@@ -133,36 +152,120 @@ internal object IntlStoryDouyinInitBlockHook {
     }
 
     private fun resolveStoryInitMethod(cl: ClassLoader): Method? {
-        val componentClass = XposedCompat.findClassOrNull(NEW_STORY_COMPONENT_CLASS_NAME, cl) ?: return null
-        if (!metadataContains(componentClass, "initStory")) {
-            XposedCompat.logW("[IntlStoryDouyinInitBlockHook] story component metadata mismatch")
+        if (!ConfigManager.isExperimentalDexKitEnabled) {
+            XposedCompat.logD("[IntlStoryDouyinInitBlockHook] story init DexKit resolve skipped: config disabled")
             return null
         }
-        val candidates = componentClass.declaredMethods.filter { method ->
-            Modifier.isStatic(method.modifiers) &&
-                method.returnType == Void.TYPE &&
-                method.parameterTypes.size == 1 &&
-                Application::class.java.isAssignableFrom(method.parameterTypes[0])
+
+        when (val cached = DexKitCompat.getCachedMethod(TAG, STORY_INIT_CACHE_ID) { ref ->
+            resolveStoryInitRef(cl, ref)
+        }) {
+            is DexKitCompat.CachedResult.Found -> return cached.value
+            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.Miss -> Unit
         }
+
+        val scanned = DexKitCompat.withBridge(TAG, cl) { bridge ->
+                bridge.setThreadNum(1)
+                bridge.findMethod(
+                    FindMethod.create()
+                        .matcher(
+                            MethodMatcher.create()
+                                .modifiers(Modifier.STATIC)
+                                .returnType(Void.TYPE)
+                                .paramTypes(Application::class.java)
+                                .declaredClass(
+                                    ClassMatcher.create()
+                                        .usingStrings(storySemanticTokens),
+                                ),
+                        ),
+                ).map { methodData ->
+                    DexMethodCandidate(
+                        className = methodData.className,
+                        methodName = methodData.name,
+                        returnTypeName = methodData.returnTypeName,
+                        paramTypeNames = methodData.paramTypeNames,
+                        isConstructor = methodData.isConstructor,
+                        modifiers = methodData.modifiers,
+                    )
+                }
+        } ?: return null
+        val result = scanned
+
+        if (result.isEmpty()) {
+            XposedCompat.logD("[IntlStoryDouyinInitBlockHook] story init candidate not found")
+            DexKitCompat.putCachedMethod(TAG, STORY_INIT_CACHE_ID, null)
+            return null
+        }
+
+        val candidates = result.mapNotNull { methodData ->
+            val method = resolveStoryInitRef(
+                cl,
+                DexKitCompat.MethodRef(methodData.className, methodData.methodName),
+            ) ?: return@mapNotNull null
+            if (methodData.isConstructor) return@mapNotNull null
+            if (methodData.returnTypeName != "void") return@mapNotNull null
+            if (methodData.paramTypeNames != listOf("android.app.Application")) return@mapNotNull null
+            if (!Modifier.isStatic(methodData.modifiers)) return@mapNotNull null
+            method
+        }
+
         if (candidates.size != 1) {
             XposedCompat.logW(
                 "[IntlStoryDouyinInitBlockHook] ambiguous story init method: " +
-                    candidates.joinToString { it.name },
+                    candidates.joinToString { "${it.declaringClass.name}.${it.name}" },
             )
+            DexKitCompat.putCachedMethod(TAG, STORY_INIT_CACHE_ID, null)
             return null
         }
-        return candidates.single().apply { isAccessible = true }
+
+        val method = candidates.single()
+        XposedCompat.log(
+            "[IntlStoryDouyinInitBlockHook] resolved story init: " +
+                "${method.declaringClass.name}.${method.name}",
+        )
+        DexKitCompat.putCachedMethod(
+            TAG,
+            STORY_INIT_CACHE_ID,
+            DexKitCompat.MethodRef(method.declaringClass.name, method.name),
+        )
+        return method
+    }
+
+    private fun resolveStoryInitRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
+        if (!ref.className.startsWith("com.baidu.netdisk.newstory.")) return null
+        val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
+        if (!metadataContains(clazz, "initStory")) return null
+        return clazz.declaredMethods.firstOrNull { method ->
+            method.name == ref.methodName &&
+                Modifier.isStatic(method.modifiers) &&
+                method.returnType == Void.TYPE &&
+                method.parameterTypes.size == 1 &&
+                Application::class.java.isAssignableFrom(method.parameterTypes[0])
+        }?.apply { isAccessible = true }
     }
 
     private fun resolveDouyinInitMethod(cl: ClassLoader): Method? {
         val factoryClass = XposedCompat.findClassOrNull(DOUYIN_OPEN_API_FACTORY_CLASS_NAME, cl) ?: return null
         val configClass = XposedCompat.findClassOrNull(DOUYIN_OPEN_CONFIG_CLASS_NAME, cl) ?: return null
-        val candidates = factoryClass.declaredMethods.filter { method ->
-            Modifier.isStatic(method.modifiers) &&
-                method.returnType == Boolean::class.javaPrimitiveType &&
-                method.parameterTypes.size == 1 &&
-                configClass.isAssignableFrom(method.parameterTypes[0])
+
+        val candidates = mutableListOf<Method>()
+        var current: Class<*>? = factoryClass
+        while (current != null) {
+            current.declaredMethods.filterTo(candidates) { method ->
+                Modifier.isStatic(method.modifiers) &&
+                    method.returnType == Boolean::class.javaPrimitiveType &&
+                    method.parameterTypes.size == 1 &&
+                    configClass.isAssignableFrom(method.parameterTypes[0])
+            }
+            current = current.superclass
         }
+
+        val namedInit = candidates.filter { it.name == "init" }
+        if (namedInit.size == 1) {
+            return namedInit.single().apply { isAccessible = true }
+        }
+
         if (candidates.size != 1) {
             XposedCompat.logW(
                 "[IntlStoryDouyinInitBlockHook] ambiguous douyin init method: " +
@@ -329,4 +432,7 @@ internal object IntlStoryDouyinInitBlockHook {
 
     private fun isEnabled(): Boolean =
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isIntlStoryDouyinInitBlocked
+
+    private const val TAG = "IntlStoryDouyinInitBlockHook"
+    private const val STORY_INIT_CACHE_ID = "intl_story_douyin_story_init"
 }

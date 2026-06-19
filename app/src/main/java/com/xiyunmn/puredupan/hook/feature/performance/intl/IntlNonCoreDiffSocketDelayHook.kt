@@ -5,13 +5,20 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import com.xiyunmn.puredupan.hook.config.ConfigManager
+import com.xiyunmn.puredupan.hook.core.DexKitCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.HashMap
+import org.luckypray.dexkit.query.FindMethod
+import org.luckypray.dexkit.query.matchers.ClassMatcher
+import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object IntlNonCoreDiffSocketDelayHook {
+    // Current-version compatibility path only. The class name is verified with
+    // action constants and method shape before use, and DexKit can resolve it
+    // semantically when the obfuscated name changes.
     private const val SOCKET_MANAGER_CLASS_NAME = "com.baidu.netdisk.socket.____"
     private const val MAIN_ACTIVITY_CLASS_NAME = "com.baidu.netdisk.ui.MainActivity"
     private const val KOTLIN_FUNCTION1_CLASS_NAME = "kotlin.jvm.functions.Function1"
@@ -57,6 +64,15 @@ internal object IntlNonCoreDiffSocketDelayHook {
     private data class PendingRegistration(
         val receiver: Any,
         val callback: Any,
+    )
+
+    private data class DexMethodCandidate(
+        val className: String,
+        val methodName: String,
+        val returnTypeName: String,
+        val paramTypeNames: List<String>,
+        val isConstructor: Boolean,
+        val modifiers: Int,
     )
 
     private data class ActionState(
@@ -162,6 +178,11 @@ internal object IntlNonCoreDiffSocketDelayHook {
     }
 
     private fun resolveSocketRegisterMethod(cl: ClassLoader): Method? {
+        return resolveSocketRegisterMethodWithDexKit(cl)
+            ?: resolveSocketRegisterMethodByKnownClass(cl)
+    }
+
+    private fun resolveSocketRegisterMethodByKnownClass(cl: ClassLoader): Method? {
         val socketManagerClass = XposedCompat.findClassOrNull(SOCKET_MANAGER_CLASS_NAME, cl) ?: return null
         if (!isExpectedSocketManagerClass(socketManagerClass)) {
             XposedCompat.logW("[IntlNonCoreDiffSocketDelayHook] socket manager signature mismatch")
@@ -189,15 +210,109 @@ internal object IntlNonCoreDiffSocketDelayHook {
         return candidates.single().apply { isAccessible = true }
     }
 
-    private fun isExpectedSocketManagerClass(clazz: Class<*>): Boolean {
-        val requiredActions = setOf(
-            CLOUD_FILE_DIFF_ACTION,
-            CLOUD_FILE_DIFF_ACTION_2,
-            CLOUD_FILE_DIFF_CHECK_ACTION,
-            CLOUD_IMAGE_DIFF_ACTION,
-            CLOUD_VIDEO_DIFF_ACTION,
-            SEARCH_DIFF_ACTION,
+    private fun resolveSocketRegisterMethodWithDexKit(cl: ClassLoader): Method? {
+        if (!ConfigManager.isExperimentalDexKitEnabled) {
+            XposedCompat.logD("[IntlNonCoreDiffSocketDelayHook] socket DexKit resolve skipped: config disabled")
+            return null
+        }
+        when (val cached = DexKitCompat.getCachedMethod(TAG, SOCKET_REGISTER_CACHE_ID) { ref ->
+            resolveSocketRegisterRef(cl, ref)
+        }) {
+            is DexKitCompat.CachedResult.Found -> return cached.value
+            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.Miss -> Unit
+        }
+
+        val function1Class = XposedCompat.findClassOrNull(KOTLIN_FUNCTION1_CLASS_NAME, cl) ?: run {
+            XposedCompat.logW("[IntlNonCoreDiffSocketDelayHook] Function1 class NOT FOUND for DexKit resolve")
+            return null
+        }
+
+        val requiredActions = requiredSocketActions()
+        val scanned = DexKitCompat.withBridge(TAG, cl) { bridge ->
+                bridge.setThreadNum(1)
+                bridge.findMethod(
+                    FindMethod.create()
+                        .matcher(
+                            MethodMatcher.create()
+                                .returnType(Void.TYPE)
+                                .paramTypes(String::class.java, function1Class)
+                                .declaredClass(
+                                    ClassMatcher.create()
+                                        .usingEqStrings(requiredActions),
+                                ),
+                        ),
+                ).map { methodData ->
+                    DexMethodCandidate(
+                        className = methodData.className,
+                        methodName = methodData.name,
+                        returnTypeName = methodData.returnTypeName,
+                        paramTypeNames = methodData.paramTypeNames,
+                        isConstructor = methodData.isConstructor,
+                        modifiers = methodData.modifiers,
+                    )
+                }
+        } ?: return null
+        val result = scanned
+
+        if (result.isEmpty()) {
+            XposedCompat.logD("[IntlNonCoreDiffSocketDelayHook] socket register candidate not found by DexKit")
+            DexKitCompat.putCachedMethod(TAG, SOCKET_REGISTER_CACHE_ID, null)
+            return null
+        }
+
+        val candidates = result.mapNotNull { methodData ->
+            val method = resolveSocketRegisterRef(
+                cl,
+                DexKitCompat.MethodRef(methodData.className, methodData.methodName),
+            ) ?: return@mapNotNull null
+            if (methodData.isConstructor) return@mapNotNull null
+            if (methodData.returnTypeName != "void") return@mapNotNull null
+            if (methodData.paramTypeNames != listOf("java.lang.String", KOTLIN_FUNCTION1_CLASS_NAME)) {
+                return@mapNotNull null
+            }
+            if (Modifier.isStatic(methodData.modifiers)) return@mapNotNull null
+            method
+        }
+
+        if (candidates.size != 1) {
+            XposedCompat.logW(
+                "[IntlNonCoreDiffSocketDelayHook] ambiguous DexKit socket register method: " +
+                    candidates.joinToString { "${it.declaringClass.name}.${it.name}" },
+            )
+            DexKitCompat.putCachedMethod(TAG, SOCKET_REGISTER_CACHE_ID, null)
+            return null
+        }
+
+        val method = candidates.single()
+        XposedCompat.log(
+            "[IntlNonCoreDiffSocketDelayHook] resolved socket register by DexKit: " +
+                "${method.declaringClass.name}.${method.name}",
         )
+        DexKitCompat.putCachedMethod(
+            TAG,
+            SOCKET_REGISTER_CACHE_ID,
+            DexKitCompat.MethodRef(method.declaringClass.name, method.name),
+        )
+        return method
+    }
+
+    private fun resolveSocketRegisterRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
+        if (!ref.className.startsWith("com.baidu.netdisk.socket.")) return null
+        val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
+        if (!isExpectedSocketManagerClass(clazz)) return null
+        return clazz.declaredMethods.firstOrNull { method ->
+            method.name == ref.methodName &&
+                !Modifier.isStatic(method.modifiers) &&
+                method.returnType == Void.TYPE &&
+                method.parameterTypes.size == 2 &&
+                method.parameterTypes[0] == String::class.java &&
+                method.parameterTypes[1].name == KOTLIN_FUNCTION1_CLASS_NAME
+        }?.apply { isAccessible = true }
+    }
+
+    private fun isExpectedSocketManagerClass(clazz: Class<*>): Boolean {
+        val requiredActions = requiredSocketActions().toSet()
         val stringConstants = staticStringConstants(clazz)
         if (!stringConstants.containsAll(requiredActions)) {
             XposedCompat.logW(
@@ -219,6 +334,15 @@ internal object IntlNonCoreDiffSocketDelayHook {
 
         return true
     }
+
+    private fun requiredSocketActions(): List<String> = listOf(
+        CLOUD_FILE_DIFF_ACTION,
+        CLOUD_FILE_DIFF_ACTION_2,
+        CLOUD_FILE_DIFF_CHECK_ACTION,
+        CLOUD_IMAGE_DIFF_ACTION,
+        CLOUD_VIDEO_DIFF_ACTION,
+        SEARCH_DIFF_ACTION,
+    )
 
     private fun staticStringConstants(clazz: Class<*>): Set<String> =
         clazz.declaredFields.mapNotNull { field ->
@@ -387,4 +511,7 @@ internal object IntlNonCoreDiffSocketDelayHook {
 
     private fun isEnabled(): Boolean =
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isIntlNonCoreDiffSocketDelayed
+
+    private const val TAG = "IntlNonCoreDiffSocketDelayHook"
+    private const val SOCKET_REGISTER_CACHE_ID = "intl_non_core_diff_socket_register"
 }

@@ -1082,7 +1082,8 @@ object SettingsMenuHook {
                 UiText.Settings.BLOCK_INTL_STORY_DOUYIN_INIT_DESC,
                 null,
                 padding,
-                hostCapabilities(context).supportsIntlStoryDouyinInitBlock,
+                hostCapabilities(context).supportsIntlStoryDouyinInitBlock &&
+                    prefs.getBoolean(ConfigManager.KEY_ENABLE_EXPERIMENTAL_DEXKIT, false),
                 prefs.getBoolean(ConfigManager.KEY_BLOCK_INTL_STORY_DOUYIN_INIT, false),
             )
             val intlNonCoreDiffSocketDelayRow = createSwitchRow(

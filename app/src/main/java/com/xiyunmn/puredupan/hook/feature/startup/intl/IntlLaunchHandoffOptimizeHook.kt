@@ -16,6 +16,7 @@ import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import java.lang.ref.WeakReference
+import java.lang.reflect.Modifier
 
 internal object IntlLaunchHandoffOptimizeHook {
     private const val DEFAULT_MAIN_ACTIVITY_CLASS_NAME = "com.baidu.netdisk.ui.DefaultMainActivity"
@@ -228,6 +229,10 @@ internal object IntlLaunchHandoffOptimizeHook {
                     "hide",
                     Int::class.javaPrimitiveType!!,
                 ).apply { isAccessible = true }.also { method ->
+                    if (Modifier.isAbstract(method.modifiers)) {
+                        XposedCompat.logD("[IntlLaunchHandoffOptimizeHook] platform insets hide hook skipped: abstract method")
+                        return@runCatching
+                    }
                     mod.hook(method).intercept { chain ->
                         val types = chain.args.firstOrNull() as? Int ?: return@intercept chain.proceed()
                         if (isShellInitViewActive() && shouldBlockShellInsetsHide(types)) {

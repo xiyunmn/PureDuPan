@@ -25,6 +25,7 @@ log/
 
 # Reverse engineering materials and target app binaries
 target_app/
+tmp_jadx_async/
 *.apk
 
 # Local backups and archives

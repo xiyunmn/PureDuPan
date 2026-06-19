@@ -352,6 +352,7 @@ internal object HookInstallPlanner {
                 context.host.flavor == com.xiyunmn.puredupan.hook.host.HostFlavor.BAIDU_INTL &&
                 context.host.capabilities.supportsIntlStoryDouyinInitBlock &&
                 settings.isPerformanceOptimizeEnabled &&
+                settings.isExperimentalDexKitEnabled &&
                 settings.isIntlStoryDouyinInitBlocked
         }) { cl -> IntlStoryDouyinInitBlockHook.hook(cl) },
         HookSpec("IntlNonCoreDiffSocketDelayHook", { context, settings, _ ->

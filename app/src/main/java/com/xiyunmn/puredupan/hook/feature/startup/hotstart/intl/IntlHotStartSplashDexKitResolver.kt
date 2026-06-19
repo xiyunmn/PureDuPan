@@ -1,8 +1,8 @@
 package com.xiyunmn.puredupan.hook.feature.startup.hotstart.intl
 
 import com.xiyunmn.puredupan.hook.config.ConfigManager
+import com.xiyunmn.puredupan.hook.core.DexKitCompat
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
@@ -28,13 +28,19 @@ internal object IntlHotStartSplashDexKitResolver {
             return null
         }
 
-        return runCatching {
-            DexKitBridge.create(cl, false).use { bridge ->
+        when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
+            validateCachedResult(cl, ref)
+        }) {
+            is DexKitCompat.CachedResult.Found -> return cached.value
+            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.Miss -> Unit
+        }
+
+        val methods = DexKitCompat.withBridge(TAG, cl) { bridge ->
                 bridge.setThreadNum(1)
 
-                val methods = bridge.findMethod(
+                bridge.findMethod(
                     FindMethod.create()
-                        .searchPackages("f6")
                         .matcher(
                             MethodMatcher.create()
                                 .returnType(Boolean::class.javaPrimitiveType!!)
@@ -42,37 +48,54 @@ internal object IntlHotStartSplashDexKitResolver {
                                 .usingEqStrings(signatureHints),
                         ),
                 )
+        } ?: return null
 
-                val best = methods
-                    .filter {
-                        !it.isConstructor &&
-                            it.returnTypeName == "boolean" &&
-                            it.paramTypeNames == listOf("android.app.Activity")
-                    }
-                    .sortedWith(
-                        compareByDescending<org.luckypray.dexkit.result.MethodData> { score(it) }
-                            .thenBy { it.className }
-                            .thenBy { it.name },
-                    )
-                    .firstOrNull()
-
-                if (best == null) {
-                    XposedCompat.log("[IntlHotStartSplashDexKitResolver] no candidate matched")
-                    null
-                } else {
-                    XposedCompat.log(
-                        "[IntlHotStartSplashDexKitResolver] resolved ${best.className}.${best.name} score=${score(best)}",
-                    )
-                    ResolveResult(
-                        className = best.className,
-                        methodName = best.name,
-                    )
-                }
+        val best = methods
+            .filter {
+                !it.isConstructor &&
+                    it.returnTypeName == "boolean" &&
+                    it.paramTypeNames == listOf("android.app.Activity")
             }
-        }.onFailure {
-            XposedCompat.log("[IntlHotStartSplashDexKitResolver] resolve FAILED: ${it.message}")
-            XposedCompat.log(it)
-        }.getOrNull()
+            .sortedWith(
+                compareByDescending<org.luckypray.dexkit.result.MethodData> { score(it) }
+                    .thenBy { it.className }
+                    .thenBy { it.name },
+            )
+            .firstOrNull()
+
+        if (best == null) {
+            XposedCompat.log("[IntlHotStartSplashDexKitResolver] no candidate matched")
+            DexKitCompat.putCachedMethod(TAG, CACHE_ID, null)
+            return null
+        }
+
+        XposedCompat.log(
+            "[$TAG] resolved ${best.className}.${best.name} score=${score(best)}",
+        )
+        val result = ResolveResult(
+            className = best.className,
+            methodName = best.name,
+        )
+        DexKitCompat.putCachedMethod(
+            TAG,
+            CACHE_ID,
+            DexKitCompat.MethodRef(result.className, result.methodName),
+        )
+        return result
+    }
+
+    private fun validateCachedResult(
+        cl: ClassLoader,
+        ref: DexKitCompat.MethodRef,
+    ): ResolveResult? {
+        val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
+        val method = XposedCompat.findMethodOrNull(
+            clazz,
+            ref.methodName,
+            android.app.Activity::class.java,
+        ) ?: return null
+        if (method.returnType != Boolean::class.javaPrimitiveType) return null
+        return ResolveResult(ref.className, ref.methodName)
     }
 
     private fun score(method: org.luckypray.dexkit.result.MethodData): Int {
@@ -83,8 +106,9 @@ internal object IntlHotStartSplashDexKitResolver {
                 score += 100 - index
             }
         }
-        if (method.className == "f6.e") score += 500
-        if (method.name == "q") score += 200
         return score
     }
+
+    private const val TAG = "IntlHotStartSplashDexKitResolver"
+    private const val CACHE_ID = "intl_hot_start_splash"
 }

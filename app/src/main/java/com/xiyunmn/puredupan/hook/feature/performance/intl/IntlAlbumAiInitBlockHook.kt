@@ -5,11 +5,11 @@ import android.app.Application
 import android.content.Context
 import android.os.Bundle
 import com.xiyunmn.puredupan.hook.config.ConfigManager
+import com.xiyunmn.puredupan.hook.core.DexKitCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
-import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
@@ -306,8 +306,15 @@ internal object IntlAlbumAiInitBlockHook {
     }
 
     private fun resolveDirectAlbumAiInitMethod(cl: ClassLoader): Method? {
-        val result = runCatching {
-            DexKitBridge.create(cl, false).use { bridge ->
+        when (val cached = DexKitCompat.getCachedMethod(TAG, DIRECT_ALBUM_AI_INIT_CACHE_ID) { ref ->
+            resolveDirectAlbumAiInitRef(cl, ref)
+        }) {
+            is DexKitCompat.CachedResult.Found -> return cached.value
+            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.Miss -> Unit
+        }
+
+        val scanned = DexKitCompat.withBridge(TAG, cl) { bridge ->
                 bridge.setThreadNum(1)
                 bridge.findMethod(
                     FindMethod.create()
@@ -332,32 +339,25 @@ internal object IntlAlbumAiInitBlockHook {
                         modifiers = methodData.modifiers,
                     )
                 }
-            }
-        }.onFailure {
-            XposedCompat.log("[IntlAlbumAiInitBlockHook] DexKit resolve FAILED: ${it.message}")
-            XposedCompat.log(it)
-        }.getOrNull().orEmpty()
+        } ?: return null
+        val result = scanned
 
         if (result.isEmpty()) {
             XposedCompat.logD("[IntlAlbumAiInitBlockHook] direct album AI init candidate not found")
+            DexKitCompat.putCachedMethod(TAG, DIRECT_ALBUM_AI_INIT_CACHE_ID, null)
             return null
         }
 
         val candidates = result.mapNotNull { methodData ->
-            val clazz = XposedCompat.findClassOrNull(methodData.className, cl) ?: return@mapNotNull null
-            if (!isExpectedAlbumAiComponentClass(clazz)) return@mapNotNull null
+            val method = resolveDirectAlbumAiInitRef(
+                cl,
+                DexKitCompat.MethodRef(methodData.className, methodData.methodName),
+            ) ?: return@mapNotNull null
             if (methodData.isConstructor) return@mapNotNull null
             if (methodData.returnTypeName != "void") return@mapNotNull null
             if (methodData.paramTypeNames != listOf("android.app.Application")) return@mapNotNull null
             if (!Modifier.isStatic(methodData.modifiers)) return@mapNotNull null
-            val method = clazz.declaredMethods.firstOrNull { method ->
-                method.name == methodData.methodName &&
-                    Modifier.isStatic(method.modifiers) &&
-                    method.returnType == Void.TYPE &&
-                    method.parameterTypes.size == 1 &&
-                    Application::class.java.isAssignableFrom(method.parameterTypes[0])
-            } ?: return@mapNotNull null
-            method.apply { isAccessible = true }
+            method
         }
 
         if (candidates.size != 1) {
@@ -365,6 +365,7 @@ internal object IntlAlbumAiInitBlockHook {
                 "[IntlAlbumAiInitBlockHook] ambiguous direct album AI init method: " +
                     candidates.joinToString { "${it.declaringClass.name}.${it.name}" },
             )
+            DexKitCompat.putCachedMethod(TAG, DIRECT_ALBUM_AI_INIT_CACHE_ID, null)
             return null
         }
 
@@ -373,7 +374,24 @@ internal object IntlAlbumAiInitBlockHook {
             "[IntlAlbumAiInitBlockHook] resolved direct album AI init: " +
                 "${method.declaringClass.name}.${method.name}",
         )
+        DexKitCompat.putCachedMethod(
+            TAG,
+            DIRECT_ALBUM_AI_INIT_CACHE_ID,
+            DexKitCompat.MethodRef(method.declaringClass.name, method.name),
+        )
         return method
+    }
+
+    private fun resolveDirectAlbumAiInitRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
+        val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
+        if (!isExpectedAlbumAiComponentClass(clazz)) return null
+        return clazz.declaredMethods.firstOrNull { method ->
+            method.name == ref.methodName &&
+                Modifier.isStatic(method.modifiers) &&
+                method.returnType == Void.TYPE &&
+                method.parameterTypes.size == 1 &&
+                Application::class.java.isAssignableFrom(method.parameterTypes[0])
+        }?.apply { isAccessible = true }
     }
 
     private fun isExpectedAlbumAiComponentClass(clazz: Class<*>): Boolean {
@@ -393,4 +411,7 @@ internal object IntlAlbumAiInitBlockHook {
 
     private fun isEnabled(): Boolean =
         ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isIntlAlbumAiInitBlocked
+
+    private const val TAG = "IntlAlbumAiInitBlockHook"
+    private const val DIRECT_ALBUM_AI_INIT_CACHE_ID = "intl_album_ai_direct_init"
 }
