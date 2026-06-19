@@ -194,6 +194,8 @@ object UiText {
         const val BLOCK_INTL_STORY_DOUYIN_INIT_DESC = "仅国际版。启动期阻止 Story 视频预加载、Story UI 服务与 DouYin SDK 初始化；进入 Story/短视频或 DouYin 分享/授权入口时按需恢复"
         const val DELAY_INTL_NON_CORE_DIFF_SOCKET_LABEL = "延后非核心 diff socket 注册"
         const val DELAY_INTL_NON_CORE_DIFF_SOCKET_DESC = "仅国际版。启动期延后云图、云视频、搜索 diff socket 注册，保留核心文件 diff；首页稳定后或进入对应入口前恢复"
+        const val DELAY_INTL_FLOAT_VIEW_STARTUP_LABEL = "延后浮层初始化"
+        const val DELAY_INTL_FLOAT_VIEW_STARTUP_DESC = "仅国际版。启动期延后任务提示、音频圈容器和第三方返回提示的生命周期注册；首页稳定后或进入对应入口前恢复"
         const val ACTION_ICON_SETTINGS = "⚙"
         const val ACTION_ICON_GALLERY = "相册"
         const val ACTION_ICON_CLEAR = "清除"

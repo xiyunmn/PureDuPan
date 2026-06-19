@@ -89,6 +89,7 @@ data class SettingsSnapshot(
     val isIntlTaskScoreRefreshDelayed: Boolean = false,
     val isIntlStoryDouyinInitBlocked: Boolean = false,
     val isIntlNonCoreDiffSocketDelayed: Boolean = false,
+    val isIntlFloatViewStartupDelayed: Boolean = false,
 
     // Bottom bar customization
     val isBottomBarCustomEnabled: Boolean = false,
