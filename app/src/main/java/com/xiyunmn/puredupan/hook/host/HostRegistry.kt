@@ -54,6 +54,7 @@ internal object HostRegistry {
             supportsIntlFeedPreloadDelay = true,
             supportsIntlTaskScoreRefreshDelay = true,
             supportsIntlStoryDouyinInitBlock = true,
+            supportsIntlNonCoreDiffSocketDelay = true,
             supportsMemberCardCustomize = true,
         ),
     )

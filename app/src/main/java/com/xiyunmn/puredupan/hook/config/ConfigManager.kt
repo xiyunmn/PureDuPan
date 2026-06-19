@@ -98,6 +98,7 @@ object ConfigManager {
     const val KEY_DELAY_INTL_FEED_PRELOAD = "delay_intl_feed_preload"
     const val KEY_DELAY_INTL_TASK_SCORE_REFRESH = "delay_intl_task_score_refresh"
     const val KEY_BLOCK_INTL_STORY_DOUYIN_INIT = "block_intl_story_douyin_init"
+    const val KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET = "delay_intl_non_core_diff_socket"
     const val KEY_PERFORMANCE_OPTIMIZE = "performance_optimize"
     const val KEY_RESTRICTED_FEATURES_UNLOCKED = "restricted_features_unlocked"
     const val KEY_DISCLAIMER_ACCEPTED = "disclaimer_accepted"
@@ -209,6 +210,8 @@ object ConfigManager {
         get() = settingsSnapshot.isIntlTaskScoreRefreshDelayed
     val isIntlStoryDouyinInitBlocked: Boolean
         get() = settingsSnapshot.isIntlStoryDouyinInitBlocked
+    val isIntlNonCoreDiffSocketDelayed: Boolean
+        get() = settingsSnapshot.isIntlNonCoreDiffSocketDelayed
     val areRestrictedFeaturesUnlocked: Boolean
         get() = settingsSnapshot.areRestrictedFeaturesUnlocked
 
@@ -426,7 +429,8 @@ object ConfigManager {
                 featureBoolean(KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT, false) ||
                 featureBoolean(KEY_DELAY_INTL_FEED_PRELOAD, false) ||
                 featureBoolean(KEY_DELAY_INTL_TASK_SCORE_REFRESH, false) ||
-                featureBoolean(KEY_BLOCK_INTL_STORY_DOUYIN_INIT, false)
+                featureBoolean(KEY_BLOCK_INTL_STORY_DOUYIN_INIT, false) ||
+                featureBoolean(KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET, false)
 
         return SettingsSnapshot(
             isDetailedLoggingEnabled = featureBoolean(KEY_ENABLE_DETAILED_LOGGING),
@@ -580,6 +584,10 @@ object ConfigManager {
             ),
             isIntlStoryDouyinInitBlocked = featureBoolean(
                 KEY_BLOCK_INTL_STORY_DOUYIN_INIT,
+                false,
+            ),
+            isIntlNonCoreDiffSocketDelayed = featureBoolean(
+                KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET,
                 false,
             ),
             isBottomBarCustomEnabled = p.getBoolean(KEY_CUSTOM_BOTTOM_BAR, hasBottomBarOptionEnabled),

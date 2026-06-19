@@ -27,5 +27,6 @@ internal data class HostCapabilities(
     val supportsIntlFeedPreloadDelay: Boolean = false,
     val supportsIntlTaskScoreRefreshDelay: Boolean = false,
     val supportsIntlStoryDouyinInitBlock: Boolean = false,
+    val supportsIntlNonCoreDiffSocketDelay: Boolean = false,
     val supportsMemberCardCustomize: Boolean = true,
 )

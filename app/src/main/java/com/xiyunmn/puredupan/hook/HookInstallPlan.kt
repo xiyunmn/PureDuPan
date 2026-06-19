@@ -19,6 +19,7 @@ import com.xiyunmn.puredupan.hook.feature.performance.IconResourceDownloadBlockH
 import com.xiyunmn.puredupan.hook.feature.performance.IncentiveBusinessServiceBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.AudioCircleViewAutostartBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlFeedPreloadDelayHook
+import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlNonCoreDiffSocketDelayHook
 import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlOfflinePackageInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlStoryDouyinInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlTaskScoreRefreshDelayHook
@@ -349,6 +350,13 @@ internal object HookInstallPlanner {
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isIntlStoryDouyinInitBlocked
         }) { cl -> IntlStoryDouyinInitBlockHook.hook(cl) },
+        HookSpec("IntlNonCoreDiffSocketDelayHook", { context, settings, _ ->
+            context.isMain &&
+                context.host.flavor == com.xiyunmn.puredupan.hook.host.HostFlavor.BAIDU_INTL &&
+                context.host.capabilities.supportsIntlNonCoreDiffSocketDelay &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isIntlNonCoreDiffSocketDelayed
+        }) { cl -> IntlNonCoreDiffSocketDelayHook.hook(cl) },
         HookSpec("SystemNightModeSyncHook", { context, _, _ ->
             context.isMain
         }) { cl -> SystemNightModeSyncHook.hook(cl) },
