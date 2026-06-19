@@ -25,5 +25,6 @@ internal data class HostCapabilities(
     val supportsB2fGuidancePrefetchBlock: Boolean = true,
     val supportsIntlOfflinePackageSyncDelay: Boolean = false,
     val supportsIntlFeedPreloadDelay: Boolean = false,
+    val supportsIntlTaskScoreRefreshDelay: Boolean = false,
     val supportsMemberCardCustomize: Boolean = true,
 )

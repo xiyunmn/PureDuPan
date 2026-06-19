@@ -188,6 +188,8 @@ object UiText {
         const val DELAY_INTL_OFFLINE_PACKAGE_SYNC_DESC = "仅国际版。启动期先跳过 H5 离线包配置监听和自动下载队列，首页稳定后或进入 H5 页面前自动恢复"
         const val DELAY_INTL_FEED_PRELOAD_LABEL = "延后首页 Feed 预加载"
         const val DELAY_INTL_FEED_PRELOAD_DESC = "仅国际版。启动期先跳过首页 Feed 预加载，首页稳定后用原参数自动恢复，手动刷新与后续加载不拦截"
+        const val DELAY_INTL_TASK_SCORE_REFRESH_LABEL = "延后任务积分刷新"
+        const val DELAY_INTL_TASK_SCORE_REFRESH_DESC = "仅国际版。启动期先跳过任务积分/会员频道的非强制刷新，首页稳定后或进入会员任务入口前自动恢复；强制刷新不拦截"
         const val ACTION_ICON_SETTINGS = "⚙"
         const val ACTION_ICON_GALLERY = "相册"
         const val ACTION_ICON_CLEAR = "清除"

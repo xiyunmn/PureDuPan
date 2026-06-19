@@ -86,6 +86,7 @@ data class SettingsSnapshot(
     val isB2fGuidancePrefetchDisabled: Boolean = false,
     val isIntlOfflinePackageSyncDelayed: Boolean = false,
     val isIntlFeedPreloadDelayed: Boolean = false,
+    val isIntlTaskScoreRefreshDelayed: Boolean = false,
 
     // Bottom bar customization
     val isBottomBarCustomEnabled: Boolean = false,

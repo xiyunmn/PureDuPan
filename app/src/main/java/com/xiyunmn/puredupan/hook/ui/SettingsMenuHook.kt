@@ -1065,6 +1065,16 @@ object SettingsMenuHook {
                 hostCapabilities(context).supportsIntlFeedPreloadDelay,
                 prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD, false),
             )
+            val intlTaskScoreRefreshDelayRow = createSwitchRow(
+                context,
+                prefs,
+                UiText.Settings.DELAY_INTL_TASK_SCORE_REFRESH_LABEL,
+                UiText.Settings.DELAY_INTL_TASK_SCORE_REFRESH_DESC,
+                null,
+                padding,
+                hostCapabilities(context).supportsIntlTaskScoreRefreshDelay,
+                prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_TASK_SCORE_REFRESH, false),
+            )
             addTitledSection(
                 root = root,
                 context = context,
@@ -1078,6 +1088,7 @@ object SettingsMenuHook {
                     context,
                     ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC to intlOfflinePackageSyncDelayRow,
                     ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD to intlFeedPreloadDelayRow,
+                    ConfigManager.KEY_DELAY_INTL_TASK_SCORE_REFRESH to intlTaskScoreRefreshDelayRow,
                 ),
             )
             addTitledSection(
@@ -1164,6 +1175,7 @@ object SettingsMenuHook {
             val b2fGuidancePrefetchSwitch = findSwitchView(b2fGuidancePrefetchRow)
             val intlOfflinePackageSyncDelaySwitch = findSwitchView(intlOfflinePackageSyncDelayRow)
             val intlFeedPreloadDelaySwitch = findSwitchView(intlFeedPreloadDelayRow)
+            val intlTaskScoreRefreshDelaySwitch = findSwitchView(intlTaskScoreRefreshDelayRow)
             if (
                 garbageCleanSwitch == null ||
                 datapackSocketSwitch == null ||
@@ -1179,7 +1191,8 @@ object SettingsMenuHook {
                 iconResourceDownloadSwitch == null ||
                 b2fGuidancePrefetchSwitch == null ||
                 intlOfflinePackageSyncDelaySwitch == null ||
-                intlFeedPreloadDelaySwitch == null
+                intlFeedPreloadDelaySwitch == null ||
+                intlTaskScoreRefreshDelaySwitch == null
             ) {
                 XposedCompat.logW("[SettingsMenuHook] showPerformanceOptimizeDialog failed: switch view missing")
                 return
@@ -1208,7 +1221,8 @@ object SettingsMenuHook {
                             iconResourceDownloadSwitch.isChecked ||
                             b2fGuidancePrefetchSwitch.isChecked ||
                             intlOfflinePackageSyncDelaySwitch.isChecked ||
-                            intlFeedPreloadDelaySwitch.isChecked
+                            intlFeedPreloadDelaySwitch.isChecked ||
+                            intlTaskScoreRefreshDelaySwitch.isChecked
                     prefs.edit()
                         .putBoolean(ConfigManager.KEY_PERFORMANCE_OPTIMIZE, hasEnabledPerformanceOption)
                         .putBoolean(
@@ -1270,6 +1284,10 @@ object SettingsMenuHook {
                         .putBoolean(
                             ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD,
                             intlFeedPreloadDelaySwitch.isChecked,
+                        )
+                        .putBoolean(
+                            ConfigManager.KEY_DELAY_INTL_TASK_SCORE_REFRESH,
+                            intlTaskScoreRefreshDelaySwitch.isChecked,
                         )
                         .apply()
                     Toast.makeText(
@@ -2784,7 +2802,9 @@ object SettingsMenuHook {
             isFeatureVisible(context, ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC) &&
             prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC, false) ||
             isFeatureVisible(context, ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD) &&
-            prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD, false)
+            prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DELAY_INTL_TASK_SCORE_REFRESH) &&
+            prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_TASK_SCORE_REFRESH, false)
     }
 
     private fun createMemberCardBackgroundImageRow(

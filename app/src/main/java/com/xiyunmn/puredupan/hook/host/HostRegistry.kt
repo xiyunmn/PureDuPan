@@ -52,6 +52,7 @@ internal object HostRegistry {
             supportsB2fGuidancePrefetchBlock = false,
             supportsIntlOfflinePackageSyncDelay = true,
             supportsIntlFeedPreloadDelay = true,
+            supportsIntlTaskScoreRefreshDelay = true,
             supportsMemberCardCustomize = true,
         ),
     )
