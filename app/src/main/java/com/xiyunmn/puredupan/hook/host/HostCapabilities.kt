@@ -23,5 +23,6 @@ internal data class HostCapabilities(
     val supportsAudioCircleAutostartBlock: Boolean = true,
     val supportsIconResourceDownloadBlock: Boolean = true,
     val supportsB2fGuidancePrefetchBlock: Boolean = true,
+    val supportsIntlOfflinePackageSyncDelay: Boolean = false,
     val supportsMemberCardCustomize: Boolean = true,
 )

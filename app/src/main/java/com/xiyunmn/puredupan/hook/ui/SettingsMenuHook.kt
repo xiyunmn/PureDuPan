@@ -1045,6 +1045,30 @@ object SettingsMenuHook {
                 hostCapabilities(context).supportsB2fGuidancePrefetchBlock,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH, false),
             )
+            val intlOfflinePackageSyncDelayRow = createSwitchRow(
+                context,
+                prefs,
+                UiText.Settings.DELAY_INTL_OFFLINE_PACKAGE_SYNC_LABEL,
+                UiText.Settings.DELAY_INTL_OFFLINE_PACKAGE_SYNC_DESC,
+                null,
+                padding,
+                hostCapabilities(context).supportsIntlOfflinePackageSyncDelay,
+                prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC, false),
+            )
+            addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = createPerformanceSectionTitle(
+                    context,
+                    padding,
+                    UiText.Settings.PERFORMANCE_GROUP_INTL_STARTUP_DELAY,
+                ),
+                rows = visibleRows(
+                    context,
+                    ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC to intlOfflinePackageSyncDelayRow,
+                ),
+            )
             addTitledSection(
                 root = root,
                 context = context,
@@ -1127,6 +1151,7 @@ object SettingsMenuHook {
             val mediaBrowserServiceAutostartSwitch = findSwitchView(mediaBrowserServiceAutostartRow)
             val iconResourceDownloadSwitch = findSwitchView(iconResourceDownloadRow)
             val b2fGuidancePrefetchSwitch = findSwitchView(b2fGuidancePrefetchRow)
+            val intlOfflinePackageSyncDelaySwitch = findSwitchView(intlOfflinePackageSyncDelayRow)
             if (
                 garbageCleanSwitch == null ||
                 datapackSocketSwitch == null ||
@@ -1140,7 +1165,8 @@ object SettingsMenuHook {
                 incentiveBusinessServiceSwitch == null ||
                 mediaBrowserServiceAutostartSwitch == null ||
                 iconResourceDownloadSwitch == null ||
-                b2fGuidancePrefetchSwitch == null
+                b2fGuidancePrefetchSwitch == null ||
+                intlOfflinePackageSyncDelaySwitch == null
             ) {
                 XposedCompat.logW("[SettingsMenuHook] showPerformanceOptimizeDialog failed: switch view missing")
                 return
@@ -1167,7 +1193,8 @@ object SettingsMenuHook {
                             incentiveBusinessServiceSwitch.isChecked ||
                             mediaBrowserServiceAutostartSwitch.isChecked ||
                             iconResourceDownloadSwitch.isChecked ||
-                            b2fGuidancePrefetchSwitch.isChecked
+                            b2fGuidancePrefetchSwitch.isChecked ||
+                            intlOfflinePackageSyncDelaySwitch.isChecked
                     prefs.edit()
                         .putBoolean(ConfigManager.KEY_PERFORMANCE_OPTIMIZE, hasEnabledPerformanceOption)
                         .putBoolean(
@@ -1221,6 +1248,10 @@ object SettingsMenuHook {
                         .putBoolean(
                             ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH,
                             b2fGuidancePrefetchSwitch.isChecked,
+                        )
+                        .putBoolean(
+                            ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC,
+                            intlOfflinePackageSyncDelaySwitch.isChecked,
                         )
                         .apply()
                     Toast.makeText(
@@ -2731,7 +2762,9 @@ object SettingsMenuHook {
             isFeatureVisible(context, ConfigManager.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD, false) ||
             isFeatureVisible(context, ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH) &&
-            prefs.getBoolean(ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH, false)
+            prefs.getBoolean(ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC) &&
+            prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC, false)
     }
 
     private fun createMemberCardBackgroundImageRow(

@@ -84,6 +84,7 @@ data class SettingsSnapshot(
     val isMediaBrowserServiceAutostartDisabled: Boolean = false,
     val isIconResourceDownloadDisabled: Boolean = false,
     val isB2fGuidancePrefetchDisabled: Boolean = false,
+    val isIntlOfflinePackageSyncDelayed: Boolean = false,
 
     // Bottom bar customization
     val isBottomBarCustomEnabled: Boolean = false,

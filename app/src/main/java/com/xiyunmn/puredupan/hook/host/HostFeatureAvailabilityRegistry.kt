@@ -19,6 +19,7 @@ internal object HostFeatureAvailabilityRegistry {
         ConfigManager.KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT,
         ConfigManager.KEY_HIDE_INTL_MEMBER_CARD_SVIP_LEVEL,
         ConfigManager.KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON,
+        ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC,
     )
 
     private val intlDisabledKeys = setOf(
@@ -44,7 +45,6 @@ internal object HostFeatureAvailabilityRegistry {
         ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_STATUS,
         ConfigManager.KEY_HIDE_MEMBER_CARD_RENEW_BUTTON,
         ConfigManager.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
-        ConfigManager.KEY_PERFORMANCE_OPTIMIZE,
         ConfigManager.KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER,
         ConfigManager.KEY_DISABLE_DATAPACK_SOCKET_REGISTER,
         ConfigManager.KEY_DISABLE_AIGC_BACKGROUND_COMPONENT,
