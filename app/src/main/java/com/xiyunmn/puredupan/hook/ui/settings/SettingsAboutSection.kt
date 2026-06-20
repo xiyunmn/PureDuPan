@@ -16,9 +16,13 @@ import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.ui.UiText
 
 internal object SettingsAboutSection {
+    private const val HOST_SUFFIX_INTL = "_intl"
+    private const val HOST_SUFFIX_SAMSUNG = "_samsung"
+
     fun create(
         context: Context,
         padding: Int,
+        hostId: String?,
         versionClickListener: View.OnClickListener?,
     ): View {
         val density = context.resources.displayMetrics.density
@@ -47,7 +51,7 @@ internal object SettingsAboutSection {
             val aboutItemsContainer = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
             }
-            buildItems(context, versionClickListener).forEach { item ->
+            buildItems(context, hostId, versionClickListener).forEach { item ->
                 aboutItemsContainer.addView(
                     createItem(
                         context = context,
@@ -63,15 +67,18 @@ internal object SettingsAboutSection {
 
     private fun buildItems(
         context: Context,
+        hostId: String?,
         versionClickListener: View.OnClickListener?,
     ): List<AboutInfoManager.AboutItem> {
-        val versionInfo = buildVersionDisplayInfo(context)
+        val versionInfo = buildVersionDisplayInfo(context, hostId)
         return listOf(
             AboutInfoManager.AboutItem(
                 UiText.Settings.VERSION,
                 UiText.Settings.aboutVersionSummary(
+                    hostName = versionInfo.hostName,
                     hostBuildType = versionInfo.hostBuildType,
                     hostVersion = versionInfo.hostVersion,
+                    hostPackageName = versionInfo.hostPackageName,
                     moduleBuildType = versionInfo.moduleBuildType,
                     moduleVersion = versionInfo.moduleVersion,
                 ),
@@ -86,7 +93,7 @@ internal object SettingsAboutSection {
         ) + AboutInfoManager.loadCachedItemsForSettings()
     }
 
-    private fun buildVersionDisplayInfo(context: Context): VersionDisplayInfo {
+    private fun buildVersionDisplayInfo(context: Context, hostId: String?): VersionDisplayInfo {
         val hostVersion = try {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
                 ?: UiText.Settings.UNKNOWN
@@ -99,8 +106,10 @@ internal object SettingsAboutSection {
             UiText.Settings.UNKNOWN
         }
         return VersionDisplayInfo(
+            hostName = hostDisplayName(hostId),
             hostVersion = hostVersion,
             hostBuildType = "",
+            hostPackageName = context.packageName,
             moduleVersion = moduleVersion,
             moduleBuildType = if (BuildConfig.DEBUG) {
                 UiText.Settings.MODULE_DEBUG_VERSION
@@ -108,6 +117,14 @@ internal object SettingsAboutSection {
                 UiText.Settings.MODULE_RELEASE_VERSION
             },
         )
+    }
+
+    private fun hostDisplayName(hostId: String?): String {
+        return when {
+            hostId?.endsWith(HOST_SUFFIX_INTL) == true -> "百度网盘 国际版"
+            hostId?.endsWith(HOST_SUFFIX_SAMSUNG) == true -> "百度网盘 三星版"
+            else -> "百度网盘"
+        }
     }
 
     private fun createItem(

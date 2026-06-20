@@ -82,6 +82,7 @@ internal object SettingsMainDialog {
                 isFeatureVisible = settingsSession::isFeatureVisible,
             )
             val debugItems = TopLevelSettingsItemsBuilder.debugItems(
+                hostPackageName = context.packageName,
                 showDexKitStatus = settingsSession.showDexKitStatus,
                 dexKitSummaryText = if (settingsSession.showDexKitStatus) {
                     SettingsDexKitState.summaryText(context)
@@ -199,7 +200,14 @@ internal object SettingsMainDialog {
             } else null
 
             root.addView(SettingsDialogLayout.createDivider(context, padding))
-            root.addView(SettingsAboutSection.create(context, padding, versionClickListener))
+            root.addView(
+                SettingsAboutSection.create(
+                    context = context,
+                    padding = padding,
+                    hostId = settingsSession.hostId,
+                    versionClickListener = versionClickListener,
+                )
+            )
 
             val scrollContainer = ScrollView(context).apply {
                 addView(

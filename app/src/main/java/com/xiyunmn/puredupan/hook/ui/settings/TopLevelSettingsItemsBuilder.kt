@@ -88,12 +88,13 @@ internal object TopLevelSettingsItemsBuilder {
     }
 
     fun debugItems(
+        hostPackageName: String,
         showDexKitStatus: Boolean,
         dexKitSummaryText: String,
         actionHandlers: DebugSettingsActionHandlers,
         texts: SettingsTextResolver,
     ): List<SwitchItem> {
-        return DebugSettingsRegistry.specs.map { spec ->
+        return DebugSettingsRegistry.specs(hostPackageName).map { spec ->
             switchItemForDebugSpec(
                 spec = spec,
                 showDexKitStatus = showDexKitStatus,

@@ -105,8 +105,10 @@ internal data class SwitchRuntimeSupport(
 )
 
 internal data class VersionDisplayInfo(
+    val hostName: String,
     val hostVersion: String,
     val hostBuildType: String,
+    val hostPackageName: String,
     val moduleVersion: String,
     val moduleBuildType: String,
 )

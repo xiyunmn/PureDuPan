@@ -19,31 +19,33 @@ internal data class DebugSwitchSpec(
 )
 
 internal object DebugSettingsRegistry {
-    val specs: List<DebugSwitchSpec> = listOf(
-        DebugSwitchSpec(
-            SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
-            UiText.Settings.EXPERIMENTAL_DEXKIT_LABEL,
-            UiText.Settings.EXPERIMENTAL_DEXKIT_DESC,
-            action = DebugSettingsAction.DEXKIT_STATUS,
-        ),
-        DebugSwitchSpec(
-            SettingsUserState.KEY_ENABLE_DETAILED_LOGGING,
-            UiText.Settings.DETAILED_LOGGING_LABEL,
-            UiText.Settings.DETAILED_LOGGING_DESC,
-        ),
-        DebugSwitchSpec(
-            key = null,
-            label = UiText.Settings.CLEAR_LOGS_LABEL,
-            description = UiText.Settings.CLEAR_LOGS_DESC,
-            action = DebugSettingsAction.CLEAR_LOGS,
-            showSwitch = false,
-        ),
-        DebugSwitchSpec(
-            key = null,
-            label = UiText.Settings.RESET_MODULE_SETTINGS_LABEL,
-            description = UiText.Settings.RESET_MODULE_SETTINGS_DESC,
-            action = DebugSettingsAction.RESET_MODULE_SETTINGS,
-            showSwitch = false,
-        ),
-    )
+    fun specs(hostPackageName: String): List<DebugSwitchSpec> {
+        return listOf(
+            DebugSwitchSpec(
+                SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
+                UiText.Settings.EXPERIMENTAL_DEXKIT_LABEL,
+                UiText.Settings.EXPERIMENTAL_DEXKIT_DESC,
+                action = DebugSettingsAction.DEXKIT_STATUS,
+            ),
+            DebugSwitchSpec(
+                SettingsUserState.KEY_ENABLE_DETAILED_LOGGING,
+                UiText.Settings.DETAILED_LOGGING_LABEL,
+                UiText.Settings.detailedLoggingDesc(hostPackageName),
+            ),
+            DebugSwitchSpec(
+                key = null,
+                label = UiText.Settings.CLEAR_LOGS_LABEL,
+                description = UiText.Settings.CLEAR_LOGS_DESC,
+                action = DebugSettingsAction.CLEAR_LOGS,
+                showSwitch = false,
+            ),
+            DebugSwitchSpec(
+                key = null,
+                label = UiText.Settings.RESET_MODULE_SETTINGS_LABEL,
+                description = UiText.Settings.RESET_MODULE_SETTINGS_DESC,
+                action = DebugSettingsAction.RESET_MODULE_SETTINGS,
+                showSwitch = false,
+            ),
+        )
+    }
 }
