@@ -5,11 +5,13 @@ import com.xiyunmn.puredupan.hook.host.HostIds
 import com.xiyunmn.puredupan.hook.host.HostRegistry
 import com.xiyunmn.puredupan.hook.plan.catalogs.baidu.cn.BaiduCnHookCatalog
 import com.xiyunmn.puredupan.hook.plan.catalogs.baidu.intl.BaiduIntlHookCatalog
+import com.xiyunmn.puredupan.hook.plan.catalogs.baidu.samsung.BaiduSamsungHookCatalog
 
 internal object HostHookCatalogs {
     private val catalogEntries: List<Pair<String, HookCatalog>> = listOf(
         HostIds.BAIDU_CN to BaiduCnHookCatalog,
         HostIds.BAIDU_INTL to BaiduIntlHookCatalog,
+        HostIds.BAIDU_SAMSUNG to BaiduSamsungHookCatalog,
     )
     private val catalogsById: Map<String, HookCatalog> = catalogEntries.toMap()
 

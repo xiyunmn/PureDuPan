@@ -196,15 +196,46 @@ internal object HostProfileValidator {
         )
 
     private fun requireRequiredHomeCustomizeHookPoints(profile: HostProfile) {
+        val featureKeys = profile.capabilities.features.availableKeys
         val points = profile.capabilities.uiHookPoints.homeCustomize
-        requireRequiredClassName(profile, points.searchboxFragmentClassName, "home searchbox fragment")
-        requireRequiredClassNames(profile, points.feedFragmentClassNames, "home feed fragment")
-        requireRequiredClassNames(profile, points.storyCardViewClassNames, "home story card view")
-        requireRequiredClassNames(profile, points.saveCardViewClassNames, "home save card view")
-        requireRequiredClassNames(profile, points.recentCardViewClassNames, "home recent card view")
-        requireRequiredClassName(profile, points.home25aiContextCompanionClassName, "home25ai context companion")
-        require(!points.loadHomeBannerMethodName.isNullOrBlank()) {
-            "Host ${profile.id} requires load home banner method name"
+
+        val needsSearchbox = featureKeys.any {
+            it in setOf(
+                FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION,
+                FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER,
+                FeatureKeys.KEY_HIDE_HOME_SEARCH_AIGC_ICON,
+            )
+        }
+        if (needsSearchbox) {
+            requireRequiredClassName(profile, points.searchboxFragmentClassName, "home searchbox fragment")
+        }
+
+        val needsFeedFragment = featureKeys.any {
+            it in setOf(
+                FeatureKeys.KEY_HIDE_HOME_FEED_TIP,
+                FeatureKeys.KEY_HIDE_HOME_BANNER,
+                FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION,
+                FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION,
+                FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION,
+            )
+        }
+        if (needsFeedFragment) {
+            requireRequiredClassNames(profile, points.feedFragmentClassNames, "home feed fragment")
+        }
+        if (FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION in featureKeys) {
+            requireRequiredClassNames(profile, points.storyCardViewClassNames, "home story card view")
+        }
+        if (FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION in featureKeys) {
+            requireRequiredClassNames(profile, points.saveCardViewClassNames, "home save card view")
+        }
+        if (FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION in featureKeys) {
+            requireRequiredClassNames(profile, points.recentCardViewClassNames, "home recent card view")
+        }
+        if (FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION in featureKeys) {
+            requireRequiredClassName(profile, points.home25aiContextCompanionClassName, "home25ai context companion")
+            require(!points.loadHomeBannerMethodName.isNullOrBlank()) {
+                "Host ${profile.id} requires load home banner method name"
+            }
         }
     }
 

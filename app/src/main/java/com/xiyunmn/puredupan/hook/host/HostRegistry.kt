@@ -2,11 +2,13 @@ package com.xiyunmn.puredupan.hook.host
 
 import com.xiyunmn.puredupan.hook.host.profiles.baidu.BaiduCnHostProfile
 import com.xiyunmn.puredupan.hook.host.profiles.baidu.BaiduIntlHostProfile
+import com.xiyunmn.puredupan.hook.host.profiles.baidu.BaiduSamsungHostProfile
 
 internal object HostRegistry {
     private val profiles = listOf(
         BaiduCnHostProfile,
         BaiduIntlHostProfile,
+        BaiduSamsungHostProfile,
     )
 
     init {
