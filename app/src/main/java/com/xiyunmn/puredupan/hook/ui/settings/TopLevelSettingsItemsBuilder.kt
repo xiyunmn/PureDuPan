@@ -8,6 +8,7 @@ internal object TopLevelSettingsItemsBuilder {
         restrictedUnlocked: Boolean,
         defaultValues: TopLevelSettingsDefaultValues,
         actionHandlers: TopLevelSettingsActionHandlers,
+        texts: SettingsTextResolver,
         isFeatureVisible: (String) -> Boolean,
     ): TopLevelSettingsGroups {
         val contentBlockItems = buildList {
@@ -17,6 +18,7 @@ internal object TopLevelSettingsItemsBuilder {
                         TopLevelSettingsRegistry.restrictedContentSpecs(primarySplashAdFeatureKey),
                         defaultValues,
                         actionHandlers,
+                        texts,
                         isFeatureVisible,
                     )
                 )
@@ -26,6 +28,7 @@ internal object TopLevelSettingsItemsBuilder {
                     TopLevelSettingsRegistry.contentSpecs,
                     defaultValues,
                     actionHandlers,
+                    texts,
                     isFeatureVisible,
                 )
             )
@@ -38,6 +41,7 @@ internal object TopLevelSettingsItemsBuilder {
                         TopLevelSettingsRegistry.restrictedUiSpecs,
                         defaultValues,
                         actionHandlers,
+                        texts,
                         isFeatureVisible,
                     )
                 )
@@ -47,6 +51,7 @@ internal object TopLevelSettingsItemsBuilder {
                     TopLevelSettingsRegistry.uiSpecs,
                     defaultValues,
                     actionHandlers,
+                    texts,
                     isFeatureVisible,
                 )
             )
@@ -58,6 +63,7 @@ internal object TopLevelSettingsItemsBuilder {
                     TopLevelSettingsRegistry.themeSpecs,
                     defaultValues,
                     actionHandlers,
+                    texts,
                     isFeatureVisible,
                 )
             )
@@ -67,6 +73,7 @@ internal object TopLevelSettingsItemsBuilder {
                         TopLevelSettingsRegistry.restrictedThemeSpecs,
                         defaultValues,
                         actionHandlers,
+                        texts,
                         isFeatureVisible,
                     )
                 )
@@ -84,6 +91,7 @@ internal object TopLevelSettingsItemsBuilder {
         showDexKitStatus: Boolean,
         dexKitSummaryText: String,
         actionHandlers: DebugSettingsActionHandlers,
+        texts: SettingsTextResolver,
     ): List<SwitchItem> {
         return DebugSettingsRegistry.specs.map { spec ->
             switchItemForDebugSpec(
@@ -91,6 +99,7 @@ internal object TopLevelSettingsItemsBuilder {
                 showDexKitStatus = showDexKitStatus,
                 dexKitSummaryText = dexKitSummaryText,
                 actionHandlers = actionHandlers,
+                texts = texts,
             )
         }
     }
@@ -99,6 +108,7 @@ internal object TopLevelSettingsItemsBuilder {
         specs: List<TopLevelSwitchSpec>,
         defaultValues: TopLevelSettingsDefaultValues,
         actionHandlers: TopLevelSettingsActionHandlers,
+        texts: SettingsTextResolver,
         isFeatureVisible: (String) -> Boolean,
     ): List<SwitchItem> {
         return specs.map { spec ->
@@ -106,6 +116,7 @@ internal object TopLevelSettingsItemsBuilder {
                 spec = spec,
                 defaultValues = defaultValues,
                 actionHandlers = actionHandlers,
+                texts = texts,
                 isFeatureVisible = isFeatureVisible,
             )
         }
@@ -115,11 +126,13 @@ internal object TopLevelSettingsItemsBuilder {
         spec: TopLevelSwitchSpec,
         defaultValues: TopLevelSettingsDefaultValues,
         actionHandlers: TopLevelSettingsActionHandlers,
+        texts: SettingsTextResolver,
         isFeatureVisible: (String) -> Boolean,
     ): SwitchItem {
+        val text = texts.text(spec.key, spec.label, spec.description)
         return SwitchItem(
-            label = spec.label,
-            description = spec.description,
+            label = text.label,
+            description = text.description,
             prefKey = spec.key,
             supported = isFeatureVisible(spec.key),
             defaultValue = defaultValueForTopLevelSpec(spec, defaultValues),
@@ -168,14 +181,17 @@ internal object TopLevelSettingsItemsBuilder {
         showDexKitStatus: Boolean,
         dexKitSummaryText: String,
         actionHandlers: DebugSettingsActionHandlers,
+        texts: SettingsTextResolver,
     ): SwitchItem {
         val visible = when (spec.action) {
             DebugSettingsAction.DEXKIT_STATUS -> showDexKitStatus
             else -> true
         }
+        val text = spec.key?.let { key -> texts.text(key, spec.label, spec.description) }
+            ?: SettingsText(spec.label, spec.description)
         return SwitchItem(
-            label = spec.label,
-            description = spec.description,
+            label = text.label,
+            description = text.description,
             prefKey = spec.key,
             supported = visible,
             defaultValue = false,

@@ -27,6 +27,7 @@ internal object MemberCardCustomizeSettingsDialog {
         context: Context,
         prefs: SharedPreferences,
         settingsSession: SettingsRuntimeSession,
+        texts: SettingsTextResolver,
         onChooseBackground: () -> Unit,
         onAdjustBackground: (String) -> Unit,
     ) {
@@ -50,9 +51,16 @@ internal object MemberCardCustomizeSettingsDialog {
             var backgroundUriCleared = false
             val canReplaceBackground =
                 settingsSession.isFeatureVisible(SettingsUserState.KEY_REPLACE_MEMBER_CARD_BACKGROUND)
+            val backgroundText = texts.text(
+                SettingsUserState.KEY_REPLACE_MEMBER_CARD_BACKGROUND,
+                UiText.Settings.REPLACE_MEMBER_CARD_BACKGROUND_LABEL,
+                UiText.Settings.REPLACE_MEMBER_CARD_BACKGROUND_DESC,
+            )
             val backgroundImageControl = MemberCardSettingsControls.createBackgroundImageRow(
                 context = context,
                 prefs = prefs,
+                label = backgroundText.label,
+                description = backgroundText.description.orEmpty(),
                 padding = padding,
                 onChoose = {
                     backgroundUriCleared = false
@@ -79,10 +87,15 @@ internal object MemberCardCustomizeSettingsDialog {
                     ).show()
                 },
             )
+            val blurText = texts.text(
+                SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS,
+                UiText.Settings.MEMBER_CARD_BACKGROUND_BLUR_LABEL,
+                UiText.Settings.MEMBER_CARD_BACKGROUND_BLUR_DESC,
+            )
             val blurSlider = MemberCardSettingsControls.createIntSliderRow(
                 context = context,
-                label = UiText.Settings.MEMBER_CARD_BACKGROUND_BLUR_LABEL,
-                description = UiText.Settings.MEMBER_CARD_BACKGROUND_BLUR_DESC,
+                label = blurText.label,
+                description = blurText.description.orEmpty(),
                 padding = padding,
                 minValue = MEMBER_CARD_BACKGROUND_BLUR_MIN,
                 maxValue = MEMBER_CARD_BACKGROUND_BLUR_MAX,
@@ -98,6 +111,7 @@ internal object MemberCardCustomizeSettingsDialog {
             val memberCardItems = MemberCardSettingsItemsBuilder.memberCardCustomizeSwitchItems(
                 prefs = prefs,
                 memberCardLayoutMode = settingsSession.memberCardLayoutMode,
+                texts = texts,
                 isFeatureVisible = settingsSession::isFeatureVisible,
                 canViewBackgroundOnClick = canViewBackgroundOnClick,
             )
@@ -112,10 +126,15 @@ internal object MemberCardCustomizeSettingsDialog {
                 sizeAdjustItem.supported,
                 sizeAdjustItem.defaultValue,
             )
+            val widthText = texts.text(
+                SettingsUserState.KEY_MEMBER_CARD_SIZE_WIDTH_DP,
+                UiText.Settings.MEMBER_CARD_WIDTH_LABEL,
+                sizeAdjustItem.description,
+            )
             val widthSlider = MemberCardSettingsControls.createIntSliderRow(
                 context = context,
-                label = UiText.Settings.MEMBER_CARD_WIDTH_LABEL,
-                description = sizeAdjustItem.description.orEmpty(),
+                label = widthText.label,
+                description = widthText.description.orEmpty(),
                 padding = padding,
                 minValue = MEMBER_CARD_SIZE_WIDTH_MIN,
                 maxValue = MEMBER_CARD_SIZE_WIDTH_MAX,
@@ -124,10 +143,15 @@ internal object MemberCardCustomizeSettingsDialog {
                     if (value == 0) UiText.Settings.MEMBER_CARD_SIZE_DEFAULT else "${value}dp"
                 },
             )
+            val heightText = texts.text(
+                SettingsUserState.KEY_MEMBER_CARD_SIZE_HEIGHT_DP,
+                UiText.Settings.MEMBER_CARD_SIZE_HEIGHT_LABEL,
+                sizeAdjustItem.description,
+            )
             val heightSlider = MemberCardSettingsControls.createIntSliderRow(
                 context = context,
-                label = UiText.Settings.MEMBER_CARD_SIZE_HEIGHT_LABEL,
-                description = sizeAdjustItem.description.orEmpty(),
+                label = heightText.label,
+                description = heightText.description.orEmpty(),
                 padding = padding,
                 minValue = MEMBER_CARD_SIZE_HEIGHT_MIN,
                 maxValue = MEMBER_CARD_SIZE_HEIGHT_MAX,

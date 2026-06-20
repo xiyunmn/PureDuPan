@@ -7,10 +7,12 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 internal object PerformanceSettingsItemsBuilder {
     fun performanceOptimizeSections(
         prefs: SharedPreferences,
+        texts: SettingsTextResolver,
         isFeatureVisible: (String) -> Boolean,
     ): List<TitledKeyedSwitchSection> {
         val itemsByKey = performanceOptimizeItems(
             prefs = prefs,
+            texts = texts,
             isFeatureVisible = isFeatureVisible,
         ).associateBy { it.key }
         return performanceSectionTitles.map { (section, title) ->
@@ -51,15 +53,17 @@ internal object PerformanceSettingsItemsBuilder {
 
     private fun performanceOptimizeItems(
         prefs: SharedPreferences,
+        texts: SettingsTextResolver,
         isFeatureVisible: (String) -> Boolean,
     ): List<KeyedSwitchItem> {
         return PerformanceSettingsRegistry.specs.map { spec ->
             val visible = isFeatureVisible(spec.key)
+            val text = texts.text(spec.key, spec.label, spec.description)
             KeyedSwitchItem(
                 key = spec.key,
                 item = SwitchItem(
-                    label = spec.label,
-                    description = spec.description,
+                    label = text.label,
+                    description = text.description,
                     prefKey = null,
                     supported = visible,
                     defaultValue = prefs.getBoolean(spec.key, false),

@@ -53,6 +53,7 @@ internal object BaiduFeatureSets {
             baiduSamsungMemberCardCustomize,
             baiduSamsungBottomBarCustomize,
             baiduSamsungPerformanceCustomize,
+            baiduSamsungThemeCustomize,
         )
 
     private val baiduSharedDiagnostics = listOf(
@@ -229,7 +230,9 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT,
         FeatureKeys.KEY_HIDE_ABOUT_ME_REWARD_TEXT,
         FeatureKeys.KEY_HIDE_ABOUT_ME_SIGN_IN_DOT,
+        FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT,
         FeatureKeys.KEY_REMOVE_ABOUT_ME_BANNER,
+        FeatureKeys.KEY_REMOVE_GAME_CENTER,
         FeatureKeys.KEY_REMOVE_MY_SERVICE,
     )
 
@@ -242,18 +245,33 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduSamsungBottomBarCustomize = listOf(
+        FeatureKeys.KEY_BLOCK_BOTTOM_BADGE,
         FeatureKeys.KEY_CUSTOM_BOTTOM_BAR,
         FeatureKeys.KEY_HIDE_TAB_FILE,
         FeatureKeys.KEY_HIDE_TAB_SHARE,
         FeatureKeys.KEY_HIDE_TAB_HOME,
         FeatureKeys.KEY_HIDE_TAB_MINE,
         FeatureKeys.KEY_HIDE_TAB_AIGC,
-        FeatureKeys.KEY_HIDE_TAB_VIP,
     )
 
     private val baiduSamsungPerformanceCustomize = listOf(
         FeatureKeys.KEY_PERFORMANCE_OPTIMIZE,
+        FeatureKeys.KEY_DISABLE_AD_SDK_INIT,
+        FeatureKeys.KEY_DISABLE_AIGC_BACKGROUND_COMPONENT,
+        FeatureKeys.KEY_DISABLE_B2F_GUIDANCE_PREFETCH,
+        FeatureKeys.KEY_DISABLE_DATAPACK_SOCKET_REGISTER,
+        FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD,
+        FeatureKeys.KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER,
+        FeatureKeys.KEY_DISABLE_INCENTIVE_BUSINESS_SERVICE,
+        FeatureKeys.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART,
         FeatureKeys.KEY_DISABLE_OEM_PUSH_SERVICE,
+        FeatureKeys.KEY_DISABLE_SWAN_PRELOAD,
+        FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE,
+        FeatureKeys.KEY_DISABLE_VIDEO_AD_PRELOAD,
+    )
+
+    private val baiduSamsungThemeCustomize = listOf(
+        FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
     )
 
     private val baiduIntlPerformanceCustomize = listOf(

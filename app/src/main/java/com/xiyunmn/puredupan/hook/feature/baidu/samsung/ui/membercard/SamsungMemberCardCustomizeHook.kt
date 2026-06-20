@@ -9,6 +9,9 @@ object SamsungMemberCardCustomizeHook {
             cl = cl,
             fragmentClassName = BaiduSamsungHookPoints.ABOUT_ME_TOP_FRAGMENT,
             onViewCreatedMethodName = BaiduSamsungHookPoints.ABOUT_ME_TOP_FRAGMENT_ON_VIEW_CREATED_METHOD,
+            additionalFragmentClassNames = listOf(
+                BaiduSamsungHookPoints.ABOUT_ME_USER_CENTER_FRAGMENT,
+            ),
         )
     }
 }

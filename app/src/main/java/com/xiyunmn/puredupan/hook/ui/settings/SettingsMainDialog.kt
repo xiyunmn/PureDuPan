@@ -37,6 +37,7 @@ internal object SettingsMainDialog {
         try {
             val settingsSession = SettingsRuntimeSession.create(context)
             val prefs = settingsSession.prefs
+            val texts = SettingsHostTextCatalog.forHostId(settingsSession.hostId)
             val density = context.resources.displayMetrics.density
             val padding = (20 * density).toInt()
             val defaultValues = topLevelDefaultValues(settingsSession)
@@ -51,14 +52,19 @@ internal object SettingsMainDialog {
                 restrictedUnlocked = SettingsUserState.areRestrictedFeaturesUnlocked,
                 defaultValues = defaultValues,
                 actionHandlers = TopLevelSettingsActionHandlers(
-                    onHomeCustomizeClick = { PageCustomizeSettingsDialogs.showHome(context, prefs, settingsSession) },
-                    onSharePageCustomizeClick = { PageCustomizeSettingsDialogs.showSharePage(context, prefs, settingsSession) },
-                    onMyPageCustomizeClick = { PageCustomizeSettingsDialogs.showMyPage(context, prefs, settingsSession) },
+                    onHomeCustomizeClick = { PageCustomizeSettingsDialogs.showHome(context, prefs, settingsSession, texts) },
+                    onSharePageCustomizeClick = {
+                        PageCustomizeSettingsDialogs.showSharePage(context, prefs, settingsSession, texts)
+                    },
+                    onMyPageCustomizeClick = {
+                        PageCustomizeSettingsDialogs.showMyPage(context, prefs, settingsSession, texts)
+                    },
                     onMemberCardCustomizeClick = {
                         MemberCardCustomizeSettingsDialog.show(
                             context = context,
                             prefs = prefs,
                             settingsSession = settingsSession,
+                            texts = texts,
                             onChooseBackground = onChooseMemberCardBackground,
                             onAdjustBackground = { uriString ->
                                 MemberCardBackgroundEditorDialog.show(context, uriString)
@@ -66,12 +72,13 @@ internal object SettingsMainDialog {
                         )
                     },
                     onBottomBarCustomizeClick = {
-                        BottomBarCustomizeSettingsDialog.show(context, prefs, settingsSession)
+                        BottomBarCustomizeSettingsDialog.show(context, prefs, settingsSession, texts)
                     },
                     onPerformanceOptimizeClick = {
-                        PerformanceOptimizeSettingsDialog.show(context, prefs, settingsSession)
+                        PerformanceOptimizeSettingsDialog.show(context, prefs, settingsSession, texts)
                     },
                 ),
+                texts = texts,
                 isFeatureVisible = settingsSession::isFeatureVisible,
             )
             val debugItems = TopLevelSettingsItemsBuilder.debugItems(
@@ -90,6 +97,7 @@ internal object SettingsMainDialog {
                         }
                     },
                 ),
+                texts = texts,
             )
 
             val groups = mutableListOf(

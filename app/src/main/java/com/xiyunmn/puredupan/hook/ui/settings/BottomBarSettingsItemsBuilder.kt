@@ -7,10 +7,12 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 internal object BottomBarSettingsItemsBuilder {
     fun bottomBarCustomizeGroups(
         prefs: SharedPreferences,
+        texts: SettingsTextResolver,
         isFeatureVisible: (String) -> Boolean,
     ): BottomBarCustomizeGroups {
         val itemsByKey = bottomBarCustomizeItems(
             prefs = prefs,
+            texts = texts,
             isFeatureVisible = isFeatureVisible,
         ).associateBy { it.key }
         val directItems = BottomBarCustomizeSettingsRegistry
@@ -96,11 +98,13 @@ internal object BottomBarSettingsItemsBuilder {
 
     private fun bottomBarCustomizeItems(
         prefs: SharedPreferences,
+        texts: SettingsTextResolver,
         isFeatureVisible: (String) -> Boolean,
     ): List<KeyedSwitchItem> {
         val initialSelection = BottomBarCustomizeSettingsRegistry.readTabSelection(prefs)
         return BottomBarCustomizeSettingsRegistry.specs.map { spec ->
             val visible = isFeatureVisible(spec.key)
+            val text = texts.text(spec.key, spec.label, spec.description)
             val defaultValue = when (spec.section) {
                 BottomBarCustomizeSettingsSection.DIRECT -> prefs.getBoolean(spec.key, false)
                 BottomBarCustomizeSettingsSection.TAB ->
@@ -109,8 +113,8 @@ internal object BottomBarSettingsItemsBuilder {
             KeyedSwitchItem(
                 key = spec.key,
                 item = SwitchItem(
-                    label = spec.label,
-                    description = spec.description,
+                    label = text.label,
+                    description = text.description,
                     prefKey = null,
                     supported = visible,
                     defaultValue = defaultValue,

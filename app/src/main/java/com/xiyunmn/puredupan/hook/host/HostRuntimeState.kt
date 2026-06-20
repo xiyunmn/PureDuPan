@@ -15,6 +15,10 @@ internal object HostRuntimeState {
         return HostRegistry.resolveByPackageName(packageName)
     }
 
+    fun hostIdForPackage(packageName: String): String? {
+        return profileForPackage(packageName)?.id
+    }
+
     fun isSupportedPackage(packageName: String): Boolean {
         return profileForPackage(packageName) != null
     }
@@ -52,6 +56,14 @@ internal object HostRuntimeState {
 
     fun currentAboutMeActivityClassName(): String? {
         return currentUiHookPoints().aboutMeActivityClassName
+    }
+
+    fun currentAboutMeActivityClassNames(): List<String> {
+        val hookPoints = currentUiHookPoints()
+        return listOfNotNull(
+            hookPoints.aboutMeActivityClassName,
+            hookPoints.newAboutMeActivityClassName,
+        ).distinct()
     }
 
     fun currentPopupResponseClassName(): String? {

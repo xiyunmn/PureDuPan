@@ -6,15 +6,17 @@ import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 internal object PageCustomizeSettingsItemsBuilder {
     fun sharePageCustomizeItems(
         prefs: SharedPreferences,
+        texts: SettingsTextResolver,
         isFeatureVisible: (String) -> Boolean,
     ): List<KeyedSwitchItem> {
         return SharePageCustomizeSettingsRegistry.specs.map { spec ->
             val visible = isFeatureVisible(spec.key)
+            val text = texts.text(spec.key, spec.label, spec.description)
             KeyedSwitchItem(
                 key = spec.key,
                 item = SwitchItem(
-                    label = spec.label,
-                    description = spec.description,
+                    label = text.label,
+                    description = text.description,
                     prefKey = null,
                     supported = visible,
                     defaultValue = prefs.getBoolean(spec.key, false),
@@ -53,15 +55,17 @@ internal object PageCustomizeSettingsItemsBuilder {
 
     fun myPageCustomizeItems(
         prefs: SharedPreferences,
+        texts: SettingsTextResolver,
         isFeatureVisible: (String) -> Boolean,
     ): List<KeyedSwitchItem> {
         return MyPageCustomizeSettingsRegistry.specs.map { spec ->
             val visible = isFeatureVisible(spec.key)
+            val text = texts.text(spec.key, spec.label, spec.description)
             KeyedSwitchItem(
                 key = spec.key,
                 item = SwitchItem(
-                    label = spec.label,
-                    description = spec.description,
+                    label = text.label,
+                    description = text.description,
                     prefKey = null,
                     supported = visible,
                     defaultValue = prefs.getBoolean(spec.key, false),
@@ -109,15 +113,17 @@ internal object PageCustomizeSettingsItemsBuilder {
 
     fun homeCustomizeItems(
         prefs: SharedPreferences,
+        texts: SettingsTextResolver,
         isFeatureVisible: (String) -> Boolean,
     ): List<KeyedSwitchItem> {
         return HomeCustomizeSettingsRegistry.specs.map { spec ->
             val visible = isFeatureVisible(spec.key)
+            val text = texts.text(spec.key, spec.label, spec.description)
             KeyedSwitchItem(
                 key = spec.key,
                 item = SwitchItem(
-                    label = spec.label,
-                    description = spec.description,
+                    label = text.label,
+                    description = text.description,
                     prefKey = null,
                     supported = visible,
                     defaultValue = spec.isChecked(prefs),

@@ -42,12 +42,14 @@ import java.util.WeakHashMap
 import kotlin.math.max
 
 /**
- * Customizes the legacy benefit-slot VIP card area in AboutMeTopFragment.
+ * Customizes the legacy benefit-slot VIP card area in old/new AboutMe fragments.
  */
 object LegacyMemberCardCustomizeHook {
     private const val MEMBER_CARD_ACTIVITY_CONTAINER_ID = "about_me_top"
     private const val MEMBER_CARD_ROOT_ID = "cl_aboutme_top"
+    private const val MEMBER_CARD_USER_CENTER_ROOT_ID = "cl_aboutme_user_center"
     private const val MEMBER_CARD_BACKGROUND_ID = "iv_bg"
+    private const val MEMBER_CARD_USER_CENTER_BACKGROUND_ID = "iv_user_center_bg"
     private const val MEMBER_CARD_OPERATION_ID = "operation_layout"
     private const val MEMBER_CARD_OPERATION_BACKGROUND_ID = "iv_bg_operation"
     private val MEMBER_CARD_OPERATION_CHILD_IDS = listOf(
@@ -63,21 +65,43 @@ object LegacyMemberCardCustomizeHook {
     private const val MEMBER_CARD_THIRD_BENEFIT_ID = "cl_third_card"
     private const val MEMBER_CARD_BENEFIT_DIVIDER_ID = "view_line"
     private const val MEMBER_CARD_BENEFIT_BAR_ID = "ll_root"
+    private const val MEMBER_CARD_USER_CENTER_BENEFIT_BAR_ID = "ll_card_root"
     private const val MEMBER_CARD_SVIP_LEVEL_ID = "iv_vip_image"
     private const val MEMBER_CARD_SVIP_NUMBER_ID = "tv_vip_number"
     private const val MEMBER_CARD_UNLOCK_SVIP_ROOT_ID = "rl_root"
     private const val MEMBER_CARD_UNLOCK_SVIP_TEXT = "解锁SVIP"
     private const val MEMBER_CARD_SVIP_STATUS_ID = "tv_duration_content"
     private const val MEMBER_CARD_RENEW_BUTTON_ID = "tv_enter"
+    private const val MEMBER_CARD_USER_CENTER_RENEW_BUTTON_ID = "tv_enter_user_center"
+    private const val MEMBER_CARD_RENEW_TIP_ID = "tv_tip"
     private const val MEMBER_CARD_RENEW_DIVIDER_ID = "enter_line"
+    private val MEMBER_CARD_ROOT_IDS = listOf(
+        MEMBER_CARD_ROOT_ID,
+        MEMBER_CARD_USER_CENTER_ROOT_ID,
+    )
+    private val MEMBER_CARD_BACKGROUND_IDS = listOf(
+        MEMBER_CARD_BACKGROUND_ID,
+        MEMBER_CARD_USER_CENTER_BACKGROUND_ID,
+    )
+    private val MEMBER_CARD_BENEFIT_BAR_IDS = listOf(
+        MEMBER_CARD_BENEFIT_BAR_ID,
+        MEMBER_CARD_USER_CENTER_BENEFIT_BAR_ID,
+    )
+    private val MEMBER_CARD_RENEW_BUTTON_IDS = listOf(
+        MEMBER_CARD_RENEW_BUTTON_ID,
+        MEMBER_CARD_USER_CENTER_RENEW_BUTTON_ID,
+    )
     private val MEMBER_CARD_CLICK_TARGET_IDS = listOf(
         MEMBER_CARD_ACTIVITY_CONTAINER_ID,
         MEMBER_CARD_ROOT_ID,
+        MEMBER_CARD_USER_CENTER_ROOT_ID,
         MEMBER_CARD_FIRST_BENEFIT_ID,
         MEMBER_CARD_SECOND_BENEFIT_ID,
         MEMBER_CARD_THIRD_BENEFIT_ID,
+        MEMBER_CARD_USER_CENTER_BENEFIT_BAR_ID,
         MEMBER_CARD_UNLOCK_SVIP_ROOT_ID,
         MEMBER_CARD_RENEW_BUTTON_ID,
+        MEMBER_CARD_USER_CENTER_RENEW_BUTTON_ID,
     )
 
     private val attachedRoots = Collections.newSetFromMap(WeakHashMap<View, Boolean>())
@@ -99,53 +123,81 @@ object LegacyMemberCardCustomizeHook {
         cl: ClassLoader,
         fragmentClassName: String,
         onViewCreatedMethodName: String = "onViewCreated",
+        additionalFragmentClassNames: List<String> = emptyList(),
     ) {
         val snapshot = HookSettings.memberCardSnapshot()
         if (!hasEnabledOption(snapshot)) {
             XposedCompat.log("[MemberCardCustomizeHook] skipped: config disabled")
             return
         }
-        val mod = XposedCompat.module ?: return
+        if (XposedCompat.module == null) return
         if (!hookState.markInstalled()) return
 
         try {
-            val fragmentClass = XposedCompat.findClassOrNull(
-                fragmentClassName,
-                cl,
-            ) ?: run {
-                XposedCompat.log("[LegacyMemberCardCustomizeHook] AboutMeTopFragment class NOT FOUND")
+            val fragmentClassNames = (listOf(fragmentClassName) + additionalFragmentClassNames).distinct()
+            var installed = 0
+            for (className in fragmentClassNames) {
+                installed += hookFragmentClass(
+                    cl = cl,
+                    fragmentClassName = className,
+                    onViewCreatedMethodName = onViewCreatedMethodName,
+                )
+            }
+
+            if (installed == 0) {
+                XposedCompat.log("[LegacyMemberCardCustomizeHook] fragment hooks NOT INSTALLED")
                 hookState.reset()
                 return
             }
 
-            val method = XposedCompat.findMethodOrNull(
-                fragmentClass,
-                onViewCreatedMethodName,
-                View::class.java,
-                Bundle::class.java,
-            ) ?: run {
-                XposedCompat.log("[LegacyMemberCardCustomizeHook] onViewCreated(View, Bundle) NOT FOUND")
-                hookState.reset()
-                return
-            }
-
-            mod.hook(method).intercept { chain ->
-                val result = chain.proceed()
-                try {
-                    attachMemberCardWatcher(chain.args.firstOrNull() as? View)
-                } catch (e: Exception) {
-                    XposedCompat.logD("[LegacyMemberCardCustomizeHook] attach failed: ${e.message}")
-                }
-                result
-            }
-            hookOnCreateView(fragmentClass)
-
-            XposedCompat.log("[LegacyMemberCardCustomizeHook] hook INSTALLED")
+            XposedCompat.log("[LegacyMemberCardCustomizeHook] hooks INSTALLED: count=$installed")
         } catch (e: Exception) {
             hookState.reset()
             XposedCompat.log("[LegacyMemberCardCustomizeHook] FAILED: ${e.message}")
             XposedCompat.log(e)
         }
+    }
+
+    private fun hookFragmentClass(
+        cl: ClassLoader,
+        fragmentClassName: String,
+        onViewCreatedMethodName: String,
+    ): Int {
+        val mod = XposedCompat.module ?: return 0
+        val fragmentClass = XposedCompat.findClassOrNull(
+            fragmentClassName,
+            cl,
+        ) ?: run {
+            XposedCompat.log("[LegacyMemberCardCustomizeHook] fragment class NOT FOUND: $fragmentClassName")
+            return 0
+        }
+
+        val method = XposedCompat.findMethodOrNull(
+            fragmentClass,
+            onViewCreatedMethodName,
+            View::class.java,
+            Bundle::class.java,
+        ) ?: run {
+            XposedCompat.log(
+                "[LegacyMemberCardCustomizeHook] " +
+                    "$fragmentClassName.$onViewCreatedMethodName(View, Bundle) NOT FOUND",
+            )
+            return 0
+        }
+
+        mod.hook(method).intercept { chain ->
+            val result = chain.proceed()
+            try {
+                attachMemberCardWatcher(chain.args.firstOrNull() as? View)
+            } catch (e: Exception) {
+                XposedCompat.logD("[LegacyMemberCardCustomizeHook] attach failed: ${e.message}")
+            }
+            result
+        }
+        hookOnCreateView(fragmentClass)
+
+        XposedCompat.log("[LegacyMemberCardCustomizeHook] hook INSTALLED: $fragmentClassName")
+        return 1
     }
 
     private fun hookOnCreateView(fragmentClass: Class<*>) {
@@ -206,7 +258,7 @@ object LegacyMemberCardCustomizeHook {
         val resources = root.resources ?: return
         val packageName = root.context?.packageName ?: return
         val hostRoot = root.rootView ?: root
-        val cardRoot = findViewByEntryName(root, resources, packageName, MEMBER_CARD_ROOT_ID) ?: root
+        val cardRoot = findFirstViewByEntryNames(root, resources, packageName, MEMBER_CARD_ROOT_IDS) ?: root
         val activityCardRoot = findViewByEntryName(
             hostRoot,
             resources,
@@ -226,7 +278,7 @@ object LegacyMemberCardCustomizeHook {
         }
         applyCardSize(cardRoot, snapshot, recordDefault = activityCardRoot == null)
 
-        val background = findViewByEntryName(root, resources, packageName, MEMBER_CARD_BACKGROUND_ID)
+        val background = findFirstViewByEntryNames(root, resources, packageName, MEMBER_CARD_BACKGROUND_IDS)
         if (background != null) {
             applyCardSize(background, snapshot)
             if (snapshot.isMemberCardBackgroundReplaced && background is ImageView) {
@@ -295,13 +347,13 @@ object LegacyMemberCardCustomizeHook {
             hideByEntryName(root, resources, packageName, MEMBER_CARD_BENEFIT_DIVIDER_ID) {
                 XposedCompat.logD("[MemberCardCustomizeHook] member card benefit divider hidden")
             }
-            hideByEntryName(root, resources, packageName, MEMBER_CARD_BENEFIT_BAR_ID) {
+            hideByEntryNames(root, resources, packageName, MEMBER_CARD_BENEFIT_BAR_IDS) {
                 XposedCompat.logD("[LegacyMemberCardCustomizeHook] member card benefit container hidden")
             }
         }
 
         if (snapshot.isMemberCardBenefitBarHidden) {
-            hideByEntryName(root, resources, packageName, MEMBER_CARD_BENEFIT_BAR_ID) {
+            hideByEntryNames(root, resources, packageName, MEMBER_CARD_BENEFIT_BAR_IDS) {
                 XposedCompat.logD("[MemberCardCustomizeHook] member card benefit bar hidden")
             }
         }
@@ -321,10 +373,13 @@ object LegacyMemberCardCustomizeHook {
         }
 
         if (snapshot.isIntlMemberCardUpgradeButtonHidden) {
-            val renewButton = findViewByEntryName(root, resources, packageName, MEMBER_CARD_RENEW_BUTTON_ID)
+            val renewButton = findFirstViewByEntryNames(root, resources, packageName, MEMBER_CARD_RENEW_BUTTON_IDS)
             if (renewButton != null && renewButton.visibility != View.GONE) {
                 renewButton.visibility = View.GONE
                 XposedCompat.logD("[LegacyMemberCardCustomizeHook] intl upgrade button hidden")
+            }
+            hideByEntryName(root, resources, packageName, MEMBER_CARD_RENEW_TIP_ID) {
+                XposedCompat.logD("[LegacyMemberCardCustomizeHook] upgrade price tip hidden")
             }
             val divider = findViewByEntryName(root, resources, packageName, MEMBER_CARD_RENEW_DIVIDER_ID)
             if (divider != null && divider.visibility != View.GONE) {
@@ -509,6 +564,28 @@ object LegacyMemberCardCustomizeHook {
         view.isEnabled = false
         view.isClickable = false
         onHidden?.invoke()
+    }
+
+    private fun hideByEntryNames(
+        root: View,
+        resources: android.content.res.Resources,
+        packageName: String,
+        idNames: List<String>,
+        onHidden: (() -> Unit)? = null,
+    ) {
+        var hidden = false
+        for (idName in idNames) {
+            val view = findViewByEntryName(root, resources, packageName, idName) ?: continue
+            if (view.visibility == View.GONE && view.alpha == 0f && !view.isEnabled && !view.isClickable) {
+                continue
+            }
+            view.visibility = View.GONE
+            view.alpha = 0f
+            view.isEnabled = false
+            view.isClickable = false
+            hidden = true
+        }
+        if (hidden) onHidden?.invoke()
     }
 
     private fun hideUnlockSvipEntry(
@@ -1096,6 +1173,19 @@ object LegacyMemberCardCustomizeHook {
         val id = resources.getIdentifier(idName, "id", packageName)
         if (id == 0) return null
         return root.findViewById(id)
+    }
+
+    private fun findFirstViewByEntryNames(
+        root: View,
+        resources: android.content.res.Resources,
+        packageName: String,
+        idNames: List<String>,
+    ): View? {
+        for (idName in idNames) {
+            val view = findViewByEntryName(root, resources, packageName, idName)
+            if (view != null) return view
+        }
+        return null
     }
 
     private fun isAncestorOf(ancestor: View, child: View): Boolean {

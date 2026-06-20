@@ -23,6 +23,7 @@ internal object BottomBarCustomizeSettingsDialog {
         context: Context,
         prefs: SharedPreferences,
         settingsSession: SettingsRuntimeSession,
+        texts: SettingsTextResolver,
     ) {
         try {
             if (!settingsSession.isFeatureVisible(SettingsUserState.KEY_CUSTOM_BOTTOM_BAR)) {
@@ -44,6 +45,7 @@ internal object BottomBarCustomizeSettingsDialog {
 
             val bottomBarGroups = BottomBarSettingsItemsBuilder.bottomBarCustomizeGroups(
                 prefs = prefs,
+                texts = texts,
                 isFeatureVisible = settingsSession::isFeatureVisible,
             )
             val bottomBarItems = bottomBarGroups.directItems + bottomBarGroups.tabSection.items

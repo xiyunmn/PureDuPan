@@ -20,6 +20,8 @@ internal object MemberCardSettingsControls {
     fun createBackgroundImageRow(
         context: Context,
         prefs: SharedPreferences,
+        label: String,
+        description: String,
         padding: Int,
         onChoose: () -> Unit,
         onAdjust: () -> Unit,
@@ -40,14 +42,14 @@ internal object MemberCardSettingsControls {
             orientation = LinearLayout.VERTICAL
         }
         textContainer.addView(TextView(context).apply {
-            text = UiText.Settings.REPLACE_MEMBER_CARD_BACKGROUND_LABEL
+            text = label
             textSize = 15f
             setTextColor(tokens.textPrimary)
             typeface = Typeface.DEFAULT_BOLD
             includeFontPadding = false
         })
         textContainer.addView(TextView(context).apply {
-            text = UiText.Settings.REPLACE_MEMBER_CARD_BACKGROUND_DESC
+            text = description
             textSize = 12f
             setTextColor(tokens.textSecondary)
             setPadding(0, (3 * density).toInt(), (12 * density).toInt(), 0)

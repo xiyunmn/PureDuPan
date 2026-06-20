@@ -20,6 +20,7 @@ internal object PageCustomizeSettingsDialogs {
         context: Context,
         prefs: SharedPreferences,
         settingsSession: SettingsRuntimeSession,
+        texts: SettingsTextResolver,
     ) {
         try {
             if (!settingsSession.isFeatureVisible(SettingsUserState.KEY_SHARE_PAGE_CUSTOMIZE)) {
@@ -32,6 +33,7 @@ internal object PageCustomizeSettingsDialogs {
             val root = createDialogRoot(context, padding)
             val sharePageItems = PageCustomizeSettingsItemsBuilder.sharePageCustomizeItems(
                 prefs = prefs,
+                texts = texts,
                 isFeatureVisible = settingsSession::isFeatureVisible,
             )
             val rowsByKey = createRowsByKey(context, prefs, padding, sharePageItems)
@@ -80,6 +82,7 @@ internal object PageCustomizeSettingsDialogs {
         context: Context,
         prefs: SharedPreferences,
         settingsSession: SettingsRuntimeSession,
+        texts: SettingsTextResolver,
     ) {
         try {
             if (!settingsSession.isFeatureVisible(SettingsUserState.KEY_HOME_CUSTOMIZE)) {
@@ -92,6 +95,7 @@ internal object PageCustomizeSettingsDialogs {
             val root = createDialogRoot(context, padding)
             val homeItems = PageCustomizeSettingsItemsBuilder.homeCustomizeItems(
                 prefs = prefs,
+                texts = texts,
                 isFeatureVisible = settingsSession::isFeatureVisible,
             )
             val rowsByKey = createRowsByKey(context, prefs, padding, homeItems)
@@ -159,6 +163,7 @@ internal object PageCustomizeSettingsDialogs {
         context: Context,
         prefs: SharedPreferences,
         settingsSession: SettingsRuntimeSession,
+        texts: SettingsTextResolver,
     ) {
         try {
             if (!settingsSession.isFeatureVisible(SettingsUserState.KEY_MY_PAGE_CUSTOMIZE)) {
@@ -171,6 +176,7 @@ internal object PageCustomizeSettingsDialogs {
             val root = createDialogRoot(context, padding)
             val myPageItems = PageCustomizeSettingsItemsBuilder.myPageCustomizeItems(
                 prefs = prefs,
+                texts = texts,
                 isFeatureVisible = settingsSession::isFeatureVisible,
             )
             val rowsByKey = createRowsByKey(context, prefs, padding, myPageItems)

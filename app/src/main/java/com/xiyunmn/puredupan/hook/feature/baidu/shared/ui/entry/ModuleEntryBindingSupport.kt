@@ -4,8 +4,13 @@ import android.content.Context
 import android.view.View
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
+import java.util.Collections
+import java.util.WeakHashMap
 
 internal object ModuleEntryBindingSupport {
+    private val loggedBindings: MutableMap<View, String> =
+        Collections.synchronizedMap(WeakHashMap())
+
     fun bindLongPressToSettings(
         view: View?,
         classLoader: ClassLoader?,
@@ -13,11 +18,15 @@ internal object ModuleEntryBindingSupport {
         entryName: String,
     ) {
         if (view == null || classLoader == null) return
+        val bindingKey = "$tag:$entryName"
+        val shouldLog = loggedBindings.put(view, bindingKey) != bindingKey
         view.setOnLongClickListener {
             showSettings(it.context, classLoader, tag, entryName)
             true
         }
-        XposedCompat.log("[$tag] long-press listener bound to $entryName")
+        if (shouldLog) {
+            XposedCompat.log("[$tag] long-press listener bound to $entryName")
+        }
     }
 
     fun findViewByEntryName(root: View, entryName: String): View? {

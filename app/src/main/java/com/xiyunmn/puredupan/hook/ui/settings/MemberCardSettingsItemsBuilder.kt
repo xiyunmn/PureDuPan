@@ -8,21 +8,34 @@ internal object MemberCardSettingsItemsBuilder {
     fun memberCardCustomizeSwitchItems(
         prefs: SharedPreferences,
         memberCardLayoutMode: MemberCardLayoutMode,
+        texts: SettingsTextResolver,
         isFeatureVisible: (String) -> Boolean,
         canViewBackgroundOnClick: Boolean,
     ): MemberCardCustomizeSwitchItems {
         val sizeAdjustSpec = MemberCardCustomizeSettingsRegistry.sizeAdjustSpec
         val removeCardClickSpec = MemberCardCustomizeSettingsRegistry.removeCardClickSpec
         val viewBackgroundOnClickSpec = MemberCardCustomizeSettingsRegistry.viewBackgroundOnClickSpec
+        val sizeAdjustText = texts.text(sizeAdjustSpec.key, sizeAdjustSpec.label, sizeAdjustSpec.description)
+        val removeCardClickText = texts.text(
+            removeCardClickSpec.key,
+            removeCardClickSpec.label,
+            removeCardClickSpec.description,
+        )
+        val viewBackgroundOnClickText = texts.text(
+            viewBackgroundOnClickSpec.key,
+            viewBackgroundOnClickSpec.label,
+            viewBackgroundOnClickSpec.description,
+        )
         val allHideItems = MemberCardCustomizeSettingsRegistry.allHideSpecsForLayout(
             memberCardLayoutMode,
         )
             .map { spec ->
+                val text = texts.text(spec.key, spec.label, spec.description)
                 MemberCardHideSwitchItem(
                     key = spec.key,
                     item = SwitchItem(
-                        label = spec.label,
-                        description = spec.description,
+                        label = text.label,
+                        description = text.description,
                         prefKey = null,
                         supported = isFeatureVisible(spec.key),
                         defaultValue = prefs.getBoolean(spec.key, false),
@@ -36,8 +49,8 @@ internal object MemberCardSettingsItemsBuilder {
             sizeAdjustItem = KeyedSwitchItem(
                 key = sizeAdjustSpec.key,
                 item = SwitchItem(
-                    label = sizeAdjustSpec.label,
-                    description = sizeAdjustSpec.description,
+                    label = sizeAdjustText.label,
+                    description = sizeAdjustText.description,
                     prefKey = null,
                     supported = isFeatureVisible(sizeAdjustSpec.key),
                     defaultValue = prefs.getBoolean(sizeAdjustSpec.key, false),
@@ -47,8 +60,8 @@ internal object MemberCardSettingsItemsBuilder {
             removeCardClickItem = KeyedSwitchItem(
                 key = removeCardClickSpec.key,
                 item = SwitchItem(
-                    label = removeCardClickSpec.label,
-                    description = removeCardClickSpec.description,
+                    label = removeCardClickText.label,
+                    description = removeCardClickText.description,
                     prefKey = null,
                     supported = isFeatureVisible(removeCardClickSpec.key),
                     defaultValue = prefs.getBoolean(removeCardClickSpec.key, false),
@@ -58,8 +71,8 @@ internal object MemberCardSettingsItemsBuilder {
             viewBackgroundOnClickItem = KeyedSwitchItem(
                 key = viewBackgroundOnClickSpec.key,
                 item = SwitchItem(
-                    label = viewBackgroundOnClickSpec.label,
-                    description = viewBackgroundOnClickSpec.description,
+                    label = viewBackgroundOnClickText.label,
+                    description = viewBackgroundOnClickText.description,
                     prefKey = null,
                     supported = isFeatureVisible(viewBackgroundOnClickSpec.key) && canViewBackgroundOnClick,
                     defaultValue = canViewBackgroundOnClick &&

@@ -20,6 +20,7 @@ internal object PerformanceOptimizeSettingsDialog {
         context: Context,
         prefs: SharedPreferences,
         settingsSession: SettingsRuntimeSession,
+        texts: SettingsTextResolver,
     ) {
         try {
             if (!settingsSession.isFeatureVisible(SettingsUserState.KEY_PERFORMANCE_OPTIMIZE)) {
@@ -40,6 +41,7 @@ internal object PerformanceOptimizeSettingsDialog {
 
             val sections = PerformanceSettingsItemsBuilder.performanceOptimizeSections(
                 prefs = prefs,
+                texts = texts,
                 isFeatureVisible = settingsSession::isFeatureVisible,
             )
             val rowsByKey = linkedMapOf<String, View>()

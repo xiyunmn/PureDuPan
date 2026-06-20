@@ -12,7 +12,12 @@ internal object SharedHomeTitleBarModuleEntryInstaller {
 
     private val hookStates = linkedMapOf<String, HookState>()
 
-    fun hook(cl: ClassLoader, tag: String, fragmentClassName: String) {
+    fun hook(
+        cl: ClassLoader,
+        tag: String,
+        fragmentClassName: String,
+        uploadEntryIdNames: List<String> = listOf(HOME_UPLOAD_ENTRY_ID_NAME),
+    ) {
         val mod = XposedCompat.module ?: return
         val hookState = hookStates.getOrPut(tag) { HookState() }
         if (!hookState.markInstalled()) return
@@ -42,6 +47,7 @@ internal object SharedHomeTitleBarModuleEntryInstaller {
                     rootView = result as? View,
                     classLoader = chain.thisObject?.javaClass?.classLoader,
                     tag = tag,
+                    uploadEntryIdNames = uploadEntryIdNames,
                 )
                 result
             }
@@ -53,21 +59,26 @@ internal object SharedHomeTitleBarModuleEntryInstaller {
         }
     }
 
-    private fun bindUploadEntryLongPress(rootView: View?, classLoader: ClassLoader?, tag: String) {
+    private fun bindUploadEntryLongPress(
+        rootView: View?,
+        classLoader: ClassLoader?,
+        tag: String,
+        uploadEntryIdNames: List<String>,
+    ) {
         if (rootView == null) return
-        val uploadEntry = ModuleEntryBindingSupport.findViewByEntryName(
-            root = rootView,
-            entryName = HOME_UPLOAD_ENTRY_ID_NAME,
-        )
-        if (uploadEntry == null) {
-            XposedCompat.logD("[$tag] upload entry view not found: $HOME_UPLOAD_ENTRY_ID_NAME")
+        for (entryName in uploadEntryIdNames) {
+            val uploadEntry = ModuleEntryBindingSupport.findViewByEntryName(
+                root = rootView,
+                entryName = entryName,
+            ) ?: continue
+            ModuleEntryBindingSupport.bindLongPressToSettings(
+                view = uploadEntry,
+                classLoader = classLoader,
+                tag = tag,
+                entryName = entryName,
+            )
             return
         }
-        ModuleEntryBindingSupport.bindLongPressToSettings(
-            view = uploadEntry,
-            classLoader = classLoader,
-            tag = tag,
-            entryName = HOME_UPLOAD_ENTRY_ID_NAME,
-        )
+        XposedCompat.logD("[$tag] upload entry view not found: ${uploadEntryIdNames.joinToString()}")
     }
 }

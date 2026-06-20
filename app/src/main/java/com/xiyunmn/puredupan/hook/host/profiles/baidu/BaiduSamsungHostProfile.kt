@@ -43,11 +43,13 @@ internal val BaiduSamsungHostProfile = HostProfile(
         ),
         uiHookPoints = HostUiHookPoints(
             mainActivityClassName = BaiduSharedHookPoints.MAIN_ACTIVITY,
+            mainActivityPresenterClassName = BaiduSharedHookPoints.MAIN_ACTIVITY_PRESENTER,
             homeActivityClassName = BaiduSharedHookPoints.HOME_ACTIVITY,
             aboutMeActivityClassName = BaiduSharedHookPoints.ABOUT_ME_ACTIVITY,
             newAboutMeActivityClassName = BaiduSharedHookPoints.NEW_ABOUT_ME_ACTIVITY,
             newHomeFabFragmentClassName = BaiduSharedHookPoints.NEW_HOME_FAB_FRAGMENT,
             popupResponseClassName = BaiduSharedHookPoints.POPUP_RESPONSE,
+            skinConfigClassName = BaiduSharedHookPoints.SKIN_CONFIG_CLASS,
             settingsImageResultHostActivityClassNames = listOf(
                 BaiduSharedHookPoints.ABOUT_ME_ACTIVITY,
                 BaiduSharedHookPoints.NEW_ABOUT_ME_ACTIVITY,

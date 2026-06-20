@@ -70,6 +70,7 @@ object HomeCustomizeHook {
     }
 
     private fun hookTopBannerView(cl: ClassLoader): Int {
+        if (!isTopPromotionHidden()) return 0
         val mod = XposedCompat.module ?: return 0
         val searchboxFragmentClassName = homeCustomizeHookPoints().searchboxFragmentClassName
         if (searchboxFragmentClassName == null) {
@@ -100,6 +101,7 @@ object HomeCustomizeHook {
     }
 
     private fun hookHomeSearchboxView(cl: ClassLoader): Int {
+        if (!hasHomeSearchboxViewCleanupOption()) return 0
         val mod = XposedCompat.module ?: return 0
         val searchboxFragmentClassName = homeCustomizeHookPoints().searchboxFragmentClassName
         if (searchboxFragmentClassName == null) {
@@ -203,6 +205,7 @@ object HomeCustomizeHook {
     }
 
     private fun hookFeedRecommendView(cl: ClassLoader): Int {
+        if (!hasFeedViewCleanupOption()) return 0
         val mod = XposedCompat.module ?: return 0
         var count = 0
         val feedFragmentClasses = homeCustomizeHookPoints().feedFragmentClassNames.distinct()
@@ -582,6 +585,7 @@ object HomeCustomizeHook {
     }
 
     private fun hookStartupHomeBannerPreload(cl: ClassLoader): Int {
+        if (!isTopPromotionHidden()) return 0
         val mod = XposedCompat.module ?: return 0
         val points = homeCustomizeHookPoints()
         val home25aiContextCompanionClassName = points.home25aiContextCompanionClassName
@@ -628,9 +632,24 @@ object HomeCustomizeHook {
     private fun hasViewCleanupOption(): Boolean {
         return HookSettings.isHomeCustomizeEnabled &&
             (
+                hasHomeSearchboxViewCleanupOption() ||
+                    hasFeedViewCleanupOption() ||
+                    hasHomeSectionHiddenOption()
+            )
+    }
+
+    private fun hasHomeSearchboxViewCleanupOption(): Boolean {
+        return HookSettings.isHomeCustomizeEnabled &&
+            (
                 HookSettings.isHomeSearchPlaceholderHidden ||
-                    HookSettings.isHomeSearchAigcIconHidden ||
-                    HookSettings.isHomeFeedTipHidden ||
+                    HookSettings.isHomeSearchAigcIconHidden
+            )
+    }
+
+    private fun hasFeedViewCleanupOption(): Boolean {
+        return HookSettings.isHomeCustomizeEnabled &&
+            (
+                HookSettings.isHomeFeedTipHidden ||
                     HookSettings.isHomeBannerHidden ||
                     hasHomeSectionHiddenOption()
             )

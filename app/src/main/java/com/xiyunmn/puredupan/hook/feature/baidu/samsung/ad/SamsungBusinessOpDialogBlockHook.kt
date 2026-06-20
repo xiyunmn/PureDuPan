@@ -1,11 +1,14 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.samsung.ad
 
 import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.HookUtils
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.samsung.BaiduSamsungHookPoints
+import java.lang.reflect.Method
 
 internal object SamsungBusinessOpDialogBlockHook {
     private val hookState = HookState()
@@ -35,6 +38,7 @@ internal object SamsungBusinessOpDialogBlockHook {
                 method.isAccessible = true
                 mod.hook(method).intercept { chain ->
                     if (HookSettings.isInAppDialogBlocked) {
+                        dismissDialogFragment(chain.thisObject)
                         HookUtils.getDefaultReturnValue(method.returnType)
                     } else {
                         chain.proceed()
@@ -50,7 +54,8 @@ internal object SamsungBusinessOpDialogBlockHook {
                 method.isAccessible = true
                 mod.hook(method).intercept { chain ->
                     if (HookSettings.isInAppDialogBlocked) {
-                        null
+                        dismissDialogFragment(chain.thisObject)
+                        createBlockedDialogView(chain.args.firstOrNull())
                     } else {
                         chain.proceed()
                     }
@@ -91,5 +96,38 @@ internal object SamsungBusinessOpDialogBlockHook {
         if (method.name != BaiduSamsungHookPoints.BUSINESS_OP_DIALOG_ON_CREATE_VIEW_METHOD) return false
         return method.parameterTypes.size == 3 &&
             View::class.java.isAssignableFrom(method.returnType)
+    }
+
+    private fun createBlockedDialogView(inflaterArg: Any?): View? {
+        val context = (inflaterArg as? android.view.LayoutInflater)?.context ?: return null
+        return FrameLayout(context).apply {
+            visibility = View.GONE
+            layoutParams = ViewGroup.LayoutParams(0, 0)
+        }
+    }
+
+    private fun dismissDialogFragment(fragment: Any?) {
+        if (fragment == null) return
+        try {
+            val dismissMethod = findNoArgMethodInHierarchy(fragment.javaClass, "dismissAllowingStateLoss")
+                ?: findNoArgMethodInHierarchy(fragment.javaClass, "dismiss")
+                ?: return
+            dismissMethod.invoke(fragment)
+            XposedCompat.logD("[SamsungBusinessOpDialogBlockHook] BusinessOPDialog dismissed")
+        } catch (t: Throwable) {
+            XposedCompat.logD("[SamsungBusinessOpDialogBlockHook] dismiss ignored: ${t.message}")
+        }
+    }
+
+    private fun findNoArgMethodInHierarchy(clazz: Class<*>, name: String): Method? {
+        var current: Class<*>? = clazz
+        while (current != null) {
+            try {
+                return current.getDeclaredMethod(name).apply { isAccessible = true }
+            } catch (_: NoSuchMethodException) {
+                current = current.superclass
+            }
+        }
+        return null
     }
 }

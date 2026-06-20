@@ -4,51 +4,55 @@ import android.app.Activity
 import android.os.Bundle
 import android.view.View
 import com.xiyunmn.puredupan.hook.core.HookState
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
+import io.github.libxposed.api.XposedModule
 
 internal object SharedAboutMeModuleEntryInstaller {
     private const val SCAN_ICON_ID_NAME = "self_qrcode_scan_icon"
 
     private val hookStates = linkedMapOf<String, HookState>()
 
-    fun hook(cl: ClassLoader, tag: String) {
+    fun hook(
+        cl: ClassLoader,
+        tag: String,
+        scanIconIdNames: List<String> = listOf(SCAN_ICON_ID_NAME),
+    ) {
         val mod = XposedCompat.module ?: return
         val hookState = hookStates.getOrPut(tag) { HookState() }
         if (!hookState.markInstalled()) return
 
         try {
-            val aboutMeActivityClassName = BaiduFeatureRuntime.currentAboutMeActivityClassName()
-                ?: run {
-                    hookState.reset()
-                    XposedCompat.log("[$tag] AboutMeActivity host capability missing")
-                    return
+            val activityClassNames = BaiduFeatureRuntime.currentAboutMeActivityClassNames()
+                .ifEmpty {
+                    BaiduFeatureRuntime.currentAboutMeActivityClassName()
+                        ?.let(::listOf)
+                        .orEmpty()
                 }
-            val activityClass = XposedCompat.findClassOrNull(
-                aboutMeActivityClassName,
-                cl,
-            ) ?: run {
+            if (activityClassNames.isEmpty()) {
                 hookState.reset()
-                XposedCompat.log("[$tag] AboutMeActivity class NOT FOUND")
+                XposedCompat.log("[$tag] AboutMeActivity host capability missing")
                 return
             }
 
-            val onCreateMethod = XposedCompat.findMethodOrNull(
-                activityClass,
-                "onCreate",
-                Bundle::class.java,
-            ) ?: run {
+            var installed = 0
+            for (activityClassName in activityClassNames) {
+                installed += hookActivityOnCreate(
+                    mod = mod,
+                    cl = cl,
+                    tag = tag,
+                    activityClassName = activityClassName,
+                    scanIconIdNames = scanIconIdNames,
+                )
+            }
+
+            if (installed == 0) {
                 hookState.reset()
-                XposedCompat.log("[$tag] AboutMeActivity.onCreate NOT FOUND")
+                XposedCompat.log("[$tag] AboutMeActivity hooks NOT INSTALLED")
                 return
             }
 
-            mod.hook(onCreateMethod).intercept { chain ->
-                val result = chain.proceed()
-                bindScanIconLongPress(chain.thisObject as? Activity, tag)
-                result
-            }
-            XposedCompat.log("[$tag] hook INSTALLED: $aboutMeActivityClassName.onCreate")
+            XposedCompat.log("[$tag] hooks INSTALLED: count=$installed")
         } catch (e: Exception) {
             hookState.reset()
             XposedCompat.log("[$tag] install FAILED: ${e.message}")
@@ -56,29 +60,117 @@ internal object SharedAboutMeModuleEntryInstaller {
         }
     }
 
-    private fun bindScanIconLongPress(activity: Activity?, tag: String) {
+    private fun hookActivityOnCreate(
+        mod: XposedModule,
+        cl: ClassLoader,
+        tag: String,
+        activityClassName: String,
+        scanIconIdNames: List<String>,
+    ): Int {
+        val activityClass = XposedCompat.findClassOrNull(
+            activityClassName,
+            cl,
+        ) ?: run {
+            XposedCompat.log("[$tag] AboutMeActivity class NOT FOUND: $activityClassName")
+            return 0
+        }
+
+        var installed = 0
+        val onCreateMethod = XposedCompat.findMethodOrNull(
+            activityClass,
+            "onCreate",
+            Bundle::class.java,
+        )
+        if (onCreateMethod == null) {
+            XposedCompat.log("[$tag] $activityClassName.onCreate NOT FOUND")
+        } else {
+            mod.hook(onCreateMethod).intercept { chain ->
+                val result = chain.proceed()
+                scheduleBindScanIconLongPress(
+                    activity = chain.thisObject as? Activity,
+                    tag = tag,
+                    scanIconIdNames = scanIconIdNames,
+                )
+                result
+            }
+            XposedCompat.log("[$tag] hook INSTALLED: $activityClassName.onCreate")
+            installed += 1
+        }
+
+        val onResumeMethod = XposedCompat.findMethodOrNull(activityClass, "onResume")
+        if (onResumeMethod == null) {
+            XposedCompat.logD("[$tag] $activityClassName.onResume NOT FOUND")
+        } else {
+            mod.hook(onResumeMethod).intercept { chain ->
+                val result = chain.proceed()
+                scheduleBindScanIconLongPress(
+                    activity = chain.thisObject as? Activity,
+                    tag = tag,
+                    scanIconIdNames = scanIconIdNames,
+                )
+                result
+            }
+            XposedCompat.log("[$tag] hook INSTALLED: $activityClassName.onResume")
+            installed += 1
+        }
+
+        return installed
+    }
+
+    private fun scheduleBindScanIconLongPress(
+        activity: Activity?,
+        tag: String,
+        scanIconIdNames: List<String>,
+    ) {
         if (activity == null) return
+        bindScanIconLongPress(
+            activity = activity,
+            tag = tag,
+            scanIconIdNames = scanIconIdNames,
+            verboseMiss = false,
+        )
+        activity.window?.decorView?.post {
+            bindScanIconLongPress(
+                activity = activity,
+                tag = tag,
+                scanIconIdNames = scanIconIdNames,
+                verboseMiss = true,
+            )
+        }
+    }
+
+    private fun bindScanIconLongPress(
+        activity: Activity?,
+        tag: String,
+        scanIconIdNames: List<String>,
+        verboseMiss: Boolean,
+    ) {
+        if (activity == null) return
+
+        for (entryName in scanIconIdNames) {
+            val scanIconView = findViewByEntryName(activity, entryName) ?: continue
+            ModuleEntryBindingSupport.bindLongPressToSettings(
+                view = scanIconView,
+                classLoader = activity.classLoader,
+                tag = tag,
+                entryName = entryName,
+            )
+            return
+        }
+
+        if (verboseMiss) {
+            XposedCompat.logD("[$tag] scan icon view not found: ${scanIconIdNames.joinToString()}")
+        }
+    }
+
+    private fun findViewByEntryName(activity: Activity, entryName: String): View? {
         val resId = activity.resources.getIdentifier(
-            SCAN_ICON_ID_NAME,
+            entryName,
             "id",
             activity.packageName,
         )
-        if (resId == 0) {
-            XposedCompat.logD("[$tag] scan icon resId not found: $SCAN_ICON_ID_NAME")
-            return
-        }
+        if (resId == 0) return null
 
-        val scanIconView = activity.findViewById<View>(resId)
-        if (scanIconView == null) {
-            XposedCompat.logD("[$tag] scan icon view not found in hierarchy (resId=$resId)")
-            return
-        }
-
-        ModuleEntryBindingSupport.bindLongPressToSettings(
-            view = scanIconView,
-            classLoader = activity.classLoader,
-            tag = tag,
-            entryName = SCAN_ICON_ID_NAME,
-        )
+        return activity.findViewById(resId)
     }
 }
