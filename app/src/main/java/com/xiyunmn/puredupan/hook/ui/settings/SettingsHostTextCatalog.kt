@@ -38,25 +38,9 @@ internal object SettingsHostTextCatalog {
 
     private fun baiduIntlTexts(): Map<String, SettingsText> {
         return commonTexts().apply {
-            this[SettingsUserState.KEY_HOME_CUSTOMIZE] = text(
-                "轮播图广告",
-                "管理「首页」信息流头部轮播图广告区域",
-            )
-            this[SettingsUserState.KEY_SHARE_PAGE_CUSTOMIZE] = text(
-                "共享页广告悬浮窗",
-                "管理「共享」页面右下角广告悬浮窗",
-            )
-            this[SettingsUserState.KEY_MY_PAGE_CUSTOMIZE] = text(
-                "免流量卡入口",
-                "管理「我的」页中的“免流量卡、领无限空间”控件文本入口",
-            )
             this[SettingsUserState.KEY_MEMBER_CARD_CUSTOMIZE] = text(
                 "会员卡片定制",
                 "管理「我的」页会员卡片背景、点击事件、等级福利和升级按钮",
-            )
-            this[SettingsUserState.KEY_CUSTOM_BOTTOM_BAR] = text(
-                "底栏 Tab 定制",
-                UiText.Settings.CUSTOM_BOTTOM_BAR_DESC,
             )
         }
     }
@@ -64,8 +48,8 @@ internal object SettingsHostTextCatalog {
     private fun baiduSamsungTexts(): Map<String, SettingsText> {
         return commonTexts().apply {
             this[SettingsUserState.KEY_BLOCK_SPLASH_INTERSTITIAL] = text(
-                "移除开屏广告",
-                "拦截冷启动开屏广告，减少启动图停留时间",
+                "移除开屏、热重载广告",
+                UiText.Settings.BLOCK_SPLASH_INTERSTITIAL_DESC,
             )
             this[SettingsUserState.KEY_BLOCK_IN_APP_DIALOG] = text(
                 "屏蔽应用内弹窗",
@@ -77,11 +61,7 @@ internal object SettingsHostTextCatalog {
             )
             this[SettingsUserState.KEY_BLOCK_NOTIFICATION_PROMPT] = text(
                 "移除消息通知弹窗",
-                "拦截启动时系统通知权限请求和应用内消息通知引导弹窗",
-            )
-            this[SettingsUserState.KEY_HOME_CUSTOMIZE] = text(
-                "首页头部板块",
-                "管理「首页」信息流头部的轮播图、推荐提示、回忆、转存和最近板块",
+                "拦截应用内消息通知引导弹窗",
             )
             this[SettingsUserState.KEY_HIDE_HOME_BANNER] = text(
                 "轮播图广告",
@@ -103,17 +83,9 @@ internal object SettingsHostTextCatalog {
                 "最近",
                 "隐藏「首页」信息流头部的最近板块",
             )
-            this[SettingsUserState.KEY_SHARE_PAGE_CUSTOMIZE] = text(
-                "共享页广告悬浮窗",
-                "管理「共享」页面右下角广告悬浮窗",
-            )
             this[SettingsUserState.KEY_REMOVE_HOME_FAB] = text(
                 "广告悬浮窗",
                 "移除「共享」页面右下角广告悬浮球",
-            )
-            this[SettingsUserState.KEY_MY_PAGE_CUSTOMIZE] = text(
-                "我的页入口",
-                "管理「我的」页横幅广告、服务入口、游戏中心、签到与奖励入口",
             )
             this[SettingsUserState.KEY_REMOVE_ABOUT_ME_BANNER] = text(
                 "横幅广告",
@@ -128,8 +100,8 @@ internal object SettingsHostTextCatalog {
                 "隐藏「我的」页游戏中心入口",
             )
             this[SettingsUserState.KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE] = text(
-                "任务奖励悬浮球",
-                "隐藏「我的」页任务中心/金币中心奖励悬浮球",
+                "任务卡片悬浮球和推广文本",
+                "隐藏「我的」页任务卡片悬浮球和推广文本",
             )
             this[SettingsUserState.KEY_HIDE_ABOUT_ME_SIGN_IN_DOT] = text(
                 "签到小红点",
@@ -175,17 +147,13 @@ internal object SettingsHostTextCatalog {
                 "专属权益",
                 "隐藏会员卡片第三张专属权益卡片；当等级福利与专属权益同时隐藏时，会一并隐藏分隔线",
             )
-            this[SettingsUserState.KEY_CUSTOM_BOTTOM_BAR] = text(
-                "底栏 Tab 定制",
-                "自定义隐藏底部导航栏中的文件、共享、首页、我的和 AIGC Tab",
-            )
             this[SettingsUserState.KEY_BLOCK_BOTTOM_BADGE] = text(
                 "共享红色角标",
                 "移除底部导航栏「共享」右上角红色数字角标",
             )
             this[SettingsUserState.KEY_PERFORMANCE_OPTIMIZE] = text(
-                "性能优化",
-                "逐项阻止启动预取、后台组件和广告相关服务，可能影响对应功能",
+                UiText.Settings.PERFORMANCE_OPTIMIZE_LABEL,
+                UiText.Settings.PERFORMANCE_OPTIMIZE_DESC,
             )
             this[SettingsUserState.KEY_DISABLE_B2F_GUIDANCE_PREFETCH] = text(
                 "B2F 引导数据启动预拉取",

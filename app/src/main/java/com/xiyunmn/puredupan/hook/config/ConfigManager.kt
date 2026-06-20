@@ -694,7 +694,7 @@ object ConfigManager {
         FeatureAvailabilityRuntime.apply(featureStatusMap)
     }
 
-    // ── 底栏定制 (Bottom Bar Simplify) ──────────────────────────────────────
+    // ── 底栏Tab定制 (Bottom Bar Simplify) ───────────────────────────────────
 
     const val KEY_CUSTOM_BOTTOM_BAR = FeatureKeys.KEY_CUSTOM_BOTTOM_BAR
     const val KEY_HIDE_TAB_FILE = FeatureKeys.KEY_HIDE_TAB_FILE

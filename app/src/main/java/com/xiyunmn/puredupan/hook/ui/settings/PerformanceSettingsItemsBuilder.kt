@@ -74,7 +74,9 @@ internal object PerformanceSettingsItemsBuilder {
     }
 
     private val performanceSectionTitles: List<Pair<PerformanceSettingsSection, String>> = listOf(
-        PerformanceSettingsSection.INTL_STARTUP_DELAY to UiText.Settings.PERFORMANCE_GROUP_INTL_STARTUP_DELAY,
+        PerformanceSettingsSection.INTL_BLOCK_INIT to UiText.Settings.PERFORMANCE_GROUP_INTL_BLOCK_INIT,
+        PerformanceSettingsSection.INTL_DELAYED_BEHAVIOR to UiText.Settings.PERFORMANCE_GROUP_INTL_DELAYED_BEHAVIOR,
+        PerformanceSettingsSection.INTL_OTHER_BEHAVIOR to UiText.Settings.PERFORMANCE_GROUP_INTL_OTHER_BEHAVIOR,
         PerformanceSettingsSection.POST_INIT to UiText.Settings.PERFORMANCE_GROUP_POST_INIT,
         PerformanceSettingsSection.STARTUP_PREFETCH to UiText.Settings.PERFORMANCE_GROUP_STARTUP_PREFETCH,
         PerformanceSettingsSection.RUNTIME_SERVICE to UiText.Settings.PERFORMANCE_GROUP_RUNTIME_SERVICE,

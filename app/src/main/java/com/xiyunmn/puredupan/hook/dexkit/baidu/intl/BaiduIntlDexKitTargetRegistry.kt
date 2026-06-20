@@ -15,22 +15,22 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         DexKitTargetDescriptor(
             id = IntlHotStartSplashDexKitResolver.CACHE_ID,
             target = "intl hot-start splash resolver",
-            feature = "block hot-start splash ad",
+            feature = "移除切屏加载",
         ),
         DexKitTargetDescriptor(
             id = IntlStoryDouyinInitBlockHook.STORY_INIT_CACHE_ID,
             target = "intl story init method",
-            feature = "delay Story/Douyin startup init",
+            feature = "阻止 Story/DouYin 初始化",
         ),
         DexKitTargetDescriptor(
             id = IntlNonCoreDiffSocketDelayHook.SOCKET_REGISTER_CACHE_ID,
             target = "intl diff socket register method",
-            feature = "delay non-core diff socket registration",
+            feature = "延后非核心 diff socket 注册",
         ),
         DexKitTargetDescriptor(
             id = IntlAlbumAiInitBlockHook.DIRECT_ALBUM_AI_INIT_CACHE_ID,
             target = "intl album init method",
-            feature = "delay album AI startup init",
+            feature = "阻止相册 AI 初始化",
         ),
     )
 
