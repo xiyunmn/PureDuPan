@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.shared
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.SplashBypassCore
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AboutMeGodModeHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BottomBarBadgeBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BottomBarSimplifyFeature
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeCustomizeHook
@@ -45,6 +46,9 @@ internal object BaiduSharedPostAttachHookSpecs {
     )
 
     val postMemberLead = listOf(
+        HookSpec("AlbumBackupBarBlockHook", { context, settings, _ ->
+            context.isMain && settings.isAlbumBackupBarBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR) { cl -> AlbumBackupBarBlockHook.hook(cl) },
         HookSpec("NewHomeFabRemoveHook", { context, settings, _ ->
             context.isMain &&
                 settings.isSharePageCustomizeEnabled &&

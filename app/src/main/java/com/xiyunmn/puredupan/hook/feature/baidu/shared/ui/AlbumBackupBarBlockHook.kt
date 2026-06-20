@@ -1,20 +1,16 @@
-package com.xiyunmn.puredupan.hook.feature.baidu.cn.ui
+package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
 import android.view.View
 import android.view.ViewGroup
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
-import com.xiyunmn.puredupan.hook.symbols.baidu.cn.BaiduCnHookPoints
-import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
+import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAlbumBackupBarHookPoints
 
 /**
  * Hides the file-tab album backup guide bar without breaking FloatingBarManager.
- *
- * The host creates this through FileTabBottomBarFactory.create(...). Returning null risks
- * breaking downstream manager code, so we keep the host object flow and collapse only the
- * concrete AlbumBackupBarView / its inner backup layouts.
  */
-object AlbumBackupBarBlockHook {
+internal object AlbumBackupBarBlockHook {
     private val hookState = HookState()
 
     private val targetViewIds = setOf("album_backup_layout", "backup_layout")
@@ -31,11 +27,11 @@ object AlbumBackupBarBlockHook {
             var installed = 0
 
             XposedCompat.findClassOrNull(
-                BaiduCnHookPoints.FILE_TAB_BOTTOM_BAR_FACTORY,
+                BaiduAlbumBackupBarHookPoints.FILE_TAB_BOTTOM_BAR_FACTORY,
                 cl,
             )?.let { factoryClass ->
                 for (method in factoryClass.declaredMethods) {
-                    if (method.name != BaiduCnHookPoints.FILE_TAB_BOTTOM_BAR_FACTORY_CREATE_METHOD) {
+                    if (method.name != BaiduAlbumBackupBarHookPoints.FILE_TAB_BOTTOM_BAR_FACTORY_CREATE_METHOD) {
                         continue
                     }
                     method.isAccessible = true
@@ -51,7 +47,7 @@ object AlbumBackupBarBlockHook {
             } ?: XposedCompat.log("[AlbumBackupBarBlockHook] FileTabBottomBarFactory class NOT FOUND")
 
             XposedCompat.findClassOrNull(
-                BaiduCnHookPoints.ALBUM_BACKUP_BAR_VIEW,
+                BaiduAlbumBackupBarHookPoints.ALBUM_BACKUP_BAR_VIEW,
                 cl,
             )?.let { barClass ->
                 for (constructor in barClass.declaredConstructors) {
@@ -67,7 +63,7 @@ object AlbumBackupBarBlockHook {
                 }
 
                 for (method in barClass.declaredMethods) {
-                    if (method.name != BaiduCnHookPoints.ALBUM_BACKUP_BAR_VIEW_INIT_UI_METHOD) {
+                    if (method.name != BaiduAlbumBackupBarHookPoints.ALBUM_BACKUP_BAR_VIEW_INIT_UI_METHOD) {
                         continue
                     }
                     method.isAccessible = true
@@ -109,7 +105,7 @@ object AlbumBackupBarBlockHook {
     }
 
     private fun isAlbumBackupTarget(view: View): Boolean {
-        if (view.javaClass.name == BaiduCnHookPoints.ALBUM_BACKUP_BAR_VIEW) {
+        if (view.javaClass.name == BaiduAlbumBackupBarHookPoints.ALBUM_BACKUP_BAR_VIEW) {
             return true
         }
         val id = view.id
@@ -138,5 +134,4 @@ object AlbumBackupBarBlockHook {
             XposedCompat.logW("[AlbumBackupBarBlockHook] collapse failed: ${e.message}")
         }
     }
-
 }

@@ -11,6 +11,7 @@ internal object BaiduFeatureSets {
             baiduSharedHomeCustomize,
             baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
+            baiduSharedUiBlock,
             baiduSharedMemberCardCustomize,
             baiduSharedBottomBarCustomize,
             baiduSharedPerformanceCustomize,
@@ -31,6 +32,7 @@ internal object BaiduFeatureSets {
             baiduSharedHomeCustomize,
             baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
+            baiduSharedUiBlock,
             baiduSharedMemberCardCustomize,
             baiduSharedBottomBarCustomize,
             baiduSharedPerformanceCustomize,
@@ -52,6 +54,7 @@ internal object BaiduFeatureSets {
             baiduSamsungHomeCustomize,
             baiduSamsungShareCustomize,
             baiduSamsungMyPageCustomize,
+            baiduSharedUiBlock,
             baiduSharedMemberCardCustomize,
             baiduSamsungMemberCardCustomize,
             baiduSamsungBottomBarCustomize,
@@ -98,6 +101,10 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_REMOVE_MY_SERVICE,
     )
 
+    private val baiduSharedUiBlock = listOf(
+        FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
+    )
+
     private val baiduSharedMemberCardCustomize = listOf(
         FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE,
         FeatureKeys.KEY_REPLACE_MEMBER_CARD_BACKGROUND,
@@ -142,7 +149,6 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduCnMyPageCustomize = listOf(
-        FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
         FeatureKeys.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET,
         FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT,
         FeatureKeys.KEY_HIDE_RENEW_BUTTON,

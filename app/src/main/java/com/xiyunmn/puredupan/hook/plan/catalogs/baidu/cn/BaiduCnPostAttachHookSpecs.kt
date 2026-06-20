@@ -26,7 +26,6 @@ import com.xiyunmn.puredupan.hook.feature.baidu.cn.startup.hotstart.CnHotStartSp
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.entry.CnAboutMeModuleEntryHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.entry.CnHomeTitleBarModuleEntryHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.membercard.CnMemberCardCustomizeHook
-import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.AlbumBackupBarBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.BottomAiTabReplaceHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.GameCenterRemoveHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.GameCenterRuntimeBlockHook
@@ -137,11 +136,7 @@ internal object BaiduCnPostAttachHookSpecs {
         ) { cl -> CnMemberCardCustomizeHook.hook(cl) },
     )
 
-    val postMember = listOf(
-        HookSpec("AlbumBackupBarBlockHook", { context, settings, _ ->
-            context.isMain && settings.isAlbumBackupBarBlocked
-        }, featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR) { cl -> AlbumBackupBarBlockHook.hook(cl) },
-    )
+    val postMember = emptyList<HookSpec>()
 
     val performance = listOf(
         HookSpec("GarbageCleanServiceRegisterBlockHook", { context, settings, _ ->
