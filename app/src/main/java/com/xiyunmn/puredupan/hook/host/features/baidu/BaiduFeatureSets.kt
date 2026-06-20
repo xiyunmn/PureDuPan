@@ -7,6 +7,7 @@ internal object BaiduFeatureSets {
         get() = mergeKeys(
             baiduSharedDiagnostics,
             baiduSharedStartup,
+            baiduSharedContentBlock,
             baiduSharedHomeCustomize,
             baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
@@ -26,6 +27,7 @@ internal object BaiduFeatureSets {
         get() = mergeKeys(
             baiduSharedDiagnostics,
             baiduSharedStartup,
+            baiduSharedContentBlock,
             baiduSharedHomeCustomize,
             baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
@@ -44,6 +46,7 @@ internal object BaiduFeatureSets {
     val baiduSamsungAvailableKeys: Set<String>
         get() = mergeKeys(
             baiduSharedDiagnostics,
+            baiduSharedContentBlock,
             baiduSamsungStartup,
             baiduSamsungAd,
             baiduSamsungHomeCustomize,
@@ -62,6 +65,10 @@ internal object BaiduFeatureSets {
 
     private val baiduSharedStartup = listOf(
         FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL,
+    )
+
+    private val baiduSharedContentBlock = listOf(
+        FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG,
     )
 
     private val baiduSharedHomeCustomize = listOf(

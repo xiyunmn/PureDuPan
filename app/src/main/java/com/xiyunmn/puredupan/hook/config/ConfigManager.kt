@@ -25,6 +25,9 @@ object ConfigManager {
     const val KEY_BLOCK_FULL_SCREEN_BACKUP = FeatureKeys.KEY_BLOCK_FULL_SCREEN_BACKUP
     const val KEY_BLOCK_SHARE_PUSH_GUIDE = FeatureKeys.KEY_BLOCK_SHARE_PUSH_GUIDE
     const val KEY_BLOCK_APP_STORE_REVIEW = FeatureKeys.KEY_BLOCK_APP_STORE_REVIEW
+    const val KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG = FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG
+    private const val LEGACY_BLOCK_SAMSUNG_NON_WIFI_DOWNLOAD_DIALOG =
+        "block_samsung_non_wifi_download_dialog"
     const val KEY_REPLACE_BOTTOM_AI = FeatureKeys.KEY_REPLACE_BOTTOM_AI
     const val KEY_HOME_CUSTOMIZE = FeatureKeys.KEY_HOME_CUSTOMIZE
     private const val LEGACY_HOME_TOP_PROMOTION = "remove_top_ai"
@@ -124,6 +127,8 @@ object ConfigManager {
     val isFullScreenBackupBlocked: Boolean get() = settingsSnapshot.isFullScreenBackupBlocked
     val isSharePushGuideBlocked: Boolean get() = settingsSnapshot.isSharePushGuideBlocked
     val isAppStoreReviewBlocked: Boolean get() = settingsSnapshot.isAppStoreReviewBlocked
+    val isNonWifiDownloadDialogBlocked: Boolean
+        get() = settingsSnapshot.isNonWifiDownloadDialogBlocked
     val isBottomAiReplaced: Boolean get() = settingsSnapshot.isBottomAiReplaced
     val isHomeCustomizeEnabled: Boolean get() = settingsSnapshot.isHomeCustomizeEnabled
     val isHomeTopPromotionHidden: Boolean get() = settingsSnapshot.isHomeTopPromotionHidden
@@ -473,6 +478,11 @@ object ConfigManager {
             isFullScreenBackupBlocked = featureBoolean(KEY_BLOCK_FULL_SCREEN_BACKUP, false),
             isSharePushGuideBlocked = featureBoolean(KEY_BLOCK_SHARE_PUSH_GUIDE, false),
             isAppStoreReviewBlocked = featureBoolean(KEY_BLOCK_APP_STORE_REVIEW, false),
+            isNonWifiDownloadDialogBlocked = featureBoolean(
+                KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG,
+                p.getBoolean(LEGACY_BLOCK_SAMSUNG_NON_WIFI_DOWNLOAD_DIALOG, false) &&
+                    isFeatureAvailable(KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG),
+            ),
             isBottomAiReplaced = featureBoolean(KEY_REPLACE_BOTTOM_AI, false),
             isHomeCustomizeEnabled = featureBoolean(KEY_HOME_CUSTOMIZE, hasHomeCustomizeOptionEnabled),
             isHomeTopPromotionHidden = featureBoolean(KEY_HIDE_HOME_TOP_PROMOTION, readHomeTopPromotionHidden(p)),

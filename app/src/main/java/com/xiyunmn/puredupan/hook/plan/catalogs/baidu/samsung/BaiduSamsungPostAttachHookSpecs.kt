@@ -1,6 +1,7 @@
 package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.samsung
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.NonWifiDownloadDialogBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ad.SamsungBusinessOpDialogBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungAdSdkInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungAigcBackgroundComponentBlockHook
@@ -11,9 +12,11 @@ import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungDynam
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungGarbageCleanServiceRegisterBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungIncentiveBusinessServiceBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungOemPushServiceBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungP2PDownloadLifecycleTraceHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungSwanPreloadBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungThumbnailOperatorServiceBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungVideoAdPreloadBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.samsung.startup.SamsungLaunchHandoffOptimizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.startup.SamsungSplashAdBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ui.SamsungGameCenterRemoveHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ui.SamsungGameCenterRuntimeBlockHook
@@ -37,6 +40,12 @@ internal object BaiduSamsungPostAttachHookSpecs {
         }, featureKey = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL) { cl ->
             SamsungSplashAdBlockHook.hook(cl)
         },
+        HookSpec("SamsungLaunchHandoffOptimizeHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isSplashInterstitialBlockEnabled
+        }, featureKey = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL) { cl ->
+            SamsungLaunchHandoffOptimizeHook.hook(cl)
+        },
     )
 
     val ad = listOf(
@@ -44,6 +53,11 @@ internal object BaiduSamsungPostAttachHookSpecs {
             context.isMain && settings.isInAppDialogBlocked
         }, featureKey = FeatureKeys.KEY_BLOCK_IN_APP_DIALOG) { cl ->
             SamsungBusinessOpDialogBlockHook.hook(cl)
+        },
+        HookSpec("NonWifiDownloadDialogBlockHook", { context, settings, _ ->
+            context.isMain && settings.isNonWifiDownloadDialogBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG) { cl ->
+            NonWifiDownloadDialogBlockHook.hook(cl)
         },
     )
 
@@ -92,12 +106,17 @@ internal object BaiduSamsungPostAttachHookSpecs {
             SamsungAudioCircleViewAutostartBlockHook.hook(cl)
         },
         HookSpec("SamsungOemPushServiceBlockHook", { context, settings, _ ->
-            context.isPushService &&
-                context.supportsOemPushHook &&
+            context.supportsOemPushHook &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isOemPushServiceDisabled
         }, featureKey = FeatureKeys.KEY_DISABLE_OEM_PUSH_SERVICE) { cl ->
             SamsungOemPushServiceBlockHook.hook(cl)
+        },
+        HookSpec("SamsungP2PDownloadLifecycleTraceHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isPerformanceOptimizeEnabled
+        }, featureKey = FeatureKeys.KEY_PERFORMANCE_OPTIMIZE) { cl ->
+            SamsungP2PDownloadLifecycleTraceHook.hook(cl)
         },
         HookSpec("SamsungSwanPreloadBlockHook", { context, settings, _ ->
             context.isMain &&

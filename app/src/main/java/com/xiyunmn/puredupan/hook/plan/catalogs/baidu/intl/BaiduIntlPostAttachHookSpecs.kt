@@ -1,6 +1,7 @@
 package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.intl
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.NonWifiDownloadDialogBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAigcWidgetBackgroundBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAlbumAiInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAudioCircleStartupShowBlockHook
@@ -30,6 +31,14 @@ internal object BaiduIntlPostAttachHookSpecs {
                 settings.isHotStartSplashRemoveEnabled
         }, featureKey = FeatureKeys.KEY_REMOVE_HOT_START_SPLASH) { cl ->
             IntlHotStartSplashRemoveHook.hook(cl)
+        },
+    )
+
+    val ad = listOf(
+        HookSpec("NonWifiDownloadDialogBlockHook", { context, settings, _ ->
+            context.isMain && settings.isNonWifiDownloadDialogBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG) { cl ->
+            NonWifiDownloadDialogBlockHook.hook(cl)
         },
     )
 

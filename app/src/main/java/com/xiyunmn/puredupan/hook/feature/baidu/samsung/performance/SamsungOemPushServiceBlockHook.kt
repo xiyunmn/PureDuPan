@@ -23,6 +23,7 @@ internal object SamsungOemPushServiceBlockHook {
             var installed = 0
             installed += hookServiceLifecycle(cl)
             installed += hookReceivers(cl)
+            installed += hookHeytapDataMessages(cl)
             installed += hookHmsMessages(cl)
             installed += hookHonorMessages(cl)
 
@@ -101,6 +102,24 @@ internal object SamsungOemPushServiceBlockHook {
             classNames = BaiduSamsungHookPoints.OEM_PUSH_RECEIVER_CLASSES,
             methodName = BaiduSamsungHookPoints.OEM_PUSH_ON_RECEIVE_METHOD,
             params = arrayOf(Context::class.java, Intent::class.java),
+            returnValue = null,
+        )
+    }
+
+    private fun hookHeytapDataMessages(cl: ClassLoader): Int {
+        val dataMessageClass = XposedCompat.findClassOrNull(
+            BaiduSamsungHookPoints.OEM_PUSH_HEYTAP_DATA_MESSAGE,
+            cl,
+        ) ?: run {
+            XposedCompat.log("[SamsungOemPushServiceBlockHook] Heytap DataMessage class NOT FOUND")
+            return 0
+        }
+
+        return hookMultipleClasses(
+            cl = cl,
+            classNames = BaiduSamsungHookPoints.OEM_PUSH_HEYTAP_DATA_MESSAGE_SERVICE_CLASSES,
+            methodName = BaiduSamsungHookPoints.OEM_PUSH_PROCESS_MESSAGE_METHOD,
+            params = arrayOf(Context::class.java, dataMessageClass),
             returnValue = null,
         )
     }

@@ -9,6 +9,7 @@ internal object BaiduIntlHookCatalog : HookCatalog {
         return BaiduIntlPostAttachHookSpecs.entry +
             BaiduSharedPostAttachHookSpecs.preAd +
             BaiduIntlPostAttachHookSpecs.hotStart +
+            BaiduIntlPostAttachHookSpecs.ad +
             BaiduSharedPostAttachHookSpecs.splashBypass +
             BaiduSharedPostAttachHookSpecs.middle +
             BaiduSharedPostAttachHookSpecs.myPage +

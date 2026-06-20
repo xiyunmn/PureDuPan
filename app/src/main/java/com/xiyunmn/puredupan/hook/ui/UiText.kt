@@ -24,6 +24,8 @@ object UiText {
         const val BLOCK_SHARE_PUSH_GUIDE_DESC = "拦截切换到「共享」页面时弹出的开启推送通知半屏引导对话框"
         const val BLOCK_APP_STORE_REVIEW_LABEL = "屏蔽评分弹窗"
         const val BLOCK_APP_STORE_REVIEW_DESC = "去除切换到「文件」页面时弹出的评分引导弹窗"
+        const val BLOCK_NON_WIFI_DOWNLOAD_DIALOG_LABEL = "移除下载 WiFi 未连接弹窗"
+        const val BLOCK_NON_WIFI_DOWNLOAD_DIALOG_DESC = "未连接 WiFi 时点击下载，自动确认并直接创建下载任务"
 
         const val HIDE_HOME_TOP_PROMOTION_LABEL = "顶部动态推广"
         const val HIDE_HOME_TOP_PROMOTION_DESC = "隐藏「首页」顶部搜索框区域的动态推广，并跳过对应启动期预加载"

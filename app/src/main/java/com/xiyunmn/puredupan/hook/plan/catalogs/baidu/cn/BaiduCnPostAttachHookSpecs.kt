@@ -8,6 +8,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.cn.ad.LuckyCouponBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ad.SharePushGuideBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ad.SvipIconGuideBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ad.UpdateDialogBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.NonWifiDownloadDialogBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.performance.AdSdkInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.performance.AigcBackgroundComponentBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.performance.AudioCircleViewAutostartBlockHook
@@ -95,6 +96,11 @@ internal object BaiduCnPostAttachHookSpecs {
             context.isMain && settings.isAppStoreReviewBlocked
         }, featureKey = FeatureKeys.KEY_BLOCK_APP_STORE_REVIEW) { cl ->
             AppStoreReviewBlockHook.hook(cl)
+        },
+        HookSpec("NonWifiDownloadDialogBlockHook", { context, settings, _ ->
+            context.isMain && settings.isNonWifiDownloadDialogBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG) { cl ->
+            NonWifiDownloadDialogBlockHook.hook(cl)
         },
     )
 

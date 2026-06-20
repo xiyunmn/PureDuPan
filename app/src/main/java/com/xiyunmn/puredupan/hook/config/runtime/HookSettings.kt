@@ -86,6 +86,9 @@ internal object HookSettings {
     val isAppStoreReviewBlocked: Boolean
         get() = ConfigManager.isAppStoreReviewBlocked
 
+    val isNonWifiDownloadDialogBlocked: Boolean
+        get() = ConfigManager.isNonWifiDownloadDialogBlocked
+
     val isIntlSplashStartupAccelerateEnabled: Boolean
         get() = ConfigManager.isIntlSplashStartupAccelerateEnabled
 

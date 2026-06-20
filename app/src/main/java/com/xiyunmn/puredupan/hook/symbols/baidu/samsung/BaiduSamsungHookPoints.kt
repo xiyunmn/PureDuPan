@@ -4,6 +4,9 @@ package com.xiyunmn.puredupan.hook.symbols.baidu.samsung
  * Stable hook points verified against Baidu Netdisk Samsung host.
  */
 internal object BaiduSamsungHookPoints {
+    const val DEFAULT_MAIN_ACTIVITY = "com.baidu.netdisk.ui.DefaultMainActivity"
+    const val NAVIGATE_ACTIVITY = "com.baidu.netdisk.ui.Navigate"
+
     const val NEW_FEED_HOME_TITLE_BAR_FRAGMENT =
         "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.FHTitleBarFragment"
     const val HOME_UPLOAD_ENTRY = "upload_file_entry"
@@ -43,6 +46,18 @@ internal object BaiduSamsungHookPoints {
         "com.baidu.netdisk.ui.operation.BusinessOPDialog"
     const val BUSINESS_OP_DIALOG_SHOW_DIALOG_METHOD = "showDialog"
     const val BUSINESS_OP_DIALOG_ON_CREATE_VIEW_METHOD = "onCreateView"
+
+    const val TRANSFER_APIS =
+        "com.baidu.netdisk.ui.transfer.component.TransferApis"
+    const val FLOW_ALERT_DIALOG_MANAGER =
+        "com.baidu.netdisk.ui.manager.FlowAlertDialogManager"
+    const val DIALOG_CTR_LISTENER =
+        "com.baidu.netdisk.ui.manager.DialogCtrListener"
+    const val SHOW_NON_WIFI_ALERT_DOWNLOAD_DIALOG_METHOD =
+        "showNonWiFiAlertDownloadDialog"
+    const val SHOW_NON_WIFI_ALERT_DOWNLOAD_BOTTOM_DIALOG_METHOD =
+        "showNonWiFiAlertDownloadBottomDialog"
+    const val DIALOG_CTR_LISTENER_ON_OK_METHOD = "onOkBtnClick"
 
     const val GUIDE_CONTEXT_COMPANION =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_guide.GuideContext\$Companion"
@@ -147,6 +162,8 @@ internal object BaiduSamsungHookPoints {
     const val OEM_PUSH_ON_MESSAGE_RECEIVED_METHOD = "onMessageReceived"
     const val OEM_PUSH_ON_NEW_TOKEN_METHOD = "onNewToken"
     const val OEM_PUSH_ON_TOKEN_ERROR_METHOD = "onTokenError"
+    const val OEM_PUSH_PROCESS_MESSAGE_METHOD = "processMessage"
+    const val OEM_PUSH_HEYTAP_DATA_MESSAGE = "com.heytap.msp.push.mode.DataMessage"
     const val OEM_PUSH_HMS_REMOTE_MESSAGE = "com.huawei.hms.push.RemoteMessage"
     const val OEM_PUSH_HONOR_MESSAGE = "com.hihonor.push.sdk.HonorPushDataMsg"
 
@@ -201,4 +218,16 @@ internal object BaiduSamsungHookPoints {
     val OEM_PUSH_HONOR_MESSAGE_SERVICE_CLASSES = listOf(
         "com.baidu.techain.push.HonorPushMsgService",
     )
+
+    val OEM_PUSH_HEYTAP_DATA_MESSAGE_SERVICE_CLASSES = listOf(
+        "com.heytap.msp.push.service.DataMessageCallbackService",
+        "com.heytap.msp.push.service.CompatibleDataMessageCallbackService",
+    )
+
+    const val P2P_DOWNLOAD_GUARD_SERVICE =
+        "com.baidu.netdisk.p2p.NetdiskDownloadGuardService"
+    const val P2P_SERVICE_PROXY =
+        "com.baidu.netdisk.p2p.P2PServiceProxy"
+    const val P2P_DOWNLOAD_SERVICE =
+        "com.baidu.netdisk.p2p.NetdiskDownloadService"
 }
