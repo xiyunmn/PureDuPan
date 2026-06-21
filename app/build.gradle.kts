@@ -342,14 +342,19 @@ val validateHookArchitecture = tasks.register("validateHookArchitecture") {
         val samsungFeatureSetBlock = Regex(
             """val\s+baiduSamsungAvailableKeys:[\s\S]*?\n\s*\)\n""",
         ).find(baiduFeatureSetsText)?.value.orEmpty()
-        val samsungFeatureSetInheritsCn = if (
-            "baiduCnAvailableKeys" in samsungFeatureSetBlock
-        ) {
-            listOf("$baiduFeatureSetsPath baiduSamsungAvailableKeys merges baiduCnAvailableKeys")
+        val samsungFeatureSetInheritsCn = Regex("""\bbaiduCn[A-Za-z0-9_]*""")
+            .findAll(samsungFeatureSetBlock)
+            .map { match -> match.value }
+            .toSortedSet()
+        val samsungFeatureSetBoundaryMatches = if (samsungFeatureSetInheritsCn.isNotEmpty()) {
+            listOf(
+                "$baiduFeatureSetsPath baiduSamsungAvailableKeys references " +
+                    samsungFeatureSetInheritsCn.joinToString(),
+            )
         } else {
             emptyList()
         }
-        failIfNotEmpty("Samsung feature set must be explicitly declared", samsungFeatureSetInheritsCn)
+        failIfNotEmpty("Samsung feature set must not reference CN feature groups", samsungFeatureSetBoundaryMatches)
 
         val hostHardcodePatterns = listOf(
             Regex("""BaiduSharedHookPoints"""),

@@ -16,14 +16,14 @@ internal object BaiduFeatureSets {
             baiduSharedMemberCardCustomize,
             baiduSharedBottomBarCustomize,
             baiduSharedPerformanceCustomize,
-            baiduCnStartup,
-            baiduCnHomeCustomize,
-            baiduCnSearchPageCustomize,
-            baiduCnMyPageCustomize,
-            baiduCnMemberCardCustomize,
-            baiduCnBottomBarCustomize,
-            baiduCnPerformanceCustomize,
-            baiduCnThemeCustomize,
+            baiduDomesticStartup,
+            baiduDomesticHomeCustomize,
+            baiduDomesticSearchPageCustomize,
+            baiduDomesticMyPageCustomize,
+            baiduDomesticMemberCardCustomize,
+            baiduDomesticBottomBarCustomize,
+            baiduDomesticPerformanceCustomize,
+            baiduDomesticThemeCustomize,
         )
 
     val baiduIntlAvailableKeys: Set<String>
@@ -61,14 +61,14 @@ internal object BaiduFeatureSets {
             baiduSharedMemberCardCustomize,
             baiduSharedBottomBarCustomize,
             baiduSharedPerformanceCustomize,
-            baiduSamsungStartup,
-            baiduSamsungHomeCustomize,
-            baiduSamsungSearchPageCustomize,
-            baiduSamsungMyPageCustomize,
-            baiduSamsungMemberCardCustomize,
-            baiduSamsungBottomBarCustomize,
-            baiduSamsungPerformanceCustomize,
-            baiduSamsungThemeCustomize,
+            baiduDomesticStartup,
+            baiduDomesticHomeCustomize,
+            baiduDomesticSearchPageCustomize,
+            baiduDomesticMyPageCustomize,
+            baiduDomesticMemberCardCustomize,
+            baiduDomesticBottomBarCustomize,
+            baiduDomesticPerformanceCustomize,
+            baiduDomesticThemeCustomize,
             baiduSamsungAd,
         )
 
@@ -152,33 +152,33 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_PERFORMANCE_OPTIMIZE,
     )
 
-    private val baiduCnStartup = listOf(
+    private val baiduDomesticStartup = listOf(
         FeatureKeys.KEY_BLOCK_IN_APP_DIALOG,
         FeatureKeys.KEY_BLOCK_SHARE_PUSH_GUIDE,
         FeatureKeys.KEY_BLOCK_UPDATE_DIALOG,
     )
 
-    private val baiduCnHomeCustomize = listOf(
+    private val baiduDomesticHomeCustomize = listOf(
         FeatureKeys.KEY_HIDE_HOME_SEARCH_AIGC_ICON,
         FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER,
         FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION,
     )
 
-    private val baiduCnSearchPageCustomize = listOf(
+    private val baiduDomesticSearchPageCustomize = listOf(
         FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE,
         FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY,
         FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER,
         FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND,
     )
 
-    private val baiduCnMyPageCustomize = listOf(
+    private val baiduDomesticMyPageCustomize = listOf(
         FeatureKeys.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET,
         FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT,
         FeatureKeys.KEY_HIDE_RENEW_BUTTON,
         FeatureKeys.KEY_REMOVE_GAME_CENTER,
     )
 
-    private val baiduCnMemberCardCustomize = listOf(
+    private val baiduDomesticMemberCardCustomize = listOf(
         FeatureKeys.KEY_HIDE_MEMBER_CARD_BENEFIT,
         FeatureKeys.KEY_HIDE_MEMBER_CARD_BENEFIT_BAR,
         FeatureKeys.KEY_HIDE_MEMBER_CARD_OPERATION,
@@ -187,13 +187,13 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_HIDE_MEMBER_CARD_SVIP_STATUS,
     )
 
-    private val baiduCnBottomBarCustomize = listOf(
+    private val baiduDomesticBottomBarCustomize = listOf(
         FeatureKeys.KEY_HIDE_TAB_AIGC,
         FeatureKeys.KEY_HIDE_TAB_VIP,
         FeatureKeys.KEY_REPLACE_BOTTOM_AI,
     )
 
-    private val baiduCnPerformanceCustomize = listOf(
+    private val baiduDomesticPerformanceCustomize = listOf(
         FeatureKeys.KEY_DISABLE_AD_SDK_INIT,
         FeatureKeys.KEY_DISABLE_AIGC_BACKGROUND_COMPONENT,
         FeatureKeys.KEY_DISABLE_B2F_GUIDANCE_PREFETCH,
@@ -209,68 +209,7 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_DISABLE_VIDEO_AD_PRELOAD,
     )
 
-    private val baiduCnThemeCustomize = listOf(
-        FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
-    )
-
-    private val baiduSamsungStartup = listOf(
-        FeatureKeys.KEY_BLOCK_IN_APP_DIALOG,
-        FeatureKeys.KEY_BLOCK_SHARE_PUSH_GUIDE,
-        FeatureKeys.KEY_BLOCK_UPDATE_DIALOG,
-    )
-
-    private val baiduSamsungHomeCustomize = listOf(
-        FeatureKeys.KEY_HIDE_HOME_SEARCH_AIGC_ICON,
-        FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER,
-        FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION,
-    )
-
-    private val baiduSamsungSearchPageCustomize = listOf(
-        FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE,
-        FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY,
-        FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER,
-        FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND,
-    )
-
-    private val baiduSamsungMyPageCustomize = listOf(
-        FeatureKeys.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET,
-        FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT,
-        FeatureKeys.KEY_HIDE_RENEW_BUTTON,
-        FeatureKeys.KEY_REMOVE_GAME_CENTER,
-    )
-
-    private val baiduSamsungMemberCardCustomize = listOf(
-        FeatureKeys.KEY_HIDE_MEMBER_CARD_BENEFIT,
-        FeatureKeys.KEY_HIDE_MEMBER_CARD_BENEFIT_BAR,
-        FeatureKeys.KEY_HIDE_MEMBER_CARD_OPERATION,
-        FeatureKeys.KEY_HIDE_MEMBER_CARD_RENEW_BUTTON,
-        FeatureKeys.KEY_HIDE_MEMBER_CARD_SVIP_LEVEL,
-        FeatureKeys.KEY_HIDE_MEMBER_CARD_SVIP_STATUS,
-    )
-
-    private val baiduSamsungBottomBarCustomize = listOf(
-        FeatureKeys.KEY_HIDE_TAB_AIGC,
-        FeatureKeys.KEY_HIDE_TAB_VIP,
-        FeatureKeys.KEY_REPLACE_BOTTOM_AI,
-    )
-
-    private val baiduSamsungPerformanceCustomize = listOf(
-        FeatureKeys.KEY_DISABLE_AD_SDK_INIT,
-        FeatureKeys.KEY_DISABLE_AIGC_BACKGROUND_COMPONENT,
-        FeatureKeys.KEY_DISABLE_B2F_GUIDANCE_PREFETCH,
-        FeatureKeys.KEY_DISABLE_DATAPACK_SOCKET_REGISTER,
-        FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD,
-        FeatureKeys.KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER,
-        FeatureKeys.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD,
-        FeatureKeys.KEY_DISABLE_INCENTIVE_BUSINESS_SERVICE,
-        FeatureKeys.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART,
-        FeatureKeys.KEY_DISABLE_OEM_PUSH_SERVICE,
-        FeatureKeys.KEY_DISABLE_SWAN_PRELOAD,
-        FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE,
-        FeatureKeys.KEY_DISABLE_VIDEO_AD_PRELOAD,
-    )
-
-    private val baiduSamsungThemeCustomize = listOf(
+    private val baiduDomesticThemeCustomize = listOf(
         FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
     )
 
