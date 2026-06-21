@@ -18,6 +18,7 @@ internal object BaiduFeatureSets {
             baiduSharedPerformanceCustomize,
             baiduCnStartup,
             baiduCnHomeCustomize,
+            baiduCnSearchPageCustomize,
             baiduCnMyPageCustomize,
             baiduCnMemberCardCustomize,
             baiduCnBottomBarCustomize,
@@ -142,6 +143,13 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_HIDE_HOME_SEARCH_AIGC_ICON,
         FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER,
         FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION,
+    )
+
+    private val baiduCnSearchPageCustomize = listOf(
+        FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE,
+        FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY,
+        FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER,
+        FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND,
     )
 
     private val baiduCnMyPageCustomize = listOf(

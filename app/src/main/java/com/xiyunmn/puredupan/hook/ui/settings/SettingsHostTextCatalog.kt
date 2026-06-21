@@ -292,6 +292,22 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_LABEL,
                 UiText.Settings.HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_DESC,
             ),
+            SettingsUserState.KEY_SEARCH_PAGE_CUSTOMIZE to text(
+                UiText.Settings.SEARCH_PAGE_CUSTOMIZE_LABEL,
+                UiText.Settings.SEARCH_PAGE_CUSTOMIZE_DESC,
+            ),
+            SettingsUserState.KEY_HIDE_SEARCH_PAGE_AI_ENTRY to text(
+                UiText.Settings.HIDE_SEARCH_PAGE_AI_ENTRY_LABEL,
+                UiText.Settings.HIDE_SEARCH_PAGE_AI_ENTRY_DESC,
+            ),
+            SettingsUserState.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER to text(
+                UiText.Settings.HIDE_SEARCH_PAGE_PLACEHOLDER_LABEL,
+                UiText.Settings.HIDE_SEARCH_PAGE_PLACEHOLDER_DESC,
+            ),
+            SettingsUserState.KEY_HIDE_SEARCH_PAGE_RECOMMEND to text(
+                UiText.Settings.HIDE_SEARCH_PAGE_RECOMMEND_LABEL,
+                UiText.Settings.HIDE_SEARCH_PAGE_RECOMMEND_DESC,
+            ),
             SettingsUserState.KEY_SHARE_PAGE_CUSTOMIZE to text(
                 UiText.Settings.SHARE_PAGE_CUSTOMIZE_LABEL,
                 UiText.Settings.SHARE_PAGE_CUSTOMIZE_DESC,

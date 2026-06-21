@@ -51,6 +51,14 @@ object UiText {
         const val FILE_PAGE_CUSTOMIZE_DESC = "管理「文件」页面底部提示等控件"
         const val HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_LABEL = "底部数据安全提示"
         const val HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_DESC = "隐藏「文件」页底部的数据安全提示"
+        const val SEARCH_PAGE_CUSTOMIZE_LABEL = "搜索页定制"
+        const val SEARCH_PAGE_CUSTOMIZE_DESC = "管理搜索页面 AI 入口、提示词和智能推荐"
+        const val HIDE_SEARCH_PAGE_AI_ENTRY_LABEL = "AI全能搜入口"
+        const val HIDE_SEARCH_PAGE_AI_ENTRY_DESC = "隐藏搜索页 AI 全能搜入口和搜索结果 AI 卡片"
+        const val HIDE_SEARCH_PAGE_PLACEHOLDER_LABEL = "搜索框提示词"
+        const val HIDE_SEARCH_PAGE_PLACEHOLDER_DESC = "隐藏搜索框内的动态提示词"
+        const val HIDE_SEARCH_PAGE_RECOMMEND_LABEL = "智能推荐"
+        const val HIDE_SEARCH_PAGE_RECOMMEND_DESC = "阻止搜索页拉取和展示智能推荐内容"
         const val REMOVE_GAME_CENTER_LABEL = "游戏中心"
         const val REMOVE_GAME_CENTER_DESC = "隐藏「我的」游戏中心入口"
         const val REMOVE_ABOUT_ME_BANNER_LABEL = "横幅广告"
@@ -252,6 +260,8 @@ object UiText {
         const val SHARE_PAGE_CUSTOMIZE_SAVED = "共享页定制配置已保存"
         const val FILE_PAGE_CUSTOMIZE_DIALOG_TITLE = "文件页定制"
         const val FILE_PAGE_CUSTOMIZE_SAVED = "文件页定制配置已保存"
+        const val SEARCH_PAGE_CUSTOMIZE_DIALOG_TITLE = "搜索页定制"
+        const val SEARCH_PAGE_CUSTOMIZE_SAVED = "搜索页定制配置已保存"
         const val MY_PAGE_CUSTOMIZE_DIALOG_TITLE = "我的页定制"
         const val MY_PAGE_CUSTOMIZE_SAVED = "我的页定制配置已保存"
         const val HOME_CUSTOMIZE_DIALOG_TITLE = "首页定制"
@@ -294,6 +304,7 @@ object UiText {
         const val RESTRICTED_FEATURE_WARNING_MESSAGE = """高级功能包含以下可选配置项：
 • 首页定制
 • 文件页定制
+• 搜索页定制
 • 共享页定制
 • 我的页定制
 • 会员卡片定制

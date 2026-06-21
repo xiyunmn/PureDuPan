@@ -152,6 +152,18 @@ internal object HookSettings {
     val isFilePageBottomSafetyTipHidden: Boolean
         get() = ConfigManager.isFilePageBottomSafetyTipHidden
 
+    val isSearchPageCustomizeEnabled: Boolean
+        get() = ConfigManager.isSearchPageCustomizeEnabled
+
+    val isSearchPageAiEntryHidden: Boolean
+        get() = ConfigManager.isSearchPageAiEntryHidden
+
+    val isSearchPagePlaceholderHidden: Boolean
+        get() = ConfigManager.isSearchPagePlaceholderHidden
+
+    val isSearchPageRecommendHidden: Boolean
+        get() = ConfigManager.isSearchPageRecommendHidden
+
     val isHomeTopPromotionHidden: Boolean
         get() = ConfigManager.isHomeTopPromotionHidden
 

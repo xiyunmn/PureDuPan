@@ -42,6 +42,10 @@ object ConfigManager {
     const val KEY_HIDE_HOME_RECENT_SECTION = FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION
     const val KEY_FILE_PAGE_CUSTOMIZE = FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE
     const val KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP = FeatureKeys.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP
+    const val KEY_SEARCH_PAGE_CUSTOMIZE = FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE
+    const val KEY_HIDE_SEARCH_PAGE_AI_ENTRY = FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY
+    const val KEY_HIDE_SEARCH_PAGE_PLACEHOLDER = FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER
+    const val KEY_HIDE_SEARCH_PAGE_RECOMMEND = FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND
     const val KEY_SHARE_PAGE_CUSTOMIZE = FeatureKeys.KEY_SHARE_PAGE_CUSTOMIZE
     const val KEY_MY_PAGE_CUSTOMIZE = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE
     const val KEY_REMOVE_GAME_CENTER = FeatureKeys.KEY_REMOVE_GAME_CENTER
@@ -146,6 +150,10 @@ object ConfigManager {
     val isHomeRecentSectionHidden: Boolean get() = settingsSnapshot.isHomeRecentSectionHidden
     val isFilePageCustomizeEnabled: Boolean get() = settingsSnapshot.isFilePageCustomizeEnabled
     val isFilePageBottomSafetyTipHidden: Boolean get() = settingsSnapshot.isFilePageBottomSafetyTipHidden
+    val isSearchPageCustomizeEnabled: Boolean get() = settingsSnapshot.isSearchPageCustomizeEnabled
+    val isSearchPageAiEntryHidden: Boolean get() = settingsSnapshot.isSearchPageAiEntryHidden
+    val isSearchPagePlaceholderHidden: Boolean get() = settingsSnapshot.isSearchPagePlaceholderHidden
+    val isSearchPageRecommendHidden: Boolean get() = settingsSnapshot.isSearchPageRecommendHidden
     val isSharePageCustomizeEnabled: Boolean get() = settingsSnapshot.isSharePageCustomizeEnabled
     val isMyPageCustomizeEnabled: Boolean get() = settingsSnapshot.isMyPageCustomizeEnabled
     val isGameCenterRemoved: Boolean get() = settingsSnapshot.isGameCenterRemoved
@@ -428,6 +436,10 @@ object ConfigManager {
                 featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false)
         val hasFilePageOptionEnabled =
             featureBoolean(KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP, false)
+        val hasSearchPageOptionEnabled =
+            featureBoolean(KEY_HIDE_SEARCH_PAGE_AI_ENTRY, false) ||
+                featureBoolean(KEY_HIDE_SEARCH_PAGE_PLACEHOLDER, false) ||
+                featureBoolean(KEY_HIDE_SEARCH_PAGE_RECOMMEND, false)
         val hasSharePageOptionEnabled =
             featureBoolean(KEY_REMOVE_HOME_FAB, false)
         val hasMyPageOptionEnabled =
@@ -505,6 +517,10 @@ object ConfigManager {
             isHomeRecentSectionHidden = featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false),
             isFilePageCustomizeEnabled = featureBoolean(KEY_FILE_PAGE_CUSTOMIZE, hasFilePageOptionEnabled),
             isFilePageBottomSafetyTipHidden = featureBoolean(KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP, false),
+            isSearchPageCustomizeEnabled = featureBoolean(KEY_SEARCH_PAGE_CUSTOMIZE, hasSearchPageOptionEnabled),
+            isSearchPageAiEntryHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_AI_ENTRY, false),
+            isSearchPagePlaceholderHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_PLACEHOLDER, false),
+            isSearchPageRecommendHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_RECOMMEND, false),
             isSharePageCustomizeEnabled = featureBoolean(KEY_SHARE_PAGE_CUSTOMIZE, hasSharePageOptionEnabled),
             isMyPageCustomizeEnabled = featureBoolean(KEY_MY_PAGE_CUSTOMIZE, hasMyPageOptionEnabled),
             isGameCenterRemoved = featureBoolean(KEY_REMOVE_GAME_CENTER, false),

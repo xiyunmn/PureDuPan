@@ -6,6 +6,7 @@ internal data class DerivedSettings(
     val hasMemberCardCustomizeOption: Boolean,
     val hasHomeCustomizeOption: Boolean,
     val hasFilePageCustomizeOption: Boolean,
+    val hasSearchPageCustomizeOption: Boolean,
     val hasMyPageCustomizeOption: Boolean,
     val hasBottomBarTabOption: Boolean,
 )

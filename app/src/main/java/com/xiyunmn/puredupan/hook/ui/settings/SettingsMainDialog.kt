@@ -56,6 +56,9 @@ internal object SettingsMainDialog {
                     onFilePageCustomizeClick = {
                         PageCustomizeSettingsDialogs.showFilePage(context, prefs, settingsSession, texts)
                     },
+                    onSearchPageCustomizeClick = {
+                        PageCustomizeSettingsDialogs.showSearchPage(context, prefs, settingsSession, texts)
+                    },
                     onSharePageCustomizeClick = {
                         PageCustomizeSettingsDialogs.showSharePage(context, prefs, settingsSession, texts)
                     },
@@ -313,6 +316,10 @@ internal object SettingsMainDialog {
                 isFeatureVisible = settingsSession::isFeatureVisible,
             ),
             filePageCustomize = PageCustomizeSettingsItemsBuilder.hasEnabledFilePageCustomizeOption(
+                isFeatureVisible = settingsSession::isFeatureVisible,
+                isChecked = { key -> prefs.getBoolean(key, false) },
+            ),
+            searchPageCustomize = PageCustomizeSettingsItemsBuilder.hasEnabledSearchPageCustomizeOption(
                 isFeatureVisible = settingsSession::isFeatureVisible,
                 isChecked = { key -> prefs.getBoolean(key, false) },
             ),

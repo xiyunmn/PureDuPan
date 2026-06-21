@@ -78,6 +78,68 @@ internal object PageCustomizeSettingsDialogs {
         }
     }
 
+    fun showSearchPage(
+        context: Context,
+        prefs: SharedPreferences,
+        settingsSession: SettingsRuntimeSession,
+        texts: SettingsTextResolver,
+    ) {
+        try {
+            if (!settingsSession.isFeatureVisible(SettingsUserState.KEY_SEARCH_PAGE_CUSTOMIZE)) {
+                XposedCompat.logW("$LOG_TAG showSearchPage skipped: unsupported host")
+                return
+            }
+            val density = context.resources.displayMetrics.density
+            val padding = (16 * density).toInt()
+
+            val root = createDialogRoot(context, padding)
+            val searchPageItems = PageCustomizeSettingsItemsBuilder.searchPageCustomizeItems(
+                prefs = prefs,
+                texts = texts,
+                isFeatureVisible = settingsSession::isFeatureVisible,
+            )
+            val rowsByKey = createRowsByKey(context, prefs, padding, searchPageItems)
+            SettingsDialogLayout.addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = SettingsDialogLayout.createCustomHideWidgetSectionTitle(context, padding),
+                rows = searchPageItems.visibleRows(rowsByKey),
+            )
+
+            val switchesByKey = collectSwitchesByKey(rowsByKey)
+            if (switchesByKey.values.any { it == null }) {
+                XposedCompat.logW("$LOG_TAG showSearchPage failed: switch view missing")
+                return
+            }
+
+            val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
+                .setTitle(UiText.Settings.SEARCH_PAGE_CUSTOMIZE_DIALOG_TITLE)
+                .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
+                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
+                .setPositiveButton(UiText.Settings.SAVE, null)
+                .create()
+            dialog.setOnShowListener {
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
+                    PageCustomizeSettingsItemsBuilder.putSearchPageCustomizeValues(
+                        editor = prefs.edit(),
+                        isFeatureVisible = settingsSession::isFeatureVisible,
+                        isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                    ).apply()
+                    Toast.makeText(
+                        context,
+                        UiText.Settings.withRestartHint(UiText.Settings.SEARCH_PAGE_CUSTOMIZE_SAVED),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    dialog.dismiss()
+                }
+            }
+            SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)
+        } catch (t: Throwable) {
+            XposedCompat.logW("$LOG_TAG showSearchPage failed: ${t.message}")
+        }
+    }
+
     fun showSharePage(
         context: Context,
         prefs: SharedPreferences,

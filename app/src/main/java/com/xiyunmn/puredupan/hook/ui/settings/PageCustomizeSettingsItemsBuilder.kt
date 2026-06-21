@@ -53,6 +53,55 @@ internal object PageCustomizeSettingsItemsBuilder {
         return editor
     }
 
+    fun searchPageCustomizeItems(
+        prefs: SharedPreferences,
+        texts: SettingsTextResolver,
+        isFeatureVisible: (String) -> Boolean,
+    ): List<KeyedSwitchItem> {
+        return SearchPageCustomizeSettingsRegistry.specs.map { spec ->
+            val visible = isFeatureVisible(spec.key)
+            val text = texts.text(spec.key, spec.label, spec.description)
+            KeyedSwitchItem(
+                key = spec.key,
+                item = SwitchItem(
+                    label = text.label,
+                    description = text.description,
+                    prefKey = null,
+                    supported = visible,
+                    defaultValue = prefs.getBoolean(spec.key, false),
+                    visible = visible,
+                ),
+            )
+        }
+    }
+
+    fun hasEnabledSearchPageCustomizeOption(
+        isFeatureVisible: (String) -> Boolean,
+        isChecked: (String) -> Boolean,
+    ): Boolean {
+        return SearchPageCustomizeSettingsRegistry.specs.any { spec ->
+            isFeatureVisible(spec.key) && isChecked(spec.key)
+        }
+    }
+
+    fun putSearchPageCustomizeValues(
+        editor: SharedPreferences.Editor,
+        isFeatureVisible: (String) -> Boolean,
+        isChecked: (String) -> Boolean,
+    ): SharedPreferences.Editor {
+        val hasEnabledOption = hasEnabledSearchPageCustomizeOption(
+            isFeatureVisible = isFeatureVisible,
+            isChecked = isChecked,
+        )
+        editor.putBoolean(SettingsUserState.KEY_SEARCH_PAGE_CUSTOMIZE, hasEnabledOption)
+        SearchPageCustomizeSettingsRegistry.specs.filter { spec ->
+            isFeatureVisible(spec.key)
+        }.forEach { spec ->
+            editor.putBoolean(spec.key, isChecked(spec.key))
+        }
+        return editor
+    }
+
     fun sharePageCustomizeItems(
         prefs: SharedPreferences,
         texts: SettingsTextResolver,

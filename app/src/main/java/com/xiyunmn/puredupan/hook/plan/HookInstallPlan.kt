@@ -77,6 +77,10 @@ internal object HookInstallPlanner {
                     FeatureKeys.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP,
                     settings.isFilePageBottomSafetyTipHidden,
                 ),
+            hasSearchPageCustomizeOption =
+                enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY, settings.isSearchPageAiEntryHidden) ||
+                    enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER, settings.isSearchPagePlaceholderHidden) ||
+                    enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND, settings.isSearchPageRecommendHidden),
             hasMyPageCustomizeOption =
                 enabled(FeatureKeys.KEY_REMOVE_ABOUT_ME_BANNER, settings.isAboutMeBannerRemoved) ||
                     enabled(FeatureKeys.KEY_REMOVE_MY_SERVICE, settings.isMyServiceRemoved) ||

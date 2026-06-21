@@ -31,6 +31,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.GameCenterRemoveHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.GameCenterRuntimeBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.RenewButtonHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.SystemNightModeSyncHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.search.SearchPageCustomizeHook
 import com.xiyunmn.puredupan.hook.plan.HookSpec
 
 internal object BaiduCnPostAttachHookSpecs {
@@ -122,6 +123,16 @@ internal object BaiduCnPostAttachHookSpecs {
                 settings.isMyPageCustomizeEnabled &&
                 settings.isGameCenterRemoved
         }, featureKey = FeatureKeys.KEY_REMOVE_GAME_CENTER) { cl -> GameCenterRemoveHook.hook(cl) },
+    )
+
+    val searchPage = listOf(
+        HookSpec("SearchPageCustomizeHook", { context, settings, derived ->
+            context.isMain &&
+                settings.isSearchPageCustomizeEnabled &&
+                derived.hasSearchPageCustomizeOption
+        }, featureKey = FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE) { cl ->
+            SearchPageCustomizeHook.hook(cl)
+        },
     )
 
     val memberCard = listOf(
