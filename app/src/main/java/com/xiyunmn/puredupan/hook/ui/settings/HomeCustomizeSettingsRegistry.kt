@@ -44,6 +44,12 @@ internal object HomeCustomizeSettingsRegistry {
             HomeCustomizeSettingsSection.TOP_WIDGET,
         ),
         booleanSpec(
+            SettingsUserState.KEY_HIDE_HOME_TOOLBAR,
+            UiText.Settings.HIDE_HOME_TOOLBAR_LABEL,
+            UiText.Settings.HIDE_HOME_TOOLBAR_DESC,
+            HomeCustomizeSettingsSection.TOP_WIDGET,
+        ),
+        booleanSpec(
             SettingsUserState.KEY_HIDE_HOME_FEED_TIP,
             UiText.Settings.HIDE_HOME_FEED_TIP_LABEL,
             UiText.Settings.HIDE_HOME_FEED_TIP_DESC,

@@ -115,10 +115,22 @@ internal object HostProfileValidator {
         )
     }
 
+    private fun requireOptionalIdNames(profile: HostProfile, idNames: List<String>, label: String) {
+        require(idNames.none { it.isBlank() }) {
+            "Host ${profile.id} $label id names must not be blank"
+        }
+        requireUnique(
+            values = idNames,
+            label = "$label ids for host ${profile.id}",
+        )
+    }
+
     private fun requireHomeCustomizeHookPoints(profile: HostProfile) {
         val points = profile.capabilities.uiHookPoints.homeCustomize
         requireOptionalClassName(profile, points.searchboxFragmentClassName, "home searchbox fragment")
+        requireOptionalClassNames(profile, points.homeRootFragmentClassNames, "home root fragment")
         requireOptionalClassNames(profile, points.feedFragmentClassNames, "home feed fragment")
+        requireOptionalIdNames(profile, points.toolbarViewIdNames, "home toolbar view")
         requireOptionalClassNames(profile, points.storyCardViewClassNames, "home story card view")
         requireOptionalClassNames(profile, points.saveCardViewClassNames, "home save card view")
         requireOptionalClassNames(profile, points.recentCardViewClassNames, "home recent card view")
@@ -222,6 +234,10 @@ internal object HostProfileValidator {
         if (needsFeedFragment) {
             requireRequiredClassNames(profile, points.feedFragmentClassNames, "home feed fragment")
         }
+        if (FeatureKeys.KEY_HIDE_HOME_TOOLBAR in featureKeys) {
+            requireRequiredClassNames(profile, points.homeRootFragmentClassNames, "home root fragment")
+            requireRequiredIdNames(profile, points.toolbarViewIdNames, "home toolbar view")
+        }
         if (FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION in featureKeys) {
             requireRequiredClassNames(profile, points.storyCardViewClassNames, "home story card view")
         }
@@ -250,5 +266,12 @@ internal object HostProfileValidator {
             "Host ${profile.id} requires $label class names"
         }
         requireOptionalClassNames(profile, classNames, label)
+    }
+
+    private fun requireRequiredIdNames(profile: HostProfile, idNames: List<String>, label: String) {
+        require(idNames.isNotEmpty()) {
+            "Host ${profile.id} requires $label id names"
+        }
+        requireOptionalIdNames(profile, idNames, label)
     }
 }

@@ -51,6 +51,7 @@ object HomeCustomizeHook {
         try {
             var installedCount = 0
             installedCount += hookTopBannerView(cl)
+            installedCount += hookHomeRootView(cl)
             installedCount += hookHomeSearchboxView(cl)
             installedCount += hookSearchboxAigcAnimation(cl)
             installedCount += hookFeedRecommendView(cl)
@@ -98,6 +99,78 @@ object HomeCustomizeHook {
             }
         }
         return 1
+    }
+
+    private fun hookHomeRootView(cl: ClassLoader): Int {
+        if (!hasHomeRootViewCleanupOption()) return 0
+        val mod = XposedCompat.module ?: return 0
+        val rootFragmentClasses = homeCustomizeHookPoints().homeRootFragmentClassNames.distinct()
+        if (rootFragmentClasses.isEmpty()) {
+            XposedCompat.log("[HomeCustomizeHook] home root fragment host capabilities missing")
+            return 0
+        }
+
+        var count = 0
+        rootFragmentClasses.forEach { className ->
+            val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
+                XposedCompat.logD("[HomeCustomizeHook] $className not found, skipped")
+                return@forEach
+            }
+
+            val onCreateView = XposedCompat.findMethodOrNull(
+                clazz,
+                "onCreateView",
+                LayoutInflater::class.java,
+                ViewGroup::class.java,
+                Bundle::class.java,
+            )
+            if (onCreateView != null) {
+                mod.hook(onCreateView).intercept { chain ->
+                    val result = chain.proceed()
+                    attachHomeCustomizeWatcher(result as? View)
+                    result
+                }
+                count += 1
+            } else {
+                XposedCompat.logD("[HomeCustomizeHook] $className.onCreateView not found for root cleanup")
+            }
+
+            val onViewCreated = XposedCompat.findMethodOrNull(
+                clazz,
+                "onViewCreated",
+                View::class.java,
+                Bundle::class.java,
+            )
+            if (onViewCreated != null) {
+                mod.hook(onViewCreated).intercept { chain ->
+                    val result = chain.proceed()
+                    attachHomeCustomizeWatcher(chain.args.firstOrNull() as? View)
+                    result
+                }
+                count += 1
+            } else {
+                XposedCompat.logD("[HomeCustomizeHook] $className.onViewCreated not found for root cleanup")
+            }
+
+            val onResume = XposedCompat.findMethodOrNull(clazz, "onResume")
+            if (onResume != null) {
+                mod.hook(onResume).intercept { chain ->
+                    val result = chain.proceed()
+                    val root = runCatching {
+                        val getView = chain.thisObject.javaClass.methods.firstOrNull {
+                            it.name == "getView" && it.parameterTypes.isEmpty()
+                        }
+                        getView?.invoke(chain.thisObject) as? View
+                    }.getOrNull()
+                    attachHomeCustomizeWatcher(root)
+                    result
+                }
+                count += 1
+            } else {
+                XposedCompat.logD("[HomeCustomizeHook] $className.onResume not found for root cleanup")
+            }
+        }
+        return count
     }
 
     private fun hookHomeSearchboxView(cl: ClassLoader): Int {
@@ -351,6 +424,9 @@ object HomeCustomizeHook {
                 XposedCompat.logD("[HomeCustomizeHook] search AIGC border animation hidden")
             }
         }
+        if (HookSettings.isHomeToolbarHidden) {
+            hideHomeToolbarViews(root, resources, packageName)
+        }
         if (HookSettings.isHomeFeedTipHidden) {
             hideFeedTipViews(root, resources, packageName)
         }
@@ -358,6 +434,18 @@ object HomeCustomizeHook {
             hideHomeBannerViews(root, resources, packageName)
         }
         hideHomeSectionCards(root)
+    }
+
+    private fun hideHomeToolbarViews(
+        root: View,
+        resources: android.content.res.Resources,
+        packageName: String,
+    ) {
+        homeCustomizeHookPoints().toolbarViewIdNames.forEach { idName ->
+            hideViewByEntryName(root, resources, packageName, idName) {
+                XposedCompat.logD("[HomeCustomizeHook] home toolbar hidden by id: $idName")
+            }
+        }
     }
 
     private fun hookHomeSectionCreatorMethods(
@@ -632,10 +720,15 @@ object HomeCustomizeHook {
     private fun hasViewCleanupOption(): Boolean {
         return HookSettings.isHomeCustomizeEnabled &&
             (
-                hasHomeSearchboxViewCleanupOption() ||
+                hasHomeRootViewCleanupOption() ||
+                    hasHomeSearchboxViewCleanupOption() ||
                     hasFeedViewCleanupOption() ||
                     hasHomeSectionHiddenOption()
             )
+    }
+
+    private fun hasHomeRootViewCleanupOption(): Boolean {
+        return HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeToolbarHidden
     }
 
     private fun hasHomeSearchboxViewCleanupOption(): Boolean {

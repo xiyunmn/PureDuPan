@@ -10,6 +10,11 @@ internal object BaiduSharedHookPoints {
     const val ABOUT_ME_ACTIVITY = "com.baidu.netdisk.ui.aboutme.AboutMeActivity"
 
     const val HOME_SEARCHBOX_FRAGMENT = "com.baidu.netdisk.home25ai.fragment.HomeSearchboxFragment"
+    const val HOME25_FRAGMENT = "com.baidu.netdisk.home25ai.Home25Fragment"
+    const val NEW_FH_HOME_FRAGMENT =
+        "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.NewFHHomeFragment"
+    const val HOME25_KINGKONG_CONTENT_LAYOUT_ID = "home25ai_kingkong_content_layout"
+    const val INTL_VAJRA_AREA_ID = "cl_vajra_Area"
     const val HOME25AI_CONTEXT_COMPANION =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_home25ai.Home25aiContext\$Companion"
     const val HOME25AI_LOAD_HOME_BANNER_METHOD = "loadHomeBanner"

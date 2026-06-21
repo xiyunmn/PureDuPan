@@ -55,6 +55,8 @@ internal val BaiduSamsungHostProfile = HostProfile(
             ),
             homeCustomize = HomeCustomizeHookPoints(
                 searchboxFragmentClassName = BaiduSharedHookPoints.HOME_SEARCHBOX_FRAGMENT,
+                homeRootFragmentClassNames = listOf(BaiduSharedHookPoints.HOME25_FRAGMENT),
+                toolbarViewIdNames = listOf(BaiduSharedHookPoints.HOME25_KINGKONG_CONTENT_LAYOUT_ID),
                 home25aiContextCompanionClassName = BaiduSharedHookPoints.HOME25AI_CONTEXT_COMPANION,
                 loadHomeBannerMethodName = BaiduSharedHookPoints.HOME25AI_LOAD_HOME_BANNER_METHOD,
                 feedFragmentClassNames = BaiduSharedHookPoints.FEED_FRAGMENT_CLASSES,

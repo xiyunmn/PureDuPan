@@ -67,6 +67,7 @@ internal object HookInstallPlanner {
                 enabled(FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION, settings.isHomeTopPromotionHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER, settings.isHomeSearchPlaceholderHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_HOME_SEARCH_AIGC_ICON, settings.isHomeSearchAigcIconHidden) ||
+                    enabled(FeatureKeys.KEY_HIDE_HOME_TOOLBAR, settings.isHomeToolbarHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_HOME_FEED_TIP, settings.isHomeFeedTipHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_HOME_BANNER, settings.isHomeBannerHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION, settings.isHomeMemoriesSectionHidden) ||
@@ -80,11 +81,7 @@ internal object HookInstallPlanner {
             hasSearchPageCustomizeOption =
                 enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY, settings.isSearchPageAiEntryHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER, settings.isSearchPagePlaceholderHidden) ||
-                    enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND, settings.isSearchPageRecommendHidden) ||
-                    enabled(
-                        FeatureKeys.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH,
-                        settings.isSearchPageVoiceSearchHidden,
-                    ),
+                    enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND, settings.isSearchPageRecommendHidden),
             hasMyPageCustomizeOption =
                 enabled(FeatureKeys.KEY_REMOVE_ABOUT_ME_BANNER, settings.isAboutMeBannerRemoved) ||
                     enabled(FeatureKeys.KEY_REMOVE_MY_SERVICE, settings.isMyServiceRemoved) ||

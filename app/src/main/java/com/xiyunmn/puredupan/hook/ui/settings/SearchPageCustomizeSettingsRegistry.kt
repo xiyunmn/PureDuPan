@@ -26,10 +26,5 @@ internal object SearchPageCustomizeSettingsRegistry {
             UiText.Settings.HIDE_SEARCH_PAGE_RECOMMEND_LABEL,
             UiText.Settings.HIDE_SEARCH_PAGE_RECOMMEND_DESC,
         ),
-        SearchPageCustomizeSwitchSpec(
-            SettingsUserState.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH,
-            UiText.Settings.HIDE_SEARCH_PAGE_VOICE_SEARCH_LABEL,
-            UiText.Settings.HIDE_SEARCH_PAGE_VOICE_SEARCH_DESC,
-        ),
     )
 }

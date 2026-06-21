@@ -164,9 +164,6 @@ internal object HookSettings {
     val isSearchPageRecommendHidden: Boolean
         get() = ConfigManager.isSearchPageRecommendHidden
 
-    val isSearchPageVoiceSearchHidden: Boolean
-        get() = ConfigManager.isSearchPageVoiceSearchHidden
-
     val isHomeTopPromotionHidden: Boolean
         get() = ConfigManager.isHomeTopPromotionHidden
 
@@ -175,6 +172,9 @@ internal object HookSettings {
 
     val isHomeSearchAigcIconHidden: Boolean
         get() = ConfigManager.isHomeSearchAigcIconHidden
+
+    val isHomeToolbarHidden: Boolean
+        get() = ConfigManager.isHomeToolbarHidden
 
     val isHomeFeedTipHidden: Boolean
         get() = ConfigManager.isHomeFeedTipHidden

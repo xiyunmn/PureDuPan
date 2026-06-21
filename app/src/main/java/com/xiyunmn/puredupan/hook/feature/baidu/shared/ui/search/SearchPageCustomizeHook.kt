@@ -29,10 +29,6 @@ internal object SearchPageCustomizeHook {
             if (HookSettings.isSearchPageAiEntryHidden) {
                 installed += hookAiEntry(cl)
             }
-            if (HookSettings.isSearchPageVoiceSearchHidden) {
-                installed += hookVoiceSearchButton(cl)
-            }
-
             if (installed == 0) {
                 hookState.reset()
                 XposedCompat.log("[SearchPageCustomizeHook] no hooks installed")
@@ -321,138 +317,6 @@ internal object SearchPageCustomizeHook {
         return installed
     }
 
-    private fun hookVoiceSearchButton(cl: ClassLoader): Int {
-        var installed = 0
-        installed += hookSearchBarVoiceFlag(cl)
-        installed += hookAigcFrameworkContextVoiceEntry(cl)
-        installed += hookAigcVoiceDialogEntry(cl)
-        return installed
-    }
-
-    private fun hookSearchBarVoiceFlag(cl: ClassLoader): Int {
-        val mod = XposedCompat.module ?: return 0
-        val clazz = XposedCompat.findClassOrNull(BaiduSearchPageHookPoints.PAN_SEARCH_SCREEN_KT, cl) ?: run {
-            XposedCompat.log("[SearchPageCustomizeHook] PanSearchScreenKt class NOT FOUND")
-            return 0
-        }
-        val method = findSearchBarMethod(clazz) ?: run {
-            XposedCompat.log("[SearchPageCustomizeHook] PanSearchScreenKt.SearchBar(...) NOT FOUND")
-            return 0
-        }
-
-        mod.hook(method).intercept { chain ->
-            if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageVoiceSearchHidden) {
-                val args = chain.args.toTypedArray()
-                if (args.getOrNull(6) == true) {
-                    args[6] = false
-                    XposedCompat.logD("[SearchPageCustomizeHook] SearchBar isVoiceSearch forced false")
-                    chain.proceed(args)
-                } else {
-                    chain.proceed()
-                }
-            } else {
-                chain.proceed()
-            }
-        }
-        return 1
-    }
-
-    private fun hookAigcFrameworkContextVoiceEntry(cl: ClassLoader): Int {
-        val mod = XposedCompat.module ?: return 0
-        val clazz = XposedCompat.findClassOrNull(BaiduSearchPageHookPoints.AIGC_FRAMEWORK_CONTEXT, cl) ?: run {
-            XposedCompat.log("[SearchPageCustomizeHook] AIGC FrameworkContext class NOT FOUND")
-            return 0
-        }
-        if (!metadataContainsAll(
-                clazz,
-                listOf(
-                    "FrameworkContext",
-                    BaiduSearchPageHookPoints.OPEN_DIALOG_FROM_NA_METHOD,
-                    "onResultCallback",
-                ),
-            )
-        ) {
-            XposedCompat.logW("[SearchPageCustomizeHook] AIGC FrameworkContext metadata signature mismatch")
-            return 0
-        }
-
-        val methods = findOpenDialogFromNaMethods(clazz)
-        if (methods.isEmpty()) {
-            XposedCompat.log("[SearchPageCustomizeHook] FrameworkContext.openDialogFromNA(Function1) NOT FOUND")
-            return 0
-        }
-
-        methods.forEach { method ->
-            mod.hook(method).intercept { chain ->
-                if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageVoiceSearchHidden) {
-                    XposedCompat.logD(
-                        "[SearchPageCustomizeHook] FrameworkContext.openDialogFromNA voice search blocked",
-                    )
-                    null
-                } else {
-                    chain.proceed()
-                }
-            }
-        }
-        return methods.size
-    }
-
-    private fun hookAigcVoiceDialogEntry(cl: ClassLoader): Int {
-        val mod = XposedCompat.module ?: return 0
-        val clazz = XposedCompat.findClassOrNull(BaiduSearchPageHookPoints.AIGC_FRAMEWORK_APIS, cl) ?: run {
-            XposedCompat.log("[SearchPageCustomizeHook] AigcFrameworkApis class NOT FOUND")
-            return 0
-        }
-        if (!metadataContainsAll(
-                clazz,
-                listOf(
-                    "AigcFrameworkApis",
-                    BaiduSearchPageHookPoints.OPEN_DIALOG_FROM_NA_METHOD,
-                    "showSingleSelectedFragment",
-                    "onResult",
-                ),
-            )
-        ) {
-            XposedCompat.logW("[SearchPageCustomizeHook] AigcFrameworkApis metadata signature mismatch")
-            return 0
-        }
-        if (XposedCompat.findClassOrNull(BaiduSearchPageHookPoints.AI_SEARCH_DIALOG, cl) == null) {
-            XposedCompat.log("[SearchPageCustomizeHook] AiSearchDialog class NOT FOUND")
-            return 0
-        }
-
-        val methods = findOpenDialogFromNaMethods(clazz)
-        if (methods.isEmpty()) {
-            XposedCompat.log("[SearchPageCustomizeHook] AigcFrameworkApis.openDialogFromNA(Function1) NOT FOUND")
-            return 0
-        }
-
-        methods.forEach { method ->
-            mod.hook(method).intercept { chain ->
-                if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageVoiceSearchHidden) {
-                    XposedCompat.logD(
-                        "[SearchPageCustomizeHook] AigcFrameworkApis.openDialogFromNA voice search blocked",
-                    )
-                    null
-                } else {
-                    chain.proceed()
-                }
-            }
-        }
-        return methods.size
-    }
-
-    private fun findOpenDialogFromNaMethods(clazz: Class<*>): List<Method> {
-        return clazz.declaredMethods.filter { method ->
-            method.name == BaiduSearchPageHookPoints.OPEN_DIALOG_FROM_NA_METHOD &&
-                method.returnType == Void.TYPE &&
-                method.parameterTypes.size == 1 &&
-                method.parameterTypes[0].name == BaiduSearchPageHookPoints.FUNCTION1
-        }.onEach { method ->
-            method.isAccessible = true
-        }
-    }
-
     private fun findSearchAiRecommendCardMethod(clazz: Class<*>): Method? {
         if (!metadataContainsAll(clazz, listOf("SearchAIRecommendCard", "AIRecommendResult"))) {
             XposedCompat.logW("[SearchPageCustomizeHook] SearchAIRecommendKt metadata signature mismatch")
@@ -466,29 +330,6 @@ internal object SearchPageCustomizeHook {
                 method.parameterTypes[6].name == BaiduSearchPageHookPoints.COMPOSER &&
                 method.parameterTypes[7] == Int::class.javaPrimitiveType &&
                 method.parameterTypes[8] == Int::class.javaPrimitiveType
-        }?.apply { isAccessible = true }
-    }
-
-    private fun findSearchBarMethod(clazz: Class<*>): Method? {
-        if (!metadataContainsAll(clazz, listOf("SearchBar", "isVoiceSearch", "isInPreSearch"))) {
-            XposedCompat.logW("[SearchPageCustomizeHook] PanSearchScreenKt metadata signature mismatch")
-            return null
-        }
-        return clazz.declaredMethods.firstOrNull { method ->
-            Modifier.isStatic(method.modifiers) &&
-                method.returnType == Void.TYPE &&
-                method.parameterTypes.size == 11 &&
-                method.parameterTypes[0].name == BaiduSearchPageHookPoints.FUNCTION0 &&
-                method.parameterTypes[1] == String::class.java &&
-                method.parameterTypes[2].name == BaiduSearchPageHookPoints.TEXT_FIELD_VALUE &&
-                method.parameterTypes[3].name == BaiduSearchPageHookPoints.FUNCTION1 &&
-                method.parameterTypes[4].name == BaiduSearchPageHookPoints.FUNCTION0 &&
-                method.parameterTypes[5] == Boolean::class.javaPrimitiveType &&
-                method.parameterTypes[6] == Boolean::class.javaPrimitiveType &&
-                method.parameterTypes[7] == Boolean::class.javaPrimitiveType &&
-                method.parameterTypes[8].name == BaiduSearchPageHookPoints.FUNCTION0 &&
-                method.parameterTypes[9].name == BaiduSearchPageHookPoints.COMPOSER &&
-                method.parameterTypes[10] == Int::class.javaPrimitiveType
         }?.apply { isAccessible = true }
     }
 
@@ -528,8 +369,7 @@ internal object SearchPageCustomizeHook {
             (
                 HookSettings.isSearchPageAiEntryHidden ||
                     HookSettings.isSearchPagePlaceholderHidden ||
-                    HookSettings.isSearchPageRecommendHidden ||
-                    HookSettings.isSearchPageVoiceSearchHidden
+                    HookSettings.isSearchPageRecommendHidden
                 )
     }
 }
