@@ -154,6 +154,7 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduCnBottomBarCustomize = listOf(
+        FeatureKeys.KEY_HIDE_TAB_AIGC,
         FeatureKeys.KEY_HIDE_TAB_VIP,
         FeatureKeys.KEY_REPLACE_BOTTOM_AI,
     )

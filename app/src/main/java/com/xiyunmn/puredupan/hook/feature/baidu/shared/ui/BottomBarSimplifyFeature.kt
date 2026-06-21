@@ -12,7 +12,11 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 
 object BottomBarSimplifyFeature {
     private const val TAB_CONTAINER_ID = "rg_tabs"
+    private const val TAB_AIGC_CLOUD_ID = "aigc_cloud"
+    private const val TAB_AIGC_AFX_ID = "aigc_afx"
+    private const val TAB_AIGC_AFX_CLICK_AREA_ID = "aigc_afx_click_area"
     private const val TAB_AIGC_HI_LOTTIE_ID = "aigc_hi_lottie"
+    private const val TAB_AIGC_RAISED_BACKGROUND_ID = "main_tab_raised_bg"
     private const val TAB_DISCOVERY_ID = "rb_findresoure"
 
     private val hookState = HookState()
@@ -26,7 +30,7 @@ object BottomBarSimplifyFeature {
     private val tabTargets = listOf(
         TabTarget("rb_home", "首页") { HookSettings.isBottomBarTabHomeHidden },
         TabTarget("rb_filelist", "文件") { HookSettings.isBottomBarTabFileHidden },
-        TabTarget("aigc_cloud", "AIGC") { HookSettings.isBottomBarTabAigcHidden },
+        TabTarget(TAB_AIGC_CLOUD_ID, "AIGC") { HookSettings.isBottomBarTabAigcHidden },
         TabTarget("rb_share", "共享") { HookSettings.isBottomBarTabShareHidden },
         TabTarget("rb_findresoure", "会员") { HookSettings.isBottomBarTabVipHidden },
         TabTarget("rb_about_me", "我的") { HookSettings.isBottomBarTabMineHidden },
@@ -158,12 +162,23 @@ object BottomBarSimplifyFeature {
 
     private fun hideAigcFeatureSlot(activity: Activity) {
         runCatching {
-            val aigcTab = findViewByEntryName(activity, "aigc_cloud")
-            hideTabView(aigcTab)
-            val resoureTab = findViewByEntryName(activity, TAB_DISCOVERY_ID)
-            hideTabView(resoureTab)
-            val aigcHiLottie = findViewByEntryName(activity, TAB_AIGC_HI_LOTTIE_ID)
-            hideTabView(aigcHiLottie)
+            val aigcCloudTab = findViewByEntryName(activity, TAB_AIGC_CLOUD_ID)
+            val aigcAfxTab = findViewByEntryName(activity, TAB_AIGC_AFX_ID)
+            val aigcSlotContainer = (aigcCloudTab?.parent as? View)
+                ?: (aigcAfxTab?.parent as? View)
+            val hadVisibleAigcSlot = aigcCloudTab.isShownOrVisible() || aigcAfxTab.isShownOrVisible()
+
+            hideTabView(aigcCloudTab)
+            hideTabView(aigcAfxTab)
+            hideTabView(aigcSlotContainer)
+            hideTabView(findViewByEntryName(activity, TAB_AIGC_AFX_CLICK_AREA_ID))
+            hideTabView(findViewByEntryName(activity, TAB_AIGC_HI_LOTTIE_ID))
+            hideTabView(findViewByEntryName(activity, TAB_AIGC_RAISED_BACKGROUND_ID))
+
+            if (hadVisibleAigcSlot) {
+                val resoureTab = findViewByEntryName(activity, TAB_DISCOVERY_ID)
+                hideTabView(resoureTab)
+            }
 
             val tabContainer = findViewByEntryName(activity, TAB_CONTAINER_ID) as? LinearLayout
             if (tabContainer != null) {
@@ -198,12 +213,16 @@ object BottomBarSimplifyFeature {
             val params = child.layoutParams as? LinearLayout.LayoutParams ?: continue
             if (child.visibility == View.VISIBLE && child.id != View.NO_ID) {
                 val idName = runCatching { child.resources.getResourceEntryName(child.id) }.getOrNull()
-                if (idName != "aigc_cloud" && params.width == 0 && params.weight == 0f) {
+                if (idName != TAB_AIGC_CLOUD_ID && params.width == 0 && params.weight == 0f) {
                     params.weight = 1f
                     child.layoutParams = params
                 }
             }
         }
         container.requestLayout()
+    }
+
+    private fun View?.isShownOrVisible(): Boolean {
+        return this != null && (visibility == View.VISIBLE || isShown)
     }
 }
