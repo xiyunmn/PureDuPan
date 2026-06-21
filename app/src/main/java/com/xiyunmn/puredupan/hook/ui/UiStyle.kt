@@ -6,7 +6,6 @@ import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
@@ -61,7 +60,6 @@ internal object UiStyle {
         val metricBgIdle: Int,
         val metricStrokeActive: Int,
         val metricStrokeIdle: Int,
-        val progressTrack: Int,
         val chartBg: Int,
         val chartAxis: Int,
         val chartGrid: Int,
@@ -203,7 +201,6 @@ internal object UiStyle {
         metricBgIdle = 0xFFF5F7FB.toInt(),
         metricStrokeActive = 0x664C87F7,
         metricStrokeIdle = 0x244C87F7,
-        progressTrack = 0x18000000,
         chartBg = 0xFFF7F9FC.toInt(),
         chartAxis = 0xFFDCE3EC.toInt(),
         chartGrid = 0xFFE8EDF4.toInt(),
@@ -236,7 +233,6 @@ internal object UiStyle {
         metricBgIdle = 0xFF1D1F23.toInt(),
         metricStrokeActive = 0x887FB0FF.toInt(),
         metricStrokeIdle = 0x447FB0FF,
-        progressTrack = 0x22FFFFFF,
         chartBg = 0xFF1D1F23.toInt(),
         chartAxis = 0x44FFFFFF,
         chartGrid = 0x22FFFFFF,
@@ -560,64 +556,6 @@ internal object UiStyle {
             value,
             context.resources.displayMetrics,
         ).toInt()
-    }
-
-    internal class ThinProgressBar(
-        context: Context,
-        private val tokens: Tokens,
-    ) : View(context) {
-        private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = tokens.progressTrack
-            style = Paint.Style.FILL
-        }
-        private val fgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = tokens.accent
-            style = Paint.Style.FILL
-        }
-        private val rect = RectF()
-        private var ratio = 0f
-        private var animator: ValueAnimator? = null
-
-        fun setProgress(target: Float, animated: Boolean = true) {
-            val clamped = target.coerceIn(0f, 1f)
-            if (clamped <= ratio + 0.0005f) {
-                if (clamped > ratio) {
-                    ratio = clamped
-                    invalidate()
-                }
-                return
-            }
-            animator?.cancel()
-            if (!animated) {
-                ratio = clamped
-                invalidate()
-                return
-            }
-            animator = ValueAnimator.ofFloat(ratio, clamped).apply {
-                duration = 220
-                interpolator = DecelerateInterpolator()
-                addUpdateListener { v ->
-                    ratio = v.animatedValue as Float
-                    invalidate()
-                }
-                start()
-            }
-        }
-
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-            val w = width.toFloat()
-            val h = height.toFloat()
-            if (w <= 0f || h <= 0f) return
-            val r = h / 2f
-            rect.set(0f, 0f, w, h)
-            canvas.drawRoundRect(rect, r, r, bgPaint)
-            val fgRight = w * ratio
-            if (fgRight > 0f) {
-                rect.set(0f, 0f, fgRight, h)
-                canvas.drawRoundRect(rect, r, r, fgPaint)
-            }
-        }
     }
 
     private class UnderlineDrawable(

@@ -316,6 +316,41 @@ val validateHookArchitecture = tasks.register("validateHookArchitecture") {
         }
         failIfNotEmpty("Old host architecture references", oldArchitectureMatches)
 
+        val hostCatalogImportPattern = Regex(
+            """import\s+com\.xiyunmn\.puredupan\.hook\.plan\.catalogs\.baidu\.(cn|intl|samsung)\.""",
+        )
+        val hostCatalogBoundaryMatches = sourceTextByPath.flatMap { (path, text) ->
+            val currentHost = Regex("""com/xiyunmn/puredupan/hook/plan/catalogs/baidu/(cn|intl|samsung)/""")
+                .find(path)
+                ?.groupValues
+                ?.get(1)
+                ?: return@flatMap emptyList()
+            hostCatalogImportPattern.findAll(text).mapNotNull { match ->
+                val importedHost = match.groupValues[1]
+                if (importedHost != currentHost) {
+                    "$path imports $importedHost catalog"
+                } else {
+                    null
+                }
+            }.toList()
+        }
+        failIfNotEmpty("Host catalogs must not import sibling host catalogs", hostCatalogBoundaryMatches)
+
+        val baiduFeatureSetsPath =
+            "com/xiyunmn/puredupan/hook/host/features/baidu/BaiduFeatureSets.kt"
+        val baiduFeatureSetsText = sourceTextByPath[baiduFeatureSetsPath].orEmpty()
+        val samsungFeatureSetBlock = Regex(
+            """val\s+baiduSamsungAvailableKeys:[\s\S]*?\n\s*\)\n""",
+        ).find(baiduFeatureSetsText)?.value.orEmpty()
+        val samsungFeatureSetInheritsCn = if (
+            "baiduCnAvailableKeys" in samsungFeatureSetBlock
+        ) {
+            listOf("$baiduFeatureSetsPath baiduSamsungAvailableKeys merges baiduCnAvailableKeys")
+        } else {
+            emptyList()
+        }
+        failIfNotEmpty("Samsung feature set must be explicitly declared", samsungFeatureSetInheritsCn)
+
         val hostHardcodePatterns = listOf(
             Regex("""BaiduSharedHookPoints"""),
             Regex("""com\.baidu"""),

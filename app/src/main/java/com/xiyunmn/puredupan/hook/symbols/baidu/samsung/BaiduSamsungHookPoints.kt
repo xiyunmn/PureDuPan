@@ -185,10 +185,4 @@ internal object BaiduSamsungHookPoints {
         "com.heytap.msp.push.service.CompatibleDataMessageCallbackService",
     )
 
-    const val P2P_DOWNLOAD_GUARD_SERVICE =
-        "com.baidu.netdisk.p2p.NetdiskDownloadGuardService"
-    const val P2P_SERVICE_PROXY =
-        "com.baidu.netdisk.p2p.P2PServiceProxy"
-    const val P2P_DOWNLOAD_SERVICE =
-        "com.baidu.netdisk.p2p.NetdiskDownloadService"
 }
