@@ -43,7 +43,7 @@ import java.util.WeakHashMap
 import kotlin.math.max
 
 /**
- * Customizes the VIP card area in the standard and heteromo AboutMe top fragments.
+ * Customizes only the VIP card area in AboutMeTopFragmentHeteromo.
  */
 object CnMemberCardCustomizeHook {
     private const val MEMBER_CARD_ACTIVITY_CONTAINER_ID = "about_me_top"
@@ -93,56 +93,47 @@ object CnMemberCardCustomizeHook {
             XposedCompat.log("[MemberCardCustomizeHook] skipped: config disabled")
             return
         }
-        if (XposedCompat.module == null) return
+        val mod = XposedCompat.module ?: return
         if (!hookState.markInstalled()) return
 
         try {
-            val installedCount = BaiduCnHookPoints.ABOUT_ME_TOP_FRAGMENT_CLASSES.count { fragmentClassName ->
-                hookFragment(cl, fragmentClassName)
-            }
-            if (installedCount == 0) {
-                XposedCompat.log("[MemberCardCustomizeHook] no AboutMe top fragment hook installed")
+            val fragmentClass = XposedCompat.findClassOrNull(
+                BaiduCnHookPoints.ABOUT_ME_TOP_FRAGMENT_HETEROMO,
+                cl,
+            ) ?: run {
+                XposedCompat.log("[MemberCardCustomizeHook] AboutMeTopFragmentHeteromo class NOT FOUND")
                 hookState.reset()
                 return
             }
 
-            XposedCompat.log("[MemberCardCustomizeHook] hook INSTALLED: $installedCount fragment(s)")
+            val method = XposedCompat.findMethodOrNull(
+                fragmentClass,
+                BaiduCnHookPoints.ABOUT_ME_TOP_FRAGMENT_ON_VIEW_CREATED_METHOD,
+                View::class.java,
+                Bundle::class.java,
+            ) ?: run {
+                XposedCompat.log("[MemberCardCustomizeHook] onViewCreated(View, Bundle) NOT FOUND")
+                hookState.reset()
+                return
+            }
+
+            mod.hook(method).intercept { chain ->
+                val result = chain.proceed()
+                try {
+                    attachMemberCardWatcher(chain.args.firstOrNull() as? View)
+                } catch (e: Exception) {
+                    XposedCompat.logD("[MemberCardCustomizeHook] attach failed: ${e.message}")
+                }
+                result
+            }
+            hookOnCreateView(fragmentClass)
+
+            XposedCompat.log("[MemberCardCustomizeHook] hook INSTALLED")
         } catch (e: Exception) {
             hookState.reset()
             XposedCompat.log("[MemberCardCustomizeHook] FAILED: ${e.message}")
             XposedCompat.log(e)
         }
-    }
-
-    private fun hookFragment(cl: ClassLoader, fragmentClassName: String): Boolean {
-        val mod = XposedCompat.module ?: return false
-        val fragmentClass = XposedCompat.findClassOrNull(fragmentClassName, cl) ?: run {
-            XposedCompat.logD("[MemberCardCustomizeHook] fragment class NOT FOUND: $fragmentClassName")
-            return false
-        }
-
-        val method = XposedCompat.findMethodOrNull(
-            fragmentClass,
-            BaiduCnHookPoints.ABOUT_ME_TOP_FRAGMENT_ON_VIEW_CREATED_METHOD,
-            View::class.java,
-            Bundle::class.java,
-        ) ?: run {
-            XposedCompat.logD("[MemberCardCustomizeHook] onViewCreated(View, Bundle) NOT FOUND: $fragmentClassName")
-            return false
-        }
-
-        mod.hook(method).intercept { chain ->
-            val result = chain.proceed()
-            try {
-                attachMemberCardWatcher(chain.args.firstOrNull() as? View)
-            } catch (e: Exception) {
-                XposedCompat.logD("[MemberCardCustomizeHook] attach failed: ${e.message}")
-            }
-            result
-        }
-        hookOnCreateView(fragmentClass)
-        XposedCompat.log("[MemberCardCustomizeHook] fragment hook INSTALLED: $fragmentClassName")
-        return true
     }
 
     private fun hookOnCreateView(fragmentClass: Class<*>) {
@@ -210,7 +201,6 @@ object CnMemberCardCustomizeHook {
             packageName,
             MEMBER_CARD_ACTIVITY_CONTAINER_ID,
         )?.takeIf { isAncestorOf(it, cardRoot) }
-            ?: findAncestorByEntryName(cardRoot, resources, packageName, MEMBER_CARD_ACTIVITY_CONTAINER_ID)
         applyCardClickBehavior(cardRoot, snapshot)
 
         activityCardRoot?.let {
@@ -1074,22 +1064,6 @@ object CnMemberCardCustomizeHook {
             current = current.parent as? View
         }
         return false
-    }
-
-    private fun findAncestorByEntryName(
-        child: View,
-        resources: android.content.res.Resources,
-        packageName: String,
-        idName: String,
-    ): View? {
-        val id = resources.getIdentifier(idName, "id", packageName)
-        if (id == 0) return null
-        var current = child.parent as? View
-        while (current != null) {
-            if (current.id == id) return current
-            current = current.parent as? View
-        }
-        return null
     }
 
 }

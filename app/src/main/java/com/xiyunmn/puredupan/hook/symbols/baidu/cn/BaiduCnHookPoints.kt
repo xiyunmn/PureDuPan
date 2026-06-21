@@ -35,13 +35,7 @@ internal object BaiduCnHookPoints {
 
     const val ABOUT_ME_TOP_FRAGMENT_HETEROMO =
         "com.baidu.netdisk.ui.aboutme.view.AboutMeTopFragmentHeteromo"
-    const val ABOUT_ME_TOP_FRAGMENT =
-        "com.baidu.netdisk.ui.aboutme.view.AboutMeTopFragment"
     const val ABOUT_ME_TOP_FRAGMENT_ON_VIEW_CREATED_METHOD = "onViewCreated"
-    val ABOUT_ME_TOP_FRAGMENT_CLASSES = listOf(
-        ABOUT_ME_TOP_FRAGMENT_HETEROMO,
-        ABOUT_ME_TOP_FRAGMENT,
-    )
 
     const val BASE_ACTIVITY = "com.baidu.netdisk.BaseActivity"
     const val SETTINGS_ACTIVITY = "com.baidu.netdisk.ui.SettingsActivity"
