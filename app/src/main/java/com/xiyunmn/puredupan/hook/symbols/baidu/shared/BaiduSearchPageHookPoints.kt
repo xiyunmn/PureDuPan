@@ -5,6 +5,16 @@ internal object BaiduSearchPageHookPoints {
     const val AI_SEARCH_25_VM = "com.mars.feature.search.aisearch.vm.AiSearch25VM"
     const val AI_SEARCH_CARD_KT = "com.mars.feature.search.aisearch.AiSearchCardKt"
 
+    val queryAiRecommendMethodNames = listOf(
+        "queryAIRecommend",
+        "L0",
+    )
+
+    val showSearchPlaceholderMethodNames = listOf(
+        "showText",
+        "g",
+    )
+
     val searchDefaultContentHelperClasses = listOf(
         "com.baidu.netdisk.feedhome.logic.util.SearchDefaultContentHelper",
         "com.baidu.netdisk.guest25ai.feedhome.logic.util.SearchDefaultContentHelper",

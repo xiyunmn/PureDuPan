@@ -19,6 +19,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotSta
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.entry.IntlAboutMeModuleEntryHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.entry.IntlHomeTitleBarModuleEntryHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlMemberCardCustomizeHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.search.SearchPageCustomizeHook
 import com.xiyunmn.puredupan.hook.plan.HookSpec
 
 internal object BaiduIntlPostAttachHookSpecs {
@@ -70,6 +71,16 @@ internal object BaiduIntlPostAttachHookSpecs {
             },
             featureKey = FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE,
         ) { cl -> IntlMemberCardCustomizeHook.hook(cl) },
+    )
+
+    val searchPage = listOf(
+        HookSpec("SearchPageCustomizeHook", { context, settings, derived ->
+            context.isMain &&
+                settings.isSearchPageCustomizeEnabled &&
+                derived.hasSearchPageCustomizeOption
+        }, featureKey = FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE) { cl ->
+            SearchPageCustomizeHook.hook(cl)
+        },
     )
 
     val startup = listOf(

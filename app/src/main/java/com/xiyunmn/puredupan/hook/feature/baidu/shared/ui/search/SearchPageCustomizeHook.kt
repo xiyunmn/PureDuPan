@@ -46,11 +46,14 @@ internal object SearchPageCustomizeHook {
 
     private fun hookSearchRecommend(cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
-        val method = XposedCompat.findMethodOrNull(
-            BaiduSearchPageHookPoints.SEARCH_HINT_VM,
-            cl,
-            "queryAIRecommend",
-        ) ?: run {
+        val method = BaiduSearchPageHookPoints.queryAiRecommendMethodNames
+            .firstNotNullOfOrNull { methodName ->
+                XposedCompat.findMethodOrNull(
+                    BaiduSearchPageHookPoints.SEARCH_HINT_VM,
+                    cl,
+                    methodName,
+                )
+            } ?: run {
             XposedCompat.log("[SearchPageCustomizeHook] SearchHintVM.queryAIRecommend() NOT FOUND")
             return 0
         }
@@ -70,14 +73,17 @@ internal object SearchPageCustomizeHook {
         var installed = 0
         val mod = XposedCompat.module ?: return 0
         for (className in BaiduSearchPageHookPoints.searchDefaultContentHelperClasses) {
-            val method = XposedCompat.findMethodOrNull(className, cl, "showText")
+            val method = BaiduSearchPageHookPoints.showSearchPlaceholderMethodNames
+                .firstNotNullOfOrNull { methodName ->
+                    XposedCompat.findMethodOrNull(className, cl, methodName)
+                }
             if (method == null) {
-                XposedCompat.logD("[SearchPageCustomizeHook] $className.showText() not found")
+                XposedCompat.logD("[SearchPageCustomizeHook] $className placeholder display method not found")
                 continue
             }
             mod.hook(method).intercept { chain ->
                 if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPagePlaceholderHidden) {
-                    XposedCompat.logD("[SearchPageCustomizeHook] $className.showText blocked")
+                    XposedCompat.logD("[SearchPageCustomizeHook] $className placeholder display blocked")
                     null
                 } else {
                     chain.proceed()
