@@ -336,6 +336,20 @@ val validateHookArchitecture = tasks.register("validateHookArchitecture") {
         }
         failIfNotEmpty("Host catalogs must not import sibling host catalogs", hostCatalogBoundaryMatches)
 
+        val domesticCatalogImportPattern = Regex(
+            """import\s+com\.xiyunmn\.puredupan\.hook\.plan\.catalogs\.baidu\.domestic\.""",
+        )
+        val domesticCatalogBoundaryMatches = sourceTextByPath.mapNotNull { (path, text) ->
+            if (!domesticCatalogImportPattern.containsMatchIn(text)) {
+                return@mapNotNull null
+            }
+            val allowed =
+                path.startsWith("com/xiyunmn/puredupan/hook/plan/catalogs/baidu/cn/") ||
+                    path.startsWith("com/xiyunmn/puredupan/hook/plan/catalogs/baidu/samsung/")
+            if (allowed) null else "$path imports domestic catalog specs"
+        }
+        failIfNotEmpty("Domestic catalog specs are limited to CN/Samsung catalogs", domesticCatalogBoundaryMatches)
+
         val baiduFeatureSetsPath =
             "com/xiyunmn/puredupan/hook/host/features/baidu/BaiduFeatureSets.kt"
         val baiduFeatureSetsText = sourceTextByPath[baiduFeatureSetsPath].orEmpty()

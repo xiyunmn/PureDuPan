@@ -2,27 +2,28 @@ package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.samsung
 
 import com.xiyunmn.puredupan.hook.plan.HookCatalog
 import com.xiyunmn.puredupan.hook.plan.HookSpec
+import com.xiyunmn.puredupan.hook.plan.catalogs.baidu.domestic.BaiduDomesticPostAttachHookSpecs
 import com.xiyunmn.puredupan.hook.plan.catalogs.baidu.shared.BaiduSharedPostAttachHookSpecs
 
 internal object BaiduSamsungHookCatalog : HookCatalog {
     override fun postAttachSpecs(): List<HookSpec> {
         return BaiduSamsungPostAttachHookSpecs.entry +
             BaiduSharedPostAttachHookSpecs.preAd +
-            BaiduSamsungPostAttachHookSpecs.preAd +
+            BaiduDomesticPostAttachHookSpecs.preAd +
             BaiduSamsungPostAttachHookSpecs.startup +
             BaiduSharedPostAttachHookSpecs.splashBypass +
             BaiduSamsungPostAttachHookSpecs.ad +
-            BaiduSamsungPostAttachHookSpecs.middleLead +
+            BaiduDomesticPostAttachHookSpecs.middleLead +
             BaiduSharedPostAttachHookSpecs.middle +
-            BaiduSamsungPostAttachHookSpecs.middleBeforeMyPage +
-            BaiduSamsungPostAttachHookSpecs.searchPage +
+            BaiduDomesticPostAttachHookSpecs.middleBeforeMyPage +
+            BaiduDomesticPostAttachHookSpecs.searchPage +
             BaiduSharedPostAttachHookSpecs.myPage +
-            BaiduSamsungPostAttachHookSpecs.memberCard +
+            BaiduDomesticPostAttachHookSpecs.memberCard +
             BaiduSharedPostAttachHookSpecs.postMemberLead +
-            BaiduSamsungPostAttachHookSpecs.postMember +
+            BaiduDomesticPostAttachHookSpecs.postMember +
             BaiduSharedPostAttachHookSpecs.postMemberTail +
             BaiduSamsungPostAttachHookSpecs.performance +
-            BaiduSamsungPostAttachHookSpecs.tail +
-            BaiduSamsungPostAttachHookSpecs.tailEntry
+            BaiduDomesticPostAttachHookSpecs.tail +
+            BaiduDomesticPostAttachHookSpecs.tailEntry
     }
 }
