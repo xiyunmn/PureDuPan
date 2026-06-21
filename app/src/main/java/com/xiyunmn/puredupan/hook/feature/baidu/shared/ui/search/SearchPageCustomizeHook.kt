@@ -322,6 +322,14 @@ internal object SearchPageCustomizeHook {
     }
 
     private fun hookVoiceSearchButton(cl: ClassLoader): Int {
+        var installed = 0
+        installed += hookSearchBarVoiceFlag(cl)
+        installed += hookAigcFrameworkContextVoiceEntry(cl)
+        installed += hookAigcVoiceDialogEntry(cl)
+        return installed
+    }
+
+    private fun hookSearchBarVoiceFlag(cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
         val clazz = XposedCompat.findClassOrNull(BaiduSearchPageHookPoints.PAN_SEARCH_SCREEN_KT, cl) ?: run {
             XposedCompat.log("[SearchPageCustomizeHook] PanSearchScreenKt class NOT FOUND")
@@ -349,6 +357,102 @@ internal object SearchPageCustomizeHook {
         return 1
     }
 
+    private fun hookAigcFrameworkContextVoiceEntry(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val clazz = XposedCompat.findClassOrNull(BaiduSearchPageHookPoints.AIGC_FRAMEWORK_CONTEXT, cl) ?: run {
+            XposedCompat.log("[SearchPageCustomizeHook] AIGC FrameworkContext class NOT FOUND")
+            return 0
+        }
+        if (!metadataContainsAll(
+                clazz,
+                listOf(
+                    "FrameworkContext",
+                    BaiduSearchPageHookPoints.OPEN_DIALOG_FROM_NA_METHOD,
+                    "onResultCallback",
+                ),
+            )
+        ) {
+            XposedCompat.logW("[SearchPageCustomizeHook] AIGC FrameworkContext metadata signature mismatch")
+            return 0
+        }
+
+        val methods = findOpenDialogFromNaMethods(clazz)
+        if (methods.isEmpty()) {
+            XposedCompat.log("[SearchPageCustomizeHook] FrameworkContext.openDialogFromNA(Function1) NOT FOUND")
+            return 0
+        }
+
+        methods.forEach { method ->
+            mod.hook(method).intercept { chain ->
+                if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageVoiceSearchHidden) {
+                    XposedCompat.logD(
+                        "[SearchPageCustomizeHook] FrameworkContext.openDialogFromNA voice search blocked",
+                    )
+                    null
+                } else {
+                    chain.proceed()
+                }
+            }
+        }
+        return methods.size
+    }
+
+    private fun hookAigcVoiceDialogEntry(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val clazz = XposedCompat.findClassOrNull(BaiduSearchPageHookPoints.AIGC_FRAMEWORK_APIS, cl) ?: run {
+            XposedCompat.log("[SearchPageCustomizeHook] AigcFrameworkApis class NOT FOUND")
+            return 0
+        }
+        if (!metadataContainsAll(
+                clazz,
+                listOf(
+                    "AigcFrameworkApis",
+                    BaiduSearchPageHookPoints.OPEN_DIALOG_FROM_NA_METHOD,
+                    "showSingleSelectedFragment",
+                    "onResult",
+                ),
+            )
+        ) {
+            XposedCompat.logW("[SearchPageCustomizeHook] AigcFrameworkApis metadata signature mismatch")
+            return 0
+        }
+        if (XposedCompat.findClassOrNull(BaiduSearchPageHookPoints.AI_SEARCH_DIALOG, cl) == null) {
+            XposedCompat.log("[SearchPageCustomizeHook] AiSearchDialog class NOT FOUND")
+            return 0
+        }
+
+        val methods = findOpenDialogFromNaMethods(clazz)
+        if (methods.isEmpty()) {
+            XposedCompat.log("[SearchPageCustomizeHook] AigcFrameworkApis.openDialogFromNA(Function1) NOT FOUND")
+            return 0
+        }
+
+        methods.forEach { method ->
+            mod.hook(method).intercept { chain ->
+                if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageVoiceSearchHidden) {
+                    XposedCompat.logD(
+                        "[SearchPageCustomizeHook] AigcFrameworkApis.openDialogFromNA voice search blocked",
+                    )
+                    null
+                } else {
+                    chain.proceed()
+                }
+            }
+        }
+        return methods.size
+    }
+
+    private fun findOpenDialogFromNaMethods(clazz: Class<*>): List<Method> {
+        return clazz.declaredMethods.filter { method ->
+            method.name == BaiduSearchPageHookPoints.OPEN_DIALOG_FROM_NA_METHOD &&
+                method.returnType == Void.TYPE &&
+                method.parameterTypes.size == 1 &&
+                method.parameterTypes[0].name == BaiduSearchPageHookPoints.FUNCTION1
+        }.onEach { method ->
+            method.isAccessible = true
+        }
+    }
+
     private fun findSearchAiRecommendCardMethod(clazz: Class<*>): Method? {
         if (!metadataContainsAll(clazz, listOf("SearchAIRecommendCard", "AIRecommendResult"))) {
             XposedCompat.logW("[SearchPageCustomizeHook] SearchAIRecommendKt metadata signature mismatch")
@@ -374,15 +478,15 @@ internal object SearchPageCustomizeHook {
             Modifier.isStatic(method.modifiers) &&
                 method.returnType == Void.TYPE &&
                 method.parameterTypes.size == 11 &&
-                method.parameterTypes[0].name == "kotlin.jvm.functions.Function0" &&
+                method.parameterTypes[0].name == BaiduSearchPageHookPoints.FUNCTION0 &&
                 method.parameterTypes[1] == String::class.java &&
                 method.parameterTypes[2].name == BaiduSearchPageHookPoints.TEXT_FIELD_VALUE &&
-                method.parameterTypes[3].name == "kotlin.jvm.functions.Function1" &&
-                method.parameterTypes[4].name == "kotlin.jvm.functions.Function0" &&
+                method.parameterTypes[3].name == BaiduSearchPageHookPoints.FUNCTION1 &&
+                method.parameterTypes[4].name == BaiduSearchPageHookPoints.FUNCTION0 &&
                 method.parameterTypes[5] == Boolean::class.javaPrimitiveType &&
                 method.parameterTypes[6] == Boolean::class.javaPrimitiveType &&
                 method.parameterTypes[7] == Boolean::class.javaPrimitiveType &&
-                method.parameterTypes[8].name == "kotlin.jvm.functions.Function0" &&
+                method.parameterTypes[8].name == BaiduSearchPageHookPoints.FUNCTION0 &&
                 method.parameterTypes[9].name == BaiduSearchPageHookPoints.COMPOSER &&
                 method.parameterTypes[10] == Int::class.javaPrimitiveType
         }?.apply { isAccessible = true }

@@ -8,15 +8,22 @@ internal object BaiduSearchPageHookPoints {
     const val MAIN_PRE_SEARCH_TAB_VM = "com.mars.feature.search.main.MainPreSearchTabVM"
     const val PAN_SEARCH_SCREEN_KT = "com.mars.feature.search.main.PanSearchScreenKt"
     const val PRE_SEARCH_TAB = "com.mars.feature.search.main.PreSearchTab"
+    const val AIGC_FRAMEWORK_APIS = "com.baidu.netdisk.aigc.component.AigcFrameworkApis"
+    const val AIGC_FRAMEWORK_CONTEXT =
+        "rubik.generate.context.bd_netdisk_com_baidu_netdisk_aigc_framework.FrameworkContext"
+    const val AI_SEARCH_DIALOG = "com.baidu.netdisk.aigc.ui.dialog.AiSearchDialog"
     const val COMPOSE_SERVICE_PLATFORM_IMPL =
         "com.mars.data.base.commonintf.dependant.AndroidComposeServicePlatformImpl"
     const val KMP_COMPOSE_SERVICE_PLATFORM_IMPL =
         "com.baidu.netdisk.kmp.bridge.impl.AndroidComposeServicePlatformImpl"
     const val COMPOSER = "androidx.compose.runtime.Composer"
     const val TEXT_FIELD_VALUE = "androidx.compose.ui.text.input.TextFieldValue"
+    const val FUNCTION0 = "kotlin.jvm.functions.Function0"
+    const val FUNCTION1 = "kotlin.jvm.functions.Function1"
 
     const val QUERY_AI_RECOMMEND_METHOD = "queryAIRecommend"
     const val SHOW_SEARCH_PLACEHOLDER_METHOD = "showText"
+    const val OPEN_DIALOG_FROM_NA_METHOD = "openDialogFromNA"
     const val ANDROID_AI_SEARCH_CARD_WEB_VIEW_METHOD = "AndroidAiSearchCardWebView"
     const val ANDROID_CREATE_AI_SEARCH_25_PAGE_METHOD = "AndroidCreateAiSearch25Page"
     const val UPDATE_TAB_VISIBILITY_METHOD = "updateTabVisibility"
