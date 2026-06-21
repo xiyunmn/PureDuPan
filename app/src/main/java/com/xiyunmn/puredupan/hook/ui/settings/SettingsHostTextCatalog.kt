@@ -42,6 +42,14 @@ internal object SettingsHostTextCatalog {
                 "会员卡片定制",
                 "管理「我的」页会员卡片背景、点击事件、等级福利和升级按钮",
             )
+            this[SettingsUserState.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER] = text(
+                UiText.Settings.HIDE_SEARCH_PAGE_PLACEHOLDER_LABEL,
+                "启用 DexKit 解析后生效\n隐藏搜索框内的动态提示词",
+            )
+            this[SettingsUserState.KEY_HIDE_SEARCH_PAGE_RECOMMEND] = text(
+                UiText.Settings.HIDE_SEARCH_PAGE_RECOMMEND_LABEL,
+                "启用 DexKit 解析后生效\n阻止搜索页拉取和展示智能推荐内容",
+            )
         }
     }
 

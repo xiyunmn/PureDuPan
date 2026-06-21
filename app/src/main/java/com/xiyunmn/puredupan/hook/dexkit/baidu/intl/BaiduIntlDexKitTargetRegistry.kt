@@ -9,6 +9,8 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAlbumAiInit
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlNonCoreDiffSocketDelayHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlStoryDouyinInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.search.IntlSearchPageCustomizeHook
+import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlSearchPageHookPoints
 
 internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
     override val descriptors = listOf(
@@ -31,6 +33,26 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             id = IntlAlbumAiInitBlockHook.DIRECT_ALBUM_AI_INIT_CACHE_ID,
             target = "intl album init method",
             feature = "阻止相册 AI 初始化",
+        ),
+        DexKitTargetDescriptor(
+            id = BaiduIntlSearchPageHookPoints.QUERY_AI_RECOMMEND_CACHE_ID,
+            target = "intl search AI recommend query method",
+            feature = "搜索页智能推荐",
+        ),
+        DexKitTargetDescriptor(
+            id = BaiduIntlSearchPageHookPoints.SEARCH_AI_RECOMMEND_CARD_CACHE_ID,
+            target = "intl search AI recommend card composable",
+            feature = "搜索页智能推荐",
+        ),
+        DexKitTargetDescriptor(
+            id = BaiduIntlSearchPageHookPoints.searchDefaultContentHelperCacheIds[0].second,
+            target = "intl legacy search placeholder display method",
+            feature = "搜索页搜索框提示词",
+        ),
+        DexKitTargetDescriptor(
+            id = BaiduIntlSearchPageHookPoints.searchDefaultContentHelperCacheIds[1].second,
+            target = "intl new-feed search placeholder display method",
+            feature = "搜索页搜索框提示词",
         ),
     )
 
@@ -55,6 +77,19 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         if (host.isFeatureAvailable(FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT)) {
             tasks += DexKitWarmUpTask(IntlAlbumAiInitBlockHook.DIRECT_ALBUM_AI_INIT_CACHE_ID) {
                 IntlAlbumAiInitBlockHook.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (host.isFeatureAvailable(FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE)) {
+            tasks += DexKitWarmUpTask(BaiduIntlSearchPageHookPoints.QUERY_AI_RECOMMEND_CACHE_ID) {
+                IntlSearchPageCustomizeHook.warmUpQueryAiRecommendCache(classLoader)
+            }
+            tasks += DexKitWarmUpTask(BaiduIntlSearchPageHookPoints.SEARCH_AI_RECOMMEND_CARD_CACHE_ID) {
+                IntlSearchPageCustomizeHook.warmUpSearchAiRecommendCardCache(classLoader)
+            }
+            BaiduIntlSearchPageHookPoints.searchDefaultContentHelperCacheIds.forEach { (_, cacheId) ->
+                tasks += DexKitWarmUpTask(cacheId) {
+                    IntlSearchPageCustomizeHook.warmUpPlaceholderDisplayCache(classLoader, cacheId)
+                }
             }
         }
 
