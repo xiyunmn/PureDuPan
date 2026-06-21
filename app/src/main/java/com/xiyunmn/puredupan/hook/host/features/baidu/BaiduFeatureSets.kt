@@ -9,6 +9,7 @@ internal object BaiduFeatureSets {
             baiduSharedStartup,
             baiduSharedContentBlock,
             baiduSharedHomeCustomize,
+            baiduSharedFilePageCustomize,
             baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
             baiduSharedUiBlock,
@@ -30,6 +31,7 @@ internal object BaiduFeatureSets {
             baiduSharedStartup,
             baiduSharedContentBlock,
             baiduSharedHomeCustomize,
+            baiduSharedFilePageCustomize,
             baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
             baiduSharedUiBlock,
@@ -76,6 +78,11 @@ internal object BaiduFeatureSets {
 
     private val baiduSharedShareCustomize = listOf(
         FeatureKeys.KEY_SHARE_PAGE_CUSTOMIZE,
+    )
+
+    private val baiduSharedFilePageCustomize = listOf(
+        FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE,
+        FeatureKeys.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP,
     )
 
     private val baiduSharedMyPageCustomize = listOf(

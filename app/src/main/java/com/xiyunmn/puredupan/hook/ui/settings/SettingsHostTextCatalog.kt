@@ -284,6 +284,14 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.HIDE_HOME_RECENT_SECTION_LABEL,
                 UiText.Settings.HIDE_HOME_RECENT_SECTION_DESC,
             ),
+            SettingsUserState.KEY_FILE_PAGE_CUSTOMIZE to text(
+                UiText.Settings.FILE_PAGE_CUSTOMIZE_LABEL,
+                UiText.Settings.FILE_PAGE_CUSTOMIZE_DESC,
+            ),
+            SettingsUserState.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP to text(
+                UiText.Settings.HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_LABEL,
+                UiText.Settings.HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_DESC,
+            ),
             SettingsUserState.KEY_SHARE_PAGE_CUSTOMIZE to text(
                 UiText.Settings.SHARE_PAGE_CUSTOMIZE_LABEL,
                 UiText.Settings.SHARE_PAGE_CUSTOMIZE_DESC,

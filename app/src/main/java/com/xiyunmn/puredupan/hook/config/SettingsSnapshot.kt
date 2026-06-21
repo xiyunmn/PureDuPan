@@ -27,6 +27,8 @@ data class SettingsSnapshot(
     val isHomeMemoriesSectionHidden: Boolean = false,
     val isHomeSaveSectionHidden: Boolean = false,
     val isHomeRecentSectionHidden: Boolean = false,
+    val isFilePageCustomizeEnabled: Boolean = false,
+    val isFilePageBottomSafetyTipHidden: Boolean = false,
     val isSharePageCustomizeEnabled: Boolean = false,
     val isMyPageCustomizeEnabled: Boolean = false,
     val isGameCenterRemoved: Boolean = false,

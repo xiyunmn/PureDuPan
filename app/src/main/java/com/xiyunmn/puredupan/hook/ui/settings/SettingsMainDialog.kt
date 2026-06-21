@@ -53,6 +53,9 @@ internal object SettingsMainDialog {
                 defaultValues = defaultValues,
                 actionHandlers = TopLevelSettingsActionHandlers(
                     onHomeCustomizeClick = { PageCustomizeSettingsDialogs.showHome(context, prefs, settingsSession, texts) },
+                    onFilePageCustomizeClick = {
+                        PageCustomizeSettingsDialogs.showFilePage(context, prefs, settingsSession, texts)
+                    },
                     onSharePageCustomizeClick = {
                         PageCustomizeSettingsDialogs.showSharePage(context, prefs, settingsSession, texts)
                     },
@@ -308,6 +311,10 @@ internal object SettingsMainDialog {
             homeCustomize = PageCustomizeSettingsItemsBuilder.hasEnabledHomeCustomizeOption(
                 prefs = prefs,
                 isFeatureVisible = settingsSession::isFeatureVisible,
+            ),
+            filePageCustomize = PageCustomizeSettingsItemsBuilder.hasEnabledFilePageCustomizeOption(
+                isFeatureVisible = settingsSession::isFeatureVisible,
+                isChecked = { key -> prefs.getBoolean(key, false) },
             ),
             sharePageCustomize = PageCustomizeSettingsItemsBuilder.hasEnabledSharePageCustomizeOption(
                 isFeatureVisible = settingsSession::isFeatureVisible,

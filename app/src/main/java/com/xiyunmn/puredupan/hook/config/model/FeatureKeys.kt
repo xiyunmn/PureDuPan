@@ -22,6 +22,8 @@ object FeatureKeys {
     const val KEY_HIDE_HOME_MEMORIES_SECTION = "hide_home_memories_section"
     const val KEY_HIDE_HOME_SAVE_SECTION = "hide_home_save_section"
     const val KEY_HIDE_HOME_RECENT_SECTION = "hide_home_recent_section"
+    const val KEY_FILE_PAGE_CUSTOMIZE = "file_page_customize"
+    const val KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP = "hide_file_page_bottom_safety_tip"
     const val KEY_SHARE_PAGE_CUSTOMIZE = "share_page_customize"
     const val KEY_MY_PAGE_CUSTOMIZE = "my_page_customize"
     const val KEY_REMOVE_GAME_CENTER = "remove_game_center"

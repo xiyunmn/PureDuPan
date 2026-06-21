@@ -5,6 +5,7 @@ import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 internal data class DerivedSettings(
     val hasMemberCardCustomizeOption: Boolean,
     val hasHomeCustomizeOption: Boolean,
+    val hasFilePageCustomizeOption: Boolean,
     val hasMyPageCustomizeOption: Boolean,
     val hasBottomBarTabOption: Boolean,
 )

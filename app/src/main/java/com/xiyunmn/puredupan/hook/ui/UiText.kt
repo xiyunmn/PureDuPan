@@ -47,6 +47,10 @@ object UiText {
         const val HIDE_HOME_SAVE_SECTION_DESC = "隐藏首页信息流头部「转存」板块（NewHomeSaveCardView）"
         const val HIDE_HOME_RECENT_SECTION_LABEL = "最近"
         const val HIDE_HOME_RECENT_SECTION_DESC = "隐藏首页信息流头部「最近」板块（NewHomeRecentCardView）"
+        const val FILE_PAGE_CUSTOMIZE_LABEL = "文件页定制"
+        const val FILE_PAGE_CUSTOMIZE_DESC = "管理「文件」页面底部提示等控件"
+        const val HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_LABEL = "底部数据安全提示"
+        const val HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_DESC = "隐藏「文件」页底部的数据安全提示"
         const val REMOVE_GAME_CENTER_LABEL = "游戏中心"
         const val REMOVE_GAME_CENTER_DESC = "隐藏「我的」游戏中心入口"
         const val REMOVE_ABOUT_ME_BANNER_LABEL = "横幅广告"
@@ -246,6 +250,8 @@ object UiText {
         const val BOTTOM_BAR_SAVED = "底栏Tab定制配置已保存"
         const val SHARE_PAGE_CUSTOMIZE_DIALOG_TITLE = "共享页定制"
         const val SHARE_PAGE_CUSTOMIZE_SAVED = "共享页定制配置已保存"
+        const val FILE_PAGE_CUSTOMIZE_DIALOG_TITLE = "文件页定制"
+        const val FILE_PAGE_CUSTOMIZE_SAVED = "文件页定制配置已保存"
         const val MY_PAGE_CUSTOMIZE_DIALOG_TITLE = "我的页定制"
         const val MY_PAGE_CUSTOMIZE_SAVED = "我的页定制配置已保存"
         const val HOME_CUSTOMIZE_DIALOG_TITLE = "首页定制"
@@ -287,6 +293,7 @@ object UiText {
         const val RESTRICTED_FEATURE_WARNING_TITLE = "启用高级功能"
         const val RESTRICTED_FEATURE_WARNING_MESSAGE = """高级功能包含以下可选配置项：
 • 首页定制
+• 文件页定制
 • 共享页定制
 • 我的页定制
 • 会员卡片定制

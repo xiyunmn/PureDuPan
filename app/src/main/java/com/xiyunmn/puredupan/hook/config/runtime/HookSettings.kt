@@ -146,6 +146,12 @@ internal object HookSettings {
     val isHomeCustomizeEnabled: Boolean
         get() = ConfigManager.isHomeCustomizeEnabled
 
+    val isFilePageCustomizeEnabled: Boolean
+        get() = ConfigManager.isFilePageCustomizeEnabled
+
+    val isFilePageBottomSafetyTipHidden: Boolean
+        get() = ConfigManager.isFilePageBottomSafetyTipHidden
+
     val isHomeTopPromotionHidden: Boolean
         get() = ConfigManager.isHomeTopPromotionHidden
 

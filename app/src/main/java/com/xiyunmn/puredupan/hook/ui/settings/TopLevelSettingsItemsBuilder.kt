@@ -153,6 +153,7 @@ internal object TopLevelSettingsItemsBuilder {
     ): Boolean {
         return when (spec.action) {
             TopLevelSettingsAction.HOME_CUSTOMIZE -> defaultValues.homeCustomize
+            TopLevelSettingsAction.FILE_PAGE_CUSTOMIZE -> defaultValues.filePageCustomize
             TopLevelSettingsAction.SHARE_PAGE_CUSTOMIZE -> defaultValues.sharePageCustomize
             TopLevelSettingsAction.MY_PAGE_CUSTOMIZE -> defaultValues.myPageCustomize
             TopLevelSettingsAction.MEMBER_CARD_CUSTOMIZE -> defaultValues.memberCardCustomize
@@ -168,6 +169,7 @@ internal object TopLevelSettingsItemsBuilder {
     ): (() -> Unit)? {
         return when (spec.action) {
             TopLevelSettingsAction.HOME_CUSTOMIZE -> actionHandlers.onHomeCustomizeClick
+            TopLevelSettingsAction.FILE_PAGE_CUSTOMIZE -> actionHandlers.onFilePageCustomizeClick
             TopLevelSettingsAction.SHARE_PAGE_CUSTOMIZE -> actionHandlers.onSharePageCustomizeClick
             TopLevelSettingsAction.MY_PAGE_CUSTOMIZE -> actionHandlers.onMyPageCustomizeClick
             TopLevelSettingsAction.MEMBER_CARD_CUSTOMIZE -> actionHandlers.onMemberCardCustomizeClick

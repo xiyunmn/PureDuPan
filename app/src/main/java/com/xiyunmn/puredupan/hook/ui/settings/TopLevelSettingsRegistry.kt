@@ -6,6 +6,7 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 internal enum class TopLevelSettingsAction {
     NONE,
     HOME_CUSTOMIZE,
+    FILE_PAGE_CUSTOMIZE,
     SHARE_PAGE_CUSTOMIZE,
     MY_PAGE_CUSTOMIZE,
     MEMBER_CARD_CUSTOMIZE,
@@ -97,6 +98,13 @@ internal object TopLevelSettingsRegistry {
             UiText.Settings.HOME_CUSTOMIZE_LABEL,
             UiText.Settings.HOME_CUSTOMIZE_DESC,
             action = TopLevelSettingsAction.HOME_CUSTOMIZE,
+            restricted = true,
+        ),
+        TopLevelSwitchSpec(
+            SettingsUserState.KEY_FILE_PAGE_CUSTOMIZE,
+            UiText.Settings.FILE_PAGE_CUSTOMIZE_LABEL,
+            UiText.Settings.FILE_PAGE_CUSTOMIZE_DESC,
+            action = TopLevelSettingsAction.FILE_PAGE_CUSTOMIZE,
             restricted = true,
         ),
         TopLevelSwitchSpec(

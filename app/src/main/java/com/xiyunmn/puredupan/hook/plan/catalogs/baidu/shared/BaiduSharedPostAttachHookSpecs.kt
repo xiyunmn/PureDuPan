@@ -6,6 +6,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AboutMeGodModeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BottomBarBadgeBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BottomBarSimplifyFeature
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.NewHomeFabRemoveHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.SettingsImagePickerResultHook
@@ -35,6 +36,11 @@ internal object BaiduSharedPostAttachHookSpecs {
                 settings.isHomeCustomizeEnabled &&
                 derived.hasHomeCustomizeOption
         }, featureKey = FeatureKeys.KEY_HOME_CUSTOMIZE) { cl -> HomeCustomizeHook.hook(cl) },
+        HookSpec("FilePageCustomizeHook", { context, settings, derived ->
+            context.isMain &&
+                settings.isFilePageCustomizeEnabled &&
+                derived.hasFilePageCustomizeOption
+        }, featureKey = FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE) { cl -> FilePageCustomizeHook.hook(cl) },
     )
 
     val myPage = listOf(

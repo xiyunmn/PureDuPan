@@ -4,6 +4,55 @@ import android.content.SharedPreferences
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 
 internal object PageCustomizeSettingsItemsBuilder {
+    fun filePageCustomizeItems(
+        prefs: SharedPreferences,
+        texts: SettingsTextResolver,
+        isFeatureVisible: (String) -> Boolean,
+    ): List<KeyedSwitchItem> {
+        return FilePageCustomizeSettingsRegistry.specs.map { spec ->
+            val visible = isFeatureVisible(spec.key)
+            val text = texts.text(spec.key, spec.label, spec.description)
+            KeyedSwitchItem(
+                key = spec.key,
+                item = SwitchItem(
+                    label = text.label,
+                    description = text.description,
+                    prefKey = null,
+                    supported = visible,
+                    defaultValue = prefs.getBoolean(spec.key, false),
+                    visible = visible,
+                ),
+            )
+        }
+    }
+
+    fun hasEnabledFilePageCustomizeOption(
+        isFeatureVisible: (String) -> Boolean,
+        isChecked: (String) -> Boolean,
+    ): Boolean {
+        return FilePageCustomizeSettingsRegistry.specs.any { spec ->
+            isFeatureVisible(spec.key) && isChecked(spec.key)
+        }
+    }
+
+    fun putFilePageCustomizeValues(
+        editor: SharedPreferences.Editor,
+        isFeatureVisible: (String) -> Boolean,
+        isChecked: (String) -> Boolean,
+    ): SharedPreferences.Editor {
+        val hasEnabledOption = hasEnabledFilePageCustomizeOption(
+            isFeatureVisible = isFeatureVisible,
+            isChecked = isChecked,
+        )
+        editor.putBoolean(SettingsUserState.KEY_FILE_PAGE_CUSTOMIZE, hasEnabledOption)
+        FilePageCustomizeSettingsRegistry.specs.filter { spec ->
+            isFeatureVisible(spec.key)
+        }.forEach { spec ->
+            editor.putBoolean(spec.key, isChecked(spec.key))
+        }
+        return editor
+    }
+
     fun sharePageCustomizeItems(
         prefs: SharedPreferences,
         texts: SettingsTextResolver,

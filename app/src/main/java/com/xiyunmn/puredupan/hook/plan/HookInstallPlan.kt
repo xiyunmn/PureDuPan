@@ -72,6 +72,11 @@ internal object HookInstallPlanner {
                     enabled(FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION, settings.isHomeMemoriesSectionHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION, settings.isHomeSaveSectionHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION, settings.isHomeRecentSectionHidden),
+            hasFilePageCustomizeOption =
+                enabled(
+                    FeatureKeys.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP,
+                    settings.isFilePageBottomSafetyTipHidden,
+                ),
             hasMyPageCustomizeOption =
                 enabled(FeatureKeys.KEY_REMOVE_ABOUT_ME_BANNER, settings.isAboutMeBannerRemoved) ||
                     enabled(FeatureKeys.KEY_REMOVE_MY_SERVICE, settings.isMyServiceRemoved) ||

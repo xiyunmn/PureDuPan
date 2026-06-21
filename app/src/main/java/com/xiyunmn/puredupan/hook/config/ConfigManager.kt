@@ -40,6 +40,8 @@ object ConfigManager {
     const val KEY_HIDE_HOME_MEMORIES_SECTION = FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION
     const val KEY_HIDE_HOME_SAVE_SECTION = FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION
     const val KEY_HIDE_HOME_RECENT_SECTION = FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION
+    const val KEY_FILE_PAGE_CUSTOMIZE = FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE
+    const val KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP = FeatureKeys.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP
     const val KEY_SHARE_PAGE_CUSTOMIZE = FeatureKeys.KEY_SHARE_PAGE_CUSTOMIZE
     const val KEY_MY_PAGE_CUSTOMIZE = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE
     const val KEY_REMOVE_GAME_CENTER = FeatureKeys.KEY_REMOVE_GAME_CENTER
@@ -142,6 +144,8 @@ object ConfigManager {
     val isHomeMemoriesSectionHidden: Boolean get() = settingsSnapshot.isHomeMemoriesSectionHidden
     val isHomeSaveSectionHidden: Boolean get() = settingsSnapshot.isHomeSaveSectionHidden
     val isHomeRecentSectionHidden: Boolean get() = settingsSnapshot.isHomeRecentSectionHidden
+    val isFilePageCustomizeEnabled: Boolean get() = settingsSnapshot.isFilePageCustomizeEnabled
+    val isFilePageBottomSafetyTipHidden: Boolean get() = settingsSnapshot.isFilePageBottomSafetyTipHidden
     val isSharePageCustomizeEnabled: Boolean get() = settingsSnapshot.isSharePageCustomizeEnabled
     val isMyPageCustomizeEnabled: Boolean get() = settingsSnapshot.isMyPageCustomizeEnabled
     val isGameCenterRemoved: Boolean get() = settingsSnapshot.isGameCenterRemoved
@@ -422,6 +426,8 @@ object ConfigManager {
                 featureBoolean(KEY_HIDE_HOME_MEMORIES_SECTION, false) ||
                 featureBoolean(KEY_HIDE_HOME_SAVE_SECTION, false) ||
                 featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false)
+        val hasFilePageOptionEnabled =
+            featureBoolean(KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP, false)
         val hasSharePageOptionEnabled =
             featureBoolean(KEY_REMOVE_HOME_FAB, false)
         val hasMyPageOptionEnabled =
@@ -497,6 +503,8 @@ object ConfigManager {
             isHomeMemoriesSectionHidden = featureBoolean(KEY_HIDE_HOME_MEMORIES_SECTION, false),
             isHomeSaveSectionHidden = featureBoolean(KEY_HIDE_HOME_SAVE_SECTION, false),
             isHomeRecentSectionHidden = featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false),
+            isFilePageCustomizeEnabled = featureBoolean(KEY_FILE_PAGE_CUSTOMIZE, hasFilePageOptionEnabled),
+            isFilePageBottomSafetyTipHidden = featureBoolean(KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP, false),
             isSharePageCustomizeEnabled = featureBoolean(KEY_SHARE_PAGE_CUSTOMIZE, hasSharePageOptionEnabled),
             isMyPageCustomizeEnabled = featureBoolean(KEY_MY_PAGE_CUSTOMIZE, hasMyPageOptionEnabled),
             isGameCenterRemoved = featureBoolean(KEY_REMOVE_GAME_CENTER, false),
