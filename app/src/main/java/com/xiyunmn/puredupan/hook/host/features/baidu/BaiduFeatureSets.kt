@@ -151,6 +151,7 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY,
         FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER,
         FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND,
+        FeatureKeys.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH,
     )
 
     private val baiduCnMyPageCustomize = listOf(

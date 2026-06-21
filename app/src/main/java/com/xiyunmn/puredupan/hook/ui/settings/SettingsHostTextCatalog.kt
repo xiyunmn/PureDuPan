@@ -316,6 +316,10 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.HIDE_SEARCH_PAGE_RECOMMEND_LABEL,
                 UiText.Settings.HIDE_SEARCH_PAGE_RECOMMEND_DESC,
             ),
+            SettingsUserState.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH to text(
+                UiText.Settings.HIDE_SEARCH_PAGE_VOICE_SEARCH_LABEL,
+                UiText.Settings.HIDE_SEARCH_PAGE_VOICE_SEARCH_DESC,
+            ),
             SettingsUserState.KEY_SHARE_PAGE_CUSTOMIZE to text(
                 UiText.Settings.SHARE_PAGE_CUSTOMIZE_LABEL,
                 UiText.Settings.SHARE_PAGE_CUSTOMIZE_DESC,

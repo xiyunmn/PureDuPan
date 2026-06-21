@@ -29,6 +29,9 @@ internal object SearchPageCustomizeHook {
             if (HookSettings.isSearchPageAiEntryHidden) {
                 installed += hookAiEntry(cl)
             }
+            if (HookSettings.isSearchPageVoiceSearchHidden) {
+                installed += hookVoiceSearchButton(cl)
+            }
 
             if (installed == 0) {
                 hookState.reset()
@@ -115,6 +118,96 @@ internal object SearchPageCustomizeHook {
             methodName = BaiduSearchPageHookPoints.ANDROID_AI_SEARCH_CARD_WEB_VIEW_METHOD,
             logName = "AndroidAiSearchCardWebView",
         )
+        installed += hookMainPreSearchAiPowerTab(cl)
+        return installed
+    }
+
+    private fun hookMainPreSearchAiPowerTab(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val vmClass = XposedCompat.findClassOrNull(BaiduSearchPageHookPoints.MAIN_PRE_SEARCH_TAB_VM, cl) ?: run {
+            XposedCompat.log("[SearchPageCustomizeHook] MainPreSearchTabVM class NOT FOUND")
+            return 0
+        }
+        if (!metadataContainsAll(
+                vmClass,
+                listOf(
+                    "MainPreSearchTabVM",
+                    BaiduSearchPageHookPoints.UPDATE_TAB_VISIBILITY_METHOD,
+                    BaiduSearchPageHookPoints.SHOW_GUIDE_BUBBLE_METHOD,
+                    BaiduSearchPageHookPoints.HIDE_GUIDE_BUBBLE_METHOD,
+                ),
+            )
+        ) {
+            XposedCompat.logW("[SearchPageCustomizeHook] MainPreSearchTabVM metadata signature mismatch")
+            return 0
+        }
+        val tabClass = XposedCompat.findClassOrNull(BaiduSearchPageHookPoints.PRE_SEARCH_TAB, cl) ?: run {
+            XposedCompat.log("[SearchPageCustomizeHook] PreSearchTab class NOT FOUND")
+            return 0
+        }
+        val aiPowerSearchTab = runCatching {
+            tabClass.getDeclaredField(BaiduSearchPageHookPoints.AI_POWER_SEARCH_TAB_NAME).apply {
+                isAccessible = true
+            }.get(null)
+        }.getOrNull() ?: run {
+            XposedCompat.log("[SearchPageCustomizeHook] PreSearchTab.AI_POWER_SEARCH NOT FOUND")
+            return 0
+        }
+
+        var installed = 0
+        for (constructor in vmClass.declaredConstructors) {
+            constructor.isAccessible = true
+            mod.hook(constructor).intercept { chain ->
+                val result = chain.proceed()
+                if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageAiEntryHidden) {
+                    suppressAiPowerSearchTab(chain.thisObject, aiPowerSearchTab)
+                    XposedCompat.logD("[SearchPageCustomizeHook] MainPreSearchTabVM initial AI tab hidden")
+                }
+                result
+            }
+            installed++
+        }
+
+        XposedCompat.findMethodOrNull(
+            vmClass,
+            BaiduSearchPageHookPoints.UPDATE_TAB_VISIBILITY_METHOD,
+            Boolean::class.javaPrimitiveType!!,
+        )?.let { method ->
+            mod.hook(method).intercept { chain ->
+                if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageAiEntryHidden) {
+                    val args = chain.args.toTypedArray()
+                    if (args.firstOrNull() == true) {
+                        args[0] = false
+                        XposedCompat.logD("[SearchPageCustomizeHook] MainPreSearchTabVM.updateTabVisibility forced false")
+                    }
+                    chain.proceed(args)
+                } else {
+                    chain.proceed()
+                }
+            }
+            installed++
+        } ?: XposedCompat.log("[SearchPageCustomizeHook] MainPreSearchTabVM.updateTabVisibility(Boolean) NOT FOUND")
+
+        XposedCompat.findMethodOrNull(
+            vmClass,
+            BaiduSearchPageHookPoints.SHOW_GUIDE_BUBBLE_METHOD,
+            tabClass,
+        )?.let { method ->
+            mod.hook(method).intercept { chain ->
+                if (
+                    HookSettings.isSearchPageCustomizeEnabled &&
+                    HookSettings.isSearchPageAiEntryHidden &&
+                    chain.args.firstOrNull() == aiPowerSearchTab
+                ) {
+                    XposedCompat.logD("[SearchPageCustomizeHook] MainPreSearchTabVM.showGuideBubble AI tab blocked")
+                    null
+                } else {
+                    chain.proceed()
+                }
+            }
+            installed++
+        } ?: XposedCompat.log("[SearchPageCustomizeHook] MainPreSearchTabVM.showGuideBubble(PreSearchTab) NOT FOUND")
+
         return installed
     }
 
@@ -228,6 +321,34 @@ internal object SearchPageCustomizeHook {
         return installed
     }
 
+    private fun hookVoiceSearchButton(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val clazz = XposedCompat.findClassOrNull(BaiduSearchPageHookPoints.PAN_SEARCH_SCREEN_KT, cl) ?: run {
+            XposedCompat.log("[SearchPageCustomizeHook] PanSearchScreenKt class NOT FOUND")
+            return 0
+        }
+        val method = findSearchBarMethod(clazz) ?: run {
+            XposedCompat.log("[SearchPageCustomizeHook] PanSearchScreenKt.SearchBar(...) NOT FOUND")
+            return 0
+        }
+
+        mod.hook(method).intercept { chain ->
+            if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageVoiceSearchHidden) {
+                val args = chain.args.toTypedArray()
+                if (args.getOrNull(6) == true) {
+                    args[6] = false
+                    XposedCompat.logD("[SearchPageCustomizeHook] SearchBar isVoiceSearch forced false")
+                    chain.proceed(args)
+                } else {
+                    chain.proceed()
+                }
+            } else {
+                chain.proceed()
+            }
+        }
+        return 1
+    }
+
     private fun findSearchAiRecommendCardMethod(clazz: Class<*>): Method? {
         if (!metadataContainsAll(clazz, listOf("SearchAIRecommendCard", "AIRecommendResult"))) {
             XposedCompat.logW("[SearchPageCustomizeHook] SearchAIRecommendKt metadata signature mismatch")
@@ -242,6 +363,43 @@ internal object SearchPageCustomizeHook {
                 method.parameterTypes[7] == Int::class.javaPrimitiveType &&
                 method.parameterTypes[8] == Int::class.javaPrimitiveType
         }?.apply { isAccessible = true }
+    }
+
+    private fun findSearchBarMethod(clazz: Class<*>): Method? {
+        if (!metadataContainsAll(clazz, listOf("SearchBar", "isVoiceSearch", "isInPreSearch"))) {
+            XposedCompat.logW("[SearchPageCustomizeHook] PanSearchScreenKt metadata signature mismatch")
+            return null
+        }
+        return clazz.declaredMethods.firstOrNull { method ->
+            Modifier.isStatic(method.modifiers) &&
+                method.returnType == Void.TYPE &&
+                method.parameterTypes.size == 11 &&
+                method.parameterTypes[0].name == "kotlin.jvm.functions.Function0" &&
+                method.parameterTypes[1] == String::class.java &&
+                method.parameterTypes[2].name == BaiduSearchPageHookPoints.TEXT_FIELD_VALUE &&
+                method.parameterTypes[3].name == "kotlin.jvm.functions.Function1" &&
+                method.parameterTypes[4].name == "kotlin.jvm.functions.Function0" &&
+                method.parameterTypes[5] == Boolean::class.javaPrimitiveType &&
+                method.parameterTypes[6] == Boolean::class.javaPrimitiveType &&
+                method.parameterTypes[7] == Boolean::class.javaPrimitiveType &&
+                method.parameterTypes[8].name == "kotlin.jvm.functions.Function0" &&
+                method.parameterTypes[9].name == BaiduSearchPageHookPoints.COMPOSER &&
+                method.parameterTypes[10] == Int::class.javaPrimitiveType
+        }?.apply { isAccessible = true }
+    }
+
+    private fun suppressAiPowerSearchTab(vm: Any?, aiPowerSearchTab: Any) {
+        if (vm == null) return
+        runCatching {
+            XposedCompat.callMethod(vm, BaiduSearchPageHookPoints.UPDATE_TAB_VISIBILITY_METHOD, false)
+        }.onFailure {
+            XposedCompat.logW("[SearchPageCustomizeHook] updateTabVisibility(false) failed: ${it.message}")
+        }
+        runCatching {
+            XposedCompat.callMethod(vm, BaiduSearchPageHookPoints.HIDE_GUIDE_BUBBLE_METHOD, aiPowerSearchTab)
+        }.onFailure {
+            XposedCompat.logW("[SearchPageCustomizeHook] hideGuideBubble(AI_POWER_SEARCH) failed: ${it.message}")
+        }
     }
 
     private fun metadataContainsAll(clazz: Class<*>, tokens: Collection<String>): Boolean {
@@ -266,7 +424,8 @@ internal object SearchPageCustomizeHook {
             (
                 HookSettings.isSearchPageAiEntryHidden ||
                     HookSettings.isSearchPagePlaceholderHidden ||
-                    HookSettings.isSearchPageRecommendHidden
+                    HookSettings.isSearchPageRecommendHidden ||
+                    HookSettings.isSearchPageVoiceSearchHidden
                 )
     }
 }

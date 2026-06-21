@@ -33,6 +33,7 @@ data class SettingsSnapshot(
     val isSearchPageAiEntryHidden: Boolean = false,
     val isSearchPagePlaceholderHidden: Boolean = false,
     val isSearchPageRecommendHidden: Boolean = false,
+    val isSearchPageVoiceSearchHidden: Boolean = false,
     val isSharePageCustomizeEnabled: Boolean = false,
     val isMyPageCustomizeEnabled: Boolean = false,
     val isGameCenterRemoved: Boolean = false,

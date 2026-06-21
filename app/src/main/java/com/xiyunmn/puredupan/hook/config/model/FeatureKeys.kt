@@ -28,6 +28,7 @@ object FeatureKeys {
     const val KEY_HIDE_SEARCH_PAGE_AI_ENTRY = "hide_search_page_ai_entry"
     const val KEY_HIDE_SEARCH_PAGE_PLACEHOLDER = "hide_search_page_placeholder"
     const val KEY_HIDE_SEARCH_PAGE_RECOMMEND = "hide_search_page_recommend"
+    const val KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH = "hide_search_page_voice_search"
     const val KEY_SHARE_PAGE_CUSTOMIZE = "share_page_customize"
     const val KEY_MY_PAGE_CUSTOMIZE = "my_page_customize"
     const val KEY_REMOVE_GAME_CENTER = "remove_game_center"
