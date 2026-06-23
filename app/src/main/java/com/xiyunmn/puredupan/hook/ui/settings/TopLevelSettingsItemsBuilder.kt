@@ -5,6 +5,7 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 internal object TopLevelSettingsItemsBuilder {
     fun topLevelGroups(
         primarySplashAdFeatureKey: String?,
+        isIntlHost: Boolean,
         restrictedUnlocked: Boolean,
         defaultValues: TopLevelSettingsDefaultValues,
         actionHandlers: TopLevelSettingsActionHandlers,
@@ -60,7 +61,7 @@ internal object TopLevelSettingsItemsBuilder {
         val themeItems = buildList {
             addAll(
                 topLevelItems(
-                    TopLevelSettingsRegistry.themeSpecs,
+                    TopLevelSettingsRegistry.themeSpecs(isIntlHost),
                     defaultValues,
                     actionHandlers,
                     texts,

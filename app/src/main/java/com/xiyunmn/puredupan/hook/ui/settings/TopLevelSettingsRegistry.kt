@@ -153,7 +153,7 @@ internal object TopLevelSettingsRegistry {
         ),
     )
 
-    val themeSpecs: List<TopLevelSwitchSpec> = listOf(
+    fun themeSpecs(isIntlHost: Boolean): List<TopLevelSwitchSpec> = listOf(
         TopLevelSwitchSpec(
             SettingsUserState.KEY_ENABLE_NIGHT_MODE_SUPPORT,
             UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_LABEL,
@@ -162,7 +162,11 @@ internal object TopLevelSettingsRegistry {
         TopLevelSwitchSpec(
             SettingsUserState.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
             UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_LABEL,
-            UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_DESC,
+            if (isIntlHost) {
+                UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_INTL_DESC
+            } else {
+                UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_DESC
+            },
         ),
     )
 

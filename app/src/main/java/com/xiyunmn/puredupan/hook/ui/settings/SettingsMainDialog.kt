@@ -51,6 +51,7 @@ internal object SettingsMainDialog {
 
             val topLevelGroups = TopLevelSettingsItemsBuilder.topLevelGroups(
                 primarySplashAdFeatureKey = settingsSession.primarySplashAdFeatureKey,
+                isIntlHost = settingsSession.isIntlHost,
                 restrictedUnlocked = SettingsUserState.areRestrictedFeaturesUnlocked,
                 defaultValues = defaultValues,
                 actionHandlers = TopLevelSettingsActionHandlers(
