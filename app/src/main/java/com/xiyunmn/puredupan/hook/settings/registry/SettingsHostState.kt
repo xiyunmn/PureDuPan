@@ -6,6 +6,8 @@ import com.xiyunmn.puredupan.hook.config.model.MemberCardLayoutMode
 import com.xiyunmn.puredupan.hook.host.HostRuntimeState
 
 internal object SettingsHostState {
+    private const val HOST_ID_SUFFIX_INTL = "_intl"
+
     fun isSupportedHost(context: Context): Boolean {
         return HostRuntimeState.isSupportedPackage(context.packageName)
     }
@@ -32,6 +34,10 @@ internal object SettingsHostState {
 
     fun hostId(context: Context): String? {
         return HostRuntimeState.hostIdForPackage(context.packageName)
+    }
+
+    fun isIntlHost(context: Context): Boolean {
+        return hostId(context)?.endsWith(HOST_ID_SUFFIX_INTL) == true
     }
 
     fun isFeatureVisibleForContext(context: Context, featureKey: String): Boolean {

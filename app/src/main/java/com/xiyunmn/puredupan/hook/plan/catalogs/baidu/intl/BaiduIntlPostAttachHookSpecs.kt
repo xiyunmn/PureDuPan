@@ -1,9 +1,9 @@
 package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.intl
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.ad.IntlNonWifiDownloadDialogBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.AppStoreReviewBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.FullScreenBackupBlockHook
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.NonWifiDownloadDialogBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.SvipIconGuideBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAigcWidgetBackgroundBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAlbumAiInitBlockHook
@@ -55,10 +55,10 @@ internal object BaiduIntlPostAttachHookSpecs {
         }, featureKey = FeatureKeys.KEY_BLOCK_APP_STORE_REVIEW) { cl ->
             AppStoreReviewBlockHook.hook(cl)
         },
-        HookSpec("NonWifiDownloadDialogBlockHook", { context, settings, _ ->
+        HookSpec("IntlNonWifiDownloadDialogBlockHook", { context, settings, _ ->
             context.isMain && settings.isNonWifiDownloadDialogBlocked
         }, featureKey = FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG) { cl ->
-            NonWifiDownloadDialogBlockHook.hook(cl)
+            IntlNonWifiDownloadDialogBlockHook.hook(cl)
         },
     )
 

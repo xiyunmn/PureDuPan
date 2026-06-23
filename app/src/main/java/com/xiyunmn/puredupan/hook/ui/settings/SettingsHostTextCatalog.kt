@@ -204,12 +204,12 @@ internal object SettingsHostTextCatalog {
                 "阻止前后台切回时预下载视频前贴广告素材，不影响普通视频播放链路",
             )
             this[SettingsUserState.KEY_ENABLE_NIGHT_MODE_SUPPORT] = text(
-                "启用夜间模式支持",
-                "还原国际版设置页中被隐藏的夜间模式开关",
+                UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_LABEL,
+                UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_DESC,
             )
             this[SettingsUserState.KEY_FOLLOW_SYSTEM_NIGHT_MODE] = text(
-                "夜间模式跟随系统",
-                "接管宿主换肤机制，使界面主题与系统主题同步",
+                UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_LABEL,
+                UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_INTL_DESC,
             )
         }
     }

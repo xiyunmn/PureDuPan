@@ -492,6 +492,10 @@ object ConfigManager {
                 featureBoolean(KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW, false) ||
                 featureBoolean(KEY_BLOCK_INTL_AIGC_WIDGET_BACKGROUND, false) ||
                 featureBoolean(KEY_BLOCK_INTL_ALBUM_AI_INIT, false)
+        val nightModeSupportEnabled = featureBoolean(KEY_ENABLE_NIGHT_MODE_SUPPORT, false)
+        val followSystemNightModeEnabled =
+            featureBoolean(KEY_FOLLOW_SYSTEM_NIGHT_MODE, false) &&
+                (!isCurrentIntlHost() || nightModeSupportEnabled)
 
         return SettingsSnapshot(
             isDetailedLoggingEnabled = p.getBoolean(KEY_ENABLE_DETAILED_LOGGING, false),
@@ -587,8 +591,8 @@ object ConfigManager {
             ),
             isMemberCardClickRemoved = memberCardClickRemoved,
             isMemberCardBackgroundViewedOnClick = memberCardBackgroundViewedOnClick,
-            isNightModeSupportEnabled = featureBoolean(KEY_ENABLE_NIGHT_MODE_SUPPORT, false),
-            isFollowSystemNightModeEnabled = featureBoolean(KEY_FOLLOW_SYSTEM_NIGHT_MODE, false),
+            isNightModeSupportEnabled = nightModeSupportEnabled,
+            isFollowSystemNightModeEnabled = followSystemNightModeEnabled,
             isPerformanceOptimizeEnabled = featureBoolean(KEY_PERFORMANCE_OPTIMIZE, hasPerformanceOptionEnabled),
             isIntlSplashStartupAccelerateEnabled = featureBoolean(
                 KEY_ACCELERATE_INTL_SPLASH_STARTUP,
@@ -696,6 +700,11 @@ object ConfigManager {
     private fun doesCurrentHostSupportExperimentalDexKit(): Boolean {
         val packageName = appContext?.packageName ?: XposedCompat.currentPackageName() ?: return false
         return ConfigHostRuntime.supportsExperimentalDexKit(packageName)
+    }
+
+    private fun isCurrentIntlHost(): Boolean {
+        val packageName = appContext?.packageName ?: XposedCompat.currentPackageName() ?: return false
+        return ConfigHostRuntime.isIntlHost(packageName)
     }
 
     private fun Int.floorMod360(): Int {

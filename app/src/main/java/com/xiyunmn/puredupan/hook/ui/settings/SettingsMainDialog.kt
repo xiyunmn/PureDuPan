@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.ui.settings
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +12,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -115,6 +117,8 @@ internal object SettingsMainDialog {
             )
 
             val runtimeSupportByKey = mutableMapOf<String?, SwitchRuntimeSupport>()
+            val rowsByPrefKey = mutableMapOf<String, View>()
+            val switchesByPrefKey = mutableMapOf<String, Switch>()
             fun supportOf(item: SwitchItem): SwitchRuntimeSupport {
                 return runtimeSupportByKey.getOrPut(item.prefKey) {
                     resolveSwitchRuntimeSupport(item)
@@ -179,6 +183,12 @@ internal object SettingsMainDialog {
                         item.showSwitch,
                     )
                     root.addView(rowView)
+                    item.prefKey?.let { key ->
+                        rowsByPrefKey[key] = rowView
+                        SettingsSwitchRows.findSwitchView(rowView)?.let { switchView ->
+                            switchesByPrefKey[key] = switchView
+                        }
+                    }
                 }
                 hasRenderedGroup = true
             }
@@ -270,6 +280,12 @@ internal object SettingsMainDialog {
             settingsDialog = dialog
 
             dialog.show()
+            val unregisterNightModeDependency = bindIntlNightModeDependency(
+                prefs = prefs,
+                isIntlHost = settingsSession.isIntlHost,
+                rowsByPrefKey = rowsByPrefKey,
+                switchesByPrefKey = switchesByPrefKey,
+            )
             var unregisterThemeListener: (() -> Unit)? = null
             var reopeningForTheme = false
             unregisterThemeListener = HostThemeChangeDispatcher.register { reason ->
@@ -294,6 +310,7 @@ internal object SettingsMainDialog {
                 }
             }
             dialog.setOnDismissListener {
+                unregisterNightModeDependency?.invoke()
                 unregisterThemeListener?.invoke()
                 unregisterThemeListener = null
             }
@@ -353,5 +370,52 @@ internal object SettingsMainDialog {
             partial = false,
             note = null,
         )
+    }
+
+    private fun bindIntlNightModeDependency(
+        prefs: SharedPreferences,
+        isIntlHost: Boolean,
+        rowsByPrefKey: Map<String, View>,
+        switchesByPrefKey: Map<String, Switch>,
+    ): (() -> Unit)? {
+        if (!isIntlHost) return null
+
+        val supportKey = SettingsUserState.KEY_ENABLE_NIGHT_MODE_SUPPORT
+        val followKey = SettingsUserState.KEY_FOLLOW_SYSTEM_NIGHT_MODE
+        val followRow = rowsByPrefKey[followKey] ?: return null
+        val followSwitch = switchesByPrefKey[followKey] ?: return null
+        val supportSwitch = switchesByPrefKey[supportKey] ?: return null
+        val mainHandler = Handler(Looper.getMainLooper())
+
+        fun isSupportEnabled(): Boolean {
+            return supportSwitch.isChecked || prefs.getBoolean(supportKey, false)
+        }
+
+        fun refreshDependency() {
+            val supportEnabled = isSupportEnabled()
+            SettingsSwitchRows.setRowEnabled(followRow, supportEnabled)
+            if (!supportEnabled) {
+                if (prefs.getBoolean(followKey, false)) {
+                    prefs.edit().putBoolean(followKey, false).commit()
+                }
+                if (followSwitch.isChecked) {
+                    followSwitch.isChecked = false
+                }
+            }
+        }
+
+        val refreshRunnable = Runnable { refreshDependency() }
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == supportKey || key == followKey) {
+                mainHandler.post(refreshRunnable)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        refreshDependency()
+
+        return {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+            mainHandler.removeCallbacks(refreshRunnable)
+        }
     }
 }

@@ -4,6 +4,8 @@ import com.xiyunmn.puredupan.hook.config.model.FeatureAvailabilityStatus
 import com.xiyunmn.puredupan.hook.host.HostRuntimeState
 
 internal object ConfigHostRuntime {
+    private const val HOST_ID_SUFFIX_INTL = "_intl"
+
     fun supportedPackageNames(): Set<String> {
         return HostRuntimeState.supportedPackageNames()
     }
@@ -18,5 +20,9 @@ internal object ConfigHostRuntime {
 
     fun canonicalPackageNameOrSelf(packageName: String): String {
         return HostRuntimeState.canonicalPackageNameOrSelf(packageName)
+    }
+
+    fun isIntlHost(packageName: String): Boolean {
+        return HostRuntimeState.hostIdForPackage(packageName)?.endsWith(HOST_ID_SUFFIX_INTL) == true
     }
 }

@@ -9,6 +9,7 @@ import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 internal data class SettingsRuntimeSession(
     val prefs: SharedPreferences,
     val hostId: String?,
+    val isIntlHost: Boolean,
     val primarySplashAdFeatureKey: String?,
     val showDexKitStatus: Boolean,
     val memberCardLayoutMode: MemberCardLayoutMode,
@@ -30,6 +31,7 @@ internal data class SettingsRuntimeSession(
             return SettingsRuntimeSession(
                 prefs = prefs,
                 hostId = SettingsHostState.hostId(context),
+                isIntlHost = SettingsHostState.isIntlHost(context),
                 primarySplashAdFeatureKey = SettingsHostState.primarySplashAdFeatureKeyFor(context),
                 showDexKitStatus = SettingsHostState.showDexKitStatusInSettings(context),
                 memberCardLayoutMode = SettingsHostState.memberCardLayoutMode(context),

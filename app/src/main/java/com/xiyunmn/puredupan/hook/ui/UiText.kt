@@ -148,9 +148,11 @@ object UiText {
         const val CUSTOM_BOTTOM_BAR_DESC = "自定义隐藏底部导航栏中的指定 Tab"
 
         const val ENABLE_NIGHT_MODE_SUPPORT_LABEL = "启用夜间模式支持"
-        const val ENABLE_NIGHT_MODE_SUPPORT_DESC = "还原宿主设置页中被隐藏的夜间模式开关"
+        const val ENABLE_NIGHT_MODE_SUPPORT_DESC = "内置夜间皮肤资源，并恢复宿主设置页中被隐藏的夜间模式开关"
         const val FOLLOW_SYSTEM_NIGHT_MODE_LABEL = "夜间模式跟随系统"
         const val FOLLOW_SYSTEM_NIGHT_MODE_DESC = "接管宿主换肤机制，使宿主界面主题与系统主题实时同步"
+        const val FOLLOW_SYSTEM_NIGHT_MODE_INTL_DESC =
+            "启用 DexKit 解析后生效\n需先开启「启用夜间模式支持」，使宿主界面主题与系统主题实时同步"
         const val PERFORMANCE_OPTIMIZE_LABEL = "性能优化"
         const val PERFORMANCE_OPTIMIZE_DESC = "可能造成功能异常，谨慎启用"
         const val PERFORMANCE_OPTIMIZE_DIALOG_TITLE = "性能优化"
