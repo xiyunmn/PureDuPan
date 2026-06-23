@@ -9,6 +9,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAlbumAiInit
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlNonCoreDiffSocketDelayHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlStoryDouyinInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlChangeSkinDexKitResolver
 
 internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
     override val descriptors = listOf(
@@ -31,6 +32,11 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             id = IntlAlbumAiInitBlockHook.DIRECT_ALBUM_AI_INIT_CACHE_ID,
             target = "intl album init method",
             feature = "阻止相册 AI 初始化",
+        ),
+        DexKitTargetDescriptor(
+            id = IntlChangeSkinDexKitResolver.CACHE_ID,
+            target = "intl changeSkin method",
+            feature = "夜间模式跟随系统",
         ),
     )
 
@@ -55,6 +61,11 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         if (host.isFeatureAvailable(FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT)) {
             tasks += DexKitWarmUpTask(IntlAlbumAiInitBlockHook.DIRECT_ALBUM_AI_INIT_CACHE_ID) {
                 IntlAlbumAiInitBlockHook.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (host.isFeatureAvailable(FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE)) {
+            tasks += DexKitWarmUpTask(IntlChangeSkinDexKitResolver.CACHE_ID) {
+                IntlChangeSkinDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         return tasks

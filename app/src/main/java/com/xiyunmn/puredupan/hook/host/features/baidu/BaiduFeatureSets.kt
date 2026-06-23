@@ -44,6 +44,7 @@ internal object BaiduFeatureSets {
             baiduIntlMyPageCustomize,
             baiduIntlMemberCardCustomize,
             baiduIntlBottomBarCustomize,
+            baiduIntlThemeCustomize,
             baiduIntlPerformanceCustomize,
             baiduIntlDexKit,
         )
@@ -236,6 +237,11 @@ internal object BaiduFeatureSets {
 
     private val baiduIntlBottomBarCustomize = listOf(
         FeatureKeys.KEY_HIDE_TAB_AIGC,
+    )
+
+    private val baiduIntlThemeCustomize = listOf(
+        FeatureKeys.KEY_ENABLE_NIGHT_MODE_SUPPORT,
+        FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
     )
 
     private val baiduSamsungAd = listOf(

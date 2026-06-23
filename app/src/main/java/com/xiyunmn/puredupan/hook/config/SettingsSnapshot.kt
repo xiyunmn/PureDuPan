@@ -75,6 +75,7 @@ data class SettingsSnapshot(
     val isIntlMemberCardUpgradeButtonHidden: Boolean = false,
     val isMemberCardClickRemoved: Boolean = false,
     val isMemberCardBackgroundViewedOnClick: Boolean = false,
+    val isNightModeSupportEnabled: Boolean = false,
     val isFollowSystemNightModeEnabled: Boolean = false,
 
     // Performance optimize

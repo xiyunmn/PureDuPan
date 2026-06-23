@@ -4,6 +4,15 @@ package com.xiyunmn.puredupan.hook.symbols.baidu.intl
  * Stable hook points verified against Baidu Netdisk international host.
  */
 internal object BaiduIntlHookPoints {
+    const val BASE_ACTIVITY = "com.baidu.netdisk.BaseActivity"
+    const val SETTINGS_ACTIVITY = "com.baidu.netdisk.ui.SettingsActivity"
+    const val SKIN_MANAGER = "com.netdisk.themeskin.loader.SkinManager"
+    const val SKIN_CONFIG = "com.netdisk.themeskin.SkinConfig"
+    const val SKIN_LOADER_LISTENER = "com.netdisk.themeskin.listener.SkinLoaderListener"
+    const val SETTINGS_ITEM_VIEW = "com.baidu.netdisk.ui.widget.SettingsItemView"
+    const val DARK_SETTINGS_ID_NAME = "dark_settings"
+    const val DARK_SKIN_THEME = "dark_theme.skin"
+
     const val DEFAULT_MAIN_ACTIVITY = "com.baidu.netdisk.ui.DefaultMainActivity"
     const val NAVIGATE_ACTIVITY = "com.baidu.netdisk.ui.Navigate"
     const val SPLASH_AD_ACTIVITY = "com.baidu.netdisk.advertise.ui.SplashAdActivity"

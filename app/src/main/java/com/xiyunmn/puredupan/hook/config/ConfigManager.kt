@@ -91,6 +91,7 @@ object ConfigManager {
     const val KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON = FeatureKeys.KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON
     const val KEY_REMOVE_MEMBER_CARD_CLICK = FeatureKeys.KEY_REMOVE_MEMBER_CARD_CLICK
     const val KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK = FeatureKeys.KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK
+    const val KEY_ENABLE_NIGHT_MODE_SUPPORT = FeatureKeys.KEY_ENABLE_NIGHT_MODE_SUPPORT
     const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE
     const val KEY_ACCELERATE_INTL_SPLASH_STARTUP = FeatureKeys.KEY_ACCELERATE_INTL_SPLASH_STARTUP
     const val KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER = FeatureKeys.KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER
@@ -197,6 +198,7 @@ object ConfigManager {
     val isIntlMemberCardUpgradeButtonHidden: Boolean get() = settingsSnapshot.isIntlMemberCardUpgradeButtonHidden
     val isMemberCardClickRemoved: Boolean get() = settingsSnapshot.isMemberCardClickRemoved
     val isMemberCardBackgroundViewedOnClick: Boolean get() = settingsSnapshot.isMemberCardBackgroundViewedOnClick
+    val isNightModeSupportEnabled: Boolean get() = settingsSnapshot.isNightModeSupportEnabled
     val isFollowSystemNightModeEnabled: Boolean get() = settingsSnapshot.isFollowSystemNightModeEnabled
     val isPerformanceOptimizeEnabled: Boolean
         get() = settingsSnapshot.isPerformanceOptimizeEnabled
@@ -585,6 +587,7 @@ object ConfigManager {
             ),
             isMemberCardClickRemoved = memberCardClickRemoved,
             isMemberCardBackgroundViewedOnClick = memberCardBackgroundViewedOnClick,
+            isNightModeSupportEnabled = featureBoolean(KEY_ENABLE_NIGHT_MODE_SUPPORT, false),
             isFollowSystemNightModeEnabled = featureBoolean(KEY_FOLLOW_SYSTEM_NIGHT_MODE, false),
             isPerformanceOptimizeEnabled = featureBoolean(KEY_PERFORMANCE_OPTIMIZE, hasPerformanceOptionEnabled),
             isIntlSplashStartupAccelerateEnabled = featureBoolean(

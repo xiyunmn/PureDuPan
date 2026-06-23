@@ -119,6 +119,9 @@ internal object HookSettings {
     val isAlbumBackupBarBlocked: Boolean
         get() = ConfigManager.isAlbumBackupBarBlocked
 
+    val isNightModeSupportEnabled: Boolean
+        get() = ConfigManager.isNightModeSupportEnabled
+
     val isFollowSystemNightModeEnabled: Boolean
         get() = ConfigManager.isFollowSystemNightModeEnabled
 

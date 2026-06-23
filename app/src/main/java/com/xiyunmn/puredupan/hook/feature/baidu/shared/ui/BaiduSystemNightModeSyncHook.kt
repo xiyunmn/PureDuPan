@@ -19,18 +19,23 @@ import java.lang.reflect.Proxy
 internal data class BaiduSystemNightModeHookPoints(
     val baseActivityClassName: String,
     val settingsActivityClassName: String,
-    val changeSkinKtClassName: String,
     val skinLoaderListenerClassName: String,
     val settingsItemViewClassName: String,
+    val changeSkinKtClassName: String? = null,
+    val skinManagerClassName: String? = null,
     val darkSkinTheme: String = "dark_theme.skin",
+    val changeSkinMethodNames: Set<String> = setOf("changeSkin"),
+    val changeSkinMethodResolver: ((ClassLoader) -> Method?)? = null,
+    val settingsSwitchViewIdName: String = "dark_settings",
+    val beforeApplyDarkSkin: ((Activity) -> Boolean)? = null,
 )
 
 /**
  * Syncs Baidu Netdisk host skin with system night mode.
  *
- * The implementation follows the host skin path: ChangeSkinKt.changeSkin() updates
- * SkinConfig, Rubik/theme broadcasts, web/Swan/audio bridges and statistics. The
- * bottom avatar is refreshed through MainActivity.refreshAboutmeTabImage().
+ * CN follows ChangeSkinKt.changeSkin(), while hosts without a stable ChangeSkinKt
+ * symbol can use the retained SkinManager backend. The bottom avatar is refreshed
+ * through MainActivity.refreshAboutmeTabImage().
  */
 internal class BaiduSystemNightModeSyncHook(
     private val logTag: String,
@@ -49,6 +54,7 @@ internal class BaiduSystemNightModeSyncHook(
     @Volatile private var refreshTabSkinHooked = false
     @Volatile private var settingsActivityHooked = false
     @Volatile private var changeSkinObserverHooked = false
+    @Volatile private var skinManagerObserverHooked = false
     @Volatile private var lastAppliedNightMode: Boolean? = null
     @Volatile private var lastAvatarRefreshRequestMs = 0L
 
@@ -73,6 +79,7 @@ internal class BaiduSystemNightModeSyncHook(
             installRefreshTabSkinHook(cl)
             installSettingsActivityHook(cl)
             installChangeSkinObserverHook(cl)
+            installSkinManagerObserverHook(cl)
 
             val queueSyncLogic = { activity: Activity ->
                 activeActivityRef = WeakReference(activity)
@@ -109,7 +116,7 @@ internal class BaiduSystemNightModeSyncHook(
 
             log(
                 "hooks INSTALLED: BaseActivity.onResume + " +
-                    "onConfigurationChanged + MainActivity.refreshTabSkin + ChangeSkinKt.changeSkin observer",
+                    "onConfigurationChanged + MainActivity.refreshTabSkin + skin observer",
             )
         } catch (t: Throwable) {
             hookState.reset()
@@ -119,20 +126,21 @@ internal class BaiduSystemNightModeSyncHook(
 
     private fun installChangeSkinObserverHook(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
+        val changeSkinKtClassName = hookPoints.changeSkinKtClassName ?: return
         synchronized(this) {
             if (changeSkinObserverHooked) return
             changeSkinObserverHooked = true
         }
 
         try {
-            val changeSkinClass = XposedCompat.findClassOrNull(hookPoints.changeSkinKtClassName, cl)
+            val changeSkinClass = XposedCompat.findClassOrNull(changeSkinKtClassName, cl)
                 ?: run {
                     synchronized(this) { changeSkinObserverHooked = false }
                     log("ChangeSkinKt class NOT FOUND")
                     return
                 }
 
-            val methods = changeSkinClass.methods.filter { it.name == "changeSkin" }
+            val methods = findChangeSkinMethods(changeSkinClass)
             if (methods.isEmpty()) {
                 synchronized(this) { changeSkinObserverHooked = false }
                 log("ChangeSkinKt.changeSkin NOT FOUND")
@@ -152,6 +160,51 @@ internal class BaiduSystemNightModeSyncHook(
         } catch (t: Throwable) {
             synchronized(this) { changeSkinObserverHooked = false }
             log("ChangeSkinKt.changeSkin observer hook FAILED: ${t.message}")
+        }
+    }
+
+    private fun installSkinManagerObserverHook(cl: ClassLoader) {
+        val mod = XposedCompat.module ?: return
+        val skinManagerClassName = hookPoints.skinManagerClassName ?: return
+        synchronized(this) {
+            if (skinManagerObserverHooked) return
+            skinManagerObserverHooked = true
+        }
+
+        try {
+            val skinManagerClass = XposedCompat.findClassOrNull(skinManagerClassName, cl)
+                ?: run {
+                    synchronized(this) { skinManagerObserverHooked = false }
+                    log("SkinManager class NOT FOUND")
+                    return
+                }
+            val listenerClass = XposedCompat.findClassOrNull(hookPoints.skinLoaderListenerClassName, cl)
+            if (listenerClass != null) {
+                XposedCompat.findMethodOrNull(
+                    skinManagerClass,
+                    "loadDefaultUpdateSkin",
+                    String::class.java,
+                    listenerClass,
+                )?.let { method ->
+                    mod.hook(method).intercept { chain ->
+                        val result = chain.proceed()
+                        HostThemeChangeDispatcher.notifyChanged("skinManager.loadDefaultUpdateSkin")
+                        result
+                    }
+                }
+            }
+            XposedCompat.findMethodOrNull(skinManagerClass, "restoreDefaultTheme")?.let { method ->
+                mod.hook(method).intercept { chain ->
+                    val result = chain.proceed()
+                    HostThemeChangeDispatcher.notifyChanged("skinManager.restoreDefaultTheme")
+                    result
+                }
+            }
+
+            log("hook INSTALLED: SkinManager theme observer")
+        } catch (t: Throwable) {
+            synchronized(this) { skinManagerObserverHooked = false }
+            log("SkinManager theme observer hook FAILED: ${t.message}")
         }
     }
 
@@ -272,26 +325,58 @@ internal class BaiduSystemNightModeSyncHook(
             val isSystemNight = uiMode == Configuration.UI_MODE_NIGHT_YES
 
             if (lastAppliedNightMode == isSystemNight) return
-
-            val changeSkinClass = XposedCompat.findClassOrNull(hookPoints.changeSkinKtClassName, cl)
-            val changeMethod = changeSkinClass?.methods?.firstOrNull {
-                it.name == "changeSkin" &&
-                    it.parameterTypes.size == 2 &&
-                    it.parameterTypes[0] == String::class.java
-            }
-
-            if (changeMethod == null) {
-                log("ChangeSkinKt.changeSkin NOT FOUND")
+            if (isSystemNight && hookPoints.beforeApplyDarkSkin?.invoke(activity) == false) {
+                log("Dark skin preparation failed")
                 return
             }
 
-            changeMethod.isAccessible = true
             val listenerClass = XposedCompat.findClassOrNull(hookPoints.skinLoaderListenerClassName, cl)
-            applySystemSkin(activity, changeMethod, listenerClass, isSystemNight)
-            lastAppliedNightMode = isSystemNight
+            val changeMethod = resolveChangeSkinMethod(cl)
+            if (changeMethod != null) {
+                changeMethod.isAccessible = true
+                applySystemSkin(activity, changeMethod, listenerClass, isSystemNight)
+                lastAppliedNightMode = isSystemNight
+                return
+            }
+
+            if (applySystemSkinWithSkinManager(cl, activity, listenerClass, isSystemNight)) {
+                lastAppliedNightMode = isSystemNight
+                return
+            }
+
+            log("No available skin backend")
         } catch (e: Throwable) {
             log("Sync error: ${e.message}")
         }
+    }
+
+    private fun resolveChangeSkinMethod(cl: ClassLoader): Method? {
+        val changeSkinKtClassName = hookPoints.changeSkinKtClassName
+        if (changeSkinKtClassName != null) {
+            val changeSkinClass = XposedCompat.findClassOrNull(changeSkinKtClassName, cl)
+            val changeMethod = changeSkinClass?.let { findChangeSkinMethods(it).firstOrNull() }
+            if (changeMethod != null) return changeMethod
+        }
+        return hookPoints.changeSkinMethodResolver?.invoke(cl)
+    }
+
+    private fun findChangeSkinMethods(changeSkinClass: Class<*>): List<Method> {
+        val methods = (changeSkinClass.methods.asSequence() + changeSkinClass.declaredMethods.asSequence())
+            .distinctBy { method ->
+                method.name + "#" + method.parameterTypes.joinToString(",") { it.name }
+            }
+            .filter { isChangeSkinSignature(it) }
+            .toList()
+        val namedMethods = methods.filter { it.name in hookPoints.changeSkinMethodNames }
+        return namedMethods.ifEmpty { methods }
+    }
+
+    private fun isChangeSkinSignature(method: Method): Boolean {
+        if (!Modifier.isStatic(method.modifiers)) return false
+        val parameterTypes = method.parameterTypes
+        return parameterTypes.size == 2 &&
+            parameterTypes[0] == String::class.java &&
+            parameterTypes[1].name == hookPoints.skinLoaderListenerClassName
     }
 
     private fun applySystemSkin(
@@ -328,6 +413,101 @@ internal class BaiduSystemNightModeSyncHook(
         }
     }
 
+    private fun applySystemSkinWithSkinManager(
+        cl: ClassLoader,
+        activity: Activity,
+        listenerClass: Class<*>?,
+        isSystemNight: Boolean,
+    ): Boolean {
+        val skinManagerClassName = hookPoints.skinManagerClassName ?: return false
+        val skinManagerClass = XposedCompat.findClassOrNull(skinManagerClassName, cl)
+            ?: run {
+                log("SkinManager class NOT FOUND")
+                return false
+            }
+        val getInstanceMethod = XposedCompat.findMethodOrNull(skinManagerClass, "getInstance")
+            ?: run {
+                log("SkinManager.getInstance NOT FOUND")
+                return false
+            }
+        val manager = getInstanceMethod.invoke(null)
+            ?: run {
+                log("SkinManager.getInstance returned null")
+                return false
+            }
+
+        return if (isSystemNight) {
+            applyDarkSkinWithSkinManager(activity, skinManagerClass, manager, listenerClass)
+        } else {
+            restoreDefaultSkinWithSkinManager(activity, skinManagerClass, manager)
+        }
+    }
+
+    private fun applyDarkSkinWithSkinManager(
+        activity: Activity,
+        skinManagerClass: Class<*>,
+        manager: Any,
+        listenerClass: Class<*>?,
+    ): Boolean {
+        val loadMethod = findSkinManagerLoadMethod(skinManagerClass, listenerClass)
+            ?: run {
+                log("SkinManager.loadDefaultUpdateSkin NOT FOUND")
+                return false
+            }
+
+        val listener = listenerClass?.let { createSkinLoaderListener(it, activity, true) }
+        loadMethod.invoke(manager, hookPoints.darkSkinTheme, listener)
+        if (listener == null) {
+            syncSettingsNightSwitch(true)
+            mainHandler.postDelayed({
+                HostThemeChangeDispatcher.notifyChanged("skinManager-dark-fallback")
+                scheduleForceAvatarRefresh("skinManager-dark-fallback")
+                pulseDecor(activity)
+            }, FALLBACK_REFRESH_DELAY_MS)
+        }
+        log("Changed to Dark Skin")
+        return true
+    }
+
+    private fun restoreDefaultSkinWithSkinManager(
+        activity: Activity,
+        skinManagerClass: Class<*>,
+        manager: Any,
+    ): Boolean {
+        val restoreMethod = XposedCompat.findMethodOrNull(skinManagerClass, "restoreDefaultTheme")
+            ?: run {
+                log("SkinManager.restoreDefaultTheme NOT FOUND")
+                return false
+            }
+
+        restoreMethod.invoke(manager)
+        HostThemeChangeDispatcher.notifyChanged("skinManager-default")
+        syncSettingsNightSwitch(false)
+        scheduleForceAvatarRefresh("skinManager-default")
+        pulseDecor(activity)
+        log("Changed to Default Skin")
+        return true
+    }
+
+    private fun findSkinManagerLoadMethod(
+        skinManagerClass: Class<*>,
+        listenerClass: Class<*>?,
+    ): Method? {
+        if (listenerClass != null) {
+            XposedCompat.findMethodOrNull(
+                skinManagerClass,
+                "loadDefaultUpdateSkin",
+                String::class.java,
+                listenerClass,
+            )?.let { return it }
+        }
+        return skinManagerClass.methods.firstOrNull {
+            it.name == "loadDefaultUpdateSkin" &&
+                it.parameterTypes.size == 2 &&
+                it.parameterTypes[0] == String::class.java
+        }?.apply { isAccessible = true }
+    }
+
     private fun createSkinLoaderListener(
         listenerClass: Class<*>,
         activity: Activity,
@@ -347,11 +527,14 @@ internal class BaiduSystemNightModeSyncHook(
                     if (target != null) {
                         updateMainActivityRef(target)
                         updateSettingsActivityRef(target)
+                        HostThemeChangeDispatcher.notifyChanged("skin-loader-success")
                         syncSettingsNightSwitch(expectedNightMode)
                         scheduleForceAvatarRefresh("changeSkin-success")
                         pulseDecor(target)
                     }
                 }
+            } else if (method.name == "onFailed" || method.name.startsWith("mo")) {
+                logD("skin loader callback ${method.name}: ${args?.firstOrNull()}")
             }
             HookUtils.getDefaultReturnValue(method.returnType)
         }
@@ -507,6 +690,8 @@ internal class BaiduSystemNightModeSyncHook(
     }
 
     private fun findDarkSettingItem(activity: Activity): Any? {
+        findViewByIdName(activity, hookPoints.settingsSwitchViewIdName)?.let { return it }
+
         findFieldOrNull(activity.javaClass, "mDarkSetting")?.let { field ->
             field.get(activity)?.let { return it }
         }
@@ -521,6 +706,15 @@ internal class BaiduSystemNightModeSyncHook(
             method.invoke(null, activity)?.let { return it }
         }
         return null
+    }
+
+    private fun findViewByIdName(activity: Activity, idName: String): Any? {
+        val id = runCatching {
+            activity.resources.getIdentifier(idName, "id", activity.packageName)
+        }.getOrDefault(0)
+        if (id == 0) return null
+        return runCatching { activity.findViewById<android.view.View>(id) }
+            .getOrNull()
     }
 
     private fun invokeNoArgMethod(target: Any, name: String): Any? {

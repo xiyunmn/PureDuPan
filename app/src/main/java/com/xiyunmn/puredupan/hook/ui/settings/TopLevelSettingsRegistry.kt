@@ -155,6 +155,11 @@ internal object TopLevelSettingsRegistry {
 
     val themeSpecs: List<TopLevelSwitchSpec> = listOf(
         TopLevelSwitchSpec(
+            SettingsUserState.KEY_ENABLE_NIGHT_MODE_SUPPORT,
+            UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_LABEL,
+            UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_DESC,
+        ),
+        TopLevelSwitchSpec(
             SettingsUserState.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
             UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_LABEL,
             UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_DESC,
