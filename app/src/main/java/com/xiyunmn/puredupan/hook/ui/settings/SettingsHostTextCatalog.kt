@@ -42,6 +42,14 @@ internal object SettingsHostTextCatalog {
                 "会员卡片定制",
                 "管理「我的」页会员卡片背景、点击事件、等级福利和升级按钮",
             )
+            this[SettingsUserState.KEY_ENABLE_NIGHT_MODE_SUPPORT] = text(
+                UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_LABEL,
+                UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_DESC,
+            )
+            this[SettingsUserState.KEY_FOLLOW_SYSTEM_NIGHT_MODE] = text(
+                UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_LABEL,
+                UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_INTL_DESC,
+            )
         }
     }
 
@@ -202,14 +210,6 @@ internal object SettingsHostTextCatalog {
             this[SettingsUserState.KEY_DISABLE_VIDEO_AD_PRELOAD] = text(
                 "视频前贴广告素材预下载",
                 "阻止前后台切回时预下载视频前贴广告素材，不影响普通视频播放链路",
-            )
-            this[SettingsUserState.KEY_ENABLE_NIGHT_MODE_SUPPORT] = text(
-                UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_LABEL,
-                UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_DESC,
-            )
-            this[SettingsUserState.KEY_FOLLOW_SYSTEM_NIGHT_MODE] = text(
-                UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_LABEL,
-                UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_INTL_DESC,
             )
         }
     }
