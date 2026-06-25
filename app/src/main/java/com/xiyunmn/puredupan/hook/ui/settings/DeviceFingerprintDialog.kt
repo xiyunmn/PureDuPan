@@ -205,7 +205,7 @@ internal object DeviceFingerprintDialog {
             hostDeviceFingerprint[FIELD_DEVICE_ID],
             hostDeviceFingerprint["device_id"],
         )
-        val oaid = firstDisplayString(
+        val oaid = firstOaidDisplayString(
             hostDeviceFingerprint[FIELD_OAID],
             hostDeviceFingerprint["appCommonOaid"],
             hostDeviceFingerprint[FIELD_HONOR_OAID],
@@ -284,7 +284,8 @@ internal object DeviceFingerprintDialog {
 
     private fun formatJsonObject(fields: Map<*, *>, indent: Int = 0): String {
         val entries = fields.entries.mapNotNull { (key, value) ->
-            sanitizeJsonValue(value)?.let { key.toString() to it }
+            val keyText = key.toString()
+            sanitizeJsonValue(value, keyText)?.let { keyText to it }
         }
         if (entries.isEmpty()) return "{}"
         val currentIndent = " ".repeat(indent)
@@ -299,7 +300,7 @@ internal object DeviceFingerprintDialog {
     }
 
     private fun formatJsonArray(values: Iterable<*>, indent: Int): String {
-        val list = values.mapNotNull(::sanitizeJsonValue)
+        val list = values.mapNotNull { value -> sanitizeJsonValue(value) }
         if (list.isEmpty()) return "[]"
         val currentIndent = " ".repeat(indent)
         val childIndent = " ".repeat(indent + 2)
@@ -324,15 +325,16 @@ internal object DeviceFingerprintDialog {
         }
     }
 
-    private fun sanitizeJsonValue(value: Any?): Any? {
+    private fun sanitizeJsonValue(value: Any?, key: String? = null): Any? {
         return when (value) {
             null -> null
             is Map<*, *> -> value.entries.mapNotNull { (key, itemValue) ->
-                sanitizeJsonValue(itemValue)?.let { key.toString() to it }
+                val keyText = key.toString()
+                sanitizeJsonValue(itemValue, keyText)?.let { keyText to it }
             }.toMap(LinkedHashMap()).takeIf { it.isNotEmpty() }
-            is Iterable<*> -> value.mapNotNull(::sanitizeJsonValue).takeIf { it.isNotEmpty() }
-            is Array<*> -> value.mapNotNull(::sanitizeJsonValue).takeIf { it.isNotEmpty() }
-            is String -> value.takeIf(::isDisplayString)
+            is Iterable<*> -> value.mapNotNull { item -> sanitizeJsonValue(item) }.takeIf { it.isNotEmpty() }
+            is Array<*> -> value.mapNotNull { item -> sanitizeJsonValue(item) }.takeIf { it.isNotEmpty() }
+            is String -> value.takeIf { isDisplayStringForKey(key, it) }
             else -> value
         }
     }
@@ -344,6 +346,12 @@ internal object DeviceFingerprintDialog {
     private fun firstDisplayString(vararg values: Any?): String? {
         return values.firstNotNullOfOrNull { value ->
             value?.toString()?.trim()?.takeIf(::isDisplayString)
+        }
+    }
+
+    private fun firstOaidDisplayString(vararg values: Any?): String? {
+        return values.firstNotNullOfOrNull { value ->
+            value?.toString()?.trim()?.takeIf { isDisplayStringForKey(FIELD_OAID, it) }
         }
     }
 
@@ -363,6 +371,19 @@ internal object DeviceFingerprintDialog {
             lower != "not_visible_or_missing" &&
             !lower.startsWith("unavailable:") &&
             !lower.startsWith("not_collected:")
+    }
+
+    private fun isDisplayStringForKey(key: String?, value: String): Boolean {
+        return isDisplayString(value) && (key?.isOaidKey() != true || isOaidDisplayString(value))
+    }
+
+    private fun String.isOaidKey(): Boolean {
+        return contains("oaid", ignoreCase = true)
+    }
+
+    private fun isOaidDisplayString(value: String): Boolean {
+        val normalized = value.trim()
+        return normalized != "-1" && normalized != "-2"
     }
 
     private fun String?.orUnknown(): String = this?.takeIf { it.isNotBlank() } ?: UiText.Settings.UNKNOWN

@@ -47,6 +47,20 @@ private object BaiduDeviceFingerprintCollector {
                 ).getOrNull(),
             )
         }
+        fields.putIfAbsentUseful(
+            "OAID",
+            readPersonalConfigString(
+                context = context,
+                key = BaiduDeviceFingerprintSymbols.OAID_CONFIG_KEY,
+            ).getOrNull(),
+        )
+        fields.putIfAbsentUseful(
+            "HONOR OAID",
+            readPersonalConfigString(
+                context = context,
+                key = BaiduDeviceFingerprintSymbols.HONOR_OAID_CONFIG_KEY,
+            ).getOrNull(),
+        )
         fields.putIfUseful(
             "CUID",
             invokeStaticContextMethod(
@@ -110,9 +124,28 @@ private object BaiduDeviceFingerprintCollector {
 
     private fun MutableMap<String, Any?>.putIfUseful(key: String, value: Any?) {
         val text = value?.toString()?.trim()
-        if (!text.isNullOrEmpty()) {
-            this[key] = value
+        if (!text.isNullOrEmpty() && isUsefulDisplayValue(key, text)) {
+            this[key] = if (value is String) text else value
         }
+    }
+
+    private fun MutableMap<String, Any?>.putIfAbsentUseful(key: String, value: Any?) {
+        if (!containsKey(key)) {
+            putIfUseful(key, value)
+        }
+    }
+
+    private fun isUsefulDisplayValue(key: String, value: String): Boolean {
+        return !isOaidKey(key) || !isInvalidOaidSentinel(value)
+    }
+
+    private fun isOaidKey(key: String): Boolean {
+        return key.contains("oaid", ignoreCase = true)
+    }
+
+    private fun isInvalidOaidSentinel(value: String): Boolean {
+        val normalized = value.trim()
+        return normalized == "-1" || normalized == "-2"
     }
 
     private fun readStaticField(context: Context, className: String, fieldName: String): Result<Any?> {
@@ -124,6 +157,18 @@ private object BaiduDeviceFingerprintCollector {
                 error("$className.$fieldName is not static")
             }
             field.get(null)
+        }
+    }
+
+    private fun readPersonalConfigString(context: Context, key: String): Result<Any?> {
+        return runCatching {
+            val clazz = loadClass(context, BaiduDeviceFingerprintSymbols.PERSONAL_CONFIG)
+            val getInstanceMethod = clazz.getDeclaredMethod("getInstance")
+            getInstanceMethod.isAccessible = true
+            val instance = getInstanceMethod.invoke(null) ?: return@runCatching null
+            val getStringMethod = clazz.getMethod("getString", String::class.java)
+            getStringMethod.isAccessible = true
+            getStringMethod.invoke(instance, key)
         }
     }
 
