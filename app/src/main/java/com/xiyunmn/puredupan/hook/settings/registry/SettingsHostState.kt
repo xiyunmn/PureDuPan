@@ -43,4 +43,8 @@ internal object SettingsHostState {
     fun isFeatureVisibleForContext(context: Context, featureKey: String): Boolean {
         return featureStatusMapFor(context)[featureKey]?.isSupported() == true
     }
+
+    fun deviceFingerprintFor(context: Context): Map<String, Any?> {
+        return HostRuntimeState.deviceFingerprintFor(context)
+    }
 }

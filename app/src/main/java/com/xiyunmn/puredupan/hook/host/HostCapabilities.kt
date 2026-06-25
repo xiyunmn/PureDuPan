@@ -8,6 +8,7 @@ internal data class HostCapabilities(
     val uiHookPoints: HostUiHookPoints = HostUiHookPoints(),
     val settings: HostSettingsCapabilities = HostSettingsCapabilities(),
     val dexKit: HostDexKitCapabilities = HostDexKitCapabilities(),
+    val diagnostics: HostDiagnosticsCapabilities = HostDiagnosticsCapabilities(),
 )
 
 internal data class HostFeatureCapabilities(
@@ -28,4 +29,8 @@ internal data class HostDexKitCapabilities(
     val targetRegistryId: String? = null,
     val showStatusInSettings: Boolean = false,
     val stableActivityClassNames: List<String> = emptyList(),
+)
+
+internal data class HostDiagnosticsCapabilities(
+    val deviceFingerprintCollector: HostDeviceFingerprintCollector? = null,
 )

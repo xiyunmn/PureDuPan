@@ -110,6 +110,14 @@ internal object HostRuntimeState {
         return capabilitiesFor(context).uiHookPoints.skinConfigClassName
     }
 
+    fun deviceFingerprintFor(context: Context): Map<String, Any?> {
+        return capabilitiesFor(context)
+            .diagnostics
+            .deviceFingerprintCollector
+            ?.collect(context)
+            .orEmpty()
+    }
+
     fun canonicalPackageNameOrSelf(packageName: String): String {
         return HostRegistry.resolveByPackageName(packageName)?.packageName ?: packageName
     }

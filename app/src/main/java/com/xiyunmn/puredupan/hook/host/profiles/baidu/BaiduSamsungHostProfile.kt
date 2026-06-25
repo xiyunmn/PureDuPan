@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.host.profiles.baidu
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.host.HomeCustomizeHookPoints
 import com.xiyunmn.puredupan.hook.host.HostCapabilities
+import com.xiyunmn.puredupan.hook.host.HostDiagnosticsCapabilities
 import com.xiyunmn.puredupan.hook.host.HostFeatureCapabilities
 import com.xiyunmn.puredupan.hook.host.HostHookCapabilities
 import com.xiyunmn.puredupan.hook.host.HostIds
@@ -11,6 +12,7 @@ import com.xiyunmn.puredupan.hook.host.HostProfile
 import com.xiyunmn.puredupan.hook.host.HostSettingsCapabilities
 import com.xiyunmn.puredupan.hook.host.HostUiHookPoints
 import com.xiyunmn.puredupan.hook.host.features.baidu.BaiduFeatureSets
+import com.xiyunmn.puredupan.hook.host.runtime.baidu.BaiduDomesticDeviceFingerprintRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduSharedHookPoints
 
 internal val BaiduSamsungHostProfile = HostProfile(
@@ -64,6 +66,9 @@ internal val BaiduSamsungHostProfile = HostProfile(
                 saveCardViewClassNames = BaiduSharedHookPoints.HOME_SAVE_CARD_VIEWS,
                 recentCardViewClassNames = BaiduSharedHookPoints.HOME_RECENT_CARD_VIEWS,
             ),
+        ),
+        diagnostics = HostDiagnosticsCapabilities(
+            deviceFingerprintCollector = BaiduDomesticDeviceFingerprintRuntime,
         ),
     ),
 )

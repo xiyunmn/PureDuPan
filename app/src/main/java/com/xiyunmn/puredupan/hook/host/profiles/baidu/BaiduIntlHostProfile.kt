@@ -5,6 +5,7 @@ import com.xiyunmn.puredupan.hook.config.model.MemberCardLayoutMode
 import com.xiyunmn.puredupan.hook.host.HomeCustomizeHookPoints
 import com.xiyunmn.puredupan.hook.host.HostCapabilities
 import com.xiyunmn.puredupan.hook.host.HostDexKitCapabilities
+import com.xiyunmn.puredupan.hook.host.HostDiagnosticsCapabilities
 import com.xiyunmn.puredupan.hook.host.HostFeatureCapabilities
 import com.xiyunmn.puredupan.hook.host.HostHookCapabilities
 import com.xiyunmn.puredupan.hook.host.HostIds
@@ -13,6 +14,7 @@ import com.xiyunmn.puredupan.hook.host.HostProfile
 import com.xiyunmn.puredupan.hook.host.HostSettingsCapabilities
 import com.xiyunmn.puredupan.hook.host.HostUiHookPoints
 import com.xiyunmn.puredupan.hook.host.features.baidu.BaiduFeatureSets
+import com.xiyunmn.puredupan.hook.host.runtime.baidu.BaiduIntlDeviceFingerprintRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduSharedHookPoints
 
 internal val BaiduIntlHostProfile = HostProfile(
@@ -65,6 +67,9 @@ internal val BaiduIntlHostProfile = HostProfile(
                 BaiduSharedHookPoints.MAIN_ACTIVITY,
                 BaiduSharedHookPoints.HOME_ACTIVITY,
             ),
+        ),
+        diagnostics = HostDiagnosticsCapabilities(
+            deviceFingerprintCollector = BaiduIntlDeviceFingerprintRuntime,
         ),
     ),
 )

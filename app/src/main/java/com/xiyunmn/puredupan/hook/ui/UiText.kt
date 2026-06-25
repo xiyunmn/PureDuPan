@@ -290,8 +290,10 @@ object UiText {
 
         const val ABOUT = "关于"
         const val DEVICE_FINGERPRINT_LABEL = "设备指纹"
-        const val DEVICE_FINGERPRINT_DESC = "反馈环境信息"
+        const val DEVICE_FINGERPRINT_DESC = "cuid、Android id、oaid"
         const val DEVICE_FINGERPRINT_DIALOG_TITLE = "runtimeEnvironment"
+        const val DEVICE_FINGERPRINT_COPY = "复制"
+        const val DEVICE_FINGERPRINT_COPIED = "已复制"
         const val DEVICE_FINGERPRINT_SHOW_FAILED = "设备指纹生成失败"
         const val VERSION = "版本"
         const val AUTHOR = "作者"
