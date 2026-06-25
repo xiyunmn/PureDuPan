@@ -217,14 +217,17 @@ internal object SettingsMainDialog {
             } else null
 
             root.addView(SettingsDialogLayout.createDivider(context, padding))
-            root.addView(
-                SettingsAboutSection.create(
-                    context = context,
-                    padding = padding,
-                    hostId = settingsSession.hostId,
-                    versionClickListener = versionClickListener,
-                )
+            val showDeviceFingerprint = {
+                prefs.getBoolean(SettingsUserState.KEY_SHOW_DEVICE_FINGERPRINT, false)
+            }
+            val aboutSection = SettingsAboutSection.create(
+                context = context,
+                padding = padding,
+                hostId = settingsSession.hostId,
+                versionClickListener = versionClickListener,
+                showDeviceFingerprint = showDeviceFingerprint,
             )
+            root.addView(aboutSection.root)
 
             val scrollContainer = ScrollView(context).apply {
                 addView(
@@ -281,6 +284,10 @@ internal object SettingsMainDialog {
             settingsDialog = dialog
 
             dialog.show()
+            val unregisterDeviceFingerprintVisibilityRefresh = bindDeviceFingerprintVisibilityRefresh(
+                prefs = prefs,
+                refresh = aboutSection.refreshDeviceFingerprintDescription,
+            )
             val unregisterNightModeDependency = bindIntlNightModeDependency(
                 prefs = prefs,
                 isIntlHost = settingsSession.isIntlHost,
@@ -311,6 +318,7 @@ internal object SettingsMainDialog {
                 }
             }
             dialog.setOnDismissListener {
+                unregisterDeviceFingerprintVisibilityRefresh()
                 unregisterNightModeDependency?.invoke()
                 unregisterThemeListener?.invoke()
                 unregisterThemeListener = null
@@ -371,6 +379,26 @@ internal object SettingsMainDialog {
             partial = false,
             note = null,
         )
+    }
+
+    private fun bindDeviceFingerprintVisibilityRefresh(
+        prefs: SharedPreferences,
+        refresh: () -> Unit,
+    ): () -> Unit {
+        val mainHandler = Handler(Looper.getMainLooper())
+        val refreshRunnable = Runnable { refresh() }
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == SettingsUserState.KEY_SHOW_DEVICE_FINGERPRINT) {
+                mainHandler.post(refreshRunnable)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        refresh()
+
+        return {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+            mainHandler.removeCallbacks(refreshRunnable)
+        }
     }
 
     private fun bindIntlNightModeDependency(

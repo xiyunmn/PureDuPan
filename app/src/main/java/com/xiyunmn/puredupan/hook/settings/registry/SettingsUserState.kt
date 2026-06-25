@@ -8,6 +8,7 @@ import com.xiyunmn.puredupan.hook.config.model.FeatureAvailabilityStatus
 internal object SettingsUserState {
     const val KEY_ENABLE_DETAILED_LOGGING = ConfigManager.KEY_ENABLE_DETAILED_LOGGING
     const val KEY_ENABLE_EXPERIMENTAL_DEXKIT = ConfigManager.KEY_ENABLE_EXPERIMENTAL_DEXKIT
+    const val KEY_SHOW_DEVICE_FINGERPRINT = ConfigManager.KEY_SHOW_DEVICE_FINGERPRINT
     const val KEY_BLOCK_SPLASH_INTERSTITIAL = ConfigManager.KEY_BLOCK_SPLASH_INTERSTITIAL
     const val KEY_REMOVE_HOT_START_SPLASH = ConfigManager.KEY_REMOVE_HOT_START_SPLASH
     const val KEY_BLOCK_IN_APP_DIALOG = ConfigManager.KEY_BLOCK_IN_APP_DIALOG

@@ -180,6 +180,7 @@ internal object SettingsSwitchRows {
     ): CharSequence {
         val phrases = listOf(
             DEXKIT_EFFECTIVE_AFTER_ENABLE_PHRASE to tokens.accent,
+            UiText.Settings.SHOW_DEVICE_FINGERPRINT_PRIVACY_HINT to tokens.warning,
             UiText.Settings.AUTO_DAILY_SIGN_IN_RISK_HINT to tokens.warning,
             UiText.Settings.SIGN_IN_RISK_WARNING to tokens.warning,
         )

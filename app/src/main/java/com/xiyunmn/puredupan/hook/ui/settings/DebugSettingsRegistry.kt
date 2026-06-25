@@ -22,6 +22,11 @@ internal object DebugSettingsRegistry {
     fun specs(hostPackageName: String): List<DebugSwitchSpec> {
         return listOf(
             DebugSwitchSpec(
+                SettingsUserState.KEY_SHOW_DEVICE_FINGERPRINT,
+                UiText.Settings.SHOW_DEVICE_FINGERPRINT_LABEL,
+                UiText.Settings.SHOW_DEVICE_FINGERPRINT_PRIVACY_HINT,
+            ),
+            DebugSwitchSpec(
                 SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
                 UiText.Settings.EXPERIMENTAL_DEXKIT_LABEL,
                 UiText.Settings.EXPERIMENTAL_DEXKIT_DESC,

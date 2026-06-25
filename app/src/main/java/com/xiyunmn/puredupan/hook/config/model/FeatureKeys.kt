@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.config.model
 object FeatureKeys {
     const val KEY_ENABLE_DETAILED_LOGGING = "enable_detailed_logging"
     const val KEY_ENABLE_EXPERIMENTAL_DEXKIT = "enable_experimental_dexkit"
+    const val KEY_SHOW_DEVICE_FINGERPRINT = "show_device_fingerprint"
     const val KEY_BLOCK_SPLASH_INTERSTITIAL = "block_splash_interstitial"
     const val KEY_REMOVE_HOT_START_SPLASH = "remove_hot_start_splash"
     const val KEY_BLOCK_IN_APP_DIALOG = "block_in_app_dialog"

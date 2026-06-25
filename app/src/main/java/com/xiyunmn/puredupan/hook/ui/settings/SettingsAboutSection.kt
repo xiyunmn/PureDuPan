@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
-import android.os.SystemClock
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -16,20 +15,26 @@ import com.xiyunmn.puredupan.hook.ui.AboutInfoManager
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.ui.UiText
 
+internal data class SettingsAboutSectionHandle(
+    val root: View,
+    val refreshDeviceFingerprintDescription: () -> Unit,
+)
+
 internal object SettingsAboutSection {
     private const val HOST_SUFFIX_INTL = "_intl"
     private const val HOST_SUFFIX_SAMSUNG = "_samsung"
-    private const val DOUBLE_CLICK_INTERVAL_MS = 450L
 
     fun create(
         context: Context,
         padding: Int,
         hostId: String?,
         versionClickListener: View.OnClickListener?,
-    ): View {
+        showDeviceFingerprint: () -> Boolean,
+    ): SettingsAboutSectionHandle {
         val density = context.resources.displayMetrics.density
         val tokens = UiStyle.tokens(context)
-        return LinearLayout(context).apply {
+        var deviceFingerprintDescriptionView: TextView? = null
+        val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, 0, 0, padding)
 
@@ -53,33 +58,49 @@ internal object SettingsAboutSection {
             val aboutItemsContainer = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
             }
-            buildItems(context, hostId, versionClickListener).forEach { item ->
+            buildItems(context, hostId, versionClickListener, showDeviceFingerprint).forEach { item ->
                 aboutItemsContainer.addView(
                     createItem(
                         context = context,
                         density = density,
                         padding = padding,
                         item = item,
+                        onDescriptionCreated = if (item.title == UiText.Settings.DEVICE_FINGERPRINT_LABEL) {
+                            { view: TextView -> deviceFingerprintDescriptionView = view }
+                        } else {
+                            null
+                        },
                     ),
                 )
             }
             addView(aboutItemsContainer)
         }
+        return SettingsAboutSectionHandle(
+            root = root,
+            refreshDeviceFingerprintDescription = {
+                deviceFingerprintDescriptionView?.text =
+                    UiText.Settings.deviceFingerprintDesc(showDeviceFingerprint())
+            },
+        )
     }
 
     private fun buildItems(
         context: Context,
         hostId: String?,
         versionClickListener: View.OnClickListener?,
+        showDeviceFingerprint: () -> Boolean,
     ): List<AboutInfoManager.AboutItem> {
         val versionInfo = buildVersionDisplayInfo(context, hostId)
         return listOf(
             AboutInfoManager.AboutItem(
                 UiText.Settings.DEVICE_FINGERPRINT_LABEL,
-                UiText.Settings.DEVICE_FINGERPRINT_DESC,
+                UiText.Settings.deviceFingerprintDesc(showDeviceFingerprint()),
                 null,
-                doubleClickListener {
-                    DeviceFingerprintDialog.show(context)
+                View.OnClickListener {
+                    DeviceFingerprintDialog.show(
+                        context = context,
+                        allowHiddenDeviceFingerprint = showDeviceFingerprint(),
+                    )
                 },
             ),
             AboutInfoManager.AboutItem(
@@ -137,24 +158,12 @@ internal object SettingsAboutSection {
         }
     }
 
-    private fun doubleClickListener(onDoubleClick: () -> Unit): View.OnClickListener {
-        var lastClickAt = 0L
-        return View.OnClickListener {
-            val now = SystemClock.elapsedRealtime()
-            if (now - lastClickAt <= DOUBLE_CLICK_INTERVAL_MS) {
-                lastClickAt = 0L
-                onDoubleClick()
-            } else {
-                lastClickAt = now
-            }
-        }
-    }
-
     private fun createItem(
         context: Context,
         density: Float,
         padding: Int,
         item: AboutInfoManager.AboutItem,
+        onDescriptionCreated: ((TextView) -> Unit)? = null,
     ): View {
         val tokens = UiStyle.tokens(context)
         return LinearLayout(context).apply {
@@ -174,7 +183,7 @@ internal object SettingsAboutSection {
                 gravity = Gravity.START or Gravity.CENTER_VERTICAL
             })
 
-            addView(TextView(context).apply {
+            val descriptionView = TextView(context).apply {
                 text = item.description
                 textSize = 13f
                 setTextColor(if (item.url != null) tokens.accent else tokens.textSecondary)
@@ -195,7 +204,9 @@ internal object SettingsAboutSection {
                         }
                     }
                 }
-            })
+            }
+            onDescriptionCreated?.invoke(descriptionView)
+            addView(descriptionView)
         }
     }
 }

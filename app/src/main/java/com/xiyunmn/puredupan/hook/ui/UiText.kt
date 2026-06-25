@@ -169,6 +169,8 @@ object UiText {
         fun detailedLoggingDesc(hostPackageName: String): String =
             "输出更详细的 Hook调试日志，日志通常位于宿主应用缓存目录下：" +
                 "/data/user/0/$hostPackageName/cache/wangpanhook/logs/"
+        const val SHOW_DEVICE_FINGERPRINT_LABEL = "显示设备指纹"
+        const val SHOW_DEVICE_FINGERPRINT_PRIVACY_HINT = "注意个人隐私安全"
         const val EXPERIMENTAL_DEXKIT_LABEL = "启用 DexKit 实验解析"
         const val EXPERIMENTAL_DEXKIT_DESC = "启用DexKit 解析链路，部分功能依赖"
         const val DEXKIT_STATUS_TITLE = "DexKit 查询状态"
@@ -290,9 +292,13 @@ object UiText {
 
         const val ABOUT = "关于"
         const val DEVICE_FINGERPRINT_LABEL = "设备指纹"
-        const val DEVICE_FINGERPRINT_DESC = "cuid、Android id、oaid"
-        const val DEVICE_FINGERPRINT_DIALOG_TITLE = "runtimeEnvironment"
+        const val DEVICE_FINGERPRINT_DESC = "点击查看环境信息"
+        const val DEVICE_FINGERPRINT_SENSITIVE_DESC = "Cuid、Android id、oaid"
+        const val DEVICE_FINGERPRINT_DIALOG_TITLE = "设备指纹"
         const val DEVICE_FINGERPRINT_COPY = "复制"
+        const val DEVICE_FINGERPRINT_SHOW_HIDDEN = "显示隐藏的信息"
+        const val DEVICE_FINGERPRINT_HIDE_HIDDEN = "隐藏敏感信息"
+        const val DEVICE_FINGERPRINT_PRIVACY_WARNING = "注意个人隐私，请勿随意分享此界面信息"
         const val DEVICE_FINGERPRINT_COPIED = "已复制"
         const val DEVICE_FINGERPRINT_SHOW_FAILED = "设备指纹生成失败"
         const val VERSION = "版本"
@@ -301,6 +307,14 @@ object UiText {
         const val UNKNOWN = "未知"
         const val MODULE_DEBUG_VERSION = "Debug"
         const val MODULE_RELEASE_VERSION = "Release"
+
+        fun deviceFingerprintDesc(showDeviceFingerprint: Boolean): String {
+            return if (showDeviceFingerprint) {
+                "$DEVICE_FINGERPRINT_DESC\n$DEVICE_FINGERPRINT_SENSITIVE_DESC"
+            } else {
+                DEVICE_FINGERPRINT_DESC
+            }
+        }
 
         const val SAVE = "保存"
         const val BUTTON_CANCEL = "取消"

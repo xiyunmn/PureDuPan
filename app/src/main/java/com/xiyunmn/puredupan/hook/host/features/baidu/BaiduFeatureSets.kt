@@ -78,6 +78,7 @@ internal object BaiduFeatureSets {
 
     private val baiduSharedDiagnostics = listOf(
         FeatureKeys.KEY_ENABLE_DETAILED_LOGGING,
+        FeatureKeys.KEY_SHOW_DEVICE_FINGERPRINT,
     )
 
     private val baiduSharedStartup = listOf(
