@@ -40,6 +40,7 @@ internal object UiStyle {
         SETTINGS,
         DELETE,
         REFRESH,
+        PLAY_PAUSE,
     }
 
     @Volatile private var cachedHostNight: Boolean? = null
@@ -327,7 +328,7 @@ internal object UiStyle {
         button.setImageDrawable(
             MaterialActionDrawable(
                 icon = icon,
-                color = if (enabled) tokens.textPrimary else tokens.textMuted,
+                color = if (enabled) tokens.accent else tokens.textMuted,
                 density = density,
             ),
         )
@@ -349,7 +350,7 @@ internal object UiStyle {
         contentDescription: String,
     ) {
         if (button == null) return
-        val drawable = MaterialActionDrawable(icon, tokens.textPrimary, density)
+        val drawable = MaterialActionDrawable(icon, tokens.accent, density)
         drawable.setBounds(0, 0, (24 * density).toInt(), (24 * density).toInt())
         button.text = ""
         button.contentDescription = contentDescription
@@ -679,12 +680,10 @@ internal object UiStyle {
     ) : Drawable() {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             this.color = this@MaterialActionDrawable.color
-            style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
-            strokeWidth = 1.9f
         }
-        private val arcBounds = RectF(5.2f, 5.2f, 18.8f, 18.8f)
+        private val refreshArcBounds = RectF(4.7f, 4.7f, 19.3f, 19.3f)
 
         override fun draw(canvas: Canvas) {
             val width = bounds.width().takeIf { it > 0 } ?: intrinsicWidth
@@ -697,46 +696,76 @@ internal object UiStyle {
             canvas.translate(dx, dy)
             canvas.scale(scale, scale)
             paint.color = color
-            paint.strokeWidth = 1.9f
             when (icon) {
                 MaterialActionIcon.SETTINGS -> drawSettings(canvas)
                 MaterialActionIcon.DELETE -> drawDelete(canvas)
                 MaterialActionIcon.REFRESH -> drawRefresh(canvas)
+                MaterialActionIcon.PLAY_PAUSE -> drawPlayPause(canvas)
             }
             canvas.restore()
         }
 
         private fun drawSettings(canvas: Canvas) {
-            canvas.drawCircle(12f, 12f, 3.1f, paint)
+            setStroke(width = 1.8f)
+            canvas.drawCircle(12f, 12f, 3.25f, paint)
             for (index in 0 until 8) {
                 val angle = Math.toRadians((index * 45).toDouble())
                 val startX = 12f + kotlin.math.cos(angle).toFloat() * 6.2f
                 val startY = 12f + kotlin.math.sin(angle).toFloat() * 6.2f
-                val endX = 12f + kotlin.math.cos(angle).toFloat() * 8.2f
-                val endY = 12f + kotlin.math.sin(angle).toFloat() * 8.2f
+                val endX = 12f + kotlin.math.cos(angle).toFloat() * 8.8f
+                val endY = 12f + kotlin.math.sin(angle).toFloat() * 8.8f
                 canvas.drawLine(startX, startY, endX, endY, paint)
             }
-            canvas.drawCircle(12f, 12f, 6.4f, paint)
+            setStroke(width = 1.45f)
+            for (index in 0 until 8) {
+                val startAngle = index * 45f + 9f
+                canvas.drawArc(RectF(6.0f, 6.0f, 18.0f, 18.0f), startAngle, 20f, false, paint)
+            }
         }
 
         private fun drawDelete(canvas: Canvas) {
-            canvas.drawLine(5f, 6f, 19f, 6f, paint)
-            canvas.drawLine(9f, 4f, 15f, 4f, paint)
-            canvas.drawLine(8f, 8f, 8f, 19f, paint)
-            canvas.drawLine(16f, 8f, 16f, 19f, paint)
-            canvas.drawLine(8f, 19f, 16f, 19f, paint)
-            canvas.drawLine(10.5f, 10f, 10.5f, 17f, paint)
-            canvas.drawLine(13.5f, 10f, 13.5f, 17f, paint)
+            setStroke(width = 1.9f)
+            canvas.drawLine(4.8f, 6f, 19.2f, 6f, paint)
+            canvas.drawLine(9f, 3.9f, 15f, 3.9f, paint)
+            canvas.drawLine(7f, 8f, 7f, 19f, paint)
+            canvas.drawLine(17f, 8f, 17f, 19f, paint)
+            canvas.drawLine(7f, 19f, 17f, 19f, paint)
+            canvas.drawLine(10f, 9.6f, 10f, 17f, paint)
+            canvas.drawLine(14f, 9.6f, 14f, 17f, paint)
         }
 
         private fun drawRefresh(canvas: Canvas) {
-            canvas.drawArc(arcBounds, 38f, 286f, false, paint)
+            setStroke(width = 1.9f)
+            canvas.drawArc(refreshArcBounds, 35f, 292f, false, paint)
             val arrow = Path().apply {
-                moveTo(17.8f, 4.5f)
-                lineTo(19f, 8.2f)
-                lineTo(15.1f, 7.8f)
+                moveTo(18.2f, 4.2f)
+                lineTo(19.7f, 8.6f)
+                lineTo(15.1f, 8.2f)
             }
             canvas.drawPath(arrow, paint)
+        }
+
+        private fun drawPlayPause(canvas: Canvas) {
+            setFill()
+            val play = Path().apply {
+                moveTo(5.8f, 5.2f)
+                lineTo(14.6f, 12f)
+                lineTo(5.8f, 18.8f)
+                close()
+            }
+            canvas.drawPath(play, paint)
+            canvas.drawRoundRect(RectF(16.1f, 5.3f, 18.2f, 18.7f), 0.55f, 0.55f, paint)
+            canvas.drawRoundRect(RectF(20.0f, 5.3f, 22.1f, 18.7f), 0.55f, 0.55f, paint)
+        }
+
+        private fun setStroke(width: Float) {
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = width
+        }
+
+        private fun setFill() {
+            paint.style = Paint.Style.FILL
+            paint.strokeWidth = 0f
         }
 
         override fun setAlpha(alpha: Int) {

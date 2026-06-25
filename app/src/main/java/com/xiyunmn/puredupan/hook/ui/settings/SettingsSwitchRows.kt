@@ -255,6 +255,7 @@ internal object SettingsSwitchRows {
     private fun materialActionIcon(actionIcon: String): UiStyle.MaterialActionIcon? {
         return when (actionIcon) {
             UiText.Settings.ACTION_ICON_SETTINGS -> UiStyle.MaterialActionIcon.SETTINGS
+            UiText.Settings.ACTION_ICON_SIGN_IN -> UiStyle.MaterialActionIcon.PLAY_PAUSE
             UiText.Settings.ACTION_ICON_CLEAR -> UiStyle.MaterialActionIcon.DELETE
             UiText.Settings.ACTION_ICON_RESET -> UiStyle.MaterialActionIcon.REFRESH
             else -> null

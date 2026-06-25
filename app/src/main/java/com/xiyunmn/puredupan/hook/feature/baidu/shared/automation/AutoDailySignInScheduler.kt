@@ -11,9 +11,12 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRunti
 import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.random.Random
 
 internal object AutoDailySignInScheduler {
-    private const val DEFAULT_DELAY_MS = 15_000L
+    private const val MIN_AUTO_DELAY_MS = 20_000L
+    private const val MAX_AUTO_DELAY_MS = 120_000L
+    private val AUTO_DELAY_RANGE_MS = MIN_AUTO_DELAY_MS..MAX_AUTO_DELAY_MS
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
     private val hookStates = ConcurrentHashMap<String, HookState>()
     private val pendingRuns = ConcurrentHashMap<String, AtomicBoolean>()
@@ -21,7 +24,7 @@ internal object AutoDailySignInScheduler {
     fun install(
         cl: ClassLoader,
         tag: String,
-        delayMs: Long = DEFAULT_DELAY_MS,
+        delayRangeMs: LongRange = AUTO_DELAY_RANGE_MS,
         onRun: (Activity) -> Unit,
     ) {
         val hookState = hookStates.getOrPut(tag) { HookState() }
@@ -48,7 +51,7 @@ internal object AutoDailySignInScheduler {
             XposedCompat.findMethodOrNull(mainActivityClass, "onResume")?.let { method ->
                 mod.hook(method).intercept { chain ->
                     val result = chain.proceed()
-                    scheduleIfNeeded(chain.thisObject as? Activity, tag, delayMs, onRun)
+                    scheduleIfNeeded(chain.thisObject as? Activity, tag, delayRangeMs, onRun)
                     result
                 }
                 installedCount++
@@ -63,7 +66,7 @@ internal object AutoDailySignInScheduler {
                     val result = chain.proceed()
                     val hasFocus = chain.args.firstOrNull() as? Boolean ?: false
                     if (hasFocus) {
-                        scheduleIfNeeded(chain.thisObject as? Activity, tag, delayMs, onRun)
+                        scheduleIfNeeded(chain.thisObject as? Activity, tag, delayRangeMs, onRun)
                     }
                     result
                 }
@@ -87,7 +90,7 @@ internal object AutoDailySignInScheduler {
     private fun scheduleIfNeeded(
         activity: Activity?,
         tag: String,
-        delayMs: Long,
+        delayRangeMs: LongRange,
         onRun: (Activity) -> Unit,
     ) {
         if (activity == null) return
@@ -98,6 +101,7 @@ internal object AutoDailySignInScheduler {
         val pending = pendingRuns.getOrPut(tag) { AtomicBoolean(false) }
         if (!pending.compareAndSet(false, true)) return
 
+        val delayMs = randomDelayMs(delayRangeMs)
         val activityRef = WeakReference(activity)
         mainHandler.postDelayed({
             pending.set(false)
@@ -113,6 +117,13 @@ internal object AutoDailySignInScheduler {
                     XposedCompat.log(t)
                 }
         }, delayMs)
-        XposedCompat.logD("[$tag] auto sign-in scheduled")
+        XposedCompat.logD("[$tag] auto sign-in scheduled after ${delayMs}ms")
+    }
+
+    private fun randomDelayMs(rangeMs: LongRange): Long {
+        val first = rangeMs.first.coerceAtLeast(0L)
+        val last = rangeMs.last.coerceAtLeast(first)
+        if (first == last) return first
+        return Random.nextLong(first, last + 1)
     }
 }
