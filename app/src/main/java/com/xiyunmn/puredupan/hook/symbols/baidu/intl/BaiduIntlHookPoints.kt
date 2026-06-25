@@ -20,6 +20,7 @@ internal object BaiduIntlHookPoints {
     const val AUDIO_PLAYER_ACTIVITY = "com.baidu.netdisk.audio.ui.AudioPlayerActivity"
     const val TASK_QUERY_API = "com.baidu.netdisk.component.filesystem.provider.TaskQueryApi"
     const val TASK_SCORE_MANAGER = "com.baidu.netdisk.task.TaskScoreManager"
+    const val EXTERNAL_ACCOUNT_UTILS = "com.baidu.netdisk.account.external.AccountUtils"
     const val VIP_CHANNEL_ACTIVITY = "com.baidu.netdisk.ui.vipchannel.VipChannelActivity"
     const val RETURN_THIRD_APP_VIEW = "com.baidu.netdisk.module.sharelink.ReturnThirdAppView"
 

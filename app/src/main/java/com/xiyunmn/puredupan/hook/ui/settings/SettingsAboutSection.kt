@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
+import android.os.SystemClock
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -18,6 +19,7 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 internal object SettingsAboutSection {
     private const val HOST_SUFFIX_INTL = "_intl"
     private const val HOST_SUFFIX_SAMSUNG = "_samsung"
+    private const val DOUBLE_CLICK_INTERVAL_MS = 450L
 
     fun create(
         context: Context,
@@ -73,6 +75,14 @@ internal object SettingsAboutSection {
         val versionInfo = buildVersionDisplayInfo(context, hostId)
         return listOf(
             AboutInfoManager.AboutItem(
+                UiText.Settings.DEVICE_FINGERPRINT_LABEL,
+                UiText.Settings.DEVICE_FINGERPRINT_DESC,
+                null,
+                doubleClickListener {
+                    DeviceFingerprintDialog.show(context)
+                },
+            ),
+            AboutInfoManager.AboutItem(
                 UiText.Settings.VERSION,
                 UiText.Settings.aboutVersionSummary(
                     hostName = versionInfo.hostName,
@@ -127,6 +137,19 @@ internal object SettingsAboutSection {
         }
     }
 
+    private fun doubleClickListener(onDoubleClick: () -> Unit): View.OnClickListener {
+        var lastClickAt = 0L
+        return View.OnClickListener {
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastClickAt <= DOUBLE_CLICK_INTERVAL_MS) {
+                lastClickAt = 0L
+                onDoubleClick()
+            } else {
+                lastClickAt = now
+            }
+        }
+    }
+
     private fun createItem(
         context: Context,
         density: Float,
@@ -139,7 +162,7 @@ internal object SettingsAboutSection {
             setPadding(0, (padding * 0.4f).toInt(), 0, (padding * 0.4f).toInt())
             item.onClickListener?.let { listener ->
                 isClickable = true
-                setOnClickListener { listener.onClick(null) }
+                setOnClickListener { listener.onClick(this) }
             }
 
             addView(TextView(context).apply {

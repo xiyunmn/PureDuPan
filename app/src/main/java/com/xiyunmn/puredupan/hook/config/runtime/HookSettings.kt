@@ -1,6 +1,7 @@
 package com.xiyunmn.puredupan.hook.config.runtime
 
 import android.content.Context
+import android.content.SharedPreferences
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 
@@ -46,6 +47,10 @@ internal object HookSettings {
 
     fun memberCardSnapshot(): SettingsSnapshot {
         return ConfigManager.snapshot()
+    }
+
+    fun getModuleStatePrefs(context: Context): SharedPreferences {
+        return ConfigManager.getModuleStatePrefs(context)
     }
 
     fun hasRecordedMemberCardDefaultSize(context: Context): Boolean {
@@ -124,6 +129,9 @@ internal object HookSettings {
 
     val isFollowSystemNightModeEnabled: Boolean
         get() = ConfigManager.isFollowSystemNightModeEnabled
+
+    val isAutoDailySignInEnabled: Boolean
+        get() = ConfigManager.isAutoDailySignInEnabled
 
     val isBottomBarCustomEnabled: Boolean
         get() = ConfigManager.isBottomBarCustomEnabled

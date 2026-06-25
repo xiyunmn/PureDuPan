@@ -60,7 +60,7 @@ internal object SettingsSwitchRows {
 
         if (description != null) {
             textContainer.addView(TextView(context).apply {
-                text = emphasizeDexKitHint(description, tokens)
+                text = emphasizeWarningHints(description, tokens)
                 textSize = 11.5f
                 setTextColor(if (enabled) tokens.textSecondary else tokens.textMuted)
                 setPadding(0, (3 * density).toInt(), (14 * density).toInt(), 0)
@@ -174,19 +174,29 @@ internal object SettingsSwitchRows {
         findSwitchView(row)?.isEnabled = enabled
     }
 
-    private fun emphasizeDexKitHint(
+    private fun emphasizeWarningHints(
         description: String,
         tokens: UiStyle.Tokens,
     ): CharSequence {
-        val start = description.indexOf(DEXKIT_EFFECTIVE_AFTER_ENABLE_PHRASE)
-        if (start < 0) return description
+        val phrases = listOf(
+            DEXKIT_EFFECTIVE_AFTER_ENABLE_PHRASE to tokens.accent,
+            UiText.Settings.AUTO_DAILY_SIGN_IN_RISK_HINT to tokens.warning,
+            UiText.Settings.SIGN_IN_RISK_WARNING to tokens.warning,
+        )
+        val matches = phrases.mapNotNull { (phrase, color) ->
+            val start = description.indexOf(phrase)
+            if (start < 0) null else Triple(start, start + phrase.length, color)
+        }
+        if (matches.isEmpty()) return description
         return SpannableString(description).apply {
-            setSpan(
-                ForegroundColorSpan(tokens.accent),
-                start,
-                start + DEXKIT_EFFECTIVE_AFTER_ENABLE_PHRASE.length,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
-            )
+            matches.forEach { (start, end, color) ->
+                setSpan(
+                    ForegroundColorSpan(color),
+                    start,
+                    end,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+            }
         }
     }
 

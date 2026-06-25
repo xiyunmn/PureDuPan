@@ -2,6 +2,7 @@ package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.intl
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ad.IntlNonWifiDownloadDialogBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.automation.IntlAutoDailySignInHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.AppStoreReviewBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.FullScreenBackupBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.SvipIconGuideBlockHook
@@ -24,6 +25,15 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlMemberCar
 import com.xiyunmn.puredupan.hook.plan.HookSpec
 
 internal object BaiduIntlPostAttachHookSpecs {
+    val automation = listOf(
+        HookSpec("IntlAutoDailySignInHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isAutoDailySignInEnabled
+        }, featureKey = FeatureKeys.KEY_AUTO_DAILY_SIGN_IN) { cl ->
+            IntlAutoDailySignInHook.hook(cl)
+        },
+    )
+
     val entry = listOf(
         HookSpec("IntlAboutMeModuleEntryHook", { context, _, _ ->
             context.isMain

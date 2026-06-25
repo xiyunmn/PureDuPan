@@ -77,6 +77,7 @@ data class SettingsSnapshot(
     val isMemberCardBackgroundViewedOnClick: Boolean = false,
     val isNightModeSupportEnabled: Boolean = false,
     val isFollowSystemNightModeEnabled: Boolean = false,
+    val isAutoDailySignInEnabled: Boolean = false,
 
     // Performance optimize
     val isPerformanceOptimizeEnabled: Boolean = false,

@@ -172,6 +172,12 @@ internal object TopLevelSettingsRegistry {
 
     val restrictedThemeSpecs: List<TopLevelSwitchSpec> = listOf(
         TopLevelSwitchSpec(
+            SettingsUserState.KEY_AUTO_DAILY_SIGN_IN,
+            UiText.Settings.AUTO_DAILY_SIGN_IN_LABEL,
+            UiText.Settings.AUTO_DAILY_SIGN_IN_DESC,
+            restricted = true,
+        ),
+        TopLevelSwitchSpec(
             SettingsUserState.KEY_PERFORMANCE_OPTIMIZE,
             UiText.Settings.PERFORMANCE_OPTIMIZE_LABEL,
             UiText.Settings.PERFORMANCE_OPTIMIZE_DESC,

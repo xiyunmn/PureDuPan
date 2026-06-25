@@ -488,6 +488,10 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_LABEL,
                 UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_DESC,
             ),
+            SettingsUserState.KEY_AUTO_DAILY_SIGN_IN to text(
+                UiText.Settings.AUTO_DAILY_SIGN_IN_LABEL,
+                UiText.Settings.AUTO_DAILY_SIGN_IN_DESC,
+            ),
             SettingsUserState.KEY_PERFORMANCE_OPTIMIZE to text(
                 UiText.Settings.PERFORMANCE_OPTIMIZE_LABEL,
                 UiText.Settings.PERFORMANCE_OPTIMIZE_DESC,

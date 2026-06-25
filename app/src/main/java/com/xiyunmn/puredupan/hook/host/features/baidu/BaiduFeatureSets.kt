@@ -24,6 +24,7 @@ internal object BaiduFeatureSets {
             baiduDomesticBottomBarCustomize,
             baiduDomesticPerformanceCustomize,
             baiduDomesticThemeCustomize,
+            baiduDomesticAutomation,
         )
 
     val baiduIntlAvailableKeys: Set<String>
@@ -46,6 +47,7 @@ internal object BaiduFeatureSets {
             baiduIntlBottomBarCustomize,
             baiduIntlThemeCustomize,
             baiduIntlPerformanceCustomize,
+            baiduIntlAutomation,
             baiduIntlDexKit,
         )
 
@@ -70,6 +72,7 @@ internal object BaiduFeatureSets {
             baiduDomesticBottomBarCustomize,
             baiduDomesticPerformanceCustomize,
             baiduDomesticThemeCustomize,
+            baiduDomesticAutomation,
             baiduSamsungAd,
         )
 
@@ -214,6 +217,10 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
     )
 
+    private val baiduDomesticAutomation = listOf(
+        FeatureKeys.KEY_AUTO_DAILY_SIGN_IN,
+    )
+
     private val baiduIntlStartup = listOf(
         FeatureKeys.KEY_ACCELERATE_INTL_SPLASH_STARTUP,
         FeatureKeys.KEY_REMOVE_HOT_START_SPLASH,
@@ -258,6 +265,10 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_DELAY_INTL_FLOAT_VIEW_STARTUP,
         FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET,
         FeatureKeys.KEY_DELAY_INTL_TASK_SCORE_REFRESH,
+    )
+
+    private val baiduIntlAutomation = listOf(
+        FeatureKeys.KEY_AUTO_DAILY_SIGN_IN,
     )
 
     private val baiduIntlDexKit = listOf(

@@ -1,6 +1,7 @@
 package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.domestic
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.DomesticAutoDailySignInHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.BottomAiTabReplaceHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.GameCenterRemoveHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.GameCenterRuntimeBlockHook
@@ -12,6 +13,13 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.search.SearchPageCusto
 import com.xiyunmn.puredupan.hook.plan.HookSpec
 
 internal object BaiduDomesticPostAttachHookSpecs {
+    val automation = listOf(
+        HookSpec("DomesticAutoDailySignInHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isAutoDailySignInEnabled
+        }, featureKey = FeatureKeys.KEY_AUTO_DAILY_SIGN_IN) { cl -> DomesticAutoDailySignInHook.hook(cl) },
+    )
+
     val preAd = listOf(
         HookSpec("RenewButtonHideHook", { context, settings, _ ->
             context.isMain &&
