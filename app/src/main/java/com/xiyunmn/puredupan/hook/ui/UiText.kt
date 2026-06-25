@@ -217,12 +217,12 @@ object UiText {
         const val DISABLE_AD_SDK_INIT_DESC = "阻止 GDT/Pangle/BeiZi/UBiX/Octopus 广告下载服务启动，保留网盘下载服务"
         const val DISABLE_SWAN_PRELOAD_LABEL = "Swan 小程序运行时预加载"
         const val DISABLE_SWAN_PRELOAD_DESC =
-            "阻止启动后提前拉起小程序运行时，手动打开相关页面时仍按需加载但可能变慢\n$SIGN_IN_RISK_WARNING"
+            "$SIGN_IN_RISK_WARNING\n阻止启动后提前拉起小程序运行时，手动打开相关页面时仍按需加载但可能变慢"
         const val DISABLE_THUMBNAIL_OPERATOR_SERVICE_LABEL = "缩略图端计算任务"
         const val DISABLE_THUMBNAIL_OPERATOR_SERVICE_DESC = "阻止端计算管理器初始化和缩略图任务提交；开启后新上传图片、相册或云端缩略图生成/刷新可能变慢"
         const val DISABLE_INCENTIVE_BUSINESS_SERVICE_LABEL = "激励业务服务"
         const val DISABLE_INCENTIVE_BUSINESS_SERVICE_DESC =
-            "阻止激励任务、看广告领权益、广告应用下载与相关统计服务启动；开启后这些活动可能不再可用\n$SIGN_IN_RISK_WARNING"
+            "$SIGN_IN_RISK_WARNING\n阻止激励任务、看广告领权益、广告应用下载与相关统计服务启动；开启后这些活动可能不再可用"
         const val DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART_LABEL = "音频媒体服务自启动"
         const val DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART_DESC = "阻止启动期拉起 NetdiskMediaBrowserService 音频媒体服务；手动打开音频仍按需启动。警告：蓝牙、车机、系统媒体浏览和锁屏媒体控制的自动连接可能失效"
         const val DISABLE_ICON_RESOURCE_DOWNLOAD_LABEL = "图标资源启动下载"
@@ -231,12 +231,12 @@ object UiText {
         const val DISABLE_B2F_GUIDANCE_PREFETCH_DESC = "阻止启动异步阶段预拉取回流引导和运营弹窗数据；不清理引导状态，相关弹窗可能减少或按需变慢"
         const val BLOCK_INTL_OFFLINE_PACKAGE_INIT_LABEL = "H5 离线包初始化"
         const val BLOCK_INTL_OFFLINE_PACKAGE_INIT_DESC =
-            "阻止启动期 H5 离线包配置监听和自动下载队列初始化；进入 H5/离线包页面前按需恢复\n$SIGN_IN_RISK_WARNING"
+            "$SIGN_IN_RISK_WARNING\n阻止启动期 H5 离线包配置监听和自动下载队列初始化；进入 H5/离线包页面前按需恢复"
         const val DELAY_INTL_FEED_PRELOAD_LABEL = "首页 Feed 预加载"
         const val DELAY_INTL_FEED_PRELOAD_DESC = "启动期跳过首页 Feed 预加载，首页稳定后用原参数自动恢复；手动刷新与后续加载不拦截"
         const val DELAY_INTL_TASK_SCORE_REFRESH_LABEL = "任务积分刷新"
         const val DELAY_INTL_TASK_SCORE_REFRESH_DESC =
-            "启动期跳过任务积分/会员频道的非强制刷新，首页稳定后或进入会员任务入口前自动恢复；强制刷新不拦截\n$SIGN_IN_RISK_WARNING"
+            "$SIGN_IN_RISK_WARNING\n启动期跳过任务积分/会员频道的非强制刷新，首页稳定后或进入会员任务入口前自动恢复；强制刷新不拦截"
         const val BLOCK_INTL_STORY_DOUYIN_INIT_LABEL = "Story/DouYin 初始化"
         const val BLOCK_INTL_STORY_DOUYIN_INIT_DESC = "启用 DexKit 解析后生效\n阻止启动期 Story 视频预加载、Story UI 服务与 DouYin SDK 初始化；进入 Story/短视频或 DouYin 分享/授权入口时按需恢复"
         const val DELAY_INTL_NON_CORE_DIFF_SOCKET_LABEL = "非核心 diff socket 注册"
