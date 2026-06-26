@@ -9,6 +9,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.AutoDailySignI
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.AutoDailySignInStateStore
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.MembershipSignInClient
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.MembershipSignInResult
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.MembershipSignInStatusResult
 import com.xiyunmn.puredupan.hook.runtime.AutoDailySignInRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
 import java.util.concurrent.atomic.AtomicBoolean
@@ -110,13 +111,53 @@ internal object IntlAutoDailySignInHook {
                         )
                     }
                     is MembershipSignInResult.Failed -> {
-                        AutoDailySignInStateStore.markRetryableFailed(context, uid, TAG, result.detail)
+                        confirmMembershipFailure(context, uid, cookie, result)
                     }
                 }
             } finally {
                 membershipSignInRunning.set(false)
             }
         }, "$TAG-MembershipSignIn").start()
+    }
+
+    private fun confirmMembershipFailure(
+        context: Context,
+        uid: String?,
+        cookie: String,
+        failure: MembershipSignInResult.Failed,
+    ) {
+        when (val status = MembershipSignInClient.queryTaskCenterSignedIn(cookie, TAG)) {
+            MembershipSignInStatusResult.SignedIn -> {
+                AutoDailySignInStateStore.markAlreadySignedIn(
+                    context,
+                    uid,
+                    TAG,
+                    "${failure.detail}, task-center status reports already signed after request",
+                )
+                return
+            }
+            MembershipSignInStatusResult.NotSignedIn -> Unit
+            is MembershipSignInStatusResult.Unknown -> {
+                XposedCompat.logD("[$TAG] task-center status unavailable after failure: ${status.detail}")
+            }
+        }
+        when (val status = MembershipSignInClient.queryTodaySignedIn(cookie, TAG)) {
+            MembershipSignInStatusResult.SignedIn -> {
+                AutoDailySignInStateStore.markAlreadySignedIn(
+                    context,
+                    uid,
+                    TAG,
+                    "${failure.detail}, membership status reports already signed after request",
+                )
+            }
+            MembershipSignInStatusResult.NotSignedIn -> {
+                AutoDailySignInStateStore.markRetryableFailed(context, uid, TAG, failure.detail)
+            }
+            is MembershipSignInStatusResult.Unknown -> {
+                XposedCompat.logD("[$TAG] membership status unavailable after failure: ${status.detail}")
+                AutoDailySignInStateStore.markRetryableFailed(context, uid, TAG, failure.detail)
+            }
+        }
     }
 
     private fun findActivity(context: Context): Activity? {
