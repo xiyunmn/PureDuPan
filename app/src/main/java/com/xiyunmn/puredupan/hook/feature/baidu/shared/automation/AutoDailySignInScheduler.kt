@@ -14,8 +14,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.random.Random
 
 internal object AutoDailySignInScheduler {
-    private const val MIN_AUTO_DELAY_MS = 20_000L
-    private const val MAX_AUTO_DELAY_MS = 120_000L
+    private const val MIN_AUTO_DELAY_MS = 10_000L
+    private const val MAX_AUTO_DELAY_MS = 30_000L
     private val AUTO_DELAY_RANGE_MS = MIN_AUTO_DELAY_MS..MAX_AUTO_DELAY_MS
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
     private val hookStates = ConcurrentHashMap<String, HookState>()
