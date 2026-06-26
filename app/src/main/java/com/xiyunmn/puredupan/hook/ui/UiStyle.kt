@@ -683,6 +683,7 @@ internal object UiStyle {
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
         }
+        private val settingsCogPath = createSettingsCogPath()
         private val refreshArcBounds = RectF(4.7f, 4.7f, 19.3f, 19.3f)
 
         override fun draw(canvas: Canvas) {
@@ -706,21 +707,12 @@ internal object UiStyle {
         }
 
         private fun drawSettings(canvas: Canvas) {
-            setStroke(width = 1.8f)
-            canvas.drawCircle(12f, 12f, 3.25f, paint)
-            for (index in 0 until 8) {
-                val angle = Math.toRadians((index * 45).toDouble())
-                val startX = 12f + kotlin.math.cos(angle).toFloat() * 6.2f
-                val startY = 12f + kotlin.math.sin(angle).toFloat() * 6.2f
-                val endX = 12f + kotlin.math.cos(angle).toFloat() * 8.8f
-                val endY = 12f + kotlin.math.sin(angle).toFloat() * 8.8f
-                canvas.drawLine(startX, startY, endX, endY, paint)
-            }
-            setStroke(width = 1.45f)
-            for (index in 0 until 8) {
-                val startAngle = index * 45f + 9f
-                canvas.drawArc(RectF(6.0f, 6.0f, 18.0f, 18.0f), startAngle, 20f, false, paint)
-            }
+            setStroke(width = 2f, cap = Paint.Cap.SQUARE, join = Paint.Join.MITER)
+            canvas.save()
+            canvas.scale(0.9f, 0.9f, 12f, 12f)
+            canvas.drawPath(settingsCogPath, paint)
+            canvas.drawCircle(12f, 12f, 4f, paint)
+            canvas.restore()
         }
 
         private fun drawDelete(canvas: Canvas) {
@@ -758,14 +750,52 @@ internal object UiStyle {
             canvas.drawRoundRect(RectF(20.0f, 5.3f, 22.1f, 18.7f), 0.55f, 0.55f, paint)
         }
 
-        private fun setStroke(width: Float) {
+        private fun setStroke(
+            width: Float,
+            cap: Paint.Cap = Paint.Cap.ROUND,
+            join: Paint.Join = Paint.Join.ROUND,
+        ) {
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = width
+            paint.strokeCap = cap
+            paint.strokeJoin = join
         }
 
         private fun setFill() {
             paint.style = Paint.Style.FILL
             paint.strokeWidth = 0f
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.strokeJoin = Paint.Join.ROUND
+        }
+
+        private fun createSettingsCogPath(): Path {
+            return Path().apply {
+                moveTo(9.408f, 4.96f)
+                lineTo(10f, 2f)
+                lineTo(14f, 2f)
+                lineTo(14.592f, 4.96f)
+                cubicTo(15.402f, 5.259f, 16.148f, 5.693f, 16.799f, 6.236f)
+                lineTo(19.66f, 5.268f)
+                lineTo(21.66f, 8.732f)
+                lineTo(19.392f, 10.725f)
+                cubicTo(19.536f, 11.568f, 19.536f, 12.432f, 19.392f, 13.275f)
+                lineTo(21.66f, 15.268f)
+                lineTo(19.66f, 18.732f)
+                lineTo(16.799f, 17.764f)
+                cubicTo(16.148f, 18.307f, 15.402f, 18.741f, 14.592f, 19.04f)
+                lineTo(14f, 22f)
+                lineTo(10f, 22f)
+                lineTo(9.408f, 19.04f)
+                cubicTo(8.598f, 18.741f, 7.852f, 18.307f, 7.201f, 17.764f)
+                lineTo(4.34f, 18.732f)
+                lineTo(2.34f, 15.268f)
+                lineTo(4.608f, 13.275f)
+                cubicTo(4.464f, 12.432f, 4.464f, 11.568f, 4.608f, 10.725f)
+                lineTo(2.34f, 8.732f)
+                lineTo(4.34f, 5.268f)
+                lineTo(7.201f, 6.236f)
+                cubicTo(7.852f, 5.693f, 8.598f, 5.259f, 9.408f, 4.96f)
+            }
         }
 
         override fun setAlpha(alpha: Int) {
