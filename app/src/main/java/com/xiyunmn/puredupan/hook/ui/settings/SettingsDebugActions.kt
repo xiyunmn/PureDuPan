@@ -164,7 +164,7 @@ internal object SettingsDebugActions {
                 .setTitle(UiText.Settings.CLEAR_LOGS_CONFIRM_TITLE)
                 .setMessage(message)
                 .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-                .setPositiveButton(UiText.Settings.ACTION_ICON_CLEAR) { _, _ ->
+                .setPositiveButton(UiText.Settings.BUTTON_CONFIRM) { _, _ ->
                     val result = XposedCompat.clearLogFiles(context)
                     val text = if (result.success) {
                         UiText.Settings.CLEAR_LOGS_SUCCESS
@@ -175,13 +175,6 @@ internal object SettingsDebugActions {
                 }
                 .show()
             val density = context.resources.displayMetrics.density
-            UiStyle.paintAlertMaterialIconButton(
-                button = dialog.getButton(AlertDialog.BUTTON_POSITIVE),
-                density = density,
-                tokens = UiStyle.tokens(context),
-                icon = UiStyle.MaterialActionIcon.DELETE,
-                contentDescription = UiText.Settings.ACTION_ICON_CLEAR,
-            )
             dialog.window
                 ?.let { window ->
                     SettingsDialogWindows.applyCardStyle(
@@ -203,7 +196,7 @@ internal object SettingsDebugActions {
                 .setTitle(UiText.Settings.RESET_MODULE_SETTINGS_CONFIRM_TITLE)
                 .setMessage(UiText.Settings.RESET_MODULE_SETTINGS_CONFIRM_MESSAGE)
                 .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-                .setPositiveButton(UiText.Settings.ACTION_ICON_RESET) { _, _ ->
+                .setPositiveButton(UiText.Settings.BUTTON_CONFIRM) { _, _ ->
                     val success = SettingsUserState.resetUserSettings(context)
                     val text = if (success) {
                         UiText.Settings.RESET_MODULE_SETTINGS_SUCCESS
@@ -217,13 +210,6 @@ internal object SettingsDebugActions {
                 }
                 .show()
             val density = context.resources.displayMetrics.density
-            UiStyle.paintAlertMaterialIconButton(
-                button = dialog.getButton(AlertDialog.BUTTON_POSITIVE),
-                density = density,
-                tokens = UiStyle.tokens(context),
-                icon = UiStyle.MaterialActionIcon.REFRESH,
-                contentDescription = UiText.Settings.ACTION_ICON_RESET,
-            )
             dialog.window
                 ?.let { window ->
                     SettingsDialogWindows.applyCardStyle(

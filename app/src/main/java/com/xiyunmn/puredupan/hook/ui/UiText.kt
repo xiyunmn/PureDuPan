@@ -329,6 +329,7 @@ object UiText {
 
         const val SAVE = "保存"
         const val BUTTON_CANCEL = "取消"
+        const val BUTTON_CONFIRM = "确定"
         const val SAVE_AND_RESTART = "保存并重启"
         const val SETTINGS_SAVED_RESTARTING = "设置已保存，正在重启网盘"
         const val SETTINGS_SAVE_FAILED = "模块设置保存失败"
