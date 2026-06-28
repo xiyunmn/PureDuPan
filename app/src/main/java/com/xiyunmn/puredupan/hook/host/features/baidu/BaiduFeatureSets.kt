@@ -24,6 +24,7 @@ internal object BaiduFeatureSets {
             baiduDomesticPerformanceCustomize,
             baiduDomesticThemeCustomize,
             baiduDomesticAutomation,
+            baiduDomesticDexKit,
         )
 
     val baiduIntlAvailableKeys: Set<String>
@@ -70,6 +71,7 @@ internal object BaiduFeatureSets {
             baiduDomesticPerformanceCustomize,
             baiduDomesticThemeCustomize,
             baiduDomesticAutomation,
+            baiduDomesticDexKit,
             baiduSamsungAd,
         )
 
@@ -214,6 +216,10 @@ internal object BaiduFeatureSets {
 
     private val baiduDomesticAutomation = listOf(
         FeatureKeys.KEY_AUTO_DAILY_SIGN_IN,
+    )
+
+    private val baiduDomesticDexKit = listOf(
+        FeatureKeys.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
     )
 
     private val baiduIntlStartup = listOf(

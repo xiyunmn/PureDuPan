@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.host.profiles.baidu
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.host.HomeCustomizeHookPoints
 import com.xiyunmn.puredupan.hook.host.HostCapabilities
+import com.xiyunmn.puredupan.hook.host.HostDexKitCapabilities
 import com.xiyunmn.puredupan.hook.host.HostDiagnosticsCapabilities
 import com.xiyunmn.puredupan.hook.host.HostFeatureCapabilities
 import com.xiyunmn.puredupan.hook.host.HostHookCapabilities
@@ -72,6 +73,14 @@ internal val BaiduSamsungHostProfile = HostProfile(
             hotStartSplashLifecycleManagerClassName = BaiduSharedHookPoints.SPLASH_LIFECYCLE_MANAGER,
             hotStartSplashBackgroundResumeAdStartMethodName =
                 BaiduSharedHookPoints.SPLASH_LIFECYCLE_BACKGROUND_RESUME_AD_START_METHOD,
+        ),
+        dexKit = HostDexKitCapabilities(
+            targetRegistryId = HostIds.BAIDU_SAMSUNG,
+            showStatusInSettings = true,
+            stableActivityClassNames = listOf(
+                BaiduSharedHookPoints.HOME_ACTIVITY,
+                BaiduSharedHookPoints.MAIN_ACTIVITY,
+            ),
         ),
         diagnostics = HostDiagnosticsCapabilities(
             deviceFingerprintCollector = BaiduDomesticDeviceFingerprintRuntime,

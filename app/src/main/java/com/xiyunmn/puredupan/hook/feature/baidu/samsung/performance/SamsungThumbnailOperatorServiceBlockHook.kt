@@ -4,6 +4,7 @@ import android.content.Context
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticThumbnailOperatorDexKitResolver
 import com.xiyunmn.puredupan.hook.symbols.baidu.samsung.BaiduSamsungHookPoints
 
 /**
@@ -25,33 +26,36 @@ internal object SamsungThumbnailOperatorServiceBlockHook {
             val managerClass = XposedCompat.findClassOrNull(
                 BaiduSamsungHookPoints.CLIENT_COMPUTE_MANAGER,
                 cl,
-            ) ?: run {
+            )
+            if (managerClass == null) {
                 XposedCompat.log("[SamsungThumbnailOperatorServiceBlockHook] ClientComputeManager NOT FOUND")
-                hookState.reset()
-                return
+            } else {
+                XposedCompat.findMethodOrNull(
+                    managerClass,
+                    BaiduSamsungHookPoints.CLIENT_COMPUTE_MANAGER_INIT_METHOD,
+                    Context::class.java,
+                )?.let { method ->
+                    mod.hook(method).intercept { chain ->
+                        if (isEnabled()) {
+                            XposedCompat.logD(
+                                "[SamsungThumbnailOperatorServiceBlockHook] ClientComputeManager.init blocked",
+                            )
+                            false
+                        } else {
+                            chain.proceed()
+                        }
+                    }
+                    installedCount += 1
+                } ?: XposedCompat.log(
+                    "[SamsungThumbnailOperatorServiceBlockHook] ClientComputeManager.init NOT FOUND",
+                )
+            }
+            if (installedCount == 0) {
+                installedCount += hookDexKitClientComputeInit(cl)
             }
 
-            XposedCompat.findMethodOrNull(
-                managerClass,
-                BaiduSamsungHookPoints.CLIENT_COMPUTE_MANAGER_INIT_METHOD,
-                Context::class.java,
-            )?.let { method ->
-                mod.hook(method).intercept { chain ->
-                    if (isEnabled()) {
-                        XposedCompat.logD(
-                            "[SamsungThumbnailOperatorServiceBlockHook] ClientComputeManager.init blocked",
-                        )
-                        false
-                    } else {
-                        chain.proceed()
-                    }
-                }
-                installedCount += 1
-            } ?: XposedCompat.log(
-                "[SamsungThumbnailOperatorServiceBlockHook] ClientComputeManager.init NOT FOUND",
-            )
-
-            installedCount += hookAddJob(cl)
+            val addJobInstalled = hookAddJob(cl)
+            installedCount += if (addJobInstalled > 0) addJobInstalled else hookDexKitAddJob(cl)
 
             if (installedCount == 0) {
                 XposedCompat.log("[SamsungThumbnailOperatorServiceBlockHook] no hooks installed")
@@ -109,6 +113,48 @@ internal object SamsungThumbnailOperatorServiceBlockHook {
         mod.hook(method).intercept { chain ->
             if (isEnabled()) {
                 XposedCompat.logD("[SamsungThumbnailOperatorServiceBlockHook] ThumbnailOperatorUtil.addJob blocked")
+                null
+            } else {
+                chain.proceed()
+            }
+        }
+        return 1
+    }
+
+    private fun hookDexKitClientComputeInit(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val method = DomesticThumbnailOperatorDexKitResolver.resolveClientComputeInit(cl) ?: run {
+            XposedCompat.log(
+                "[SamsungThumbnailOperatorServiceBlockHook] DexKit ClientComputeManager.init NOT FOUND",
+            )
+            return 0
+        }
+        mod.hook(method).intercept { chain ->
+            if (isEnabled()) {
+                XposedCompat.logD(
+                    "[SamsungThumbnailOperatorServiceBlockHook] DexKit ClientComputeManager.init blocked",
+                )
+                false
+            } else {
+                chain.proceed()
+            }
+        }
+        return 1
+    }
+
+    private fun hookDexKitAddJob(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val method = DomesticThumbnailOperatorDexKitResolver.resolveThumbnailAddJob(cl) ?: run {
+            XposedCompat.log(
+                "[SamsungThumbnailOperatorServiceBlockHook] DexKit ThumbnailOperatorUtil.addJob NOT FOUND",
+            )
+            return 0
+        }
+        mod.hook(method).intercept { chain ->
+            if (isEnabled()) {
+                XposedCompat.logD(
+                    "[SamsungThumbnailOperatorServiceBlockHook] DexKit ThumbnailOperatorUtil.addJob blocked",
+                )
                 null
             } else {
                 chain.proceed()

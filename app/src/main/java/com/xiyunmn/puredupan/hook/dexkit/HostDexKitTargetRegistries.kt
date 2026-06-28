@@ -1,13 +1,16 @@
 package com.xiyunmn.puredupan.hook.dexkit
 
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.dexkit.baidu.domestic.BaiduDomesticDexKitTargetRegistry
 import com.xiyunmn.puredupan.hook.dexkit.baidu.intl.BaiduIntlDexKitTargetRegistry
 import com.xiyunmn.puredupan.hook.host.HostIds
 import com.xiyunmn.puredupan.hook.host.HostRegistry
 
 internal object HostDexKitTargetRegistries {
     private val registryEntries: List<Pair<String, DexKitTargetRegistry>> = listOf(
+        HostIds.BAIDU_CN to BaiduDomesticDexKitTargetRegistry,
         HostIds.BAIDU_INTL to BaiduIntlDexKitTargetRegistry,
+        HostIds.BAIDU_SAMSUNG to BaiduDomesticDexKitTargetRegistry,
     )
     private val registriesById: Map<String, DexKitTargetRegistry> = registryEntries.toMap()
 
