@@ -31,6 +31,7 @@ internal object IntlStoryDouyinInitBlockHook {
         val paramTypeNames: List<String>,
         val isConstructor: Boolean,
         val modifiers: Int,
+        val invokeDescriptors: Set<String>,
     )
 
     private val hookState = HookState()
@@ -130,6 +131,11 @@ internal object IntlStoryDouyinInitBlockHook {
     }
 
     private fun resolveStoryInitMethod(cl: ClassLoader): Method? {
+        resolveKnownStoryInitMethod(cl)?.let { method ->
+            cacheResolvedStoryInit(method, "known")
+            return method
+        }
+
         if (!HookSettings.isExperimentalDexKitEnabled) {
             XposedCompat.logD("[IntlStoryDouyinInitBlockHook] story init DexKit resolve skipped: config disabled")
             return null
@@ -161,6 +167,9 @@ internal object IntlStoryDouyinInitBlockHook {
                         paramTypeNames = methodData.paramTypeNames,
                         isConstructor = methodData.isConstructor,
                         modifiers = methodData.modifiers,
+                        invokeDescriptors = runCatching {
+                            methodData.invokes.map { it.descriptor }.toSet()
+                        }.getOrDefault(emptySet()),
                     )
                 }
         } ?: return null
@@ -181,29 +190,61 @@ internal object IntlStoryDouyinInitBlockHook {
             if (methodData.returnTypeName != "void") return@mapNotNull null
             if (methodData.paramTypeNames != listOf("android.app.Application")) return@mapNotNull null
             if (!Modifier.isStatic(methodData.modifiers)) return@mapNotNull null
-            method
+            methodData to method
         }
 
-        if (candidates.size != 1) {
+        val rankedCandidates = candidates.sortedWith(
+            compareByDescending<Pair<DexMethodCandidate, Method>> { storyInitScore(it.first) }
+                .thenBy { it.first.className }
+                .thenBy { it.first.methodName },
+        )
+        val best = rankedCandidates.firstOrNull()
+        val bestScore = best?.let { storyInitScore(it.first) } ?: 0
+        val ambiguousBest = rankedCandidates.drop(1).any { storyInitScore(it.first) == bestScore }
+
+        if (best == null || ambiguousBest) {
             XposedCompat.logW(
                 "[IntlStoryDouyinInitBlockHook] ambiguous story init method: " +
-                    candidates.joinToString { "${it.declaringClass.name}.${it.name}" },
+                    candidates.joinToString { "${it.second.declaringClass.name}.${it.second.name}" },
             )
             DexKitCompat.putCachedMethod(TAG, STORY_INIT_CACHE_ID, null)
             return null
         }
 
-        val method = candidates.single()
+        val method = best.second
         XposedCompat.log(
             "[IntlStoryDouyinInitBlockHook] resolved story init: " +
-                "${method.declaringClass.name}.${method.name}",
+                "${method.declaringClass.name}.${method.name}, score=$bestScore",
         )
+        cacheResolvedStoryInit(method, "dexkit")
+        return method
+    }
+
+    private fun resolveKnownStoryInitMethod(cl: ClassLoader): Method? =
+        resolveStoryInitRef(
+            cl,
+            DexKitCompat.MethodRef(
+                BaiduIntlStoryHookPoints.STORY_COMPONENT_CLASS,
+                BaiduIntlStoryHookPoints.STORY_INIT_13_11_METHOD,
+            ),
+        )?.also { method ->
+            XposedCompat.logD(
+                "[IntlStoryDouyinInitBlockHook] resolved known story init: " +
+                    "${method.declaringClass.name}.${method.name}",
+            )
+        }
+
+    private fun cacheResolvedStoryInit(method: Method, source: String) {
         DexKitCompat.putCachedMethod(
             TAG,
             STORY_INIT_CACHE_ID,
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
-        return method
+        DexKitCompat.markTargetSuccess(
+            TAG,
+            STORY_INIT_CACHE_ID,
+            "$source:${method.declaringClass.name}.${method.name}",
+        )
     }
 
     private fun resolveStoryInitRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
@@ -216,6 +257,17 @@ internal object IntlStoryDouyinInitBlockHook {
                 method.parameterTypes.size == 1 &&
                 Application::class.java.isAssignableFrom(method.parameterTypes[0])
         }?.apply { isAccessible = true }
+    }
+
+    private fun storyInitScore(candidate: DexMethodCandidate): Int {
+        var score = 0
+        if (BaiduIntlStoryHookPoints.STORY_VIDEO_PRELOADER_INIT_DESCRIPTOR in candidate.invokeDescriptors) {
+            score += 40
+        }
+        if (BaiduIntlStoryHookPoints.STORY_UI_SERVICE_INIT_DESCRIPTOR in candidate.invokeDescriptors) {
+            score += 30
+        }
+        return score
     }
 
     private fun resolveDouyinInitMethod(cl: ClassLoader): Method? {

@@ -84,6 +84,7 @@ internal object DexKitCompat {
         tag: String,
         cl: ClassLoader,
         useMemoryDexFile: Boolean = true,
+        resolverId: String? = null,
         block: (DexKitBridge) -> T,
     ): T? {
         if (scanAllowed.get() != true) {
@@ -96,9 +97,11 @@ internal object DexKitCompat {
             DexKitBridge.create(cl, useMemoryDexFile).use(block)
         } catch (t: UnsatisfiedLinkError) {
             markUnavailable("${t.javaClass.simpleName}: ${t.message}")
+            resolverId?.let { markTargetError(tag, it, buildBridgeFailureDetail(t)) }
             XposedCompat.logD("[$tag] DexKit unavailable: ${t.message}")
             null
         } catch (t: Throwable) {
+            resolverId?.let { markTargetError(tag, it, buildBridgeFailureDetail(t)) }
             XposedCompat.logW("[$tag] DexKit bridge failed: ${t.message}")
             null
         }
@@ -128,9 +131,8 @@ internal object DexKitCompat {
         memoryCache[resolverId] = entry
         return when (entry.status) {
             STATUS_NOT_FOUND -> {
-                clearCachedMethod(tag, resolverId)
-                XposedCompat.logD("[$tag] DexKit stale not_found cache ignored: $resolverId")
-                CachedResult.Miss
+                XposedCompat.logD("[$tag] DexKit negative cache hit: $resolverId")
+                CachedResult.NotFound
             }
             STATUS_FOUND -> {
                 val ref = MethodRef(
@@ -156,20 +158,29 @@ internal object DexKitCompat {
     }
 
     fun putCachedMethod(tag: String, resolverId: String, ref: MethodRef?) {
-        if (ref == null) {
-            clearCachedMethod(tag, resolverId)
-            XposedCompat.logD("[$tag] DexKit cache not written: $resolverId unresolved")
-            return
-        }
         val fingerprint = hostFingerprint() ?: return
         val keyPrefix = cacheKeyPrefix(resolverId)
+        val prefs = statePrefs() ?: return
+        if (ref == null) {
+            prefs.edit()
+                .putString("$keyPrefix.fingerprint", fingerprint)
+                .putString("$keyPrefix.status", STATUS_NOT_FOUND)
+                .remove("$keyPrefix.className")
+                .remove("$keyPrefix.methodName")
+                .apply()
+            memoryCache[resolverId] = CacheEntry(
+                fingerprint = fingerprint,
+                status = STATUS_NOT_FOUND,
+            )
+            XposedCompat.logD("[$tag] DexKit negative cache updated: $resolverId")
+            return
+        }
         val entry = CacheEntry(
             fingerprint = fingerprint,
             status = STATUS_FOUND,
             className = ref.className,
             methodName = ref.methodName,
         )
-        val prefs = statePrefs() ?: return
         prefs.edit()
             .putString("$keyPrefix.fingerprint", entry.fingerprint)
             .putString("$keyPrefix.status", entry.status)
@@ -180,6 +191,17 @@ internal object DexKitCompat {
         val value = "${ref.className}.${ref.methodName}"
         XposedCompat.logD("[$tag] DexKit cache updated: $resolverId -> $value")
         recordTargetStatus(tag, resolverId, TARGET_STATE_SUCCESS, value)
+    }
+
+    fun shouldSkipScan(tag: String, resolverId: String, forceFullScan: Boolean = false): Boolean {
+        if (forceFullScan) return false
+        val status = readTargetStatus(resolverId) ?: return false
+        if (status.state != TARGET_STATE_ERROR) return false
+        XposedCompat.logD(
+            "[$tag] DexKit scan skipped by cached failure: " +
+                "$resolverId detail=${status.detail.orEmpty().lineSequence().firstOrNull().orEmpty()}",
+        )
+        return true
     }
 
     fun clearCachedMethod(tag: String, resolverId: String) {
@@ -332,6 +354,19 @@ internal object DexKitCompat {
 
     private fun markUnavailable(reason: String?) {
         loadState = LoadState.Unavailable(reason?.takeIf { it.isNotBlank() } ?: "unknown native load failure")
+    }
+
+    private fun buildBridgeFailureDetail(t: Throwable): String {
+        val stack = t.stackTraceToString()
+            .lineSequence()
+            .take(8)
+            .joinToString("\n")
+        return buildString {
+            append("bridge failure").append('\n')
+            append("throwable=").append(t::class.java.name).append('\n')
+            append("message=").append(t.message ?: "-").append('\n')
+            append("stacktrace=\n").append(stack)
+        }
     }
 
     private fun readCacheEntry(keyPrefix: String, fingerprint: String): CacheEntry? {

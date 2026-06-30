@@ -38,6 +38,15 @@ internal object DomesticThumbnailOperatorDexKitResolver {
     }
 
     fun resolveClientComputeInit(cl: ClassLoader): Method? {
+        resolveKnown13_27ClientComputeInit(cl)?.let { method ->
+            cacheResolved(CLIENT_COMPUTE_INIT_CACHE_ID, method)
+            XposedCompat.logD(
+                "[$TAG] resolved known 13.27 client compute init: " +
+                    "${method.declaringClass.name}.${method.name}",
+            )
+            return method
+        }
+
         if (!HookSettings.isExperimentalDexKitEnabled) {
             XposedCompat.logD("[$TAG] client compute init skipped: DexKit disabled")
             return null
@@ -100,6 +109,15 @@ internal object DomesticThumbnailOperatorDexKitResolver {
     }
 
     fun resolveThumbnailAddJob(cl: ClassLoader): Method? {
+        resolveKnown13_27ThumbnailAddJob(cl)?.let { method ->
+            cacheResolved(THUMBNAIL_ADD_JOB_CACHE_ID, method)
+            XposedCompat.logD(
+                "[$TAG] resolved known 13.27 thumbnail addJob: " +
+                    "${method.declaringClass.name}.${method.name}",
+            )
+            return method
+        }
+
         if (!HookSettings.isExperimentalDexKitEnabled) {
             XposedCompat.logD("[$TAG] thumbnail addJob skipped: DexKit disabled")
             return null
@@ -176,6 +194,43 @@ internal object DomesticThumbnailOperatorDexKitResolver {
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
         return method
+    }
+
+    private fun resolveKnown13_27ClientComputeInit(cl: ClassLoader): Method? {
+        for (className in known13_27ClientComputeManagerClassNames()) {
+            val method = validateClientComputeInitRef(
+                cl,
+                DexKitCompat.MethodRef(
+                    className,
+                    BaiduDomesticDexKitHookPoints.CLIENT_COMPUTE_MANAGER_INIT_13_27_METHOD,
+                ),
+            )
+            if (method != null) return method
+        }
+        return null
+    }
+
+    private fun known13_27ClientComputeManagerClassNames(): List<String> =
+        listOf(
+            BaiduDomesticDexKitHookPoints.CLIENT_COMPUTE_MANAGER_13_27_CLASS,
+            BaiduDomesticDexKitHookPoints.CLIENT_COMPUTE_MANAGER_13_27_JADX_CLASS,
+        )
+
+    private fun resolveKnown13_27ThumbnailAddJob(cl: ClassLoader): Method? =
+        validateThumbnailAddJobRef(
+            cl,
+            DexKitCompat.MethodRef(
+                BaiduDomesticDexKitHookPoints.THUMBNAIL_OPERATOR_UTIL,
+                BaiduDomesticDexKitHookPoints.THUMBNAIL_ADD_JOB_13_27_METHOD,
+            ),
+        )
+
+    private fun cacheResolved(resolverId: String, method: Method) {
+        DexKitCompat.putCachedMethod(
+            TAG,
+            resolverId,
+            DexKitCompat.MethodRef(method.declaringClass.name, method.name),
+        )
     }
 
     private fun validateClientComputeCandidate(

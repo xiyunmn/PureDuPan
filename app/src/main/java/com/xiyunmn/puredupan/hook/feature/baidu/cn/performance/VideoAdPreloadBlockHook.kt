@@ -1,10 +1,9 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.cn.performance
 
-import android.content.Context
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
-import com.xiyunmn.puredupan.hook.symbols.baidu.cn.BaiduCnHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticVideoAdPreloadDexKitResolver
 
 /**
  * Blocks only foreground-resume video front ad material preloading.
@@ -21,20 +20,7 @@ object VideoAdPreloadBlockHook {
         if (!hookState.markInstalled()) return
 
         try {
-            val clazz = XposedCompat.findClassOrNull(
-                BaiduCnHookPoints.ADVERTISE_SDK,
-                cl,
-            ) ?: run {
-                XposedCompat.log("[VideoAdPreloadBlockHook] AdvertiseSDK class NOT FOUND")
-                hookState.reset()
-                return
-            }
-
-            val method = XposedCompat.findMethodOrNull(
-                clazz,
-                BaiduCnHookPoints.ADVERTISE_SDK_DOWNLOAD_VIDEO_FRONT_AD_METHOD,
-                Context::class.java,
-            ) ?: run {
+            val method = DomesticVideoAdPreloadDexKitResolver.resolve(cl) ?: run {
                 XposedCompat.log("[VideoAdPreloadBlockHook] downloadVideoFrontAd(Context) NOT FOUND")
                 hookState.reset()
                 return

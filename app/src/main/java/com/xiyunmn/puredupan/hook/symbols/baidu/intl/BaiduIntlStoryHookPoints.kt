@@ -3,6 +3,15 @@ package com.xiyunmn.puredupan.hook.symbols.baidu.intl
 internal object BaiduIntlStoryHookPoints {
     const val DOUYIN_OPEN_API_FACTORY = "com.bytedance.sdk.open.douyin.DouYinOpenApiFactory"
     const val DOUYIN_OPEN_CONFIG = "com.bytedance.sdk.open.douyin.DouYinOpenConfig"
+    const val STORY_COMPONENT_CLASS = "com.baidu.netdisk.newstory.component.c"
+    const val STORY_INIT_13_11_METHOD = "___"
+    const val STORY_VIDEO_PRELOADER_INIT_DESCRIPTOR =
+        "Lcom/mars/united/storyvideo/preload/StoryVideoPreloaderContextKt;->b" +
+            "(Landroid/app/Application;Ljava/util/concurrent/Executor;" +
+            "Lcom/mars/united/storyvideo/preload/Im3u8Fetcher;ZJILjava/lang/Object;)V"
+    const val STORY_UI_SERVICE_INIT_DESCRIPTOR =
+        "Ls40/____;->v" +
+            "(Lcom/baidu/netdisk/newstory/component/dependency/IStory;Ljava/util/concurrent/Executor;)V"
 
     val STORY_SEMANTIC_TOKENS = listOf(
         "initStory",

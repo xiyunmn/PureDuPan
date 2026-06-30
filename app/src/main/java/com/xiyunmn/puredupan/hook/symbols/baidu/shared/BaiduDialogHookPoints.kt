@@ -2,7 +2,12 @@ package com.xiyunmn.puredupan.hook.symbols.baidu.shared
 
 internal object BaiduDialogHookPoints {
     const val NEW_QUICK_SETTINGS_ACTIVITY = "com.baidu.netdisk.ui.NewQuickSettingsActivity"
+    const val REPEATED_NEW_QUICK_SETTINGS_ACTIVITY =
+        "com.baidu.netdisk.ui.RepeatedNewQuickSettingsActivity"
     const val NEW_QUICK_SETTINGS_ACTIVITY_ON_CREATE_METHOD = "onCreate"
+    const val NEW_QUICK_SETTINGS_CAN_SHOW_METHOD = "canNewQuickSettingsActivityShow"
+    const val REPEATED_NEW_QUICK_SETTINGS_CAN_SHOW_METHOD =
+        "checkIsShowRepeateNewQuickSettingsActivity"
 
     const val SVIP_ICON_GUIDE = "com.baidu.netdisk.ui.svipicon.SvipIconGuide"
     const val SVIP_ICON_GUIDE_SHOW_GUIDE_METHOD = "showGuide"

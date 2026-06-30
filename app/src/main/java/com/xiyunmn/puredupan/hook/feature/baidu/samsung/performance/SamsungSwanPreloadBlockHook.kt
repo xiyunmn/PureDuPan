@@ -5,6 +5,7 @@ import android.os.Bundle
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticSwanPreloadResolver
 import com.xiyunmn.puredupan.hook.symbols.baidu.samsung.BaiduSamsungHookPoints
 
 /**
@@ -27,7 +28,15 @@ internal object SamsungSwanPreloadBlockHook {
                 cl,
             ) ?: run {
                 XposedCompat.log("[SamsungSwanPreloadBlockHook] SwanAppPreloadHelper NOT FOUND")
-                hookState.reset()
+                val installedCount = hookDomesticPrefetchManager(cl)
+                if (installedCount == 0) {
+                    XposedCompat.log("[SamsungSwanPreloadBlockHook] no compat hooks installed")
+                    hookState.reset()
+                    return
+                }
+                XposedCompat.log(
+                    "[SamsungSwanPreloadBlockHook] compat hooks INSTALLED: count=$installedCount",
+                )
                 return
             }
             val swanClientPuppetClass = XposedCompat.findClassOrNull(
@@ -87,6 +96,8 @@ internal object SamsungSwanPreloadBlockHook {
                 "[SamsungSwanPreloadBlockHook] SwanClientPuppet.tryPreload NOT FOUND",
             )
 
+            installedCount += hookDomesticPrefetchManager(cl)
+
             if (installedCount == 0) {
                 XposedCompat.log("[SamsungSwanPreloadBlockHook] no hooks installed")
                 hookState.reset()
@@ -121,6 +132,33 @@ internal object SamsungSwanPreloadBlockHook {
             }
         }
         return 1
+    }
+
+    private fun hookDomesticPrefetchManager(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        DomesticSwanPreloadResolver.resolvePrefetchEventMethod(cl)?.let { method ->
+            mod.hook(method).intercept { chain ->
+                if (isEnabled()) {
+                    XposedCompat.logD("[SamsungSwanPreloadBlockHook] Swan prefetch event blocked")
+                    null
+                } else {
+                    chain.proceed()
+                }
+            }
+            return 1
+        }
+        DomesticSwanPreloadResolver.resolveClientPuppetPreloadFallback(cl)?.let { method ->
+            mod.hook(method).intercept { chain ->
+                if (isEnabled()) {
+                    XposedCompat.logD("[SamsungSwanPreloadBlockHook] SwanClientPuppet.v0 blocked")
+                    chain.thisObject
+                } else {
+                    chain.proceed()
+                }
+            }
+            return 1
+        }
+        return 0
     }
 
     private fun isEnabled(): Boolean =

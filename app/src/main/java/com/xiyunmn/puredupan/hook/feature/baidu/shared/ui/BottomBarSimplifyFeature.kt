@@ -62,53 +62,59 @@ object BottomBarSimplifyFeature {
                 return
             }
 
-            val onCreateMethod = XposedCompat.findMethodOrNull(
-                activityClass,
-                "onCreate",
-                Bundle::class.java,
-            ) ?: run {
-                XposedCompat.log("[BottomBarSimplifyFeature] MainActivity.onCreate NOT FOUND")
-                return
-            }
+            var installed = 0
 
-            mod.hook(onCreateMethod).intercept { chain ->
-                val result = chain.proceed()
-                try {
-                    applyTabVisibility(chain.thisObject as? Activity)
-                } catch (e: Exception) {
-                    XposedCompat.logD {
-                        "[BottomBarSimplifyFeature] applyTabVisibility failed (non-fatal): ${e.message}"
-                    }
-                }
-                result
-            }
-
-            val onWindowFocusChangedMethod = XposedCompat.findMethodOrNull(
-                activityClass,
-                "onWindowFocusChanged",
-                Boolean::class.javaPrimitiveType!!,
-            )
-            if (onWindowFocusChangedMethod != null) {
-                mod.hook(onWindowFocusChangedMethod).intercept { chain ->
+            XposedCompat.findMethodOrNull(activityClass, "initView")?.let { method ->
+                mod.hook(method).intercept { chain ->
                     val result = chain.proceed()
-                    try {
-                        applyTabVisibility(chain.thisObject as? Activity)
-                    } catch (e: Exception) {
-                        XposedCompat.logD {
-                            "[BottomBarSimplifyFeature] focus reapply failed (non-fatal): ${e.message}"
-                        }
-                    }
+                    applyTabVisibilitySafely(chain.thisObject as? Activity, "initView")
                     result
                 }
+                installed++
+            }
+
+            XposedCompat.findMethodOrNull(activityClass, "initTabsSkin")?.let { method ->
+                mod.hook(method).intercept { chain ->
+                    val result = chain.proceed()
+                    applyTabVisibilitySafely(chain.thisObject as? Activity, "initTabsSkin")
+                    result
+                }
+                installed++
+            }
+
+            if (installed == 0) {
+                val onCreateMethod = XposedCompat.findMethodOrNull(
+                    activityClass,
+                    "onCreate",
+                    Bundle::class.java,
+                ) ?: run {
+                    XposedCompat.log("[BottomBarSimplifyFeature] MainActivity tab init methods NOT FOUND")
+                    return
+                }
+                mod.hook(onCreateMethod).intercept { chain ->
+                    val result = chain.proceed()
+                    applyTabVisibilitySafely(chain.thisObject as? Activity, "onCreate")
+                    result
+                }
+                installed++
             }
 
             XposedCompat.log(
-                "[BottomBarSimplifyFeature] hook INSTALLED: $mainActivityClassName.onCreate",
+                "[BottomBarSimplifyFeature] hooks INSTALLED: $mainActivityClassName, count=$installed",
             )
         } catch (e: Exception) {
             hookState.reset()
             XposedCompat.log("[BottomBarSimplifyFeature] install FAILED: ${e.message}")
         }
+    }
+
+    private fun applyTabVisibilitySafely(activity: Activity?, reason: String) {
+        runCatching { applyTabVisibility(activity) }
+            .onFailure {
+                XposedCompat.logD(
+                    "[BottomBarSimplifyFeature] apply failed ($reason): ${it.message}",
+                )
+            }
     }
 
     private fun applyTabVisibility(activity: Activity?) {

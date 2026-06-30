@@ -204,8 +204,19 @@ internal object DexKitCacheWarmUp {
                 "forceFullScan=$forceFullScan, reason=$reason, tasks=${tasks.joinToString { it.id }}",
         )
         var foundCount = 0
+        var skippedCount = 0
         tasks.forEach { task ->
             val beforeStatus = DexKitCompat.readTargetStatus(task.id)
+            if (!forceFullScan && beforeStatus?.success == true) {
+                foundCount++
+                skippedCount++
+                XposedCompat.logD("[DexKitCacheWarmUp] task skipped: cached success, id=${task.id}")
+                return@forEach
+            }
+            if (DexKitCompat.shouldSkipScan("DexKitCacheWarmUp", task.id, forceFullScan)) {
+                skippedCount++
+                return@forEach
+            }
             if (forceFullScan || beforeStatus == null) {
                 DexKitCompat.markTargetScanning("DexKitCacheWarmUp", task.id)
             }
@@ -234,7 +245,9 @@ internal object DexKitCacheWarmUp {
                 XposedCompat.log(t)
             }
         }
-        XposedCompat.log("[DexKitCacheWarmUp] warm-up END: found=$foundCount/${tasks.size}")
+        XposedCompat.log(
+            "[DexKitCacheWarmUp] warm-up END: found=$foundCount/${tasks.size}, skipped=$skippedCount",
+        )
     }
 
     private fun buildFailureDetail(taskId: String, t: Throwable): String {

@@ -35,6 +35,15 @@ internal object DomesticFloatViewStartupDexKitResolver {
     }
 
     fun resolveInitAudioCircleView(cl: ClassLoader): Method? {
+        resolveKnown13_27Method(cl)?.let { method ->
+            DexKitCompat.markTargetSuccess(
+                TAG,
+                CACHE_ID,
+                "${method.declaringClass.name}.${method.name}",
+            )
+            return method
+        }
+
         if (!HookSettings.isExperimentalDexKitEnabled) {
             XposedCompat.logD("[$TAG] skipped: DexKit disabled")
             return null
@@ -57,19 +66,36 @@ internal object DomesticFloatViewStartupDexKitResolver {
                             .paramTypes()
                             .addInvoke(
                                 MethodMatcher.create()
-                                    .name(BaiduDomesticDexKitHookPoints.AUDIO_API_SHOW_AUDIO_CIRCLE_METHOD),
+                                    .name(BaiduDomesticDexKitHookPoints.AUDIO_API_INIT_AUDIO_CIRCLE_METHOD),
                             ),
                     ),
             ).mapTo(linkedSetOf()) { methodData -> methodData.descriptor }
 
-            val startupTaskCandidates = bridge.findMethod(
+            val startupTaskClassNames = bridge.findMethod(
                 FindMethod.create()
                     .matcher(
                         MethodMatcher.create()
-                            .returnType(Void.TYPE)
-                            .paramTypes(),
+                            .returnType(String::class.java)
+                            .paramTypes()
+                            .usingStrings(BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_NAME),
                     ),
-            ).map { methodData ->
+            ).mapTo(linkedSetOf()) { methodData -> methodData.className }
+
+            known13_27ClassNames().forEach { className ->
+                startupTaskClassNames += className
+            }
+
+            val startupTaskCandidates = startupTaskClassNames.flatMap { className ->
+                bridge.findMethod(
+                    FindMethod.create()
+                        .matcher(
+                            MethodMatcher.create()
+                                .declaredClass(className)
+                                .returnType(Void.TYPE)
+                                .paramTypes(),
+                        ),
+                )
+            }.map { methodData ->
                 DexMethodCandidate(
                     className = methodData.className,
                     methodName = methodData.name,
@@ -82,7 +108,36 @@ internal object DomesticFloatViewStartupDexKitResolver {
                     usingStrings = methodData.usingStrings.toSet(),
                 )
             }
-            audioShowBridgeDescriptors to startupTaskCandidates
+
+            val candidates = if (startupTaskCandidates.isEmpty()) {
+                bridge.findMethod(
+                    FindMethod.create()
+                        .matcher(
+                            MethodMatcher.create()
+                                .returnType(Void.TYPE)
+                                .paramTypes()
+                                .addInvoke(
+                                    MethodMatcher.create()
+                                        .name(BaiduDomesticDexKitHookPoints.AUDIO_API_INIT_AUDIO_CIRCLE_METHOD),
+                                ),
+                        ),
+                ).map { methodData ->
+                    DexMethodCandidate(
+                        className = methodData.className,
+                        methodName = methodData.name,
+                        descriptor = methodData.descriptor,
+                        returnTypeName = methodData.returnTypeName,
+                        paramTypeNames = methodData.paramTypeNames,
+                        isConstructor = methodData.isConstructor,
+                        modifiers = methodData.modifiers,
+                        invokeDescriptors = methodData.invokes.map { it.descriptor }.toSet(),
+                        usingStrings = methodData.usingStrings.toSet(),
+                    )
+                }
+            } else {
+                startupTaskCandidates
+            }
+            audioShowBridgeDescriptors to candidates
         } ?: return null
 
         val (audioShowBridgeDescriptors, candidates) = scan
@@ -90,7 +145,7 @@ internal object DomesticFloatViewStartupDexKitResolver {
         val matches = candidates.mapNotNull { candidate ->
             if (!candidate.isStartupTaskVoidMethodShape()) return@mapNotNull null
             if (candidate.invokeDescriptors.intersect(audioShowBridgeDescriptors).isEmpty()) {
-                rejected += "${candidate.memberName()} rejected: no audio show bridge invoke"
+                rejected += "${candidate.memberName()} rejected: no audio init bridge invoke"
                 return@mapNotNull null
             }
             val method = validateCandidate(cl, candidate, rejected) ?: return@mapNotNull null
@@ -115,6 +170,30 @@ internal object DomesticFloatViewStartupDexKitResolver {
         )
         return method
     }
+
+    private fun resolveKnown13_27Method(cl: ClassLoader): Method? {
+        for (className in known13_27ClassNames()) {
+            val method = validateRef(
+                cl,
+                DexKitCompat.MethodRef(
+                    className,
+                    BaiduDomesticDexKitHookPoints
+                        .FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_13_27_METHOD,
+                ),
+            )
+            if (method != null) {
+                XposedCompat.logD("[$TAG] resolved known 13.27 initAudioCircleView: ${method.declaringClass.name}.${method.name}")
+                return method
+            }
+        }
+        return null
+    }
+
+    private fun known13_27ClassNames(): List<String> =
+        listOf(
+            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_13_27_CLASS,
+            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_13_27_JADX_CLASS,
+        )
 
     private fun validateCandidate(
         cl: ClassLoader,

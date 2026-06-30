@@ -1,10 +1,9 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance
 
-import android.content.Context
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import com.xiyunmn.puredupan.hook.symbols.baidu.samsung.BaiduSamsungHookPoints
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticVideoAdPreloadDexKitResolver
 
 /**
  * Blocks only Samsung host video front ad material preloading.
@@ -21,20 +20,7 @@ internal object SamsungVideoAdPreloadBlockHook {
         if (!hookState.markInstalled()) return
 
         try {
-            val clazz = XposedCompat.findClassOrNull(
-                BaiduSamsungHookPoints.ADVERTISE_SDK,
-                cl,
-            ) ?: run {
-                XposedCompat.log("[SamsungVideoAdPreloadBlockHook] AdvertiseSDK class NOT FOUND")
-                hookState.reset()
-                return
-            }
-
-            val method = XposedCompat.findMethodOrNull(
-                clazz,
-                BaiduSamsungHookPoints.ADVERTISE_SDK_DOWNLOAD_VIDEO_FRONT_AD_METHOD,
-                Context::class.java,
-            ) ?: run {
+            val method = DomesticVideoAdPreloadDexKitResolver.resolve(cl) ?: run {
                 XposedCompat.log(
                     "[SamsungVideoAdPreloadBlockHook] downloadVideoFrontAd(Context) NOT FOUND",
                 )

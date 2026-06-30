@@ -47,6 +47,15 @@ internal object IntlHotStartSplashDexKitResolver {
     )
 
     fun resolve(cl: ClassLoader): ResolveResult? {
+        resolveKnown13_11Result(cl)?.let { result ->
+            cacheResolved(result)
+            XposedCompat.logD(
+                "[$TAG] resolved known hot-start entry: " +
+                    "${result.className}.${result.methodName}",
+            )
+            return result
+        }
+
         if (!HookSettings.isExperimentalDexKitEnabled) {
             XposedCompat.logD("[IntlHotStartSplashDexKitResolver] skipped: config disabled")
             return null
@@ -110,12 +119,25 @@ internal object IntlHotStartSplashDexKitResolver {
                 "score=${score(best.first)}",
         )
         val result = best.second
+        cacheResolved(result)
+        return result
+    }
+
+    private fun resolveKnown13_11Result(cl: ClassLoader): ResolveResult? =
+        validateCachedResult(
+            cl,
+            DexKitCompat.MethodRef(
+                BaiduIntlHookPoints.HOT_START_MANAGER_13_11_CLASS,
+                BaiduIntlHookPoints.HOT_START_ON_RESUME_13_11_METHOD,
+            ),
+        )
+
+    private fun cacheResolved(result: ResolveResult) {
         DexKitCompat.putCachedMethod(
             TAG,
             CACHE_ID,
             DexKitCompat.MethodRef(result.className, result.methodName),
         )
-        return result
     }
 
     private fun validateCachedResult(

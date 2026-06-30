@@ -157,6 +157,16 @@ internal object IntlNonCoreDiffSocketDelayHook {
             XposedCompat.logD("[IntlNonCoreDiffSocketDelayHook] socket DexKit resolve skipped: config disabled")
             return null
         }
+
+        resolveKnown13_11SocketRegisterMethod(cl)?.let { method ->
+            cacheResolvedSocketRegister(method)
+            XposedCompat.logD(
+                "[IntlNonCoreDiffSocketDelayHook] resolved known socket register: " +
+                    "${method.declaringClass.name}.${method.name}",
+            )
+            return method
+        }
+
         when (val cached = DexKitCompat.getCachedMethod(TAG, SOCKET_REGISTER_CACHE_ID) { ref ->
             resolveSocketRegisterRef(cl, ref)
         }) {
@@ -226,12 +236,25 @@ internal object IntlNonCoreDiffSocketDelayHook {
             "[IntlNonCoreDiffSocketDelayHook] resolved socket register by DexKit: " +
                 "${method.declaringClass.name}.${method.name}",
         )
+        cacheResolvedSocketRegister(method)
+        return method
+    }
+
+    private fun resolveKnown13_11SocketRegisterMethod(cl: ClassLoader): Method? =
+        resolveSocketRegisterRef(
+            cl,
+            DexKitCompat.MethodRef(
+                BaiduIntlSocketHookPoints.SOCKET_MANAGER_13_11_CLASS,
+                BaiduIntlSocketHookPoints.SOCKET_REGISTER_13_11_METHOD,
+            ),
+        )
+
+    private fun cacheResolvedSocketRegister(method: Method) {
         DexKitCompat.putCachedMethod(
             TAG,
             SOCKET_REGISTER_CACHE_ID,
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
-        return method
     }
 
     private fun resolveSocketRegisterRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {

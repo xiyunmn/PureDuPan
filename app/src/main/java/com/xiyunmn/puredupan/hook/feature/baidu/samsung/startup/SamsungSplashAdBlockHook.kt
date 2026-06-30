@@ -4,14 +4,16 @@ import android.app.Activity
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticHotStartSplashBlocker
 import com.xiyunmn.puredupan.hook.symbols.baidu.samsung.BaiduSamsungHookPoints
 
 internal object SamsungSplashAdBlockHook {
+    private const val TAG = "SamsungSplashAdBlockHook"
     private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!HookSettings.isSplashInterstitialBlockEnabled) {
-            XposedCompat.log("[SamsungSplashAdBlockHook] skipped: config disabled")
+            XposedCompat.log("[$TAG] skipped: config disabled")
             return
         }
         if (!hookState.markInstalled()) return
@@ -20,16 +22,18 @@ internal object SamsungSplashAdBlockHook {
         try {
             installed += hookColdSplash(cl)
             installed += hookHotSplash(cl)
+            installed += DomesticHotStartSplashBlocker.hookHotStartManager13278(cl, TAG)
+            installed += DomesticHotStartSplashBlocker.hookSplashAdActivityFallback(cl, TAG)
         } catch (t: Throwable) {
-            XposedCompat.log("[SamsungSplashAdBlockHook] install FAILED: ${t.message}")
+            XposedCompat.log("[$TAG] install FAILED: ${t.message}")
             XposedCompat.log(t)
         }
 
         if (installed == 0) {
             hookState.reset()
-            XposedCompat.log("[SamsungSplashAdBlockHook] no hooks installed")
+            XposedCompat.log("[$TAG] no hooks installed")
         } else {
-            XposedCompat.log("[SamsungSplashAdBlockHook] hooks INSTALLED: count=$installed")
+            XposedCompat.log("[$TAG] hooks INSTALLED: count=$installed")
         }
     }
 
@@ -39,14 +43,14 @@ internal object SamsungSplashAdBlockHook {
             BaiduSamsungHookPoints.SPLASH_MANAGER,
             cl,
         ) ?: run {
-            XposedCompat.log("[SamsungSplashAdBlockHook] SplashManager class NOT FOUND")
+            XposedCompat.logD("[$TAG] SplashManager class NOT FOUND")
             return 0
         }
         val fragmentActivityClass = XposedCompat.findClassOrNull(
             "androidx.fragment.app.FragmentActivity",
             cl,
         ) ?: run {
-            XposedCompat.log("[SamsungSplashAdBlockHook] FragmentActivity class NOT FOUND")
+            XposedCompat.logD("[$TAG] FragmentActivity class NOT FOUND")
             return 0
         }
         val method = XposedCompat.findMethodOrNull(
@@ -54,13 +58,13 @@ internal object SamsungSplashAdBlockHook {
             "isShowSplash",
             fragmentActivityClass,
         ) ?: run {
-            XposedCompat.log("[SamsungSplashAdBlockHook] SplashManager.isShowSplash NOT FOUND")
+            XposedCompat.logD("[$TAG] SplashManager.isShowSplash NOT FOUND")
             return 0
         }
 
         mod.hook(method).intercept { chain ->
             if (HookSettings.isSplashInterstitialBlockEnabled) {
-                XposedCompat.logD("[SamsungSplashAdBlockHook] cold splash blocked")
+                XposedCompat.logD("[$TAG] cold splash blocked")
                 false
             } else {
                 chain.proceed()
@@ -75,7 +79,7 @@ internal object SamsungSplashAdBlockHook {
             BaiduSamsungHookPoints.ADVERTISE_HOT_START_MANAGER,
             cl,
         ) ?: run {
-            XposedCompat.log("[SamsungSplashAdBlockHook] AdvertiseHotStartManager class NOT FOUND")
+            XposedCompat.logD("[$TAG] legacy AdvertiseHotStartManager class NOT FOUND")
             return 0
         }
         val method = XposedCompat.findMethodOrNull(
@@ -83,13 +87,13 @@ internal object SamsungSplashAdBlockHook {
             "onResume",
             Activity::class.java,
         ) ?: run {
-            XposedCompat.log("[SamsungSplashAdBlockHook] AdvertiseHotStartManager.onResume NOT FOUND")
+            XposedCompat.logD("[$TAG] legacy AdvertiseHotStartManager.onResume NOT FOUND")
             return 0
         }
 
         mod.hook(method).intercept { chain ->
             if (HookSettings.isSplashInterstitialBlockEnabled) {
-                XposedCompat.logD("[SamsungSplashAdBlockHook] hot splash blocked")
+                XposedCompat.logD("[$TAG] hot splash blocked")
                 false
             } else {
                 chain.proceed()

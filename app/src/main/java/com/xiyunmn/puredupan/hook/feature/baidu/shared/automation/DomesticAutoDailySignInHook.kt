@@ -180,6 +180,32 @@ internal object DomesticAutoDailySignInHook {
 
     private object AccountAccess {
         fun resolve(cl: ClassLoader): AccountState? {
+            resolveExternal(cl)?.let { return it }
+            return resolveInternal(cl)
+        }
+
+        private fun resolveExternal(cl: ClassLoader): AccountState? {
+            return runCatching {
+                val clazz = XposedCompat.findClassOrNull(
+                    BaiduAutomationHookPoints.EXTERNAL_ACCOUNT_UTILS,
+                    cl,
+                ) ?: return null
+                val constructor = clazz.getDeclaredConstructor().apply { isAccessible = true }
+                val instance = constructor.newInstance()
+                val isLogin = XposedCompat.findMethodOrNull(clazz, "isLogin")
+                    ?.invoke(instance) as? Boolean ?: return null
+                val uid = XposedCompat.findMethodOrNull(clazz, "getUid")
+                    ?.invoke(instance) as? String
+                val bduss = XposedCompat.findMethodOrNull(clazz, "getBduss")
+                    ?.invoke(instance) as? String
+                AccountState(isLogin = isLogin, uid = uid, bduss = bduss)
+            }.getOrElse { t ->
+                XposedCompat.logD("[$TAG] external account state resolve failed: ${t.message}")
+                null
+            }
+        }
+
+        private fun resolveInternal(cl: ClassLoader): AccountState? {
             return runCatching {
                 val clazz = XposedCompat.findClassOrNull(BaiduAutomationHookPoints.ACCOUNT_UTILS, cl) ?: return null
                 val getInstance = findFirstMethod(clazz, "getInstance", "k") ?: return null
@@ -217,22 +243,43 @@ internal object DomesticAutoDailySignInHook {
         }
 
         companion object {
+            private const val PROBE_BDUSS = "__puredupan_cookie_probe__"
+
             fun resolve(cl: ClassLoader): DomesticCookieAccess? {
+                return resolveByMethodName(
+                    cl,
+                    BaiduAutomationHookPoints.COOKIE_UTILS,
+                    "getCookieByBduss",
+                ) ?: resolveByMethodName(
+                    cl,
+                    BaiduAutomationHookPoints.KOTLIN_COOKIE_UTILS_13_27,
+                    "____",
+                )
+            }
+
+            private fun resolveByMethodName(
+                cl: ClassLoader,
+                className: String,
+                methodName: String,
+            ): DomesticCookieAccess? {
                 return runCatching {
-                    val cookieUtilsClass = XposedCompat.findClassOrNull(
-                        BaiduAutomationHookPoints.COOKIE_UTILS,
-                        cl,
-                    ) ?: return null
-                    val getCookieByBduss = XposedCompat.findMethodOrNull(
-                        cookieUtilsClass,
-                        "getCookieByBduss",
-                        String::class.java,
-                    ) ?: return null
-                    DomesticCookieAccess(getCookieByBduss)
+                    val clazz = XposedCompat.findClassOrNull(className, cl) ?: return null
+                    val method = XposedCompat.findMethodOrNull(clazz, methodName, String::class.java)
+                        ?: return null
+                    val probe = method.invoke(null, PROBE_BDUSS) as? String
+                    if (!probe.looksLikeBdussCookie(PROBE_BDUSS)) return null
+                    XposedCompat.logD("[$TAG] cookie helper resolved: $className.$methodName")
+                    DomesticCookieAccess(method)
                 }.getOrElse { t ->
-                    XposedCompat.logD("[$TAG] cookie access resolve failed: ${t.message}")
+                    XposedCompat.logD("[$TAG] cookie helper rejected: $className.$methodName, ${t.message}")
                     null
                 }
+            }
+
+            private fun String?.looksLikeBdussCookie(bduss: String): Boolean {
+                return this != null &&
+                    contains(bduss) &&
+                    contains("BDUSS", ignoreCase = true)
             }
         }
     }
