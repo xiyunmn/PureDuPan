@@ -18,41 +18,49 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             id = DomesticThumbnailOperatorDexKitResolver.CLIENT_COMPUTE_INIT_CACHE_ID,
             target = "domestic client compute init method",
             feature = "thumbnail operator service block",
+            featureKey = FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE,
         ),
         DexKitTargetDescriptor(
             id = DomesticThumbnailOperatorDexKitResolver.THUMBNAIL_ADD_JOB_CACHE_ID,
             target = "domestic thumbnail add-job method",
             feature = "thumbnail operator service block",
+            featureKey = FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE,
         ),
         DexKitTargetDescriptor(
             id = DomesticFloatViewStartupDexKitResolver.CACHE_ID,
             target = "domestic float-view startup audio method",
             feature = "audio circle autostart block",
+            featureKey = FeatureKeys.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART,
         ),
         DexKitTargetDescriptor(
             id = DomesticVideoAdPreloadDexKitResolver.CACHE_ID,
             target = "domestic video front ad download method",
             feature = "video ad preload block",
+            featureKey = FeatureKeys.KEY_DISABLE_VIDEO_AD_PRELOAD,
         ),
         DexKitTargetDescriptor(
             id = DomesticSwanPreloadResolver.PREFETCH_EVENT_CACHE_ID,
             target = "domestic Swan prefetch event method",
             feature = "Swan preload block",
+            featureKey = FeatureKeys.KEY_DISABLE_SWAN_PRELOAD,
         ),
         DexKitTargetDescriptor(
             id = DomesticCookieByBdussDexKitResolver.CACHE_ID,
             target = "domestic cookie by BDUSS method",
+            featureKey = FeatureKeys.KEY_AUTO_DAILY_SIGN_IN,
             feature = "自动签到",
         ),
         DexKitTargetDescriptor(
             id = DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_DOWNLOAD_FACTORY_CACHE_ID,
             target = "domestic dynamic plugin auto-download factory",
             feature = "dynamic plugin auto download block",
+            featureKey = FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD,
         ),
         DexKitTargetDescriptor(
             id = DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_INSTALL_FACTORY_CACHE_ID,
             target = "domestic dynamic plugin auto-install factory",
             feature = "dynamic plugin auto download block",
+            featureKey = FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD,
         ),
     )
 

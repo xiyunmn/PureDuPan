@@ -6,7 +6,6 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
-import android.view.animation.DecelerateInterpolator
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 
@@ -61,9 +60,8 @@ internal object SettingsDialogWindows {
             }
             val decorView = window.decorView
             decorView.animate().cancel()
-            decorView.alpha = 0f
             applyStableSubDialogWindow(window, density, clearCustomPadding = true, logTag = logTag)
-            animateStableSubDialogEntry(decorView, logTag)
+            animateStableSubDialogEntry(decorView, density, logTag)
         } catch (t: Throwable) {
             XposedCompat.logW("$logTag showStableSubDialog failed: ${t.message}")
             try {
@@ -93,16 +91,13 @@ internal object SettingsDialogWindows {
         }
     }
 
-    private fun animateStableSubDialogEntry(root: View, logTag: String) {
+    private fun animateStableSubDialogEntry(root: View, density: Float, logTag: String) {
         try {
-            root.animate()
-                .alpha(1f)
-                .setDuration(200L)
-                .setInterpolator(DecelerateInterpolator(1.15f))
-                .start()
+            UiStyle.animateSubDialogEntry(root, density)
         } catch (t: Throwable) {
             root.alpha = 1f
-            XposedCompat.logW("$logTag stable sub dialog alpha animation failed: ${t.message}")
+            root.translationY = 0f
+            XposedCompat.logW("$logTag stable sub dialog entry animation failed: ${t.message}")
         }
     }
 

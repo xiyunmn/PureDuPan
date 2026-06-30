@@ -30,10 +30,21 @@ internal object SettingsAboutSection {
         hostId: String?,
         versionClickListener: View.OnClickListener?,
         showDeviceFingerprint: () -> Boolean,
+        setShowDeviceFingerprint: (Boolean) -> Unit,
     ): SettingsAboutSectionHandle {
         val density = context.resources.displayMetrics.density
         val tokens = UiStyle.tokens(context)
         var deviceFingerprintDescriptionView: TextView? = null
+        var deviceFingerprintToggleBadgeView: TextView? = null
+        fun refreshDeviceFingerprintUi() {
+            val shouldShow = showDeviceFingerprint()
+            deviceFingerprintDescriptionView?.let { view ->
+                val description = deviceFingerprintDescription(context, shouldShow)
+                view.text = description
+                view.visibility = if (description.isBlank()) View.GONE else View.VISIBLE
+            }
+            deviceFingerprintToggleBadgeView?.text = deviceFingerprintToggleBadgeText(shouldShow)
+        }
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, 0, 0, padding)
@@ -58,7 +69,16 @@ internal object SettingsAboutSection {
             val aboutItemsContainer = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
             }
-            buildItems(context, hostId, versionClickListener, showDeviceFingerprint).forEach { item ->
+            buildItems(
+                context,
+                hostId,
+                versionClickListener,
+                showDeviceFingerprint,
+                setShowDeviceFingerprint = { enabled ->
+                    setShowDeviceFingerprint(enabled)
+                    refreshDeviceFingerprintUi()
+                },
+            ).forEach { item ->
                 aboutItemsContainer.addView(
                     createItem(
                         context = context,
@@ -70,6 +90,11 @@ internal object SettingsAboutSection {
                         } else {
                             null
                         },
+                        onSecondaryActionBadgeCreated = if (item.title == UiText.Settings.DEVICE_FINGERPRINT_LABEL) {
+                            { view: TextView -> deviceFingerprintToggleBadgeView = view }
+                        } else {
+                            null
+                        },
                     ),
                 )
             }
@@ -77,10 +102,7 @@ internal object SettingsAboutSection {
         }
         return SettingsAboutSectionHandle(
             root = root,
-            refreshDeviceFingerprintDescription = {
-                deviceFingerprintDescriptionView?.text =
-                    deviceFingerprintDescription(context, showDeviceFingerprint())
-            },
+            refreshDeviceFingerprintDescription = ::refreshDeviceFingerprintUi,
         )
     }
 
@@ -89,6 +111,7 @@ internal object SettingsAboutSection {
         hostId: String?,
         versionClickListener: View.OnClickListener?,
         showDeviceFingerprint: () -> Boolean,
+        setShowDeviceFingerprint: (Boolean) -> Unit,
     ): List<AboutInfoManager.AboutItem> {
         val versionInfo = buildVersionDisplayInfo(context, hostId)
         return listOf(
@@ -96,11 +119,16 @@ internal object SettingsAboutSection {
                 UiText.Settings.DEVICE_FINGERPRINT_LABEL,
                 deviceFingerprintDescription(context, showDeviceFingerprint()),
                 null,
-                View.OnClickListener {
+                actionBadgeText = UiText.Settings.DEVICE_FINGERPRINT_DESC,
+                onActionBadgeClick = View.OnClickListener {
                     DeviceFingerprintDialog.show(
                         context = context,
                         allowHiddenDeviceFingerprint = showDeviceFingerprint(),
                     )
+                },
+                secondaryActionBadgeText = deviceFingerprintToggleBadgeText(showDeviceFingerprint()),
+                onSecondaryActionBadgeClick = View.OnClickListener {
+                    setShowDeviceFingerprint(!showDeviceFingerprint())
                 },
             ),
             AboutInfoManager.AboutItem(
@@ -128,10 +156,18 @@ internal object SettingsAboutSection {
         context: Context,
         showDeviceFingerprint: Boolean,
     ): String {
-        if (!showDeviceFingerprint) return UiText.Settings.DEVICE_FINGERPRINT_DESC
+        if (!showDeviceFingerprint) return ""
         return UiText.Settings.deviceFingerprintDesc(
             DeviceFingerprintDialog.sensitiveSummaryLines(context)
         )
+    }
+
+    private fun deviceFingerprintToggleBadgeText(showDeviceFingerprint: Boolean): String {
+        return if (showDeviceFingerprint) {
+            UiText.Settings.DEVICE_FINGERPRINT_HIDE_DEVICE_ID
+        } else {
+            UiText.Settings.DEVICE_FINGERPRINT_SHOW_DEVICE_ID
+        }
     }
 
     private fun buildVersionDisplayInfo(context: Context, hostId: String?): VersionDisplayInfo {
@@ -174,6 +210,7 @@ internal object SettingsAboutSection {
         padding: Int,
         item: AboutInfoManager.AboutItem,
         onDescriptionCreated: ((TextView) -> Unit)? = null,
+        onSecondaryActionBadgeCreated: ((TextView) -> Unit)? = null,
     ): View {
         val tokens = UiStyle.tokens(context)
         return LinearLayout(context).apply {
@@ -184,17 +221,37 @@ internal object SettingsAboutSection {
                 setOnClickListener { listener.onClick(this) }
             }
 
-            addView(TextView(context).apply {
-                text = item.title
-                textSize = 14.5f
-                setTextColor(tokens.textPrimary)
-                typeface = Typeface.DEFAULT_BOLD
-                includeFontPadding = false
-                gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            addView(LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(TextView(context).apply {
+                    text = item.title
+                    textSize = 14.5f
+                    setTextColor(tokens.textPrimary)
+                    typeface = Typeface.DEFAULT_BOLD
+                    includeFontPadding = false
+                    gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                })
+                addActionBadge(
+                    context = context,
+                    density = density,
+                    text = item.actionBadgeText,
+                    onClickListener = item.onActionBadgeClick,
+                )
+                val secondaryBadge = addActionBadge(
+                    context = context,
+                    density = density,
+                    text = item.secondaryActionBadgeText,
+                    onClickListener = item.onSecondaryActionBadgeClick,
+                )
+                if (secondaryBadge != null) {
+                    onSecondaryActionBadgeCreated?.invoke(secondaryBadge)
+                }
             })
 
             val descriptionView = TextView(context).apply {
                 text = item.description
+                visibility = if (item.description.isBlank()) View.GONE else View.VISIBLE
                 textSize = 13f
                 setTextColor(if (item.url != null) tokens.accent else tokens.textSecondary)
                 gravity = Gravity.START or Gravity.CENTER_VERTICAL
@@ -216,7 +273,39 @@ internal object SettingsAboutSection {
                 }
             }
             onDescriptionCreated?.invoke(descriptionView)
-            addView(descriptionView)
+            if (item.description.isNotBlank() || onDescriptionCreated != null) {
+                addView(descriptionView)
+            }
         }
+    }
+
+    private fun LinearLayout.addActionBadge(
+        context: Context,
+        density: Float,
+        text: String?,
+        onClickListener: View.OnClickListener?,
+    ): TextView? {
+        if (text == null || onClickListener == null) return null
+        val tokens = UiStyle.tokens(context)
+        val badge = TextView(context).apply {
+            this.text = text
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            UiStyle.paintStatusBadge(this, density, tokens, enabled = true)
+            setOnClickListener {
+                UiStyle.animateActionPress(this)
+                onClickListener.onClick(this)
+            }
+        }
+        addView(
+            badge,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                setMargins((8 * density).toInt(), 0, 0, 0)
+            },
+        )
+        return badge
     }
 }

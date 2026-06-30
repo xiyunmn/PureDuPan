@@ -209,6 +209,8 @@ internal object TopLevelSettingsItemsBuilder {
             defaultValue = false,
             actionIcon = actionIconForDebugSpec(spec, dexKitSummaryText),
             actionButtonText = spec.actionButtonText,
+            statusBadgeText = statusBadgeTextForDebugSpec(spec, dexKitSummaryText),
+            onStatusBadgeClick = statusBadgeClickForDebugSpec(spec, actionHandlers),
             showSwitch = spec.showSwitch,
             onActionClick = actionClickForDebugSpec(spec, actionHandlers),
             visible = visible,
@@ -220,9 +222,43 @@ internal object TopLevelSettingsItemsBuilder {
         dexKitSummaryText: String,
     ): String? {
         return when (spec.action) {
-            DebugSettingsAction.DEXKIT_STATUS -> dexKitSummaryText
+            DebugSettingsAction.DEXKIT_STATUS -> UiText.Settings.ACTION_ICON_SIGN_IN
             DebugSettingsAction.CLEAR_LOGS -> UiText.Settings.ACTION_ICON_CLEAR
             DebugSettingsAction.RESET_MODULE_SETTINGS -> UiText.Settings.ACTION_ICON_RESET
+            DebugSettingsAction.NONE -> null
+        }
+    }
+
+    private fun statusBadgeTextForDebugSpec(
+        spec: DebugSwitchSpec,
+        dexKitSummaryText: String,
+    ): String? {
+        return when (spec.action) {
+            DebugSettingsAction.DEXKIT_STATUS ->
+                "${UiText.Settings.DEXKIT_STATUS_BADGE_PREFIX}: ${formatDexKitSummaryForBadge(dexKitSummaryText)}"
+            DebugSettingsAction.CLEAR_LOGS,
+            DebugSettingsAction.RESET_MODULE_SETTINGS,
+            DebugSettingsAction.NONE -> null
+        }
+    }
+
+    private fun formatDexKitSummaryForBadge(summary: String): String {
+        val parts = summary.split("/")
+        return if (parts.size == 2) {
+            "${parts[0].trim()} / ${parts[1].trim()}"
+        } else {
+            summary
+        }
+    }
+
+    private fun statusBadgeClickForDebugSpec(
+        spec: DebugSwitchSpec,
+        actionHandlers: DebugSettingsActionHandlers,
+    ): (() -> Unit)? {
+        return when (spec.action) {
+            DebugSettingsAction.DEXKIT_STATUS -> actionHandlers.onDexKitDetailsClick
+            DebugSettingsAction.CLEAR_LOGS,
+            DebugSettingsAction.RESET_MODULE_SETTINGS,
             DebugSettingsAction.NONE -> null
         }
     }
@@ -232,7 +268,7 @@ internal object TopLevelSettingsItemsBuilder {
         actionHandlers: DebugSettingsActionHandlers,
     ): (() -> Unit)? {
         return when (spec.action) {
-            DebugSettingsAction.DEXKIT_STATUS -> actionHandlers.onDexKitStatusClick
+            DebugSettingsAction.DEXKIT_STATUS -> actionHandlers.onDexKitScanClick
             DebugSettingsAction.CLEAR_LOGS -> actionHandlers.onClearLogsClick
             DebugSettingsAction.RESET_MODULE_SETTINGS -> actionHandlers.onResetModuleSettingsClick
             DebugSettingsAction.NONE -> null

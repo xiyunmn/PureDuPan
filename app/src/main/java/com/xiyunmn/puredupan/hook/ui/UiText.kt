@@ -172,14 +172,13 @@ object UiText {
         fun detailedLoggingDesc(hostPackageName: String): String =
             "输出更详细的 Hook调试日志，日志通常位于宿主应用缓存目录下：" +
                 "/data/user/0/$hostPackageName/cache/wangpanhook/logs/"
-        const val SHOW_DEVICE_FINGERPRINT_LABEL = "显示设备指纹"
-        const val SHOW_DEVICE_FINGERPRINT_PRIVACY_HINT = "注意个人隐私安全"
         const val EXPERIMENTAL_DEXKIT_LABEL = "DexKit 解析"
         const val EXPERIMENTAL_DEXKIT_DESC = "模块或宿主更新后会自动后台扫描一次；也可手动执行全量扫描"
         const val DEXKIT_SCAN_ACTION = "执行"
         const val DEXKIT_SCAN_STARTED = "DexKit 扫描已开始"
         const val DEXKIT_SCAN_PENDING = "DexKit 扫描已标记，将在下次宿主启动时执行"
         const val DEXKIT_STATUS_TITLE = "DexKit 查询状态"
+        const val DEXKIT_STATUS_BADGE_PREFIX = "查找状态"
         const val DEXKIT_STATUS_SUMMARY_PREFIX = "成功数/总数"
         const val DEXKIT_STATUS_ID = "ID"
         const val DEXKIT_STATUS_TARGET = "目标"
@@ -306,7 +305,9 @@ object UiText {
 
         const val ABOUT = "关于"
         const val DEVICE_FINGERPRINT_LABEL = "设备指纹"
-        const val DEVICE_FINGERPRINT_DESC = "点击查看环境信息"
+        const val DEVICE_FINGERPRINT_DESC = "查看详细信息"
+        const val DEVICE_FINGERPRINT_SHOW_DEVICE_ID = "显示设备ID"
+        const val DEVICE_FINGERPRINT_HIDE_DEVICE_ID = "隐藏设备ID"
         const val DEVICE_FINGERPRINT_SENSITIVE_DESC = "CUID、Android ID、OAID"
         const val DEVICE_FINGERPRINT_DIALOG_TITLE = "设备指纹"
         const val DEVICE_FINGERPRINT_COPY = "复制"
@@ -323,11 +324,7 @@ object UiText {
         const val MODULE_RELEASE_VERSION = "Release"
 
         fun deviceFingerprintDesc(summaryLines: List<String>): String {
-            return if (summaryLines.isNotEmpty()) {
-                "$DEVICE_FINGERPRINT_DESC\n${summaryLines.joinToString("\n")}"
-            } else {
-                DEVICE_FINGERPRINT_DESC
-            }
+            return summaryLines.joinToString("\n")
         }
 
         const val SAVE = "保存"

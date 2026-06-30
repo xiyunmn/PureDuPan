@@ -94,6 +94,8 @@ internal object DexKitCacheWarmUp {
         }
     }
 
+    fun isScanRunning(): Boolean = scanRunning.get()
+
     fun summaryText(host: DexKitHostContext): String {
         val statuses = statusViews(host)
         val total = statuses.size

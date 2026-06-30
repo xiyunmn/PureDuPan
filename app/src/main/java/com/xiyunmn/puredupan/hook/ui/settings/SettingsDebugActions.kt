@@ -18,6 +18,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsDexKitState
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsHostState
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
+import com.xiyunmn.puredupan.hook.settings.runtime.SettingsRuntimeSession
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.ui.UiText
 import java.text.SimpleDateFormat
@@ -27,14 +28,13 @@ import java.util.Locale
 internal object SettingsDebugActions {
     private const val DEXKIT_STATUS_REFRESH_MS = 1000L
 
-    fun executeDexKitScanAndShowStatus(context: Context) {
+    fun executeDexKitScan(context: Context) {
         val started = SettingsDexKitState.triggerFullScanFromSettings(context)
         Toast.makeText(
             context,
             if (started) UiText.Settings.DEXKIT_SCAN_STARTED else UiText.Settings.DEXKIT_SCAN_PENDING,
             Toast.LENGTH_SHORT,
         ).show()
-        showDexKitStatusDialog(context)
     }
 
     fun showDexKitStatusDialog(context: Context) {
@@ -101,6 +101,10 @@ internal object SettingsDebugActions {
                         maxWidthDp = 360f,
                         horizontalMarginDp = 28f,
                     )
+                    UiStyle.animateSubDialogEntry(
+                        window.decorView,
+                        window.context.resources.displayMetrics.density,
+                    )
                 }
         } catch (t: Throwable) {
             XposedCompat.logW("[SettingsDebugActions] showDexKitStatusDialog failed: ${t.message}")
@@ -155,36 +159,50 @@ internal object SettingsDebugActions {
         try {
             val density = context.resources.displayMetrics.density
             val padding = (16 * density).toInt()
-            val tokens = UiStyle.tokens(context)
-            val copyText = buildDexKitStatusDetailsText(statuses, summary)
             val root = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(padding, padding, padding, padding / 2)
             }
-            root.addView(TextView(context).apply {
-                text = "${UiText.Settings.DEXKIT_STATUS_SUMMARY_PREFIX}: $summary"
-                textSize = 14f
-                setTextColor(tokens.accent)
-                typeface = Typeface.DEFAULT_BOLD
-                includeFontPadding = false
-                setPadding(0, 0, 0, (10 * density).toInt())
-            })
+            var latestCopyText = renderDexKitStatusDetailsDialogContent(
+                context = context,
+                root = root,
+                padding = padding,
+                statuses = statuses,
+                summary = summary,
+            )
 
-            statuses.forEachIndexed { index, item ->
-                if (index > 0) {
-                    root.addView(SettingsDialogLayout.createDivider(context, padding))
+            val refreshHandler = Handler(Looper.getMainLooper())
+            lateinit var dialog: AlertDialog
+            val refreshRunnable = object : Runnable {
+                override fun run() {
+                    if (!dialog.isShowing) return
+                    latestCopyText = renderDexKitStatusDetailsDialogContent(
+                        context = context,
+                        root = root,
+                        padding = padding,
+                        statuses = SettingsDexKitState.statusViews(context),
+                        summary = SettingsDexKitState.summaryText(context),
+                    )
+                    if (shouldContinueDexKitStatusRefresh(context)) {
+                        refreshHandler.postDelayed(this, DEXKIT_STATUS_REFRESH_MS)
+                    }
                 }
-                root.addView(createDexKitStatusDetailLogRow(context, item, index))
             }
 
-            val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
+            dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.DEXKIT_STATUS_DETAILS_TITLE)
                 .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
                 .setNegativeButton(UiText.Settings.DEXKIT_STATUS_COPY, null)
                 .setPositiveButton(android.R.string.ok, null)
                 .show()
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setOnClickListener {
-                copyDexKitStatusDetails(context, copyText)
+                copyDexKitStatusDetails(context, latestCopyText)
+            }
+            dialog.setOnDismissListener {
+                refreshHandler.removeCallbacks(refreshRunnable)
+            }
+            if (shouldContinueDexKitStatusRefresh(context)) {
+                refreshHandler.postDelayed(refreshRunnable, DEXKIT_STATUS_REFRESH_MS)
             }
             dialog.window
                 ?.let { window ->
@@ -194,10 +212,42 @@ internal object SettingsDebugActions {
                         maxWidthDp = 420f,
                         horizontalMarginDp = 24f,
                     )
+                    UiStyle.animateSubDialogEntry(
+                        window.decorView,
+                        window.context.resources.displayMetrics.density,
+                    )
                 }
         } catch (t: Throwable) {
             XposedCompat.logW("[SettingsDebugActions] show DexKit detail dialog failed: ${t.message}")
         }
+    }
+
+    private fun renderDexKitStatusDetailsDialogContent(
+        context: Context,
+        root: LinearLayout,
+        padding: Int,
+        statuses: List<SettingsDexKitState.TargetStatusView>,
+        summary: String,
+    ): String {
+        val density = context.resources.displayMetrics.density
+        val tokens = UiStyle.tokens(context)
+        root.removeAllViews()
+        root.addView(TextView(context).apply {
+            text = "${UiText.Settings.DEXKIT_STATUS_SUMMARY_PREFIX}: $summary"
+            textSize = 14f
+            setTextColor(tokens.accent)
+            typeface = Typeface.DEFAULT_BOLD
+            includeFontPadding = false
+            setPadding(0, 0, 0, (10 * density).toInt())
+        })
+
+        statuses.forEachIndexed { index, item ->
+            if (index > 0) {
+                root.addView(SettingsDialogLayout.createDivider(context, padding))
+            }
+            root.addView(createDexKitStatusDetailLogRow(context, item, index))
+        }
+        return buildDexKitStatusDetailsText(context, statuses, summary)
     }
 
     fun showClearLogsConfirmDialog(context: Context) {
@@ -233,6 +283,7 @@ internal object SettingsDebugActions {
                         maxWidthDp = 360f,
                         horizontalMarginDp = 28f,
                     )
+                    UiStyle.animateSubDialogEntry(window.decorView, density)
                 }
         } catch (t: Throwable) {
             Toast.makeText(context, UiText.Settings.CLEAR_LOGS_FAILED, Toast.LENGTH_SHORT).show()
@@ -268,6 +319,7 @@ internal object SettingsDebugActions {
                         maxWidthDp = 360f,
                         horizontalMarginDp = 28f,
                     )
+                    UiStyle.animateSubDialogEntry(window.decorView, density)
                 }
         } catch (t: Throwable) {
             Toast.makeText(context, UiText.Settings.RESET_MODULE_SETTINGS_FAILED, Toast.LENGTH_SHORT).show()
@@ -324,7 +376,7 @@ internal object SettingsDebugActions {
                 setPadding(0, (6 * density).toInt(), 0, 0)
             })
             addView(TextView(context).apply {
-                text = "${UiText.Settings.DEXKIT_STATUS_FEATURE}: ${item.feature}"
+                text = "${UiText.Settings.DEXKIT_STATUS_FEATURE}: ${dexKitFeatureLabel(context, item)}"
                 textSize = 12.5f
                 setTextColor(tokens.textSecondary)
                 includeFontPadding = false
@@ -350,7 +402,7 @@ internal object SettingsDebugActions {
         val tokens = UiStyle.tokens(context)
         val failed = isDexKitFailure(item)
         return TextView(context).apply {
-            text = buildDexKitStatusLogEntry(item, index)
+            text = buildDexKitStatusLogEntry(context, item, index)
             textSize = 12f
             typeface = Typeface.MONOSPACE
             setTextColor(if (failed) tokens.danger else tokens.textPrimary)
@@ -360,35 +412,51 @@ internal object SettingsDebugActions {
     }
 
     private fun buildDexKitStatusDetailsText(
+        context: Context,
         statuses: List<SettingsDexKitState.TargetStatusView>,
         summary: String,
     ): String {
         return buildString {
-            append(UiText.Settings.DEXKIT_STATUS_DETAILS_TITLE)
+            append(UiText.Settings.DEXKIT_STATUS_TITLE)
             append('\n')
             append(UiText.Settings.DEXKIT_STATUS_SUMMARY_PREFIX)
             append(": ")
             append(summary)
             statuses.forEachIndexed { index, item ->
                 append("\n\n")
-                append(buildDexKitStatusLogEntry(item, index))
+                append(buildDexKitStatusLogEntry(context, item, index))
             }
         }
     }
 
     private fun buildDexKitStatusLogEntry(
+        context: Context,
         item: SettingsDexKitState.TargetStatusView,
         index: Int,
     ): String {
         val updatedAt = formatDexKitStatusUpdatedAt(item.updatedAt)
+        val featureLabel = dexKitFeatureLabel(context, item)
         return buildString {
             append('[').append(updatedAt).append("] DexKit target #").append(index + 1).append('\n')
             append("id=").append(item.id).append('\n')
-            append("feature=").append(item.feature).append('\n')
+            append("feature=").append(featureLabel).append('\n')
             append("target=").append(item.target).append('\n')
             append("state=").append(stateTextFor(item.state)).append(" (").append(item.state).append(")").append('\n')
             append("detail=").append(item.detail?.takeIf { it.isNotBlank() } ?: "-")
         }
+    }
+
+    private fun dexKitFeatureLabel(
+        context: Context,
+        item: SettingsDexKitState.TargetStatusView,
+    ): String {
+        val featureKey = item.featureKey ?: return item.feature
+        return runCatching {
+            val hostId = SettingsRuntimeSession.create(context).hostId
+            SettingsHostTextCatalog.forHostId(hostId)
+                .text(featureKey, item.feature, null)
+                .label
+        }.getOrDefault(item.feature)
     }
 
     private fun copyDexKitStatusDetails(context: Context, text: String) {

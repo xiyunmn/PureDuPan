@@ -292,6 +292,31 @@ internal object UiStyle {
         button.setBackgroundColor(0x00000000)
     }
 
+    internal fun paintStatusBadge(
+        view: TextView,
+        density: Float,
+        tokens: Tokens,
+        enabled: Boolean,
+    ) {
+        view.textSize = 12.5f
+        view.typeface = android.graphics.Typeface.DEFAULT_BOLD
+        view.includeFontPadding = false
+        view.minHeight = (30 * density).toInt()
+        view.gravity = android.view.Gravity.CENTER
+        view.setTextColor(if (enabled) tokens.textPrimary else tokens.textMuted)
+        view.setPadding(
+            (12 * density).toInt(),
+            (6 * density).toInt(),
+            (12 * density).toInt(),
+            (6 * density).toInt(),
+        )
+        view.background = GradientDrawable().apply {
+            cornerRadius = 16f * density
+            setColor(if (enabled) tokens.surfaceAlt else tokens.surfaceRaised)
+            setStroke((1 * density).toInt().coerceAtLeast(1), tokens.divider)
+        }
+    }
+
     internal fun paintSignInActionIcon(
         view: TextView,
         density: Float,
@@ -377,6 +402,17 @@ internal object UiStyle {
             .translationY(0f)
             .setDuration(220)
             .setInterpolator(DecelerateInterpolator(1.2f))
+            .start()
+    }
+
+    internal fun animateSubDialogEntry(root: View, density: Float) {
+        root.alpha = 0f
+        root.translationY = 14f * density
+        root.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(340)
+            .setInterpolator(PathInterpolator(0.2f, 0f, 0f, 1f))
             .start()
     }
 

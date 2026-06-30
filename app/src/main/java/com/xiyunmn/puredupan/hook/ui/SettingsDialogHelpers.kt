@@ -22,6 +22,7 @@ internal fun showDisclaimerDialog(context: Context, onAccepted: () -> Unit) {
         if (window != null) {
             val density = context.resources.displayMetrics.density
             SettingsDialogWindows.applyCardStyle(window, density)
+            UiStyle.animateSubDialogEntry(window.decorView, density)
         }
 
         val positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
@@ -74,6 +75,7 @@ internal fun showRestrictedFeatureWarningDialog(context: Context, onConfirmed: (
         if (window != null) {
             val density = context.resources.displayMetrics.density
             SettingsDialogWindows.applyCardStyle(window, density)
+            UiStyle.animateSubDialogEntry(window.decorView, density)
         }
 
         val positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)

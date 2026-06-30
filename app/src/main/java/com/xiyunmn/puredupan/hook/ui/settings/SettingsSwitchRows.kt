@@ -23,6 +23,7 @@ internal object SettingsSwitchRows {
     private const val DEXKIT_EFFECTIVE_AFTER_ENABLE_PHRASE = "DexKit 解析成功后生效"
     private const val DEXKIT_ENHANCED_AFTER_ENABLE_PHRASE = "DexKit 解析成功后增强覆盖"
     private const val ACTION_TEXT_VIEW_TAG = "settings_action_text"
+    private const val STATUS_BADGE_TEXT_VIEW_TAG = "settings_status_badge_text"
 
     @Suppress("DEPRECATION")
     fun create(
@@ -39,6 +40,8 @@ internal object SettingsSwitchRows {
         linkedPrefKeys: List<String> = emptyList(),
         showSwitch: Boolean = true,
         actionButtonText: String? = null,
+        statusBadgeText: String? = null,
+        onStatusBadgeClick: (() -> Unit)? = null,
     ): View {
         val tokens = UiStyle.tokens(context)
         val density = context.resources.displayMetrics.density
@@ -52,13 +55,40 @@ internal object SettingsSwitchRows {
             orientation = LinearLayout.VERTICAL
         }
 
-        textContainer.addView(TextView(context).apply {
-            text = label
-            textSize = 14.5f
-            setTextColor(if (enabled) tokens.textPrimary else tokens.textMuted)
-            typeface = Typeface.DEFAULT_BOLD
-            includeFontPadding = false
-            setLineSpacing(1.5f * density, 1f)
+        textContainer.addView(LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(TextView(context).apply {
+                text = label
+                textSize = 14.5f
+                setTextColor(if (enabled) tokens.textPrimary else tokens.textMuted)
+                typeface = Typeface.DEFAULT_BOLD
+                includeFontPadding = false
+                setLineSpacing(1.5f * density, 1f)
+            })
+            if (statusBadgeText != null && onStatusBadgeClick != null) {
+                addView(
+                    TextView(context).apply {
+                        tag = STATUS_BADGE_TEXT_VIEW_TAG
+                        text = emphasizeDexKitStatusBadge(statusBadgeText, tokens)
+                        maxLines = 1
+                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        UiStyle.paintStatusBadge(this, density, tokens, enabled)
+                        setOnClickListener {
+                            if (enabled) {
+                                UiStyle.animateActionPress(this)
+                                onStatusBadgeClick()
+                            }
+                        }
+                    },
+                    LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ).apply {
+                        setMargins((8 * density).toInt(), 0, 0, 0)
+                    },
+                )
+            }
         })
 
         if (description != null) {
@@ -212,6 +242,16 @@ internal object SettingsSwitchRows {
         return null
     }
 
+    fun findStatusBadgeTextView(root: View): TextView? {
+        if (root is TextView && root.tag == STATUS_BADGE_TEXT_VIEW_TAG) return root
+        if (root !is ViewGroup) return null
+        for (index in 0 until root.childCount) {
+            val found = findStatusBadgeTextView(root.getChildAt(index))
+            if (found != null) return found
+        }
+        return null
+    }
+
     fun setRowEnabled(row: View, enabled: Boolean) {
         row.isEnabled = enabled
         row.alpha = if (enabled) 1f else 0.45f
@@ -225,7 +265,6 @@ internal object SettingsSwitchRows {
         val phrases = listOf(
             DEXKIT_EFFECTIVE_AFTER_ENABLE_PHRASE to tokens.accent,
             DEXKIT_ENHANCED_AFTER_ENABLE_PHRASE to tokens.accent,
-            UiText.Settings.SHOW_DEVICE_FINGERPRINT_PRIVACY_HINT to tokens.warning,
             UiText.Settings.AUTO_DAILY_SIGN_IN_RISK_HINT to tokens.warning,
             UiText.Settings.SIGN_IN_RISK_WARNING to tokens.warning,
         )
@@ -243,6 +282,27 @@ internal object SettingsSwitchRows {
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
                 )
             }
+        }
+    }
+
+    fun emphasizeDexKitStatusBadge(
+        text: String,
+        tokens: UiStyle.Tokens,
+    ): CharSequence {
+        val slash = text.indexOf('/')
+        if (slash < 0) return text
+        var start = slash - 1
+        while (start >= 0 && text[start].isWhitespace()) start--
+        while (start >= 0 && text[start].isDigit()) start--
+        val successStart = start + 1
+        if (successStart >= slash) return text
+        return SpannableString(text).apply {
+            setSpan(
+                ForegroundColorSpan(tokens.success),
+                successStart,
+                slash,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+            )
         }
     }
 

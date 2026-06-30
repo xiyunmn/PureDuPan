@@ -4,6 +4,7 @@ internal data class DexKitTargetDescriptor(
     val id: String,
     val target: String,
     val feature: String,
+    val featureKey: String? = null,
 )
 
 internal data class DexKitWarmUpTask(

@@ -22,6 +22,7 @@ internal data class BaiduSystemNightModeHookPoints(
     val skinLoaderListenerClassName: String,
     val settingsItemViewClassName: String,
     val changeSkinKtClassName: String? = null,
+    val changeSkinKtFallbackClassNames: List<String> = emptyList(),
     val skinManagerClassName: String? = null,
     val darkSkinTheme: String = "dark_theme.skin",
     val changeSkinMethodNames: Set<String> = setOf("changeSkin"),
@@ -126,37 +127,49 @@ internal class BaiduSystemNightModeSyncHook(
 
     private fun installChangeSkinObserverHook(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
-        val changeSkinKtClassName = hookPoints.changeSkinKtClassName ?: return
+        val changeSkinKtClassNames = changeSkinKtClassNames()
+        if (changeSkinKtClassNames.isEmpty()) return
         synchronized(this) {
             if (changeSkinObserverHooked) return
             changeSkinObserverHooked = true
         }
 
         try {
-            val changeSkinClass = XposedCompat.findClassOrNull(changeSkinKtClassName, cl)
-                ?: run {
-                    synchronized(this) { changeSkinObserverHooked = false }
-                    log("ChangeSkinKt class NOT FOUND")
-                    return
-                }
+            var hookedCount = 0
+            var foundClassCount = 0
 
-            val methods = findChangeSkinMethods(changeSkinClass)
-            if (methods.isEmpty()) {
+            for (changeSkinKtClassName in changeSkinKtClassNames) {
+                val changeSkinClass = XposedCompat.findClassOrNull(changeSkinKtClassName, cl)
+                    ?: continue
+                foundClassCount++
+
+                val methods = findChangeSkinMethods(changeSkinClass)
+                if (methods.isEmpty()) continue
+
+                for (method in methods) {
+                    method.isAccessible = true
+                    mod.hook(method).intercept { chain ->
+                        val result = chain.proceed()
+                        HostThemeChangeDispatcher.notifyChanged("changeSkin")
+                        result
+                    }
+                    hookedCount++
+                }
+            }
+
+            if (foundClassCount == 0) {
+                synchronized(this) { changeSkinObserverHooked = false }
+                log("ChangeSkinKt class NOT FOUND: ${changeSkinKtClassNames.joinToString()}")
+                return
+            }
+
+            if (hookedCount == 0) {
                 synchronized(this) { changeSkinObserverHooked = false }
                 log("ChangeSkinKt.changeSkin NOT FOUND")
                 return
             }
 
-            for (method in methods) {
-                method.isAccessible = true
-                mod.hook(method).intercept { chain ->
-                    val result = chain.proceed()
-                    HostThemeChangeDispatcher.notifyChanged("changeSkin")
-                    result
-                }
-            }
-
-            log("hook INSTALLED: ChangeSkinKt.changeSkin observer")
+            log("hook INSTALLED: ChangeSkinKt.changeSkin observer ($hookedCount)")
         } catch (t: Throwable) {
             synchronized(this) { changeSkinObserverHooked = false }
             log("ChangeSkinKt.changeSkin observer hook FAILED: ${t.message}")
@@ -351,14 +364,20 @@ internal class BaiduSystemNightModeSyncHook(
     }
 
     private fun resolveChangeSkinMethod(cl: ClassLoader): Method? {
-        val changeSkinKtClassName = hookPoints.changeSkinKtClassName
-        if (changeSkinKtClassName != null) {
+        for (changeSkinKtClassName in changeSkinKtClassNames()) {
             val changeSkinClass = XposedCompat.findClassOrNull(changeSkinKtClassName, cl)
             val changeMethod = changeSkinClass?.let { findChangeSkinMethods(it).firstOrNull() }
-            if (changeMethod != null) return changeMethod
+            if (changeMethod != null) {
+                logD("ChangeSkinKt resolved: ${changeMethod.declaringClass.name}.${changeMethod.name}")
+                return changeMethod
+            }
         }
         return hookPoints.changeSkinMethodResolver?.invoke(cl)
     }
+
+    private fun changeSkinKtClassNames(): List<String> =
+        (listOfNotNull(hookPoints.changeSkinKtClassName) + hookPoints.changeSkinKtFallbackClassNames)
+            .distinct()
 
     private fun findChangeSkinMethods(changeSkinClass: Class<*>): List<Method> {
         val methods = (changeSkinClass.methods.asSequence() + changeSkinClass.declaredMethods.asSequence())

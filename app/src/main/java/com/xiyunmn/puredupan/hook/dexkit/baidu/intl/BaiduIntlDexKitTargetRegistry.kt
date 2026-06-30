@@ -17,31 +17,37 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         DexKitTargetDescriptor(
             id = IntlHotStartSplashDexKitResolver.CACHE_ID,
             target = "intl hot-start splash resolver",
+            featureKey = FeatureKeys.KEY_REMOVE_HOT_START_SPLASH,
             feature = "移除切屏加载",
         ),
         DexKitTargetDescriptor(
             id = IntlStoryDouyinInitBlockHook.STORY_INIT_CACHE_ID,
             target = "intl story init method",
+            featureKey = FeatureKeys.KEY_BLOCK_INTL_STORY_DOUYIN_INIT,
             feature = "阻止 Story/DouYin 初始化",
         ),
         DexKitTargetDescriptor(
             id = IntlNonCoreDiffSocketDelayHook.SOCKET_REGISTER_CACHE_ID,
             target = "intl diff socket register method",
+            featureKey = FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET,
             feature = "延后非核心 diff socket 注册",
         ),
         DexKitTargetDescriptor(
             id = IntlAlbumAiInitBlockHook.DIRECT_ALBUM_AI_INIT_CACHE_ID,
             target = "intl album init method",
+            featureKey = FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT,
             feature = "阻止相册 AI 初始化",
         ),
         DexKitTargetDescriptor(
             id = IntlChangeSkinDexKitResolver.CACHE_ID,
             target = "intl changeSkin method",
+            featureKey = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
             feature = "夜间模式跟随系统",
         ),
         DexKitTargetDescriptor(
             id = IntlCookieByBdussDexKitResolver.CACHE_ID,
             target = "intl cookie by BDUSS method",
+            featureKey = FeatureKeys.KEY_AUTO_DAILY_SIGN_IN,
             feature = "自动签到",
         ),
     )

@@ -11,6 +11,8 @@ internal data class SwitchItem(
     val defaultValue: Boolean = false,
     val actionIcon: String? = null,
     val actionButtonText: String? = null,
+    val statusBadgeText: String? = null,
+    val onStatusBadgeClick: (() -> Unit)? = null,
     val linkedPrefKeys: List<String> = emptyList(),
     val showSwitch: Boolean = true,
     val onActionClick: (() -> Unit)? = null,
@@ -46,7 +48,8 @@ internal data class TopLevelSettingsActionHandlers(
 )
 
 internal data class DebugSettingsActionHandlers(
-    val onDexKitStatusClick: () -> Unit,
+    val onDexKitScanClick: () -> Unit,
+    val onDexKitDetailsClick: () -> Unit,
     val onClearLogsClick: () -> Unit,
     val onResetModuleSettingsClick: () -> Unit,
 )

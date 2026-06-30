@@ -12,6 +12,7 @@ internal object SettingsDexKitState {
         val id: String,
         val target: String,
         val feature: String,
+        val featureKey: String?,
         val state: String,
         val detail: String?,
         val updatedAt: Long,
@@ -23,7 +24,7 @@ internal object SettingsDexKitState {
     }
 
     fun shouldContinueStatusRefresh(context: Context): Boolean {
-        return statusViews(context).any { status -> status.state == "pending" || status.state == "scanning" }
+        return DexKitCacheWarmUp.isScanRunning() || statusViews(context).any { status -> status.state == "scanning" }
     }
 
     fun statusViews(context: Context): List<TargetStatusView> {
@@ -33,6 +34,7 @@ internal object SettingsDexKitState {
                 id = status.descriptor.id,
                 target = status.descriptor.target,
                 feature = status.descriptor.feature,
+                featureKey = status.descriptor.featureKey,
                 state = status.state,
                 detail = status.detail,
                 updatedAt = status.updatedAt,

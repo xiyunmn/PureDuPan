@@ -8,6 +8,10 @@ object AboutInfoManager {
         val description: String,
         val url: String?,
         val onClickListener: View.OnClickListener? = null,
+        val actionBadgeText: String? = null,
+        val onActionBadgeClick: View.OnClickListener? = null,
+        val secondaryActionBadgeText: String? = null,
+        val onSecondaryActionBadgeClick: View.OnClickListener? = null,
     )
 
     fun loadCachedItemsForSettings(): List<AboutItem> {

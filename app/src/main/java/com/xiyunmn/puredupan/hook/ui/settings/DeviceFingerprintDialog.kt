@@ -126,6 +126,10 @@ internal object DeviceFingerprintDialog {
                         maxWidthDp = 420f,
                         horizontalMarginDp = 24f,
                     )
+                    UiStyle.animateSubDialogEntry(
+                        window.decorView,
+                        window.context.resources.displayMetrics.density,
+                    )
                 }
         } catch (t: Throwable) {
             Toast.makeText(context, UiText.Settings.DEVICE_FINGERPRINT_SHOW_FAILED, Toast.LENGTH_SHORT).show()

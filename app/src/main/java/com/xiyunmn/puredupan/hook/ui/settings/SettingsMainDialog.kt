@@ -101,6 +101,7 @@ internal object SettingsMainDialog {
                 texts = texts,
                 isFeatureVisible = settingsSession::isFeatureVisible,
             )
+            var requestDexKitSummaryRefresh: (() -> Unit)? = null
             val debugItems = TopLevelSettingsItemsBuilder.debugItems(
                 hostPackageName = context.packageName,
                 showDexKitStatus = settingsSession.showDexKitStatus,
@@ -110,7 +111,11 @@ internal object SettingsMainDialog {
                     ""
                 },
                 actionHandlers = DebugSettingsActionHandlers(
-                    onDexKitStatusClick = { SettingsDebugActions.executeDexKitScanAndShowStatus(context) },
+                    onDexKitScanClick = {
+                        SettingsDebugActions.executeDexKitScan(context)
+                        requestDexKitSummaryRefresh?.invoke()
+                    },
+                    onDexKitDetailsClick = { SettingsDebugActions.showDexKitStatusDialog(context) },
                     onClearLogsClick = { SettingsDebugActions.showClearLogsConfirmDialog(context) },
                     onResetModuleSettingsClick = {
                         SettingsDebugActions.showResetModuleSettingsConfirmDialog(context) {
@@ -194,6 +199,8 @@ internal object SettingsMainDialog {
                         item.linkedPrefKeys,
                         item.showSwitch,
                         item.actionButtonText,
+                        item.statusBadgeText,
+                        item.onStatusBadgeClick,
                     )
                     root.addView(rowView)
                     item.prefKey?.let { key ->
@@ -238,6 +245,11 @@ internal object SettingsMainDialog {
                 hostId = settingsSession.hostId,
                 versionClickListener = versionClickListener,
                 showDeviceFingerprint = showDeviceFingerprint,
+                setShowDeviceFingerprint = { enabled ->
+                    prefs.edit()
+                        .putBoolean(SettingsUserState.KEY_SHOW_DEVICE_FINGERPRINT, enabled)
+                        .commit()
+                },
             )
             root.addView(aboutSection.root)
 
@@ -300,12 +312,13 @@ internal object SettingsMainDialog {
                 prefs = prefs,
                 refresh = aboutSection.refreshDeviceFingerprintDescription,
             )
-            val unregisterDexKitSummaryRefresh = bindDexKitSummaryRefresh(
+            val dexKitSummaryRefresh = bindDexKitSummaryRefresh(
                 context = context,
                 prefs = prefs,
                 showDexKitStatus = settingsSession.showDexKitStatus,
                 dexKitRow = rowsByPrefKey[SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT],
             )
+            requestDexKitSummaryRefresh = dexKitSummaryRefresh?.requestRefresh
             val unregisterNightModeDependency = bindIntlNightModeDependency(
                 prefs = prefs,
                 isIntlHost = settingsSession.isIntlHost,
@@ -337,7 +350,7 @@ internal object SettingsMainDialog {
             }
             dialog.setOnDismissListener {
                 unregisterDeviceFingerprintVisibilityRefresh()
-                unregisterDexKitSummaryRefresh?.invoke()
+                dexKitSummaryRefresh?.unregister?.invoke()
                 unregisterNightModeDependency?.invoke()
                 unregisterThemeListener?.invoke()
                 unregisterThemeListener = null
@@ -353,18 +366,26 @@ internal object SettingsMainDialog {
         }
     }
 
+    private data class DexKitSummaryRefreshBinding(
+        val requestRefresh: () -> Unit,
+        val unregister: () -> Unit,
+    )
+
     private fun bindDexKitSummaryRefresh(
         context: Context,
         prefs: SharedPreferences,
         showDexKitStatus: Boolean,
         dexKitRow: View?,
-    ): (() -> Unit)? {
+    ): DexKitSummaryRefreshBinding? {
         if (!showDexKitStatus) return null
-        val summaryView = dexKitRow?.let(SettingsSwitchRows::findActionTextView) ?: return null
+        val summaryView = dexKitRow?.let(SettingsSwitchRows::findStatusBadgeTextView) ?: return null
         val mainHandler = Handler(Looper.getMainLooper())
 
         fun refreshSummary() {
-            summaryView.text = SettingsDexKitState.summaryText(context)
+            summaryView.text = SettingsSwitchRows.emphasizeDexKitStatusBadge(
+                dexKitStatusBadgeText(SettingsDexKitState.summaryText(context)),
+                UiStyle.tokens(context),
+            )
         }
 
         val refreshRunnable = object : Runnable {
@@ -386,9 +407,20 @@ internal object SettingsMainDialog {
 
         scheduleRefresh()
 
-        return {
-            mainHandler.removeCallbacks(refreshRunnable)
+        return DexKitSummaryRefreshBinding(
+            requestRefresh = { scheduleRefresh(forceNextTick = true) },
+            unregister = { mainHandler.removeCallbacks(refreshRunnable) },
+        )
+    }
+
+    private fun dexKitStatusBadgeText(summary: String): String {
+        val parts = summary.split("/")
+        val formatted = if (parts.size == 2) {
+            "${parts[0].trim()} / ${parts[1].trim()}"
+        } else {
+            summary
         }
+        return "${UiText.Settings.DEXKIT_STATUS_BADGE_PREFIX}: $formatted"
     }
 
     private fun topLevelDefaultValues(settingsSession: SettingsRuntimeSession): TopLevelSettingsDefaultValues {

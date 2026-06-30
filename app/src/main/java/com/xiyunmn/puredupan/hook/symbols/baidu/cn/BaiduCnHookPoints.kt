@@ -32,6 +32,8 @@ internal object BaiduCnHookPoints {
     const val BASE_ACTIVITY = "com.baidu.netdisk.BaseActivity"
     const val SETTINGS_ACTIVITY = "com.baidu.netdisk.ui.SettingsActivity"
     const val CHANGE_SKIN_KT = "com.baidu.netdisk.themskin.ChangeSkinKt"
+    const val CHANGE_SKIN_KT_13_27_8 = "kotlin.nra"
+    const val CHANGE_SKIN_KT_13_27_8_RUNTIME = "newhome.nra"
     const val SKIN_LOADER_LISTENER = "com.netdisk.themeskin.listener.SkinLoaderListener"
     const val SKIN_MANAGER = "com.netdisk.themeskin.loader.SkinManager"
     const val SETTINGS_ITEM_VIEW = "com.baidu.netdisk.ui.widget.SettingsItemView"
