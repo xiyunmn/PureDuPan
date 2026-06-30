@@ -110,7 +110,7 @@ internal object SettingsMainDialog {
                     ""
                 },
                 actionHandlers = DebugSettingsActionHandlers(
-                    onDexKitStatusClick = { SettingsDebugActions.showDexKitStatusDialog(context) },
+                    onDexKitStatusClick = { SettingsDebugActions.executeDexKitScanAndShowStatus(context) },
                     onClearLogsClick = { SettingsDebugActions.showClearLogsConfirmDialog(context) },
                     onResetModuleSettingsClick = {
                         SettingsDebugActions.showResetModuleSettingsConfirmDialog(context) {
@@ -384,18 +384,9 @@ internal object SettingsMainDialog {
             }
         }
 
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
-            if (sharedPrefs !== prefs || key != SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT) {
-                return@OnSharedPreferenceChangeListener
-            }
-            val enabled = prefs.getBoolean(SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT, false)
-            mainHandler.post { scheduleRefresh(forceNextTick = enabled) }
-        }
-        prefs.registerOnSharedPreferenceChangeListener(listener)
         scheduleRefresh()
 
         return {
-            prefs.unregisterOnSharedPreferenceChangeListener(listener)
             mainHandler.removeCallbacks(refreshRunnable)
         }
     }

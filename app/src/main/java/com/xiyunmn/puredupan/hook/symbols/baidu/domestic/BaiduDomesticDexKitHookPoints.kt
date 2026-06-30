@@ -56,4 +56,14 @@ internal object BaiduDomesticDexKitHookPoints {
 
     const val AUDIO_API_SHOW_AUDIO_CIRCLE_METHOD = "showAudioCircleViewManagerAudio"
     const val AUDIO_API_INIT_AUDIO_CIRCLE_METHOD = "audioCircleViewInit"
+
+    const val DYNAMIC_PLUGIN_HELPER = "com.baidu.netdisk.dynamic.IDynamicPluginHelper"
+    const val DYNAMIC_PLUGIN_SUB_DOWNLOADER =
+        "com.baidu.netdisk.dynamic.base.PluginDownloader\$SubDownloader"
+    const val DYNAMIC_PLUGIN_SUB_EXECUTOR =
+        "com.baidu.netdisk.dynamic.base.PluginExecutor\$SubExecutor"
+    const val DYNAMIC_PLUGIN_MODEL =
+        "com.baidu.netdisk.dynamic.base.model.DynamicPlugin"
+    const val DYNAMIC_PLUGIN_AUTO_DOWNLOAD_DECISION_METHOD = "__"
+    const val DYNAMIC_PLUGIN_AUTO_INSTALL_DECISION_METHOD = "b"
 }

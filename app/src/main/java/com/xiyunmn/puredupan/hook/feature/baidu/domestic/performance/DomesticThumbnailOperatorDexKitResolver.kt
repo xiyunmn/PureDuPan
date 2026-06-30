@@ -1,7 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance
 
 import android.content.Context
-import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
@@ -38,24 +37,11 @@ internal object DomesticThumbnailOperatorDexKitResolver {
     }
 
     fun resolveClientComputeInit(cl: ClassLoader): Method? {
-        resolveKnown13_27ClientComputeInit(cl)?.let { method ->
-            cacheResolved(CLIENT_COMPUTE_INIT_CACHE_ID, method)
-            XposedCompat.logD(
-                "[$TAG] resolved known 13.27 client compute init: " +
-                    "${method.declaringClass.name}.${method.name}",
-            )
-            return method
-        }
-
-        if (!HookSettings.isExperimentalDexKitEnabled) {
-            XposedCompat.logD("[$TAG] client compute init skipped: DexKit disabled")
-            return null
-        }
         when (val cached = DexKitCompat.getCachedMethod(TAG, CLIENT_COMPUTE_INIT_CACHE_ID) { ref ->
             validateClientComputeInitRef(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.NotFound -> return resolveFallbackClientComputeInit(cl)
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
@@ -80,7 +66,7 @@ internal object DomesticThumbnailOperatorDexKitResolver {
                     usingStrings = methodData.usingStrings.toSet(),
                 )
             }
-        } ?: return null
+        } ?: return resolveFallbackClientComputeInit(cl)
 
         val rejected = mutableListOf<String>()
         val matches = candidates.mapNotNull { candidate ->
@@ -95,7 +81,7 @@ internal object DomesticThumbnailOperatorDexKitResolver {
             XposedCompat.logW("[$TAG] client compute init unresolved: $diagnostic")
             DexKitCompat.markTargetError(TAG, CLIENT_COMPUTE_INIT_CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, CLIENT_COMPUTE_INIT_CACHE_ID, null)
-            return null
+            return resolveFallbackClientComputeInit(cl)
         }
 
         val method = best.second
@@ -109,24 +95,11 @@ internal object DomesticThumbnailOperatorDexKitResolver {
     }
 
     fun resolveThumbnailAddJob(cl: ClassLoader): Method? {
-        resolveKnown13_27ThumbnailAddJob(cl)?.let { method ->
-            cacheResolved(THUMBNAIL_ADD_JOB_CACHE_ID, method)
-            XposedCompat.logD(
-                "[$TAG] resolved known 13.27 thumbnail addJob: " +
-                    "${method.declaringClass.name}.${method.name}",
-            )
-            return method
-        }
-
-        if (!HookSettings.isExperimentalDexKitEnabled) {
-            XposedCompat.logD("[$TAG] thumbnail addJob skipped: DexKit disabled")
-            return null
-        }
         when (val cached = DexKitCompat.getCachedMethod(TAG, THUMBNAIL_ADD_JOB_CACHE_ID) { ref ->
             validateThumbnailAddJobRef(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.NotFound -> return resolveFallbackThumbnailAddJob(cl)
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
@@ -160,7 +133,7 @@ internal object DomesticThumbnailOperatorDexKitResolver {
                     usingStrings = methodData.usingStrings.toSet(),
                 )
             }
-        } ?: return null
+        } ?: return resolveFallbackThumbnailAddJob(cl)
 
         val rejected = mutableListOf<String>()
         val matches = candidates.mapNotNull { candidate ->
@@ -183,7 +156,7 @@ internal object DomesticThumbnailOperatorDexKitResolver {
             XposedCompat.logW("[$TAG] thumbnail addJob unresolved: $diagnostic")
             DexKitCompat.markTargetError(TAG, THUMBNAIL_ADD_JOB_CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, THUMBNAIL_ADD_JOB_CACHE_ID, null)
-            return null
+            return resolveFallbackThumbnailAddJob(cl)
         }
 
         val method = best.second
@@ -194,6 +167,36 @@ internal object DomesticThumbnailOperatorDexKitResolver {
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
         return method
+    }
+
+    private fun resolveFallbackClientComputeInit(cl: ClassLoader): Method? {
+        return resolveKnown13_27ClientComputeInit(cl)?.also { method ->
+            cacheResolved(CLIENT_COMPUTE_INIT_CACHE_ID, method)
+            DexKitCompat.markTargetSuccess(
+                TAG,
+                CLIENT_COMPUTE_INIT_CACHE_ID,
+                "fallback:${method.declaringClass.name}.${method.name}",
+            )
+            XposedCompat.logD(
+                "[$TAG] resolved known 13.27 client compute init fallback: " +
+                    "${method.declaringClass.name}.${method.name}",
+            )
+        }
+    }
+
+    private fun resolveFallbackThumbnailAddJob(cl: ClassLoader): Method? {
+        return resolveKnown13_27ThumbnailAddJob(cl)?.also { method ->
+            cacheResolved(THUMBNAIL_ADD_JOB_CACHE_ID, method)
+            DexKitCompat.markTargetSuccess(
+                TAG,
+                THUMBNAIL_ADD_JOB_CACHE_ID,
+                "fallback:${method.declaringClass.name}.${method.name}",
+            )
+            XposedCompat.logD(
+                "[$TAG] resolved known 13.27 thumbnail addJob fallback: " +
+                    "${method.declaringClass.name}.${method.name}",
+            )
+        }
     }
 
     private fun resolveKnown13_27ClientComputeInit(cl: ClassLoader): Method? {

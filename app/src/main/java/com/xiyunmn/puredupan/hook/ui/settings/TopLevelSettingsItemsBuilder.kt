@@ -208,6 +208,7 @@ internal object TopLevelSettingsItemsBuilder {
             supported = visible,
             defaultValue = false,
             actionIcon = actionIconForDebugSpec(spec, dexKitSummaryText),
+            actionButtonText = spec.actionButtonText,
             showSwitch = spec.showSwitch,
             onActionClick = actionClickForDebugSpec(spec, actionHandlers),
             visible = visible,

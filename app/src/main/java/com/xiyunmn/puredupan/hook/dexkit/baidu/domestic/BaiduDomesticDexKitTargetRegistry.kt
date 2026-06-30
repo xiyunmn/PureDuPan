@@ -5,10 +5,12 @@ import com.xiyunmn.puredupan.hook.dexkit.DexKitHostContext
 import com.xiyunmn.puredupan.hook.dexkit.DexKitTargetDescriptor
 import com.xiyunmn.puredupan.hook.dexkit.DexKitTargetRegistry
 import com.xiyunmn.puredupan.hook.dexkit.DexKitWarmUpTask
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticDynamicPluginAutoDecisionDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticFloatViewStartupDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticSwanPreloadResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticThumbnailOperatorDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticVideoAdPreloadDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.DomesticCookieByBdussDexKitResolver
 
 internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
     override val descriptors = listOf(
@@ -37,6 +39,21 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             target = "domestic Swan prefetch event method",
             feature = "Swan preload block",
         ),
+        DexKitTargetDescriptor(
+            id = DomesticCookieByBdussDexKitResolver.CACHE_ID,
+            target = "domestic cookie by BDUSS method",
+            feature = "自动签到",
+        ),
+        DexKitTargetDescriptor(
+            id = DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_DOWNLOAD_FACTORY_CACHE_ID,
+            target = "domestic dynamic plugin auto-download factory",
+            feature = "dynamic plugin auto download block",
+        ),
+        DexKitTargetDescriptor(
+            id = DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_INSTALL_FACTORY_CACHE_ID,
+            target = "domestic dynamic plugin auto-install factory",
+            feature = "dynamic plugin auto download block",
+        ),
     )
 
     override fun buildTasks(host: DexKitHostContext, classLoader: ClassLoader): List<DexKitWarmUpTask> {
@@ -62,6 +79,23 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
         if (host.isFeatureAvailable(FeatureKeys.KEY_DISABLE_SWAN_PRELOAD)) {
             tasks += DexKitWarmUpTask(DomesticSwanPreloadResolver.PREFETCH_EVENT_CACHE_ID) {
                 DomesticSwanPreloadResolver.warmUpPrefetchEventCache(classLoader)
+            }
+        }
+        if (host.isFeatureAvailable(FeatureKeys.KEY_AUTO_DAILY_SIGN_IN)) {
+            tasks += DexKitWarmUpTask(DomesticCookieByBdussDexKitResolver.CACHE_ID) {
+                DomesticCookieByBdussDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (host.isFeatureAvailable(FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD)) {
+            tasks += DexKitWarmUpTask(
+                DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_DOWNLOAD_FACTORY_CACHE_ID,
+            ) {
+                DomesticDynamicPluginAutoDecisionDexKitResolver.warmUpAutoDownloadFactoryCache(classLoader)
+            }
+            tasks += DexKitWarmUpTask(
+                DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_INSTALL_FACTORY_CACHE_ID,
+            ) {
+                DomesticDynamicPluginAutoDecisionDexKitResolver.warmUpAutoInstallFactoryCache(classLoader)
             }
         }
         return tasks

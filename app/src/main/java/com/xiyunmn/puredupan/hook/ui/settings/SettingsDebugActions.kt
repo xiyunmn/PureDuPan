@@ -27,6 +27,16 @@ import java.util.Locale
 internal object SettingsDebugActions {
     private const val DEXKIT_STATUS_REFRESH_MS = 1000L
 
+    fun executeDexKitScanAndShowStatus(context: Context) {
+        val started = SettingsDexKitState.triggerFullScanFromSettings(context)
+        Toast.makeText(
+            context,
+            if (started) UiText.Settings.DEXKIT_SCAN_STARTED else UiText.Settings.DEXKIT_SCAN_PENDING,
+            Toast.LENGTH_SHORT,
+        ).show()
+        showDexKitStatusDialog(context)
+    }
+
     fun showDexKitStatusDialog(context: Context) {
         try {
             if (!SettingsHostState.showDexKitStatusInSettings(context)) {

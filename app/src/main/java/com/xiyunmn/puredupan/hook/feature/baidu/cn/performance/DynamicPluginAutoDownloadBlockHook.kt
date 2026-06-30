@@ -1,6 +1,7 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.cn.performance
 
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticDynamicPluginAutoDecisionDexKitResolver
 import com.xiyunmn.puredupan.hook.symbols.baidu.cn.BaiduCnHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
@@ -40,20 +41,28 @@ object DynamicPluginAutoDownloadBlockHook {
             }
 
             var installedCount = 0
-            installedCount += hookDecisionClasses(
+            installedCount += DomesticDynamicPluginAutoDecisionDexKitResolver.hookResolvedDecisionFactories(
                 cl = cl,
-                pluginClass = pluginClass,
-                classNames = BaiduCnHookPoints.DYNAMIC_PLUGIN_AUTO_DOWNLOAD_DOWNLOADER_CLASSES,
-                methodName = BaiduCnHookPoints.DYNAMIC_PLUGIN_IS_AUTO_DOWNLOAD_METHOD,
-                decisionName = "autoDownload",
+                blockedPluginTypes = blockedPluginTypes,
+                logTag = "DynamicPluginAutoDownloadBlockHook",
+                isEnabled = ::isEnabled,
             )
-            installedCount += hookDecisionClasses(
-                cl = cl,
-                pluginClass = pluginClass,
-                classNames = BaiduCnHookPoints.DYNAMIC_PLUGIN_AUTO_INSTALL_EXECUTOR_CLASSES,
-                methodName = BaiduCnHookPoints.DYNAMIC_PLUGIN_IS_AUTO_INSTALL_METHOD,
-                decisionName = "autoInstall",
-            )
+            if (installedCount == 0) {
+                installedCount += hookDecisionClasses(
+                    cl = cl,
+                    pluginClass = pluginClass,
+                    classNames = BaiduCnHookPoints.DYNAMIC_PLUGIN_AUTO_DOWNLOAD_DOWNLOADER_CLASSES,
+                    methodName = BaiduCnHookPoints.DYNAMIC_PLUGIN_IS_AUTO_DOWNLOAD_METHOD,
+                    decisionName = "autoDownload",
+                )
+                installedCount += hookDecisionClasses(
+                    cl = cl,
+                    pluginClass = pluginClass,
+                    classNames = BaiduCnHookPoints.DYNAMIC_PLUGIN_AUTO_INSTALL_EXECUTOR_CLASSES,
+                    methodName = BaiduCnHookPoints.DYNAMIC_PLUGIN_IS_AUTO_INSTALL_METHOD,
+                    decisionName = "autoInstall",
+                )
+            }
 
             if (installedCount == 0) {
                 XposedCompat.log("[DynamicPluginAutoDownloadBlockHook] no hooks installed")

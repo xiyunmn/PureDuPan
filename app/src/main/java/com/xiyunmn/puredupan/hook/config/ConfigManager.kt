@@ -308,11 +308,7 @@ object ConfigManager {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, _ ->
             synchronized(this@ConfigManager) {
                 if (prefs !== sharedPrefs) return@OnSharedPreferenceChangeListener
-                val wasDexKitEnabled = settingsSnapshot.isExperimentalDexKitEnabled
                 val snapshot = refreshUserSettingsSnapshot(sharedPrefs)
-                if (!wasDexKitEnabled && snapshot.isExperimentalDexKitEnabled) {
-                    DexKitSettingsRuntime.markFullScanPendingFromConfigListener()
-                }
                 if (snapshot.isDetailedLoggingEnabled) {
                     appContext?.let { XposedCompat.initializeFileLogging(it) }
                 }
@@ -504,8 +500,7 @@ object ConfigManager {
 
         return SettingsSnapshot(
             isDetailedLoggingEnabled = p.getBoolean(KEY_ENABLE_DETAILED_LOGGING, false),
-            isExperimentalDexKitEnabled = p.getBoolean(KEY_ENABLE_EXPERIMENTAL_DEXKIT, false) &&
-                doesCurrentHostSupportExperimentalDexKit(),
+            isExperimentalDexKitEnabled = doesCurrentHostSupportExperimentalDexKit(),
             isSplashInterstitialBlockEnabled = featureBoolean(KEY_BLOCK_SPLASH_INTERSTITIAL, false),
             isHotStartSplashRemoveEnabled = featureBoolean(KEY_REMOVE_HOT_START_SPLASH, false),
             isInAppDialogBlocked = featureBoolean(KEY_BLOCK_IN_APP_DIALOG, false),

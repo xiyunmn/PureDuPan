@@ -16,10 +16,10 @@ internal object DexKitSettingsRuntime {
     }
 
     fun markFullScanPendingFromConfigListener() {
-        DexKitCompat.markFullScanPending("dexkit switch enabled")
+        DexKitCompat.markFullScanPending("dexkit automatic scan requested")
     }
 
     fun markFullScanPendingFromSettings() {
-        DexKitCompat.markFullScanPending("dexkit switch enabled from settings")
+        DexKitCompat.markFullScanPending("dexkit manual scan requested from settings")
     }
 }

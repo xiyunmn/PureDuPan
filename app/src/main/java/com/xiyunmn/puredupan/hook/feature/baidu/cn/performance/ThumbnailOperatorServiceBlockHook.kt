@@ -23,37 +23,15 @@ object ThumbnailOperatorServiceBlockHook {
 
         try {
             var installedCount = 0
-            val managerClass = XposedCompat.findClassOrNull(
-                BaiduCnHookPoints.CLIENT_COMPUTE_MANAGER,
-                cl,
-            )
-            if (managerClass == null) {
-                XposedCompat.log("[ThumbnailOperatorServiceBlockHook] ClientComputeManager NOT FOUND")
+            val dexKitClientComputeInstalled = hookDexKitClientComputeInit(cl)
+            installedCount += if (dexKitClientComputeInstalled > 0) {
+                dexKitClientComputeInstalled
             } else {
-                XposedCompat.findMethodOrNull(
-                    managerClass,
-                    BaiduCnHookPoints.CLIENT_COMPUTE_MANAGER_INIT_METHOD,
-                    Context::class.java,
-                )?.let { method ->
-                    mod.hook(method).intercept { chain ->
-                        if (isEnabled()) {
-                            XposedCompat.logD(
-                                "[ThumbnailOperatorServiceBlockHook] ClientComputeManager.init blocked",
-                            )
-                            false
-                        } else {
-                            chain.proceed()
-                        }
-                    }
-                    installedCount += 1
-                } ?: XposedCompat.log("[ThumbnailOperatorServiceBlockHook] ClientComputeManager.init NOT FOUND")
-            }
-            if (installedCount == 0) {
-                installedCount += hookDexKitClientComputeInit(cl)
+                hookClientComputeInit(cl)
             }
 
-            val addJobInstalled = hookAddJob(cl)
-            installedCount += if (addJobInstalled > 0) addJobInstalled else hookDexKitAddJob(cl)
+            val dexKitAddJobInstalled = hookDexKitAddJob(cl)
+            installedCount += if (dexKitAddJobInstalled > 0) dexKitAddJobInstalled else hookAddJob(cl)
 
             if (installedCount == 0) {
                 XposedCompat.log("[ThumbnailOperatorServiceBlockHook] no hooks installed")
@@ -67,6 +45,37 @@ object ThumbnailOperatorServiceBlockHook {
             XposedCompat.log("[ThumbnailOperatorServiceBlockHook] FAILED: ${e.message}")
             XposedCompat.log(e)
         }
+    }
+
+    private fun hookClientComputeInit(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val managerClass = XposedCompat.findClassOrNull(
+            BaiduCnHookPoints.CLIENT_COMPUTE_MANAGER,
+            cl,
+        )
+        if (managerClass == null) {
+            XposedCompat.log("[ThumbnailOperatorServiceBlockHook] ClientComputeManager NOT FOUND")
+            return 0
+        }
+        val method = XposedCompat.findMethodOrNull(
+            managerClass,
+            BaiduCnHookPoints.CLIENT_COMPUTE_MANAGER_INIT_METHOD,
+            Context::class.java,
+        ) ?: run {
+            XposedCompat.log("[ThumbnailOperatorServiceBlockHook] ClientComputeManager.init NOT FOUND")
+            return 0
+        }
+        mod.hook(method).intercept { chain ->
+            if (isEnabled()) {
+                XposedCompat.logD(
+                    "[ThumbnailOperatorServiceBlockHook] ClientComputeManager.init blocked",
+                )
+                false
+            } else {
+                chain.proceed()
+            }
+        }
+        return 1
     }
 
     private fun hookAddJob(cl: ClassLoader): Int {

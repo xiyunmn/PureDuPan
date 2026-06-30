@@ -16,6 +16,7 @@ internal data class DebugSwitchSpec(
     val description: String,
     val action: DebugSettingsAction = DebugSettingsAction.NONE,
     val showSwitch: Boolean = true,
+    val actionButtonText: String? = null,
 )
 
 internal object DebugSettingsRegistry {
@@ -31,6 +32,8 @@ internal object DebugSettingsRegistry {
                 UiText.Settings.EXPERIMENTAL_DEXKIT_LABEL,
                 UiText.Settings.EXPERIMENTAL_DEXKIT_DESC,
                 action = DebugSettingsAction.DEXKIT_STATUS,
+                showSwitch = false,
+                actionButtonText = UiText.Settings.DEXKIT_SCAN_ACTION,
             ),
             DebugSwitchSpec(
                 SettingsUserState.KEY_ENABLE_DETAILED_LOGGING,

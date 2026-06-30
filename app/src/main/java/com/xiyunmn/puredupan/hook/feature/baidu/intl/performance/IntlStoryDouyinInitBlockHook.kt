@@ -131,21 +131,11 @@ internal object IntlStoryDouyinInitBlockHook {
     }
 
     private fun resolveStoryInitMethod(cl: ClassLoader): Method? {
-        resolveKnownStoryInitMethod(cl)?.let { method ->
-            cacheResolvedStoryInit(method, "known")
-            return method
-        }
-
-        if (!HookSettings.isExperimentalDexKitEnabled) {
-            XposedCompat.logD("[IntlStoryDouyinInitBlockHook] story init DexKit resolve skipped: config disabled")
-            return null
-        }
-
         when (val cached = DexKitCompat.getCachedMethod(TAG, STORY_INIT_CACHE_ID) { ref ->
             resolveStoryInitRef(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.NotFound -> return resolveFallbackStoryInitMethod(cl)
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
@@ -172,13 +162,13 @@ internal object IntlStoryDouyinInitBlockHook {
                         }.getOrDefault(emptySet()),
                     )
                 }
-        } ?: return null
+        } ?: return resolveFallbackStoryInitMethod(cl)
         val result = scanned
 
         if (result.isEmpty()) {
             XposedCompat.logD("[IntlStoryDouyinInitBlockHook] story init candidate not found")
             DexKitCompat.putCachedMethod(TAG, STORY_INIT_CACHE_ID, null)
-            return null
+            return resolveFallbackStoryInitMethod(cl)
         }
 
         val candidates = result.mapNotNull { methodData ->
@@ -208,7 +198,7 @@ internal object IntlStoryDouyinInitBlockHook {
                     candidates.joinToString { "${it.second.declaringClass.name}.${it.second.name}" },
             )
             DexKitCompat.putCachedMethod(TAG, STORY_INIT_CACHE_ID, null)
-            return null
+            return resolveFallbackStoryInitMethod(cl)
         }
 
         val method = best.second
@@ -218,6 +208,12 @@ internal object IntlStoryDouyinInitBlockHook {
         )
         cacheResolvedStoryInit(method, "dexkit")
         return method
+    }
+
+    private fun resolveFallbackStoryInitMethod(cl: ClassLoader): Method? {
+        return resolveKnownStoryInitMethod(cl)?.also { method ->
+            cacheResolvedStoryInit(method, "fallback")
+        }
     }
 
     private fun resolveKnownStoryInitMethod(cl: ClassLoader): Method? =

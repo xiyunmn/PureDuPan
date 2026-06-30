@@ -1,7 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart
 
 import android.app.Activity
-import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
@@ -47,25 +46,16 @@ internal object IntlHotStartSplashDexKitResolver {
     )
 
     fun resolve(cl: ClassLoader): ResolveResult? {
-        resolveKnown13_11Result(cl)?.let { result ->
-            cacheResolved(result)
-            XposedCompat.logD(
-                "[$TAG] resolved known hot-start entry: " +
-                    "${result.className}.${result.methodName}",
-            )
-            return result
-        }
-
-        if (!HookSettings.isExperimentalDexKitEnabled) {
-            XposedCompat.logD("[IntlHotStartSplashDexKitResolver] skipped: config disabled")
-            return null
-        }
-
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateCachedResult(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.NotFound -> return resolveKnown13_11Result(cl)?.also { result ->
+                XposedCompat.logD(
+                    "[$TAG] resolved known hot-start entry fallback: " +
+                        "${result.className}.${result.methodName}",
+                )
+            }
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
@@ -91,9 +81,9 @@ internal object IntlHotStartSplashDexKitResolver {
                         usingStrings = methodData.usingStrings.toSet(),
                     )
                 }
-        } ?: return null
+        }
 
-        val best = methods.mapNotNull { methodData ->
+        val best = methods.orEmpty().mapNotNull { methodData ->
                 if (!methodData.isHotStartShape()) return@mapNotNull null
                 val result = validateCachedResult(
                     cl,
@@ -108,19 +98,28 @@ internal object IntlHotStartSplashDexKitResolver {
             )
             .firstOrNull()
 
-        if (best == null) {
-            XposedCompat.log("[IntlHotStartSplashDexKitResolver] no candidate matched")
-            DexKitCompat.putCachedMethod(TAG, CACHE_ID, null)
-            return null
+        if (best != null) {
+            XposedCompat.log(
+                "[$TAG] resolved ${best.second.className}.${best.second.methodName} " +
+                    "score=${score(best.first)}",
+            )
+            val result = best.second
+            cacheResolved(result)
+            return result
         }
 
-        XposedCompat.log(
-            "[$TAG] resolved ${best.second.className}.${best.second.methodName} " +
-                "score=${score(best.first)}",
-        )
-        val result = best.second
-        cacheResolved(result)
-        return result
+        resolveKnown13_11Result(cl)?.let { result ->
+            cacheResolved(result)
+            XposedCompat.logD(
+                "[$TAG] resolved known hot-start entry: " +
+                    "${result.className}.${result.methodName}",
+            )
+            return result
+        }
+
+        XposedCompat.log("[IntlHotStartSplashDexKitResolver] no candidate matched")
+        DexKitCompat.putCachedMethod(TAG, CACHE_ID, null)
+        return null
     }
 
     private fun resolveKnown13_11Result(cl: ClassLoader): ResolveResult? =

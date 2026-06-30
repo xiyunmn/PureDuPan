@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticDynamicPluginAutoDecisionDexKitResolver
 import com.xiyunmn.puredupan.hook.symbols.baidu.samsung.BaiduSamsungHookPoints
 
 /**
@@ -42,20 +43,28 @@ internal object SamsungDynamicPluginAutoDownloadBlockHook {
             }
 
             var installedCount = 0
-            installedCount += hookDecisionClasses(
+            installedCount += DomesticDynamicPluginAutoDecisionDexKitResolver.hookResolvedDecisionFactories(
                 cl = cl,
-                pluginClass = pluginClass,
-                classNames = BaiduSamsungHookPoints.DYNAMIC_PLUGIN_AUTO_DOWNLOAD_DOWNLOADER_CLASSES,
-                methodName = BaiduSamsungHookPoints.DYNAMIC_PLUGIN_IS_AUTO_DOWNLOAD_METHOD,
-                decisionName = "autoDownload",
+                blockedPluginTypes = blockedPluginTypes,
+                logTag = "SamsungDynamicPluginAutoDownloadBlockHook",
+                isEnabled = ::isEnabled,
             )
-            installedCount += hookDecisionClasses(
-                cl = cl,
-                pluginClass = pluginClass,
-                classNames = BaiduSamsungHookPoints.DYNAMIC_PLUGIN_AUTO_INSTALL_EXECUTOR_CLASSES,
-                methodName = BaiduSamsungHookPoints.DYNAMIC_PLUGIN_IS_AUTO_INSTALL_METHOD,
-                decisionName = "autoInstall",
-            )
+            if (installedCount == 0) {
+                installedCount += hookDecisionClasses(
+                    cl = cl,
+                    pluginClass = pluginClass,
+                    classNames = BaiduSamsungHookPoints.DYNAMIC_PLUGIN_AUTO_DOWNLOAD_DOWNLOADER_CLASSES,
+                    methodName = BaiduSamsungHookPoints.DYNAMIC_PLUGIN_IS_AUTO_DOWNLOAD_METHOD,
+                    decisionName = "autoDownload",
+                )
+                installedCount += hookDecisionClasses(
+                    cl = cl,
+                    pluginClass = pluginClass,
+                    classNames = BaiduSamsungHookPoints.DYNAMIC_PLUGIN_AUTO_INSTALL_EXECUTOR_CLASSES,
+                    methodName = BaiduSamsungHookPoints.DYNAMIC_PLUGIN_IS_AUTO_INSTALL_METHOD,
+                    decisionName = "autoInstall",
+                )
+            }
 
             if (installedCount == 0) {
                 XposedCompat.log("[SamsungDynamicPluginAutoDownloadBlockHook] no hooks installed")

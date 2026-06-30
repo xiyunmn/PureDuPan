@@ -29,7 +29,6 @@ internal object DexKitCacheWarmUp {
         settings: SettingsSnapshot,
         classLoader: ClassLoader,
     ) {
-        if (!settings.isExperimentalDexKitEnabled) return
         if (!host.isMainProcess(processName)) return
 
         val registry = HostDexKitTargetRegistries.forHost(host)
@@ -38,9 +37,13 @@ internal object DexKitCacheWarmUp {
             XposedCompat.logD("[DexKitCacheWarmUp] skipped: no available DexKit task for host=${host.hostId}")
             return
         }
+        val forceFullScan = DexKitCompat.consumeFullScanPending()
+        if (!forceFullScan && tasks.all { task -> DexKitCompat.readTargetStatus(task.id)?.isTerminal() == true }) {
+            XposedCompat.logD("[DexKitCacheWarmUp] skipped: current DexKit cache is already terminal")
+            return
+        }
         if (!started.compareAndSet(false, true)) return
 
-        val forceFullScan = DexKitCompat.consumeFullScanPending()
         val hooked = installStableActivitySignal(
             classLoader = classLoader,
             stableActivityClassNames = host.stableActivityClassNames,
@@ -261,5 +264,9 @@ internal object DexKitCacheWarmUp {
             append("message=").append(t.message ?: "-").append('\n')
             append("stacktrace=\n").append(lines)
         }
+    }
+
+    private fun DexKitCompat.TargetStatus.isTerminal(): Boolean {
+        return state != "pending" && state != "scanning"
     }
 }

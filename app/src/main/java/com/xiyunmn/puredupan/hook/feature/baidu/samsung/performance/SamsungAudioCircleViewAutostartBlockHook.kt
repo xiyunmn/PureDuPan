@@ -18,8 +18,8 @@ internal object SamsungAudioCircleViewAutostartBlockHook {
         if (!hookState.markInstalled()) return
 
         try {
-            val legacyInstalled = hookFloatViewStartupTask(cl)
-            val installed = if (legacyInstalled > 0) legacyInstalled else hookDexKitFloatViewStartupTask(cl)
+            val dexKitInstalled = hookDexKitFloatViewStartupTask(cl)
+            val installed = if (dexKitInstalled > 0) dexKitInstalled else hookFloatViewStartupTask(cl)
             if (installed == 0) {
                 hookState.reset()
                 XposedCompat.log("[SamsungAudioCircleViewAutostartBlockHook] No hooks installed")

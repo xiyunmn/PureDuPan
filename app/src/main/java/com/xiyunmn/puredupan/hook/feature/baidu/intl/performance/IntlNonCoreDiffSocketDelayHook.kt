@@ -153,34 +153,21 @@ internal object IntlNonCoreDiffSocketDelayHook {
     }
 
     private fun resolveSocketRegisterMethodWithDexKit(cl: ClassLoader): Method? {
-        if (!HookSettings.isExperimentalDexKitEnabled) {
-            XposedCompat.logD("[IntlNonCoreDiffSocketDelayHook] socket DexKit resolve skipped: config disabled")
-            return null
-        }
-
-        resolveKnown13_11SocketRegisterMethod(cl)?.let { method ->
-            cacheResolvedSocketRegister(method)
-            XposedCompat.logD(
-                "[IntlNonCoreDiffSocketDelayHook] resolved known socket register: " +
-                    "${method.declaringClass.name}.${method.name}",
-            )
-            return method
-        }
-
         when (val cached = DexKitCompat.getCachedMethod(TAG, SOCKET_REGISTER_CACHE_ID) { ref ->
             resolveSocketRegisterRef(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.NotFound -> return resolveFallbackSocketRegisterMethod(cl)
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
-        val function1Class = XposedCompat.findClassOrNull(KOTLIN_FUNCTION1_CLASS_NAME, cl) ?: run {
-            XposedCompat.logW("[IntlNonCoreDiffSocketDelayHook] Function1 class NOT FOUND for DexKit resolve")
-            return null
-        }
+        val function1Class = XposedCompat.findClassOrNull(KOTLIN_FUNCTION1_CLASS_NAME, cl)
 
-        val scanned = DexKitCompat.withBridge(TAG, cl) { bridge ->
+        val scanned = if (function1Class == null) {
+            XposedCompat.logW("[IntlNonCoreDiffSocketDelayHook] Function1 class NOT FOUND for DexKit resolve")
+            null
+        } else {
+            DexKitCompat.withBridge(TAG, cl) { bridge ->
                 bridge.setThreadNum(1)
                 bridge.findMethod(
                     FindMethod.create()
@@ -199,13 +186,16 @@ internal object IntlNonCoreDiffSocketDelayHook {
                         modifiers = methodData.modifiers,
                     )
                 }
-        } ?: return null
-        val result = scanned
+            }
+        }
+        val result = scanned.orEmpty()
 
         if (result.isEmpty()) {
             XposedCompat.logD("[IntlNonCoreDiffSocketDelayHook] socket register candidate not found by DexKit")
-            DexKitCompat.putCachedMethod(TAG, SOCKET_REGISTER_CACHE_ID, null)
-            return null
+            return resolveFallbackSocketRegisterMethod(cl) ?: run {
+                DexKitCompat.putCachedMethod(TAG, SOCKET_REGISTER_CACHE_ID, null)
+                null
+            }
         }
 
         val candidates = result.mapNotNull { methodData ->
@@ -228,7 +218,7 @@ internal object IntlNonCoreDiffSocketDelayHook {
                     candidates.joinToString { "${it.declaringClass.name}.${it.name}" },
             )
             DexKitCompat.putCachedMethod(TAG, SOCKET_REGISTER_CACHE_ID, null)
-            return null
+            return resolveFallbackSocketRegisterMethod(cl)
         }
 
         val method = candidates.single()
@@ -238,6 +228,16 @@ internal object IntlNonCoreDiffSocketDelayHook {
         )
         cacheResolvedSocketRegister(method)
         return method
+    }
+
+    private fun resolveFallbackSocketRegisterMethod(cl: ClassLoader): Method? {
+        return resolveKnown13_11SocketRegisterMethod(cl)?.also { method ->
+            cacheResolvedSocketRegister(method)
+            XposedCompat.logD(
+                "[IntlNonCoreDiffSocketDelayHook] resolved known socket register fallback: " +
+                    "${method.declaringClass.name}.${method.name}",
+            )
+        }
     }
 
     private fun resolveKnown13_11SocketRegisterMethod(cl: ClassLoader): Method? =
@@ -446,7 +446,6 @@ internal object IntlNonCoreDiffSocketDelayHook {
 
     private fun isEnabled(): Boolean =
         HookSettings.isPerformanceOptimizeEnabled &&
-            HookSettings.isExperimentalDexKitEnabled &&
             HookSettings.isIntlNonCoreDiffSocketDelayed
 
     private const val TAG = "IntlNonCoreDiffSocketDelayHook"

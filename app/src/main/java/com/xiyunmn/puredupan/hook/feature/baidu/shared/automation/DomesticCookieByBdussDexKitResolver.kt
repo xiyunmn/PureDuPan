@@ -1,4 +1,4 @@
-package com.xiyunmn.puredupan.hook.feature.baidu.intl.automation
+package com.xiyunmn.puredupan.hook.feature.baidu.shared.automation
 
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
@@ -7,10 +7,10 @@ import java.lang.reflect.Modifier
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
-internal object IntlCookieByBdussDexKitResolver {
-    const val CACHE_ID = "intl_cookie_by_bduss"
+internal object DomesticCookieByBdussDexKitResolver {
+    const val CACHE_ID = "domestic_cookie_by_bduss"
 
-    private const val TAG = "IntlCookieByBdussDexKitResolver"
+    private const val TAG = "DomesticCookieByBdussDexKitResolver"
     private const val PROBE_BDUSS = "__puredupan_cookie_probe__"
     private const val COOKIE_UTILS_TOKEN = "CookiesUtils"
     private const val MAX_DIAGNOSTIC_CANDIDATES = 5
@@ -41,29 +41,29 @@ internal object IntlCookieByBdussDexKitResolver {
     )
 
     fun cookieFor(cl: ClassLoader, bduss: String): String {
-        val method = resolve(cl) ?: return ""
-        return runCatching { method.invoke(null, bduss) as? String }
-            .getOrElse { t ->
-                XposedCompat.logD("[$TAG] invoke cookie helper failed: ${t.message}")
-                null
-            }
-            .orEmpty()
+        val method = resolveCached(cl) ?: return ""
+        return invokeCookieMethod(method, bduss)
     }
 
     fun warmUpDexKitCache(cl: ClassLoader): Boolean {
-        return resolve(cl) != null
+        return resolveWithScan(cl) != null
     }
 
-    private fun resolve(cl: ClassLoader): Method? {
-        when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
+    private fun resolveCached(cl: ClassLoader): Method? {
+        return when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateCachedResult(cl, ref)
         }) {
-            is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
-            DexKitCompat.CachedResult.Miss -> Unit
+            is DexKitCompat.CachedResult.Found -> cached.value
+            DexKitCompat.CachedResult.NotFound,
+            DexKitCompat.CachedResult.Miss,
+            -> null
         }
+    }
 
-        val scan = DexKitCompat.withBridge(TAG, cl) { bridge ->
+    private fun resolveWithScan(cl: ClassLoader): Method? {
+        resolveCached(cl)?.let { return it }
+
+        val scan = DexKitCompat.withBridge(TAG, cl, resolverId = CACHE_ID) { bridge ->
             bridge.setThreadNum(1)
             val candidates = bridge.findMethod(
                 FindMethod.create()
@@ -105,25 +105,14 @@ internal object IntlCookieByBdussDexKitResolver {
                     usingStrings = methodData.usingStrings.toSet(),
                 )
             }
-            DexScanResult(
-                candidates = candidates,
-                evidenceMethods = evidenceMethods,
-            )
-        } ?: run {
-            DexKitCompat.markTargetError(
-                TAG,
-                CACHE_ID,
-                "DexKit bridge returned null before candidate enumeration",
-            )
-            return null
-        }
-        val methods = scan.candidates
+            DexScanResult(candidates = candidates, evidenceMethods = evidenceMethods)
+        } ?: return null
 
-        val evidenceOwnerClasses = (methods + scan.evidenceMethods)
+        val evidenceOwnerClasses = (scan.candidates + scan.evidenceMethods)
             .filter { candidate -> candidate.hasCookieEvidence() }
             .mapTo(mutableSetOf()) { candidate -> candidate.className }
         val rejected = mutableListOf<String>()
-        val best = methods.asSequence()
+        val best = scan.candidates.asSequence()
             .filter { candidate ->
                 candidate.isCookieHelperShape() &&
                     (candidate.hasCookieEvidence() || candidate.className in evidenceOwnerClasses)
@@ -133,14 +122,15 @@ internal object IntlCookieByBdussDexKitResolver {
                 candidate to method
             }
             .sortedWith(
-            compareByDescending<Pair<DexMethodCandidate, Method>> { score(it.first) }
-                .thenBy { it.first.className }
-                .thenBy { it.first.methodName },
-        ).firstOrNull()
+                compareByDescending<Pair<DexMethodCandidate, Method>> { score(it.first) }
+                    .thenBy { it.first.className }
+                    .thenBy { it.first.methodName },
+            )
+            .firstOrNull()
 
         if (best == null) {
             val diagnostic = buildNoCandidateDiagnostic(
-                methods = methods,
+                methods = scan.candidates,
                 evidenceMethods = scan.evidenceMethods,
                 evidenceOwnerClasses = evidenceOwnerClasses,
                 rejected = rejected,
@@ -179,7 +169,10 @@ internal object IntlCookieByBdussDexKitResolver {
             if (!probeLooksLikeBdussCookie(method)) return@runCatching null
             method
         }.getOrElse { t ->
-            XposedCompat.logD("[$TAG] cached/candidate validation failed: ${ref.className}.${ref.methodName}, ${t.message}")
+            XposedCompat.logD(
+                "[$TAG] cached/candidate validation failed: " +
+                    "${ref.className}.${ref.methodName}, ${t.message}",
+            )
             null
         }
     }
@@ -189,19 +182,23 @@ internal object IntlCookieByBdussDexKitResolver {
         candidate: DexMethodCandidate,
         rejected: MutableList<String>,
     ): Method? {
-        return runCatching {
-            validateCachedResult(
-                cl,
-                DexKitCompat.MethodRef(candidate.className, candidate.methodName),
-            ) ?: run {
-                rejected += "${candidate.memberName()} rejected: method/probe mismatch, evidence=${candidate.evidenceText()}"
-                null
-            }
-        }.getOrElse { t ->
-            rejected += "${candidate.memberName()} rejected: ${t::class.java.simpleName}: " +
-                "${t.message ?: "-"}, evidence=${candidate.evidenceText()}"
+        return validateCachedResult(
+            cl,
+            DexKitCompat.MethodRef(candidate.className, candidate.methodName),
+        ) ?: run {
+            rejected += "${candidate.memberName()} rejected: method/probe mismatch, " +
+                "evidence=${candidate.evidenceText()}"
             null
         }
+    }
+
+    private fun invokeCookieMethod(method: Method, bduss: String): String {
+        return runCatching { method.invoke(null, bduss) as? String }
+            .getOrElse { t ->
+                XposedCompat.logD("[$TAG] invoke cookie helper failed: ${t.message}")
+                null
+            }
+            .orEmpty()
     }
 
     private fun DexMethodCandidate.isCookieHelperShape(): Boolean =
@@ -219,8 +216,8 @@ internal object IntlCookieByBdussDexKitResolver {
     private fun score(candidate: DexMethodCandidate): Int {
         var score = 0
         if (candidate.containsEvidence(COOKIE_UTILS_TOKEN)) score += 200
-        if (candidate.containsEvidence("BDUSS") || candidate.containsEvidence("BDUSS=")) score += 100
-        if (candidate.containsEvidence("Cookie: BDUSS=")) score += 100
+        if (candidate.containsEvidence("Cookie: BDUSS=")) score += 120
+        if (candidate.containsEvidence("BDUSS")) score += 100
         if (candidate.containsEvidence("getCookieByBduss")) score += 80
         if (candidate.containsEvidence("STOKEN")) score += 60
         if (candidate.containsEvidence("PANPSC")) score += 40
@@ -229,8 +226,7 @@ internal object IntlCookieByBdussDexKitResolver {
     }
 
     private fun probeLooksLikeBdussCookie(method: Method): Boolean {
-        val value = runCatching { method.invoke(null, PROBE_BDUSS) as? String }.getOrNull()
-            ?: return false
+        val value = invokeCookieMethod(method, PROBE_BDUSS)
         return value.contains(PROBE_BDUSS) &&
             (value.contains("BDUSS=$PROBE_BDUSS") || value.contains("Cookie: BDUSS=$PROBE_BDUSS"))
     }

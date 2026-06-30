@@ -22,16 +22,7 @@ internal object SettingsDexKitState {
         return DexKitCacheWarmUp.summaryText(host)
     }
 
-    fun isExperimentalDexKitEnabled(context: Context): Boolean {
-        return SettingsHostState.isFeatureVisibleForContext(
-            context,
-            SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
-        ) && SettingsUserState.getPrefs(context)
-            .getBoolean(SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT, false)
-    }
-
     fun shouldContinueStatusRefresh(context: Context): Boolean {
-        if (!isExperimentalDexKitEnabled(context)) return false
         return statusViews(context).any { status -> status.state == "pending" || status.state == "scanning" }
     }
 
@@ -78,7 +69,7 @@ internal object SettingsDexKitState {
             host = host,
             classLoader = context.classLoader,
             forceFullScan = true,
-            reason = "settings switch enabled",
+            reason = "settings manual scan",
         )
         if (!started) {
             DexKitSettingsRuntime.markFullScanPendingFromSettings()

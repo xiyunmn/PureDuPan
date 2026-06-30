@@ -1,6 +1,5 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance
 
-import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
@@ -35,24 +34,11 @@ internal object DomesticFloatViewStartupDexKitResolver {
     }
 
     fun resolveInitAudioCircleView(cl: ClassLoader): Method? {
-        resolveKnown13_27Method(cl)?.let { method ->
-            DexKitCompat.markTargetSuccess(
-                TAG,
-                CACHE_ID,
-                "${method.declaringClass.name}.${method.name}",
-            )
-            return method
-        }
-
-        if (!HookSettings.isExperimentalDexKitEnabled) {
-            XposedCompat.logD("[$TAG] skipped: DexKit disabled")
-            return null
-        }
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateRef(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.NotFound -> return resolveFallback(cl)
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
@@ -138,7 +124,7 @@ internal object DomesticFloatViewStartupDexKitResolver {
                 startupTaskCandidates
             }
             audioShowBridgeDescriptors to candidates
-        } ?: return null
+        } ?: return resolveFallback(cl)
 
         val (audioShowBridgeDescriptors, candidates) = scan
         val rejected = mutableListOf<String>()
@@ -158,7 +144,7 @@ internal object DomesticFloatViewStartupDexKitResolver {
             XposedCompat.logW("[$TAG] initAudioCircleView unresolved: $diagnostic")
             DexKitCompat.markTargetError(TAG, CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, CACHE_ID, null)
-            return null
+            return resolveFallback(cl)
         }
 
         val method = best.second
@@ -169,6 +155,16 @@ internal object DomesticFloatViewStartupDexKitResolver {
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
         return method
+    }
+
+    private fun resolveFallback(cl: ClassLoader): Method? {
+        return resolveKnown13_27Method(cl)?.also { method ->
+            DexKitCompat.markTargetSuccess(
+                TAG,
+                CACHE_ID,
+                "fallback:${method.declaringClass.name}.${method.name}",
+            )
+        }
     }
 
     private fun resolveKnown13_27Method(cl: ClassLoader): Method? {

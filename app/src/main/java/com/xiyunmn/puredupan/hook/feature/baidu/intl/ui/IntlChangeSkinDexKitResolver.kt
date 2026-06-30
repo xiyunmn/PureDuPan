@@ -1,6 +1,5 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.ui
 
-import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
@@ -38,11 +37,6 @@ internal object IntlChangeSkinDexKitResolver {
     )
 
     fun resolve(cl: ClassLoader): Method? {
-        if (!HookSettings.isExperimentalDexKitEnabled) {
-            XposedCompat.logD("[IntlChangeSkinDexKitResolver] skipped: config disabled")
-            return null
-        }
-
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             resolveRef(cl, ref, requireClassScore = true)
         }) {

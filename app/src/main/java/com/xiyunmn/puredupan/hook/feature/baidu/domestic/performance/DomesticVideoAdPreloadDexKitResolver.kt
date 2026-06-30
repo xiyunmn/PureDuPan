@@ -1,7 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance
 
 import android.content.Context
-import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
@@ -34,37 +33,15 @@ internal object DomesticVideoAdPreloadDexKitResolver {
     }
 
     fun resolve(cl: ClassLoader): Method? {
-        resolveHistoricalMethod(cl)?.let { method ->
-            DexKitCompat.markTargetSuccess(
-                TAG,
-                CACHE_ID,
-                "${method.declaringClass.name}.${method.name}",
-            )
-            return method
-        }
-        resolveKnown13_27Method(cl)?.let { method ->
-            DexKitCompat.markTargetSuccess(
-                TAG,
-                CACHE_ID,
-                "${method.declaringClass.name}.${method.name}",
-            )
-            return method
-        }
-
-        if (!HookSettings.isExperimentalDexKitEnabled) {
-            XposedCompat.logD("[$TAG] skipped: DexKit disabled")
-            return null
-        }
-
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateRef(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.NotFound -> return resolveFallback(cl)
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
-        if (DexKitCompat.shouldSkipScan(TAG, CACHE_ID)) return null
+        if (DexKitCompat.shouldSkipScan(TAG, CACHE_ID)) return resolveFallback(cl)
 
         val scan = DexKitCompat.withBridge(TAG, cl, resolverId = CACHE_ID) { bridge ->
             bridge.setThreadNum(1)
@@ -105,7 +82,7 @@ internal object DomesticVideoAdPreloadDexKitResolver {
                 )
             }
             marsDownloadDescriptors to advertiseCandidates
-        } ?: return null
+        } ?: return resolveFallback(cl)
 
         val (marsDownloadDescriptors, candidates) = scan
         val rejected = mutableListOf<String>()
@@ -134,7 +111,7 @@ internal object DomesticVideoAdPreloadDexKitResolver {
             XposedCompat.logW("[$TAG] downloadVideoFrontAd unresolved: $diagnostic")
             DexKitCompat.markTargetError(TAG, CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, CACHE_ID, null)
-            return null
+            return resolveFallback(cl)
         }
 
         val method = best.second
@@ -145,6 +122,16 @@ internal object DomesticVideoAdPreloadDexKitResolver {
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
         return method
+    }
+
+    private fun resolveFallback(cl: ClassLoader): Method? {
+        return (resolveHistoricalMethod(cl) ?: resolveKnown13_27Method(cl))?.also { method ->
+            DexKitCompat.markTargetSuccess(
+                TAG,
+                CACHE_ID,
+                "fallback:${method.declaringClass.name}.${method.name}",
+            )
+        }
     }
 
     private fun resolveHistoricalMethod(cl: ClassLoader): Method? {

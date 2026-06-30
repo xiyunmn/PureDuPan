@@ -16,14 +16,12 @@ import android.widget.LinearLayout
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
-import com.xiyunmn.puredupan.hook.settings.registry.SettingsDexKitState
-import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.ui.UiText
 
 internal object SettingsSwitchRows {
-    private const val DEXKIT_EFFECTIVE_AFTER_ENABLE_PHRASE = "启用 DexKit 解析后生效"
-    private const val DEXKIT_ENHANCED_AFTER_ENABLE_PHRASE = "启用 DexKit 解析后增强覆盖"
+    private const val DEXKIT_EFFECTIVE_AFTER_ENABLE_PHRASE = "DexKit 解析成功后生效"
+    private const val DEXKIT_ENHANCED_AFTER_ENABLE_PHRASE = "DexKit 解析成功后增强覆盖"
     private const val ACTION_TEXT_VIEW_TAG = "settings_action_text"
 
     @Suppress("DEPRECATION")
@@ -171,7 +169,6 @@ internal object SettingsSwitchRows {
             setOnCheckedChangeListener { _, isChecked ->
                 if (enabled && !reverting) {
                     if (prefKey != null) {
-                        val wasChecked = resolveSwitchChecked(prefs, prefKey, linkedPrefKeys, defaultValue)
                         val editor = prefs.edit().putBoolean(prefKey, isChecked)
                         for (linkedPrefKey in linkedPrefKeys) {
                             editor.putBoolean(linkedPrefKey, isChecked)
@@ -185,12 +182,6 @@ internal object SettingsSwitchRows {
                                 UiText.Settings.SETTINGS_SAVE_FAILED,
                                 Toast.LENGTH_SHORT,
                             ).show()
-                        } else if (
-                            prefKey == SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT &&
-                            !wasChecked &&
-                            isChecked
-                        ) {
-                            SettingsDexKitState.triggerFullScanFromSettings(context)
                         }
                     }
                 }

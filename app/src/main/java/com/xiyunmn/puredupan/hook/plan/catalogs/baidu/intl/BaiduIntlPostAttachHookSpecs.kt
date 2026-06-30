@@ -133,7 +133,6 @@ internal object BaiduIntlPostAttachHookSpecs {
         HookSpec("IntlStoryDouyinInitBlockHook", { context, settings, _ ->
             context.isMain &&
                 settings.isPerformanceOptimizeEnabled &&
-                settings.isExperimentalDexKitEnabled &&
                 settings.isIntlStoryDouyinInitBlocked
         }, featureKey = FeatureKeys.KEY_BLOCK_INTL_STORY_DOUYIN_INIT) { cl ->
             IntlStoryDouyinInitBlockHook.hook(cl)
@@ -141,7 +140,6 @@ internal object BaiduIntlPostAttachHookSpecs {
         HookSpec("IntlNonCoreDiffSocketDelayHook", { context, settings, _ ->
             context.isMain &&
                 settings.isPerformanceOptimizeEnabled &&
-                settings.isExperimentalDexKitEnabled &&
                 settings.isIntlNonCoreDiffSocketDelayed
         }, featureKey = FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET) { cl ->
             IntlNonCoreDiffSocketDelayHook.hook(cl)

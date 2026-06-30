@@ -77,12 +77,7 @@ internal object IntlAlbumAiInitBlockHook {
         if (!hookState.markInstalled()) return
 
         try {
-            directInitMethod = if (HookSettings.isExperimentalDexKitEnabled) {
-                resolveDirectAlbumAiInitMethod(cl)
-            } else {
-                XposedCompat.logD("[IntlAlbumAiInitBlockHook] direct DexKit resolve skipped: config disabled")
-                null
-            }
+            directInitMethod = resolveDirectAlbumAiInitMethod(cl)
 
             val stableInitHooks = hookStableInitMethods(cl)
             val directHooked = directInitMethod?.let { hookDirectInitMethod(it) } == true
@@ -328,11 +323,6 @@ internal object IntlAlbumAiInitBlockHook {
     }
 
     private fun resolveDirectAlbumAiInitMethod(cl: ClassLoader): Method? {
-        if (!HookSettings.isExperimentalDexKitEnabled) {
-            XposedCompat.logD("[IntlAlbumAiInitBlockHook] direct DexKit resolve skipped: config disabled")
-            return null
-        }
-
         when (val cached = DexKitCompat.getCachedMethod(TAG, DIRECT_ALBUM_AI_INIT_CACHE_ID) { ref ->
             resolveDirectAlbumAiInitRef(cl, ref)
         }) {

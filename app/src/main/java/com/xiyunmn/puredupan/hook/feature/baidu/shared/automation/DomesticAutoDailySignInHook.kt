@@ -91,7 +91,14 @@ internal object DomesticAutoDailySignInHook {
                     )
                     return@Thread
                 }
-                val cookie = cookieAccess?.cookieFor(bduss).takeUnless { it.isNullOrBlank() } ?: "BDUSS=$bduss"
+                val resolvedCookie = cookieAccess?.cookieFor(bduss).takeUnless { it.isNullOrBlank() }
+                val cookie = if (resolvedCookie.isNullOrBlank()) {
+                    XposedCompat.logD("[$TAG] cookie source selected: BDUSS fallback")
+                    "BDUSS=$bduss"
+                } else {
+                    XposedCompat.logD("[$TAG] cookie source selected: ${cookieAccess?.source ?: "unknown"}")
+                    resolvedCookie
+                }
                 when (val result = MembershipSignInClient.signIn(cookie, TAG)) {
                     is MembershipSignInResult.Success -> {
                         AutoDailySignInStateStore.markSuccess(
@@ -231,12 +238,13 @@ internal object DomesticAutoDailySignInHook {
     }
 
     private class DomesticCookieAccess(
-        private val getCookieByBduss: Method,
+        val source: String,
+        private val getCookieByBduss: (String) -> String,
     ) {
         fun cookieFor(bduss: String): String {
-            return runCatching { getCookieByBduss.invoke(null, bduss) as? String }
+            return runCatching { getCookieByBduss(bduss) }
                 .getOrElse { t ->
-                    XposedCompat.logD("[$TAG] getCookieByBduss failed: ${t.message}")
+                    XposedCompat.logD("[$TAG] getCookieByBduss failed: source=$source, ${t.message}")
                     null
                 }
                 .orEmpty()
@@ -246,7 +254,8 @@ internal object DomesticAutoDailySignInHook {
             private const val PROBE_BDUSS = "__puredupan_cookie_probe__"
 
             fun resolve(cl: ClassLoader): DomesticCookieAccess? {
-                return resolveByMethodName(
+                return resolveByDexKitCache(cl)
+                    ?: resolveByMethodName(
                     cl,
                     BaiduAutomationHookPoints.COOKIE_UTILS,
                     "getCookieByBduss",
@@ -255,6 +264,15 @@ internal object DomesticAutoDailySignInHook {
                     BaiduAutomationHookPoints.KOTLIN_COOKIE_UTILS_13_27,
                     "____",
                 )
+            }
+
+            private fun resolveByDexKitCache(cl: ClassLoader): DomesticCookieAccess? {
+                val probe = DomesticCookieByBdussDexKitResolver.cookieFor(cl, PROBE_BDUSS)
+                if (!probe.looksLikeBdussCookie(PROBE_BDUSS)) return null
+                XposedCompat.logD("[$TAG] cookie helper resolved: DexKit cache")
+                return DomesticCookieAccess("DexKit") { bduss ->
+                    DomesticCookieByBdussDexKitResolver.cookieFor(cl, bduss)
+                }
             }
 
             private fun resolveByMethodName(
@@ -269,7 +287,9 @@ internal object DomesticAutoDailySignInHook {
                     val probe = method.invoke(null, PROBE_BDUSS) as? String
                     if (!probe.looksLikeBdussCookie(PROBE_BDUSS)) return null
                     XposedCompat.logD("[$TAG] cookie helper resolved: $className.$methodName")
-                    DomesticCookieAccess(method)
+                    DomesticCookieAccess("$className.$methodName") { bduss ->
+                        method.invoke(null, bduss) as? String ?: ""
+                    }
                 }.getOrElse { t ->
                     XposedCompat.logD("[$TAG] cookie helper rejected: $className.$methodName, ${t.message}")
                     null
