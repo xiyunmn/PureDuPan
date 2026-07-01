@@ -24,7 +24,10 @@ internal object SettingsDexKitState {
     }
 
     fun shouldContinueStatusRefresh(context: Context): Boolean {
-        return DexKitCacheWarmUp.isScanRunning() || statusViews(context).any { status -> status.state == "scanning" }
+        return DexKitCacheWarmUp.isScanRunning() ||
+            statusViews(context).any { status ->
+                status.state == "pending" || status.state == "scanning"
+            }
     }
 
     fun statusViews(context: Context): List<TargetStatusView> {

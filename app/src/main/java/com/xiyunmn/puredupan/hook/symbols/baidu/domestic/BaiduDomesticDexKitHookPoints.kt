@@ -17,7 +17,11 @@ internal object BaiduDomesticDexKitHookPoints {
 
     const val SWAN_PREFETCH_MANAGER = "com.baidu.swan.apps.core.prefetch._"
     const val SWAN_PREFETCH_MANAGER_JADX_NAME = "com.baidu.swan.apps.core.prefetch.C_"
+    const val SWAN_PREFETCH_MANAGER_STABLE_CLASS =
+        "com.baidu.swan.apps.core.prefetch.SwanAppPrefetchManager"
     const val SWAN_PREFETCH_MANAGER_TAG = "SwanAppPrefetchManager"
+    const val SWAN_PREFETCH_MANAGER_TAG_FIELD = "TAG"
+    const val SWAN_PREFETCH_MANAGER_TAG_FIELD_13_27 = "____"
     const val SWAN_PREFETCH_MANAGER_INTERFACE = "com.baidu.swan.apps.core.prefetch.IPrefetchManager"
     const val SWAN_PREFETCH_EVENT = "com.baidu.swan.apps.core.prefetch.PrefetchEvent"
     const val SWAN_PREFETCH_ENV_CONTROLLER = "com.baidu.swan.apps.core.prefetch.PrefetchEnvController"
@@ -50,6 +54,8 @@ internal object BaiduDomesticDexKitHookPoints {
     const val FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_METHOD = "initAudioCircleView"
     const val FLOAT_VIEW_STARTUP_TASK_INIT_RETURN_THIRD_APP_VIEW_METHOD = "initReturnThirdAppView"
     const val FLOAT_VIEW_STARTUP_TASK_NAME = "FloatViewStartupTask"
+    const val FLOAT_VIEW_STARTUP_TASK_STABLE_CLASS = "com.baidu.netdisk.startup.task.FloatViewStartupTask"
+    const val FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_STABLE_METHOD = "initAudioCircleView"
     const val FLOAT_VIEW_STARTUP_TASK_13_27_CLASS = "newhome.fbp"
     const val FLOAT_VIEW_STARTUP_TASK_13_27_JADX_CLASS = "kotlin.fbp"
     const val FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_13_27_METHOD = "r"

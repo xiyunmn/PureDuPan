@@ -143,6 +143,7 @@ internal object DomesticSwanPreloadResolver {
 
     private fun prefetchManagerClassNames(): List<String> =
         listOf(
+            BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_STABLE_CLASS,
             BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER,
             BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_JADX_NAME,
         )
@@ -158,9 +159,19 @@ internal object DomesticSwanPreloadResolver {
             field.type.name == BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_ENV_CONTROLLER
         }
         if (!hasEnvControllerField) return false
-        return runCatching {
-            clazz.getDeclaredField("____").apply { isAccessible = true }
-                .get(null) == BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_TAG
-        }.getOrDefault(false)
+        return hasManagerTagField(clazz)
+    }
+
+    private fun hasManagerTagField(clazz: Class<*>): Boolean {
+        val fieldNames = listOf(
+            BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_TAG_FIELD,
+            BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_TAG_FIELD_13_27,
+        )
+        return fieldNames.any { fieldName ->
+            runCatching {
+                clazz.getDeclaredField(fieldName).apply { isAccessible = true }
+                    .get(null) == BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_TAG
+            }.getOrDefault(false)
+        }
     }
 }

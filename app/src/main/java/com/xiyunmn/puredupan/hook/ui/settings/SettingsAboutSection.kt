@@ -123,7 +123,7 @@ internal object SettingsAboutSection {
                 onActionBadgeClick = View.OnClickListener {
                     DeviceFingerprintDialog.show(
                         context = context,
-                        allowHiddenDeviceFingerprint = showDeviceFingerprint(),
+                        allowHiddenDeviceFingerprint = true,
                     )
                 },
                 secondaryActionBadgeText = deviceFingerprintToggleBadgeText(showDeviceFingerprint()),

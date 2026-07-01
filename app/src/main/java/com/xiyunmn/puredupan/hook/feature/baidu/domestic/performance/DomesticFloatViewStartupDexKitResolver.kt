@@ -29,6 +29,11 @@ internal object DomesticFloatViewStartupDexKitResolver {
         fun memberName(): String = "$className.$methodName"
     }
 
+    private data class CandidateScore(
+        val score: Int,
+        val match: Pair<DexMethodCandidate, Method>,
+    )
+
     fun warmUpDexKitCache(cl: ClassLoader): Boolean {
         return resolveInitAudioCircleView(cl) != null
     }
@@ -67,7 +72,7 @@ internal object DomesticFloatViewStartupDexKitResolver {
                     ),
             ).mapTo(linkedSetOf()) { methodData -> methodData.className }
 
-            known13_27ClassNames().forEach { className ->
+            knownStableClassNames().forEach { className ->
                 startupTaskClassNames += className
             }
 
@@ -138,7 +143,7 @@ internal object DomesticFloatViewStartupDexKitResolver {
             candidate to method
         }
 
-        val best = matches.singleOrNull()
+        val best = selectBestMatch(matches)
         if (best == null) {
             val diagnostic = buildDiagnostic(audioShowBridgeDescriptors, candidates, matches, rejected)
             XposedCompat.logW("[$TAG] initAudioCircleView unresolved: $diagnostic")
@@ -158,7 +163,7 @@ internal object DomesticFloatViewStartupDexKitResolver {
     }
 
     private fun resolveFallback(cl: ClassLoader): Method? {
-        return resolveKnown13_27Method(cl)?.also { method ->
+        return resolveStableMethod(cl)?.also { method ->
             DexKitCompat.markTargetSuccess(
                 TAG,
                 CACHE_ID,
@@ -167,29 +172,35 @@ internal object DomesticFloatViewStartupDexKitResolver {
         }
     }
 
-    private fun resolveKnown13_27Method(cl: ClassLoader): Method? {
-        for (className in known13_27ClassNames()) {
-            val method = validateRef(
-                cl,
-                DexKitCompat.MethodRef(
-                    className,
-                    BaiduDomesticDexKitHookPoints
-                        .FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_13_27_METHOD,
-                ),
-            )
-            if (method != null) {
-                XposedCompat.logD("[$TAG] resolved known 13.27 initAudioCircleView: ${method.declaringClass.name}.${method.name}")
-                return method
-            }
-        }
-        return null
-    }
-
-    private fun known13_27ClassNames(): List<String> =
+    private fun knownStableClassNames(): List<String> =
         listOf(
+            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_STABLE_CLASS,
             BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_13_27_CLASS,
             BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_13_27_JADX_CLASS,
         )
+
+    private fun resolveStableMethod(cl: ClassLoader): Method? {
+        val preferredRefs = listOf(
+            DexKitCompat.MethodRef(
+                BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_STABLE_CLASS,
+                BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_STABLE_METHOD,
+            ),
+            DexKitCompat.MethodRef(
+                BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_13_27_CLASS,
+                BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_13_27_METHOD,
+            ),
+            DexKitCompat.MethodRef(
+                BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_13_27_JADX_CLASS,
+                BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_13_27_METHOD,
+            ),
+        )
+        for (ref in preferredRefs) {
+            val method = validateRef(cl, ref) ?: continue
+            XposedCompat.logD("[$TAG] resolved stable initAudioCircleView: ${method.declaringClass.name}.${method.name}")
+            return method
+        }
+        return null
+    }
 
     private fun validateCandidate(
         cl: ClassLoader,
@@ -236,6 +247,44 @@ internal object DomesticFloatViewStartupDexKitResolver {
             !Modifier.isStatic(modifiers) &&
             returnTypeName == "void" &&
             paramTypeNames.isEmpty()
+
+    private fun selectBestMatch(
+        matches: List<Pair<DexMethodCandidate, Method>>,
+    ): Pair<DexMethodCandidate, Method>? {
+        if (matches.isEmpty()) return null
+        val scored = matches.map { match ->
+            CandidateScore(score = scoreCandidate(match.first, match.second), match = match)
+        }.sortedByDescending { it.score }
+        return scored.firstOrNull()?.match
+    }
+
+    private fun scoreCandidate(candidate: DexMethodCandidate, method: Method): Int {
+        var score = 0
+        when (method.name) {
+            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_STABLE_METHOD -> {
+                score += 200
+            }
+            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_13_27_METHOD -> {
+                score += 180
+            }
+            "run" -> {
+                score -= 50
+            }
+        }
+        if (method.name.startsWith("init", ignoreCase = true)) {
+            score += 40
+        }
+        if (method.name.contains("AudioCircle", ignoreCase = true)) {
+            score += 30
+        }
+        if (candidate.className == BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_STABLE_CLASS) {
+            score += 20
+        }
+        if (candidate.invokeDescriptors.size <= 1) {
+            score += 10
+        }
+        return score
+    }
 
     private fun buildDiagnostic(
         audioShowBridgeDescriptors: Set<String>,
