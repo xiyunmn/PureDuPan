@@ -27,6 +27,12 @@ internal object BaiduSearchPageHookPoints {
         KMP_COMPOSE_SERVICE_PLATFORM_IMPL,
     )
 
+    val showSearchPlaceholderMethods = listOf(
+        SHOW_SEARCH_PLACEHOLDER_METHOD,
+        "g",
+        "a",
+    )
+
     val searchDefaultContentHelperClasses = listOf(
         "com.baidu.netdisk.feedhome.logic.util.SearchDefaultContentHelper",
         "com.baidu.netdisk.guest25ai.feedhome.logic.util.SearchDefaultContentHelper",

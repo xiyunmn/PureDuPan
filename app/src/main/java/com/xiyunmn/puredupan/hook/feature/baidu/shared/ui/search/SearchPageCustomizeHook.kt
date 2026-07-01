@@ -75,29 +75,45 @@ internal object SearchPageCustomizeHook {
         var installed = 0
         val mod = XposedCompat.module ?: return 0
         for (className in BaiduSearchPageHookPoints.searchDefaultContentHelperClasses) {
-            val method = XposedCompat.findMethodOrNull(
-                className,
-                cl,
-                BaiduSearchPageHookPoints.SHOW_SEARCH_PLACEHOLDER_METHOD,
-            )
-            if (method == null) {
+            val clazz = XposedCompat.findClassOrNull(className, cl)
+            if (clazz == null) {
+                XposedCompat.logD("[SearchPageCustomizeHook] $className placeholder helper class not found")
+                continue
+            }
+            val methods = findSearchPlaceholderDisplayMethods(clazz)
+            if (methods.isEmpty()) {
                 XposedCompat.logD("[SearchPageCustomizeHook] $className placeholder display method not found")
                 continue
             }
-            mod.hook(method).intercept { chain ->
-                if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPagePlaceholderHidden) {
-                    XposedCompat.logD("[SearchPageCustomizeHook] $className placeholder display blocked")
-                    null
-                } else {
-                    chain.proceed()
+            methods.forEach { method ->
+                mod.hook(method).intercept { chain ->
+                    if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPagePlaceholderHidden) {
+                        XposedCompat.logD(
+                            "[SearchPageCustomizeHook] $className.${method.name} placeholder display blocked",
+                        )
+                        null
+                    } else {
+                        chain.proceed()
+                    }
                 }
+                installed++
             }
-            installed++
         }
         if (installed == 0) {
-            XposedCompat.log("[SearchPageCustomizeHook] no SearchDefaultContentHelper.showText hooks installed")
+            XposedCompat.log("[SearchPageCustomizeHook] no SearchDefaultContentHelper placeholder display hooks installed")
         }
         return installed
+    }
+
+    private fun findSearchPlaceholderDisplayMethods(clazz: Class<*>): List<Method> {
+        return BaiduSearchPageHookPoints.showSearchPlaceholderMethods.mapNotNull { methodName ->
+            clazz.declaredMethods.firstOrNull { method ->
+                method.name == methodName &&
+                    method.returnType == Void.TYPE &&
+                    method.parameterTypes.isEmpty() &&
+                    !Modifier.isStatic(method.modifiers)
+            }?.apply { isAccessible = true }
+        }.distinct()
     }
 
     private fun hookAiEntry(cl: ClassLoader): Int {
