@@ -2,17 +2,33 @@ package com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui
 
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
 import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
+import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
+import org.luckypray.dexkit.query.matchers.AnnotationElementMatcher
+import org.luckypray.dexkit.query.matchers.AnnotationEncodeArrayMatcher
+import org.luckypray.dexkit.query.matchers.AnnotationMatcher
+import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object BottomAiTabDexKitResolver {
-    const val CACHE_ID = "domestic_bottom_ai_tab_mode"
+    const val CACHE_ID = "domestic_bottom_ai_tab_mode_v2"
 
     private const val TAG = "BottomAiTabDexKitResolver"
-    private const val AI_CLOUD_TAB_NODE_VALUE = "ai_cloud_tab_node"
+    private const val KOTLIN_METADATA = "kotlin.Metadata"
+    private val AI_CLOUD_TAB_METADATA_TOKENS = listOf(
+        "AI_CLOUD_TAB_NODE",
+        "AMIS_AI_CLOUD_MODE_DEFAULT",
+        "AMIS_AI_CLOUD_MODE",
+        "AMIS_VIP_MODE",
+        "AMIS_YIKE_MODE",
+        "aiCloudTabMode",
+        "getAiCloudTabMode",
+        "()J",
+    )
 
     private data class DexMethodCandidate(
         val className: String,
@@ -40,21 +56,13 @@ internal object BottomAiTabDexKitResolver {
 
         val candidates = DexKitCompat.withBridge(TAG, cl, resolverId = CACHE_ID) { bridge ->
             bridge.setThreadNum(1)
-            val ownerClassNames = bridge.findMethod(
-                FindMethod.create()
-                    .matcher(MethodMatcher.create().usingStrings(AI_CLOUD_TAB_NODE_VALUE)),
-            ).mapTo(linkedSetOf()) { methodData -> methodData.className }
-
-            ownerClassNames.flatMap { className ->
-                bridge.findMethod(
+            bridge.findClass(
+                FindClass.create()
+                    .matcher(aiCloudTabOwnerMatcher()),
+            ).flatMap { classData ->
+                classData.findMethod(
                     FindMethod.create()
-                        .matcher(
-                            MethodMatcher.create()
-                                .declaredClass(className)
-                                .modifiers(Modifier.STATIC)
-                                .returnType(Long::class.javaPrimitiveType!!)
-                                .paramTypes(),
-                        ),
+                        .matcher(tabModeGetterMatcher()),
                 )
             }.map { methodData ->
                 DexMethodCandidate(
@@ -124,7 +132,7 @@ internal object BottomAiTabDexKitResolver {
             DexKitCompat.MethodRef(candidate.className, candidate.methodName),
         )
         if (method == null) {
-            rejected += "${candidate.memberName()} rejected: owner/signature mismatch"
+            rejected += "${candidate.memberName()} rejected: metadata/signature mismatch"
         }
         return method
     }
@@ -139,14 +147,32 @@ internal object BottomAiTabDexKitResolver {
 
     private fun isAiCloudTabOwner(clazz: Class<*>): Boolean {
         if (clazz.name == BaiduDomesticHookPoints.AI_CLOUD_TAB_AMIS_KT) return true
-        return clazz.declaredFields.any { field ->
-            Modifier.isStatic(field.modifiers) &&
-                field.type == String::class.java &&
-                runCatching {
-                    field.isAccessible = true
-                    field.get(null) == AI_CLOUD_TAB_NODE_VALUE
-                }.getOrDefault(false)
-        }
+        return KotlinMetadataUtils.metadataContainsAll(clazz, AI_CLOUD_TAB_METADATA_TOKENS)
+    }
+
+    private fun aiCloudTabOwnerMatcher(): ClassMatcher {
+        return ClassMatcher.create()
+            .addAnnotation(
+                AnnotationMatcher.create()
+                    .type(KOTLIN_METADATA)
+                    .addElement(
+                        AnnotationElementMatcher.create()
+                            .name("d2")
+                            .arrayValue(
+                                AnnotationEncodeArrayMatcher.create().apply {
+                                    AI_CLOUD_TAB_METADATA_TOKENS.forEach(::addString)
+                                },
+                            ),
+                    ),
+            )
+            .addMethod(tabModeGetterMatcher())
+    }
+
+    private fun tabModeGetterMatcher(): MethodMatcher {
+        return MethodMatcher.create()
+            .modifiers(Modifier.STATIC)
+            .returnType(Long::class.javaPrimitiveType!!)
+            .paramTypes()
     }
 
     private fun DexMethodCandidate.isTabModeGetterShape(): Boolean =
