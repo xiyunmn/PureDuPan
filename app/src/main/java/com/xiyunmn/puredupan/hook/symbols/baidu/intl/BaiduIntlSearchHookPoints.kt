@@ -22,31 +22,37 @@ internal object BaiduIntlSearchHookPoints {
     const val BLOCKED_URL = "/puredupan/blocked"
     const val DISABLED_EXPERIMENT_VALUE = 0
 
-    val searchHintNetworkPaths = listOf(
-        "/richsearch/sug/suggestget",
-    )
-
-    val historyNetworkPaths = listOf(
-        "/recent/list",
-    )
+    val historyNetworkPaths = emptyList<String>()
 
     val recommendNetworkPaths = listOf(
         "/richsearch/recquery/get",
         "/recommend/query/list",
         "/richsearch/public/get",
+        "/recent/list",
+        "/recent/listv2",
     )
 
-    val historyStorageMarkers = listOf(
-        "flutter.search_history",
-    )
+    const val SEARCH_HISTORY_STORAGE_KEY = "flutter.search_history"
+    const val SEARCH_HISTORY_STORAGE_KEY_PREFIX = "flutter.search_history_"
+    const val SEARCH_HISTORY_RECOMMEND_ITEM_STORAGE_KEY_PREFIX = "flutter.search_history_recommend_item"
+    const val LAST_PERSON_RECOMMEND_STORAGE_KEY = "flutter.last_person_recommend"
 
-    val recommendStorageMarkers = listOf(
-        "flutter.last_person_recommend",
+    val recommendPayloadMarkers = listOf(
+        "query_list",
+        "recommendations",
+        "hot_recommend",
+        "normal_recommend",
+        "cover_url",
+        "android_jump_url",
+        "query_confidence",
+        "sug_type",
     )
 
     val recommendTagMarkers = listOf(
         "tag_id=",
         "tag_name=",
+        "tagId=",
+        "tagName=",
     )
 
     val advancedSearchBannerExperimentKeys = setOf(

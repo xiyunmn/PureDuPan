@@ -6,6 +6,7 @@ import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlSearchHookPoints
+import org.json.JSONObject
 import java.util.ArrayList
 import java.util.HashMap
 
@@ -174,23 +175,12 @@ internal object IntlSearchPageCustomizeHook {
         }
         val text = runCatching { value.toString() }.getOrDefault("")
         val className = runCatching { value.javaClass.name }.getOrDefault("")
-        if (HookSettings.isSearchPagePlaceholderHidden) {
-            when {
-                className == "java.lang.String" && isSearchHintUrl(text) -> {
-                    XposedCompat.logD("[$TAG] blocked search hint url")
-                    return BaiduIntlSearchHookPoints.BLOCKED_URL
-                }
-            }
-        }
+        sanitizeFlutterStorageMap(value)?.let { return it }
         if (HookSettings.isSearchPageHistoryHidden) {
             when {
                 className == "java.lang.String" && isHistoryUrl(text) -> {
                     XposedCompat.logD("[$TAG] blocked search history url")
                     return BaiduIntlSearchHookPoints.BLOCKED_URL
-                }
-                isMapClass(className) && containsAny(text, BaiduIntlSearchHookPoints.historyStorageMarkers) -> {
-                    XposedCompat.logD("[$TAG] cleared search history storage result")
-                    return HashMap<Any?, Any?>()
                 }
             }
         }
@@ -200,14 +190,21 @@ internal object IntlSearchPageCustomizeHook {
                     XposedCompat.logD("[$TAG] blocked search recommend url")
                     return BaiduIntlSearchHookPoints.BLOCKED_URL
                 }
-                isMapClass(className) && containsAny(text, BaiduIntlSearchHookPoints.recommendStorageMarkers) -> {
-                    XposedCompat.logD("[$TAG] cleared search recommend storage result")
+                value is Map<*, *> && containsAny(text, BaiduIntlSearchHookPoints.recommendPayloadMarkers) -> {
+                    XposedCompat.logD("[$TAG] cleared search recommend payload result")
                     return HashMap<Any?, Any?>()
                 }
-                className == "java.util.ArrayList" &&
-                    containsAny(text, BaiduIntlSearchHookPoints.recommendTagMarkers) -> {
+                value is List<*> && containsAny(text, BaiduIntlSearchHookPoints.recommendTagMarkers) -> {
                     XposedCompat.logD("[$TAG] cleared search recommend tag result")
                     return ArrayList<Any?>()
+                }
+                value is List<*> && containsAny(text, BaiduIntlSearchHookPoints.recommendPayloadMarkers) -> {
+                    XposedCompat.logD("[$TAG] cleared search recommend payload list")
+                    return ArrayList<Any?>()
+                }
+                value is JSONObject && containsAny(text, BaiduIntlSearchHookPoints.recommendPayloadMarkers) -> {
+                    XposedCompat.logD("[$TAG] cleared search recommend json result")
+                    return JSONObject()
                 }
             }
         }
@@ -230,10 +227,6 @@ internal object IntlSearchPageCustomizeHook {
         }.getOrNull()) == BaiduIntlSearchHookPoints.SEARCH_ROUTE
     }
 
-    private fun isSearchHintUrl(text: String): Boolean {
-        return containsAny(text, BaiduIntlSearchHookPoints.searchHintNetworkPaths)
-    }
-
     private fun isHistoryUrl(text: String): Boolean {
         return containsAny(text, BaiduIntlSearchHookPoints.historyNetworkPaths)
     }
@@ -246,14 +239,49 @@ internal object IntlSearchPageCustomizeHook {
         return markers.any { marker -> text.contains(marker) }
     }
 
-    private fun isMapClass(className: String): Boolean {
-        return className == "java.util.HashMap" || className == "java.util.LinkedHashMap"
+    private fun removeSearchPageStorageEntries(value: Map<*, *>): HashMap<Any?, Any?> {
+        val sanitized = HashMap<Any?, Any?>()
+        value.forEach { (entryKey, entryValue) ->
+            if (!shouldRemoveStorageEntry(entryKey)) {
+                sanitized[entryKey] = entryValue
+            }
+        }
+        return sanitized
+    }
+
+    private fun sanitizeFlutterStorageMap(value: Any?): HashMap<Any?, Any?>? {
+        if (value !is Map<*, *>) return null
+        val sanitized = removeSearchPageStorageEntries(value)
+        if (sanitized.size == value.size) return null
+        XposedCompat.logD("[$TAG] cleared search page storage entries")
+        return sanitized
+    }
+
+    private fun shouldRemoveStorageEntry(entryKey: Any?): Boolean {
+        return when {
+            HookSettings.isSearchPageHistoryHidden && isHistoryStorageKey(entryKey) -> true
+            HookSettings.isSearchPageRecommendHidden && isRecommendStorageKey(entryKey) -> true
+            else -> false
+        }
+    }
+
+    private fun isHistoryStorageKey(entryKey: Any?): Boolean {
+        val key = entryKey as? String ?: return false
+        return (
+            key == BaiduIntlSearchHookPoints.SEARCH_HISTORY_STORAGE_KEY ||
+                key.startsWith(BaiduIntlSearchHookPoints.SEARCH_HISTORY_STORAGE_KEY_PREFIX)
+            ) && !key.startsWith(BaiduIntlSearchHookPoints.SEARCH_HISTORY_RECOMMEND_ITEM_STORAGE_KEY_PREFIX)
+    }
+
+    private fun isRecommendStorageKey(entryKey: Any?): Boolean {
+        val key = entryKey as? String ?: return false
+        return key == BaiduIntlSearchHookPoints.LAST_PERSON_RECOMMEND_STORAGE_KEY ||
+            key.startsWith(BaiduIntlSearchHookPoints.SEARCH_HISTORY_RECOMMEND_ITEM_STORAGE_KEY_PREFIX)
     }
 
     private fun isEnabled(): Boolean {
         return HookSettings.isSearchPageCustomizeEnabled &&
-            (HookSettings.isSearchPagePlaceholderHidden ||
-                HookSettings.isSearchPageHistoryHidden ||
+            (HookSettings.isSearchPageHistoryHidden ||
                 HookSettings.isSearchPageRecommendHidden ||
                 HookSettings.isIntlSearchPageSvipBannerHidden)
     }
