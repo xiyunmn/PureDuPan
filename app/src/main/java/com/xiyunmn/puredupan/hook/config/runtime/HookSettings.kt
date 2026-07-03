@@ -172,8 +172,14 @@ internal object HookSettings {
     val isSearchPagePlaceholderHidden: Boolean
         get() = ConfigManager.isSearchPagePlaceholderHidden
 
+    val isSearchPageHistoryHidden: Boolean
+        get() = ConfigManager.isSearchPageHistoryHidden
+
     val isSearchPageRecommendHidden: Boolean
         get() = ConfigManager.isSearchPageRecommendHidden
+
+    val isIntlSearchPageSvipBannerHidden: Boolean
+        get() = ConfigManager.isIntlSearchPageSvipBannerHidden
 
     val isSearchPageVoiceSearchHidden: Boolean
         get() = ConfigManager.isSearchPageVoiceSearchHidden

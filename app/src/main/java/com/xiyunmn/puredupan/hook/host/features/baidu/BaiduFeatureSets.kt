@@ -41,6 +41,7 @@ internal object BaiduFeatureSets {
             baiduSharedPerformanceCustomize,
             baiduIntlStartup,
             baiduIntlHomeCustomize,
+            baiduIntlSearchPageCustomize,
             baiduIntlMyPageCustomize,
             baiduIntlMemberCardCustomize,
             baiduIntlBottomBarCustomize,
@@ -229,6 +230,14 @@ internal object BaiduFeatureSets {
 
     private val baiduIntlHomeCustomize = listOf(
         FeatureKeys.KEY_HIDE_HOME_BANNER,
+    )
+
+    private val baiduIntlSearchPageCustomize = listOf(
+        FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE,
+        FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER,
+        FeatureKeys.KEY_HIDE_SEARCH_PAGE_HISTORY,
+        FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND,
+        FeatureKeys.KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER,
     )
 
     private val baiduIntlMyPageCustomize = listOf(

@@ -44,7 +44,9 @@ object ConfigManager {
     const val KEY_SEARCH_PAGE_CUSTOMIZE = FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE
     const val KEY_HIDE_SEARCH_PAGE_AI_ENTRY = FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY
     const val KEY_HIDE_SEARCH_PAGE_PLACEHOLDER = FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER
+    const val KEY_HIDE_SEARCH_PAGE_HISTORY = FeatureKeys.KEY_HIDE_SEARCH_PAGE_HISTORY
     const val KEY_HIDE_SEARCH_PAGE_RECOMMEND = FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND
+    const val KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER = FeatureKeys.KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER
     const val KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH = FeatureKeys.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH
     const val KEY_SHARE_PAGE_CUSTOMIZE = FeatureKeys.KEY_SHARE_PAGE_CUSTOMIZE
     const val KEY_MY_PAGE_CUSTOMIZE = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE
@@ -155,7 +157,9 @@ object ConfigManager {
     val isSearchPageCustomizeEnabled: Boolean get() = settingsSnapshot.isSearchPageCustomizeEnabled
     val isSearchPageAiEntryHidden: Boolean get() = settingsSnapshot.isSearchPageAiEntryHidden
     val isSearchPagePlaceholderHidden: Boolean get() = settingsSnapshot.isSearchPagePlaceholderHidden
+    val isSearchPageHistoryHidden: Boolean get() = settingsSnapshot.isSearchPageHistoryHidden
     val isSearchPageRecommendHidden: Boolean get() = settingsSnapshot.isSearchPageRecommendHidden
+    val isIntlSearchPageSvipBannerHidden: Boolean get() = settingsSnapshot.isIntlSearchPageSvipBannerHidden
     val isSearchPageVoiceSearchHidden: Boolean get() = settingsSnapshot.isSearchPageVoiceSearchHidden
     val isSharePageCustomizeEnabled: Boolean get() = settingsSnapshot.isSharePageCustomizeEnabled
     val isMyPageCustomizeEnabled: Boolean get() = settingsSnapshot.isMyPageCustomizeEnabled
@@ -442,7 +446,9 @@ object ConfigManager {
         val hasSearchPageOptionEnabled =
             featureBoolean(KEY_HIDE_SEARCH_PAGE_AI_ENTRY, false) ||
                 featureBoolean(KEY_HIDE_SEARCH_PAGE_PLACEHOLDER, false) ||
+                featureBoolean(KEY_HIDE_SEARCH_PAGE_HISTORY, false) ||
                 featureBoolean(KEY_HIDE_SEARCH_PAGE_RECOMMEND, false) ||
+                featureBoolean(KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER, false) ||
                 featureBoolean(KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH, false)
         val hasSharePageOptionEnabled =
             featureBoolean(KEY_REMOVE_HOME_FAB, false)
@@ -524,7 +530,9 @@ object ConfigManager {
             isSearchPageCustomizeEnabled = featureBoolean(KEY_SEARCH_PAGE_CUSTOMIZE, hasSearchPageOptionEnabled),
             isSearchPageAiEntryHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_AI_ENTRY, false),
             isSearchPagePlaceholderHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_PLACEHOLDER, false),
+            isSearchPageHistoryHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_HISTORY, false),
             isSearchPageRecommendHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_RECOMMEND, false),
+            isIntlSearchPageSvipBannerHidden = featureBoolean(KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER, false),
             isSearchPageVoiceSearchHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH, false),
             isSharePageCustomizeEnabled = featureBoolean(KEY_SHARE_PAGE_CUSTOMIZE, hasSharePageOptionEnabled),
             isMyPageCustomizeEnabled = featureBoolean(KEY_MY_PAGE_CUSTOMIZE, hasMyPageOptionEnabled),

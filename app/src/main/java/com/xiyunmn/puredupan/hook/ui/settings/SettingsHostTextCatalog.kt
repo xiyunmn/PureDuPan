@@ -308,9 +308,17 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.HIDE_SEARCH_PAGE_PLACEHOLDER_LABEL,
                 UiText.Settings.HIDE_SEARCH_PAGE_PLACEHOLDER_DESC,
             ),
+            SettingsUserState.KEY_HIDE_SEARCH_PAGE_HISTORY to text(
+                UiText.Settings.HIDE_SEARCH_PAGE_HISTORY_LABEL,
+                UiText.Settings.HIDE_SEARCH_PAGE_HISTORY_DESC,
+            ),
             SettingsUserState.KEY_HIDE_SEARCH_PAGE_RECOMMEND to text(
                 UiText.Settings.HIDE_SEARCH_PAGE_RECOMMEND_LABEL,
                 UiText.Settings.HIDE_SEARCH_PAGE_RECOMMEND_DESC,
+            ),
+            SettingsUserState.KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER to text(
+                UiText.Settings.HIDE_INTL_SEARCH_PAGE_SVIP_BANNER_LABEL,
+                UiText.Settings.HIDE_INTL_SEARCH_PAGE_SVIP_BANNER_DESC,
             ),
             SettingsUserState.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH to text(
                 UiText.Settings.HIDE_SEARCH_PAGE_VOICE_SEARCH_LABEL,

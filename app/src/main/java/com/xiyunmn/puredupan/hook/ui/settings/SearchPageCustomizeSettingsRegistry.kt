@@ -22,9 +22,19 @@ internal object SearchPageCustomizeSettingsRegistry {
             UiText.Settings.HIDE_SEARCH_PAGE_PLACEHOLDER_DESC,
         ),
         SearchPageCustomizeSwitchSpec(
+            SettingsUserState.KEY_HIDE_SEARCH_PAGE_HISTORY,
+            UiText.Settings.HIDE_SEARCH_PAGE_HISTORY_LABEL,
+            UiText.Settings.HIDE_SEARCH_PAGE_HISTORY_DESC,
+        ),
+        SearchPageCustomizeSwitchSpec(
             SettingsUserState.KEY_HIDE_SEARCH_PAGE_RECOMMEND,
             UiText.Settings.HIDE_SEARCH_PAGE_RECOMMEND_LABEL,
             UiText.Settings.HIDE_SEARCH_PAGE_RECOMMEND_DESC,
+        ),
+        SearchPageCustomizeSwitchSpec(
+            SettingsUserState.KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER,
+            UiText.Settings.HIDE_INTL_SEARCH_PAGE_SVIP_BANNER_LABEL,
+            UiText.Settings.HIDE_INTL_SEARCH_PAGE_SVIP_BANNER_DESC,
         ),
         SearchPageCustomizeSwitchSpec(
             SettingsUserState.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH,

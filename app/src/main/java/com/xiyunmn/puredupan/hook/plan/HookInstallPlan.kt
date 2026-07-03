@@ -77,7 +77,12 @@ internal object HookInstallPlanner {
             hasSearchPageCustomizeOption =
                 enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY, settings.isSearchPageAiEntryHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER, settings.isSearchPagePlaceholderHidden) ||
+                    enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_HISTORY, settings.isSearchPageHistoryHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND, settings.isSearchPageRecommendHidden) ||
+                    enabled(
+                        FeatureKeys.KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER,
+                        settings.isIntlSearchPageSvipBannerHidden,
+                    ) ||
                     enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH, settings.isSearchPageVoiceSearchHidden),
             hasMyPageCustomizeOption =
                 enabled(FeatureKeys.KEY_HIDE_RENEW_BUTTON, settings.isRenewButtonHidden) ||
