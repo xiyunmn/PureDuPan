@@ -21,9 +21,6 @@ internal class HostLoadSession(
     fun shouldInstallAttachHook(processName: String): Boolean =
         HookInstallPlanner.shouldInstallAttachHook(host, processName)
 
-    fun staticPlan(processName: String): HookInstallPlan =
-        HookInstallPlanner.staticPlan(host, processName)
-
     fun postAttachPlan(processName: String, settings: SettingsSnapshot): HookInstallPlan =
         HookInstallPlanner.postAttachPlan(
             host = host,
@@ -35,12 +32,14 @@ internal class HostLoadSession(
         processName: String,
         settings: SettingsSnapshot,
         classLoader: ClassLoader,
+        onWarmUpFinished: (() -> Unit)? = null,
     ) {
         DexKitCacheWarmUp.startIfNeeded(
             host = DexKitHostContext.from(HostDexKitRuntimeInfo.from(host)),
-            processName = processName,
             settings = settings,
+            processName = processName,
             classLoader = classLoader,
+            onWarmUpFinished = onWarmUpFinished,
         )
     }
 }

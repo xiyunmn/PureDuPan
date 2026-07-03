@@ -26,6 +26,9 @@ internal object BaiduFeatureRuntime {
     fun currentSettingsImageResultHostActivityClassNames(): List<String> =
         HostRuntimeState.currentSettingsImageResultHostActivityClassNames()
 
+    fun currentStableActivityClassNames(): List<String> =
+        HostRuntimeState.currentStableActivityClassNames()
+
     fun currentHomeCustomizeHookPoints() =
         HostRuntimeState.currentHomeCustomizeHookPoints()
 
@@ -40,4 +43,7 @@ internal object BaiduFeatureRuntime {
 
     fun isSamsungHost(context: Context): Boolean =
         HostRuntimeState.canonicalPackageNameOrSelf(context.packageName) == HostPackages.BAIDU_SAMSUNG
+
+    fun isIntlHost(context: Context): Boolean =
+        HostRuntimeState.canonicalPackageNameOrSelf(context.packageName) == HostPackages.BAIDU_INTL
 }

@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.dexkit.baidu.intl
 
+import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.dexkit.DexKitHostContext
 import com.xiyunmn.puredupan.hook.dexkit.DexKitTargetDescriptor
@@ -52,35 +53,40 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         ),
     )
 
-    override fun buildTasks(host: DexKitHostContext, classLoader: ClassLoader): List<DexKitWarmUpTask> {
+    override fun buildTasks(
+        host: DexKitHostContext,
+        settings: SettingsSnapshot,
+        classLoader: ClassLoader,
+    ): List<DexKitWarmUpTask> {
         val tasks = mutableListOf<DexKitWarmUpTask>()
+        fun available(featureKey: String): Boolean = host.isFeatureAvailable(featureKey)
 
-        if (host.isFeatureAvailable(FeatureKeys.KEY_REMOVE_HOT_START_SPLASH)) {
+        if (available(FeatureKeys.KEY_REMOVE_HOT_START_SPLASH)) {
             tasks += DexKitWarmUpTask(IntlHotStartSplashDexKitResolver.CACHE_ID) {
                 IntlHotStartSplashDexKitResolver.resolve(classLoader) != null
             }
         }
-        if (host.isFeatureAvailable(FeatureKeys.KEY_BLOCK_INTL_STORY_DOUYIN_INIT)) {
+        if (available(FeatureKeys.KEY_BLOCK_INTL_STORY_DOUYIN_INIT)) {
             tasks += DexKitWarmUpTask(IntlStoryDouyinInitBlockHook.STORY_INIT_CACHE_ID) {
                 IntlStoryDouyinInitBlockHook.warmUpDexKitCache(classLoader)
             }
         }
-        if (host.isFeatureAvailable(FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET)) {
+        if (available(FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET)) {
             tasks += DexKitWarmUpTask(IntlNonCoreDiffSocketDelayHook.SOCKET_REGISTER_CACHE_ID) {
                 IntlNonCoreDiffSocketDelayHook.warmUpDexKitCache(classLoader)
             }
         }
-        if (host.isFeatureAvailable(FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT)) {
+        if (available(FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT)) {
             tasks += DexKitWarmUpTask(IntlAlbumAiInitBlockHook.DIRECT_ALBUM_AI_INIT_CACHE_ID) {
                 IntlAlbumAiInitBlockHook.warmUpDexKitCache(classLoader)
             }
         }
-        if (host.isFeatureAvailable(FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE)) {
+        if (available(FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE)) {
             tasks += DexKitWarmUpTask(IntlChangeSkinDexKitResolver.CACHE_ID) {
                 IntlChangeSkinDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
-        if (host.isFeatureAvailable(FeatureKeys.KEY_AUTO_DAILY_SIGN_IN)) {
+        if (available(FeatureKeys.KEY_AUTO_DAILY_SIGN_IN)) {
             tasks += DexKitWarmUpTask(IntlCookieByBdussDexKitResolver.CACHE_ID) {
                 IntlCookieByBdussDexKitResolver.warmUpDexKitCache(classLoader)
             }

@@ -19,6 +19,7 @@ object NightModeSupportHook {
         try {
             val settingsActivityClass = XposedCompat.findClassOrNull(BaiduIntlHookPoints.SETTINGS_ACTIVITY, cl)
                 ?: run {
+                    hookState.reset()
                     XposedCompat.log("[NightModeSupportHook] SettingsActivity class NOT FOUND")
                     return
                 }

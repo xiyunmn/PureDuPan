@@ -259,10 +259,6 @@ internal object DomesticAutoDailySignInHook {
                     cl,
                     BaiduAutomationHookPoints.COOKIE_UTILS,
                     "getCookieByBduss",
-                ) ?: resolveByMethodName(
-                    cl,
-                    BaiduAutomationHookPoints.KOTLIN_COOKIE_UTILS_13_27,
-                    "____",
                 )
             }
 

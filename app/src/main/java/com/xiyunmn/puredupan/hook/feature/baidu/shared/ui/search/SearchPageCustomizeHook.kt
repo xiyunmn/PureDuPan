@@ -8,36 +8,45 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
 internal object SearchPageCustomizeHook {
-    private val hookState = HookState()
+    private val staticHookState = HookState()
+    private val voiceSearchHookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
             XposedCompat.log("[SearchPageCustomizeHook] skipped: config disabled")
             return
         }
-        val mod = XposedCompat.module ?: return
-        if (!hookState.markInstalled()) return
 
         try {
             var installed = 0
-            if (HookSettings.isSearchPageRecommendHidden) {
-                installed += hookSearchRecommend(cl)
+            if (isStaticSearchCustomizeEnabled() && staticHookState.markInstalled()) {
+                var staticInstalled = 0
+                if (HookSettings.isSearchPageRecommendHidden) {
+                    staticInstalled += hookSearchRecommend(cl)
+                }
+                if (HookSettings.isSearchPagePlaceholderHidden) {
+                    staticInstalled += hookSearchPlaceholder(cl)
+                }
+                if (HookSettings.isSearchPageAiEntryHidden) {
+                    staticInstalled += hookAiEntry(cl)
+                }
+                if (staticInstalled == 0) {
+                    staticHookState.reset()
+                }
+                installed += staticInstalled
             }
-            if (HookSettings.isSearchPagePlaceholderHidden) {
-                installed += hookSearchPlaceholder(cl)
-            }
-            if (HookSettings.isSearchPageAiEntryHidden) {
-                installed += hookAiEntry(cl)
+            if (HookSettings.isSearchPageVoiceSearchHidden) {
+                installed += hookVoiceSearch(cl)
             }
             if (installed == 0) {
-                hookState.reset()
-                XposedCompat.log("[SearchPageCustomizeHook] no hooks installed")
+                XposedCompat.logD("[SearchPageCustomizeHook] no new hooks installed")
                 return
             }
 
             XposedCompat.log("[SearchPageCustomizeHook] hooks INSTALLED: count=$installed")
         } catch (e: Exception) {
-            hookState.reset()
+            staticHookState.reset()
+            voiceSearchHookState.reset()
             XposedCompat.log("[SearchPageCustomizeHook] FAILED: ${e.message}")
             XposedCompat.log(e)
         }
@@ -114,6 +123,71 @@ internal object SearchPageCustomizeHook {
                     !Modifier.isStatic(method.modifiers)
             }?.apply { isAccessible = true }
         }.distinct()
+    }
+
+    private fun hookVoiceSearch(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        if (!voiceSearchHookState.markInstalled()) return 0
+        val clazz = resolveVoiceSearchScreenClass(cl) ?: run {
+            voiceSearchHookState.reset()
+            XposedCompat.log("[SearchPageCustomizeHook] VoiceSearchScreenKt metadata class NOT FOUND")
+            return 0
+        }
+        val methods = listOfNotNull(
+            findVoiceSearchMethod(clazz),
+            findVoiceToTextMethod(clazz),
+        ).distinct()
+        if (methods.isEmpty()) {
+            voiceSearchHookState.reset()
+            XposedCompat.log("[SearchPageCustomizeHook] VoiceSearchScreenKt voice compose methods NOT FOUND")
+            return 0
+        }
+
+        methods.forEach { method ->
+            mod.hook(method).intercept { chain ->
+                if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageVoiceSearchHidden) {
+                    XposedCompat.logD(
+                        "[SearchPageCustomizeHook] ${method.declaringClass.name}.${method.name} voice search blocked",
+                    )
+                    null
+                } else {
+                    chain.proceed()
+                }
+            }
+        }
+        return methods.size
+    }
+
+    private fun resolveVoiceSearchScreenClass(cl: ClassLoader): Class<*>? {
+        return SearchPageVoiceSearchDexKitResolver.resolve(cl)
+    }
+
+    private fun findVoiceSearchMethod(clazz: Class<*>): Method? {
+        return clazz.declaredMethods.firstOrNull { method ->
+            isStaticVoidMethod(method) &&
+                method.parameterTypes.size == 5 &&
+                method.parameterTypes[0].name == BaiduSearchPageHookPoints.MAIN_SEARCH_VM &&
+                method.parameterTypes[1].name == BaiduSearchPageHookPoints.SEARCH_OPERATION_SERVICE_PLATFORM &&
+                method.parameterTypes[2].name == BaiduSearchPageHookPoints.COMPOSER &&
+                method.parameterTypes[3] == Int::class.javaPrimitiveType &&
+                method.parameterTypes[4] == Int::class.javaPrimitiveType
+        }?.apply { isAccessible = true }
+    }
+
+    private fun findVoiceToTextMethod(clazz: Class<*>): Method? {
+        return clazz.declaredMethods.firstOrNull { method ->
+            isStaticVoidMethod(method) &&
+                method.parameterTypes.size == 5 &&
+                method.parameterTypes[0].name == BaiduSearchPageHookPoints.MAIN_SEARCH_VM &&
+                method.parameterTypes[1].name == BaiduSearchPageHookPoints.FUNCTION0 &&
+                method.parameterTypes[2].name == BaiduSearchPageHookPoints.COMPOSER &&
+                method.parameterTypes[3] == Int::class.javaPrimitiveType &&
+                method.parameterTypes[4] == Int::class.javaPrimitiveType
+        }?.apply { isAccessible = true }
+    }
+
+    private fun isStaticVoidMethod(method: Method): Boolean {
+        return Modifier.isStatic(method.modifiers) && method.returnType == Void.TYPE
     }
 
     private fun hookAiEntry(cl: ClassLoader): Int {
@@ -275,13 +349,13 @@ internal object SearchPageCustomizeHook {
             return 0
         }
         val method = findAiSearchCardMethod(clazz) ?: run {
-            XposedCompat.log("[SearchPageCustomizeHook] AiSearchCardKt.______(...) NOT FOUND")
+            XposedCompat.log("[SearchPageCustomizeHook] AiSearchCardKt.AiSearchCard(...) NOT FOUND")
             return 0
         }
 
         mod.hook(method).intercept { chain ->
             if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageAiEntryHidden) {
-                XposedCompat.logD("[SearchPageCustomizeHook] AiSearchCardKt.______ blocked")
+                XposedCompat.logD("[SearchPageCustomizeHook] AiSearchCardKt.AiSearchCard blocked")
                 null
             } else {
                 chain.proceed()
@@ -291,11 +365,23 @@ internal object SearchPageCustomizeHook {
     }
 
     private fun findAiSearchCardMethod(clazz: Class<*>): Method? {
+        if (!metadataContainsAll(clazz, listOf("AiSearchCard", "MAIN_SEARCH_AI_SEARCH_GLOBAL"))) {
+            XposedCompat.logW("[SearchPageCustomizeHook] AiSearchCardKt metadata signature mismatch")
+            return null
+        }
         return clazz.declaredMethods.firstOrNull { method ->
-            method.name == "______" &&
-                Modifier.isStatic(method.modifiers) &&
+            Modifier.isStatic(method.modifiers) &&
+                method.returnType == Void.TYPE &&
                 method.parameterTypes.size == 10 &&
-                method.parameterTypes.firstOrNull() == Boolean::class.javaPrimitiveType
+                method.parameterTypes[0] == Boolean::class.javaPrimitiveType &&
+                method.parameterTypes[1] == String::class.java &&
+                method.parameterTypes[2] == String::class.java &&
+                method.parameterTypes[3].name == BaiduSearchPageHookPoints.MAIN_SEARCH_VM &&
+                method.parameterTypes[4].name == BaiduSearchPageHookPoints.SEARCH_RESULT_VM &&
+                method.parameterTypes[5].name == BaiduSearchPageHookPoints.AI_SEARCH_VM &&
+                method.parameterTypes[7].name == BaiduSearchPageHookPoints.COMPOSER &&
+                method.parameterTypes[8] == Int::class.javaPrimitiveType &&
+                method.parameterTypes[9] == Int::class.javaPrimitiveType
         }?.apply { isAccessible = true }
     }
 
@@ -383,9 +469,14 @@ internal object SearchPageCustomizeHook {
     private fun isEnabled(): Boolean {
         return HookSettings.isSearchPageCustomizeEnabled &&
             (
-                HookSettings.isSearchPageAiEntryHidden ||
-                    HookSettings.isSearchPagePlaceholderHidden ||
-                    HookSettings.isSearchPageRecommendHidden
+                isStaticSearchCustomizeEnabled() ||
+                    HookSettings.isSearchPageVoiceSearchHidden
                 )
+    }
+
+    private fun isStaticSearchCustomizeEnabled(): Boolean {
+        return HookSettings.isSearchPageAiEntryHidden ||
+            HookSettings.isSearchPagePlaceholderHidden ||
+            HookSettings.isSearchPageRecommendHidden
     }
 }

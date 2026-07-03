@@ -3,7 +3,6 @@ package com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance
 import android.content.Context
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
 import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticDexKitHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -11,7 +10,7 @@ import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object DomesticVideoAdPreloadDexKitResolver {
-    const val CACHE_ID = "domestic_video_front_ad_download"
+    const val CACHE_ID = "domestic_video_front_ad_download_v2"
 
     private const val TAG = "DomesticVideoAdPreloadDexKitResolver"
     private const val MAX_DIAGNOSTIC_CANDIDATES = 5
@@ -46,13 +45,11 @@ internal object DomesticVideoAdPreloadDexKitResolver {
         val scan = DexKitCompat.withBridge(TAG, cl, resolverId = CACHE_ID) { bridge ->
             bridge.setThreadNum(1)
 
-            val marsDownloadDescriptors = bridge.findMethod(
+            bridge.findMethod(
                 FindMethod.create()
                     .matcher(
                         MethodMatcher.create()
-                            .declaredClass(BaiduDomesticDexKitHookPoints.MARS_ADVERTISE_SDK)
-                            .returnType(Void.TYPE)
-                            .paramTypes(Context::class.java),
+                            .declaredClass(BaiduDomesticDexKitHookPoints.MARS_ADVERTISE_SDK),
                     ),
             ).filter { methodData ->
                 methodData.invokes.any { invoke ->
@@ -60,17 +57,7 @@ internal object DomesticVideoAdPreloadDexKitResolver {
                         BaiduDomesticDexKitHookPoints.DOWNLOAD_VIDEO_FRONT_AD_JOB_DESCRIPTOR,
                     )
                 }
-            }.mapTo(linkedSetOf()) { methodData -> methodData.descriptor }
-
-            val advertiseCandidates = bridge.findMethod(
-                FindMethod.create()
-                    .matcher(
-                        MethodMatcher.create()
-                            .declaredClass(BaiduDomesticDexKitHookPoints.ADVERTISE_SDK)
-                            .returnType(Void.TYPE)
-                            .paramTypes(Context::class.java),
-                    ),
-            ).map { methodData ->
+            }.map { methodData ->
                 DexMethodCandidate(
                     className = methodData.className,
                     methodName = methodData.name,
@@ -81,33 +68,19 @@ internal object DomesticVideoAdPreloadDexKitResolver {
                     invokeDescriptors = methodData.invokes.map { it.descriptor }.toSet(),
                 )
             }
-            marsDownloadDescriptors to advertiseCandidates
         } ?: return resolveFallback(cl)
 
-        val (marsDownloadDescriptors, candidates) = scan
+        val candidates = scan
         val rejected = mutableListOf<String>()
         val matches = candidates.mapNotNull { candidate ->
             if (!candidate.isDownloadVideoFrontAdShape()) return@mapNotNull null
-            val invokesMarsDownload = candidate.invokeDescriptors.intersect(marsDownloadDescriptors).isNotEmpty() ||
-                candidate.invokeDescriptors.any { descriptor ->
-                    descriptor.contains(
-                        "L${BaiduDomesticDexKitHookPoints.MARS_ADVERTISE_SDK.replace('.', '/')};->" +
-                            BaiduDomesticDexKitHookPoints
-                                .MARS_ADVERTISE_SDK_DOWNLOAD_VIDEO_FRONT_AD_13_27_METHOD +
-                            "(Landroid/content/Context;)V",
-                    )
-                }
-            if (!invokesMarsDownload) {
-                rejected += "${candidate.memberName()} rejected: no Mars downloadVideoFrontAd invoke"
-                return@mapNotNull null
-            }
             val method = validateCandidate(cl, candidate, rejected) ?: return@mapNotNull null
             candidate to method
         }
 
         val best = matches.singleOrNull()
         if (best == null) {
-            val diagnostic = buildDiagnostic(marsDownloadDescriptors, candidates, matches, rejected)
+            val diagnostic = buildDiagnostic(candidates, matches, rejected)
             XposedCompat.logW("[$TAG] downloadVideoFrontAd unresolved: $diagnostic")
             DexKitCompat.markTargetError(TAG, CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, CACHE_ID, null)
@@ -125,7 +98,7 @@ internal object DomesticVideoAdPreloadDexKitResolver {
     }
 
     private fun resolveFallback(cl: ClassLoader): Method? {
-        return (resolveHistoricalMethod(cl) ?: resolveKnown13_27Method(cl))?.also { method ->
+        return resolveHistoricalMethod(cl)?.also { method ->
             DexKitCompat.markTargetSuccess(
                 TAG,
                 CACHE_ID,
@@ -144,29 +117,8 @@ internal object DomesticVideoAdPreloadDexKitResolver {
             BaiduDomesticDexKitHookPoints.ADVERTISE_SDK_DOWNLOAD_VIDEO_FRONT_AD_METHOD,
             Context::class.java,
         )?.takeIf { method ->
-            validateAdvertiseSdkClass(clazz) &&
-                method.returnType == Void.TYPE &&
-                !Modifier.isStatic(method.modifiers)
-        }
-    }
-
-    private fun resolveKnown13_27Method(cl: ClassLoader): Method? {
-        val clazz = XposedCompat.findClassOrNull(
-            BaiduDomesticDexKitHookPoints.ADVERTISE_SDK,
-            cl,
-        ) ?: return null
-        if (!validateAdvertiseSdkClass(clazz)) return null
-        if (!validateMarsAdvertiseSdkClass(cl)) return null
-        return XposedCompat.findMethodOrNull(
-            clazz,
-            BaiduDomesticDexKitHookPoints.ADVERTISE_SDK_DOWNLOAD_VIDEO_FRONT_AD_13_27_METHOD,
-            Context::class.java,
-        )?.takeIf { method ->
             method.returnType == Void.TYPE &&
                 !Modifier.isStatic(method.modifiers)
-        }?.apply {
-            isAccessible = true
-            XposedCompat.logD("[$TAG] resolved known 13.27 downloadVideoFrontAd: ${declaringClass.name}.$name")
         }
     }
 
@@ -187,46 +139,39 @@ internal object DomesticVideoAdPreloadDexKitResolver {
 
     private fun validateRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
         val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
-        if (!validateAdvertiseSdkClass(clazz)) return null
-        if (!validateMarsAdvertiseSdkClass(cl)) return null
+        if (
+            clazz.name != BaiduDomesticDexKitHookPoints.ADVERTISE_SDK &&
+            clazz.name != BaiduDomesticDexKitHookPoints.MARS_ADVERTISE_SDK
+        ) {
+            return null
+        }
         return clazz.declaredMethods.firstOrNull { method ->
             method.name == ref.methodName &&
-                !Modifier.isStatic(method.modifiers) &&
-                method.returnType == Void.TYPE &&
-                method.parameterTypes.size == 1 &&
-                Context::class.java.isAssignableFrom(method.parameterTypes[0])
+                isDownloadVideoFrontAdMethod(method)
         }?.apply { isAccessible = true }
-    }
-
-    private fun validateAdvertiseSdkClass(clazz: Class<*>): Boolean {
-        if (clazz.name != BaiduDomesticDexKitHookPoints.ADVERTISE_SDK) return false
-        val tokens = KotlinMetadataUtils.metadataTokens(clazz)
-        return listOf(
-            BaiduDomesticDexKitHookPoints.ADVERTISE_SDK_METADATA_CLASS,
-            BaiduDomesticDexKitHookPoints.ADVERTISE_SDK_METADATA_DOWNLOAD_VIDEO_FRONT_AD,
-            BaiduDomesticDexKitHookPoints.ADVERTISE_SDK_METADATA_PRELOAD_VIDEO_FRONT_ADS,
-        ).all { token -> token in tokens }
-    }
-
-    private fun validateMarsAdvertiseSdkClass(cl: ClassLoader): Boolean {
-        val clazz = XposedCompat.findClassOrNull(
-            BaiduDomesticDexKitHookPoints.MARS_ADVERTISE_SDK,
-            cl,
-        ) ?: return false
-        val tokens = KotlinMetadataUtils.metadataTokens(clazz)
-        return BaiduDomesticDexKitHookPoints.MARS_ADVERTISE_SDK_METADATA_CLASS in tokens &&
-            BaiduDomesticDexKitHookPoints.MARS_ADVERTISE_SDK_METADATA_DOWNLOAD_VIDEO_FRONT_AD in tokens
     }
 
     private fun DexMethodCandidate.isDownloadVideoFrontAdShape(): Boolean =
         !isConstructor &&
-            !Modifier.isStatic(modifiers) &&
-            className == BaiduDomesticDexKitHookPoints.ADVERTISE_SDK &&
-            returnTypeName == "void" &&
-            paramTypeNames == listOf(Context::class.java.name)
+            className == BaiduDomesticDexKitHookPoints.MARS_ADVERTISE_SDK
+
+    private fun isDownloadVideoFrontAdMethod(method: Method): Boolean {
+        if (method.declaringClass.name == BaiduDomesticDexKitHookPoints.ADVERTISE_SDK) {
+            return !Modifier.isStatic(method.modifiers) &&
+                method.returnType == Void.TYPE &&
+                method.parameterTypes.size == 1 &&
+                Context::class.java.isAssignableFrom(method.parameterTypes[0])
+        }
+        return method.declaringClass.name == BaiduDomesticDexKitHookPoints.MARS_ADVERTISE_SDK &&
+            method.parameterTypes.size == 1 &&
+            Context::class.java.isAssignableFrom(method.parameterTypes[0]) &&
+            (
+                method.returnType == Void.TYPE ||
+                    method.returnType.name == "kotlin.Unit"
+                )
+    }
 
     private fun buildDiagnostic(
-        marsDownloadDescriptors: Set<String>,
         candidates: List<DexMethodCandidate>,
         matches: List<Pair<DexMethodCandidate, Method>>,
         rejected: List<String>,
@@ -245,7 +190,6 @@ internal object DomesticVideoAdPreloadDexKitResolver {
             .joinToString("\n")
             .ifBlank { "-" }
         return buildString {
-            append("marsDownloadDescriptorCount=").append(marsDownloadDescriptors.size).append('\n')
             append("candidateCount=").append(candidates.size).append('\n')
             append("matchCount=").append(matches.size).append('\n')
             append("topCandidates=\n").append(topCandidates).append('\n')
@@ -253,4 +197,5 @@ internal object DomesticVideoAdPreloadDexKitResolver {
             append("rejected=\n").append(rejectedText)
         }
     }
+
 }

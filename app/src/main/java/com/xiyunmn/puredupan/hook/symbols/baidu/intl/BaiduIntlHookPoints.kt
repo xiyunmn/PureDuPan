@@ -16,8 +16,11 @@ internal object BaiduIntlHookPoints {
     const val DEFAULT_MAIN_ACTIVITY = "com.baidu.netdisk.ui.DefaultMainActivity"
     const val NAVIGATE_ACTIVITY = "com.baidu.netdisk.ui.Navigate"
     const val SPLASH_AD_ACTIVITY = "com.baidu.netdisk.advertise.ui.SplashAdActivity"
-    const val HOT_START_MANAGER_13_11_CLASS = "f6.e"
-    const val HOT_START_ON_RESUME_13_11_METHOD = "q"
+    const val HOT_START_MANAGER_CLASS = "com.baidu.netdisk.advertise.AdvertiseHotStartManager"
+    const val HOT_START_ON_RESUME_METHOD = "q"
+    val HOT_START_MANAGER_CLASSES = listOf(
+        HOT_START_MANAGER_CLASS,
+    )
     const val AUDIO_API = "com.baidu.netdisk.audio.main.provider.MAudioApi"
     const val AUDIO_PLAYER_ACTIVITY = "com.baidu.netdisk.audio.ui.AudioPlayerActivity"
     const val TASK_QUERY_API = "com.baidu.netdisk.component.filesystem.provider.TaskQueryApi"

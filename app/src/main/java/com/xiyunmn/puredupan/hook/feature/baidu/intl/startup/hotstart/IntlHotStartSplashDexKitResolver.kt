@@ -50,7 +50,7 @@ internal object IntlHotStartSplashDexKitResolver {
             validateCachedResult(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return resolveKnown13_11Result(cl)?.also { result ->
+            DexKitCompat.CachedResult.NotFound -> return resolveKnownFallback(cl)?.also { result ->
                 XposedCompat.logD(
                     "[$TAG] resolved known hot-start entry fallback: " +
                         "${result.className}.${result.methodName}",
@@ -108,7 +108,7 @@ internal object IntlHotStartSplashDexKitResolver {
             return result
         }
 
-        resolveKnown13_11Result(cl)?.let { result ->
+        resolveKnownFallback(cl)?.let { result ->
             cacheResolved(result)
             XposedCompat.logD(
                 "[$TAG] resolved known hot-start entry: " +
@@ -122,14 +122,19 @@ internal object IntlHotStartSplashDexKitResolver {
         return null
     }
 
-    private fun resolveKnown13_11Result(cl: ClassLoader): ResolveResult? =
-        validateCachedResult(
-            cl,
-            DexKitCompat.MethodRef(
-                BaiduIntlHookPoints.HOT_START_MANAGER_13_11_CLASS,
-                BaiduIntlHookPoints.HOT_START_ON_RESUME_13_11_METHOD,
-            ),
-        )
+    private fun resolveKnownFallback(cl: ClassLoader): ResolveResult? {
+        for (className in BaiduIntlHookPoints.HOT_START_MANAGER_CLASSES) {
+            val result = validateCachedResult(
+                cl,
+                DexKitCompat.MethodRef(
+                    className,
+                    BaiduIntlHookPoints.HOT_START_ON_RESUME_METHOD,
+                ),
+            )
+            if (result != null) return result
+        }
+        return null
+    }
 
     private fun cacheResolved(result: ResolveResult) {
         DexKitCompat.putCachedMethod(

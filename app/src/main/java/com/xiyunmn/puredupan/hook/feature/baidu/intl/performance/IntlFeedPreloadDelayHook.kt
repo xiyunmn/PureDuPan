@@ -1,5 +1,7 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
+import android.os.Handler
+import android.os.Looper
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -13,6 +15,7 @@ internal object IntlFeedPreloadDelayHook {
     private const val NEW_FEED_HOME_COMPANION_CLASS_NAME = BaiduIntlHookPoints.NEW_FEED_HOME_COMPANION
     private const val PRELOAD_FEED_DATA_METHOD_NAME = "preloadFeedData"
     private const val HOME_STABLE_RESTORE_DELAY_MS = 2500L
+    private const val TIMEOUT_RESTORE_DELAY_MS = 8000L
 
     private data class PreloadInvocation(
         val cursor: String,
@@ -26,6 +29,7 @@ internal object IntlFeedPreloadDelayHook {
 
     private val hookState = HookState()
     private val lock = Any()
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
     @Volatile private var preloadMethod: Method? = null
     @Volatile private var preloadReceiver: Any? = null
@@ -36,6 +40,7 @@ internal object IntlFeedPreloadDelayHook {
     @Volatile private var skipCount = 0
     @Volatile private var restoreCount = 0
     @Volatile private var homeStableRestoreScheduled = false
+    @Volatile private var timeoutRestoreScheduled = false
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -67,6 +72,7 @@ internal object IntlFeedPreloadDelayHook {
                     skipped = true
                     skipCount++
                 }
+                scheduleTimeoutRestore()
                 XposedCompat.log(
                     "[IntlFeedPreloadDelayHook] skipped startup feed preload: " +
                         "${resolved.method.declaringClass.name}.${resolved.method.name}, skipCount=$skipCount",
@@ -161,6 +167,25 @@ internal object IntlFeedPreloadDelayHook {
             clearScheduled = { homeStableRestoreScheduled = false },
             restore = ::restoreIfPending,
         )
+    }
+
+    private fun scheduleTimeoutRestore() {
+        if (!isEnabled()) return
+        val shouldSchedule = synchronized(lock) {
+            if (restored || timeoutRestoreScheduled) {
+                false
+            } else {
+                timeoutRestoreScheduled = true
+                true
+            }
+        }
+        if (!shouldSchedule) return
+
+        mainHandler.postDelayed({
+            timeoutRestoreScheduled = false
+            restoreIfPending("timeout")
+        }, TIMEOUT_RESTORE_DELAY_MS)
+        XposedCompat.logD("[IntlFeedPreloadDelayHook] timeout restore scheduled")
     }
 
     private fun restoreIfPending(reason: String) {

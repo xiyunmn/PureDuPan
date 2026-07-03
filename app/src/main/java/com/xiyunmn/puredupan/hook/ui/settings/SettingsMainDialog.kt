@@ -316,7 +316,7 @@ internal object SettingsMainDialog {
                 context = context,
                 prefs = prefs,
                 showDexKitStatus = settingsSession.showDexKitStatus,
-                dexKitRow = rowsByPrefKey[SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT],
+                dexKitRow = rowsByPrefKey[SettingsUserState.KEY_DEXKIT_STATUS],
             )
             requestDexKitSummaryRefresh = dexKitSummaryRefresh?.requestRefresh
             val unregisterNightModeDependency = bindIntlNightModeDependency(

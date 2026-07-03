@@ -27,6 +27,7 @@ internal data class BaiduSystemNightModeHookPoints(
     val darkSkinTheme: String = "dark_theme.skin",
     val changeSkinMethodNames: Set<String> = setOf("changeSkin"),
     val changeSkinMethodResolver: ((ClassLoader) -> Method?)? = null,
+    val allowSkinManagerApplyFallback: Boolean = true,
     val settingsSwitchViewIdName: String = "dark_settings",
     val beforeApplyDarkSkin: ((Activity) -> Boolean)? = null,
 )
@@ -73,6 +74,7 @@ internal class BaiduSystemNightModeSyncHook(
         try {
             val baseActivityClass = XposedCompat.findClassOrNull(hookPoints.baseActivityClassName, cl)
                 ?: run {
+                    hookState.reset()
                     log("BaseActivity class NOT FOUND")
                     return
                 }
@@ -352,7 +354,9 @@ internal class BaiduSystemNightModeSyncHook(
                 return
             }
 
-            if (applySystemSkinWithSkinManager(cl, activity, listenerClass, isSystemNight)) {
+            if (hookPoints.allowSkinManagerApplyFallback &&
+                applySystemSkinWithSkinManager(cl, activity, listenerClass, isSystemNight)
+            ) {
                 lastAppliedNightMode = isSystemNight
                 return
             }
@@ -364,6 +368,10 @@ internal class BaiduSystemNightModeSyncHook(
     }
 
     private fun resolveChangeSkinMethod(cl: ClassLoader): Method? {
+        hookPoints.changeSkinMethodResolver?.invoke(cl)?.let { method ->
+            logD("ChangeSkinKt resolved by DexKit: ${method.declaringClass.name}.${method.name}")
+            return method
+        }
         for (changeSkinKtClassName in changeSkinKtClassNames()) {
             val changeSkinClass = XposedCompat.findClassOrNull(changeSkinKtClassName, cl)
             val changeMethod = changeSkinClass?.let { findChangeSkinMethods(it).firstOrNull() }
@@ -372,7 +380,7 @@ internal class BaiduSystemNightModeSyncHook(
                 return changeMethod
             }
         }
-        return hookPoints.changeSkinMethodResolver?.invoke(cl)
+        return null
     }
 
     private fun changeSkinKtClassNames(): List<String> =

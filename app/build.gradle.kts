@@ -433,7 +433,7 @@ val validateHookArchitecture = tasks.register("validateHookArchitecture") {
             }
         }
         failIfNotEmpty(
-            "Plan/DexKit layer bypasses explicit settings snapshots",
+            "Plan/DexKit layer imports runtime settings APIs",
             snapshotDrivenLayerSettingsMatches,
         )
 
@@ -777,10 +777,12 @@ val validateHookArchitecture = tasks.register("validateHookArchitecture") {
             .findAll(hookCatalogRegistriesFile.readText())
             .map { match -> match.groupValues[1] }
             .toList()
-        val registeredDexKitRegistryRefs = Regex("""HostIds\.([A-Z0-9_]+)\s+to\s+[A-Za-z0-9_]+""")
+        val registeredDexKitRegistryEntries = Regex("""HostIds\.([A-Z0-9_]+)\s+to\s+([A-Za-z0-9_]+)""")
             .findAll(dexKitTargetRegistriesFile.readText())
-            .map { match -> match.groupValues[1] }
+            .map { match -> match.groupValues[1] to match.groupValues[2] }
             .toList()
+        val registeredDexKitRegistryRefs = registeredDexKitRegistryEntries.map { it.first }
+        val dexKitRegistryByHostId = registeredDexKitRegistryEntries.toMap()
         val profileHookCatalogConstants = profileHookCatalogRefs.mapTo(linkedSetOf()) { it.second }
         val profileDexKitRegistryConstants = profileDexKitRegistryRefs.mapTo(linkedSetOf()) { it.second }
         val registeredHookCatalogConstants = registeredHookCatalogRefs.toSet()
@@ -795,6 +797,24 @@ val validateHookArchitecture = tasks.register("validateHookArchitecture") {
         failIfNotEmpty("Hook catalog registrations unused by host profiles", registeredHookCatalogConstants - profileHookCatalogConstants)
         failIfNotEmpty("Host DexKit registries missing registrations", profileDexKitRegistryConstants - registeredDexKitRegistryConstants)
         failIfNotEmpty("DexKit registry registrations unused by host profiles", registeredDexKitRegistryConstants - profileDexKitRegistryConstants)
+        val baiduDexKitRegistryMismatches = listOfNotNull(
+            if (dexKitRegistryByHostId["BAIDU_CN"] == "BaiduDomesticDexKitTargetRegistry") {
+                null
+            } else {
+                "BAIDU_CN must use BaiduDomesticDexKitTargetRegistry"
+            },
+            if (dexKitRegistryByHostId["BAIDU_SAMSUNG"] == "BaiduDomesticDexKitTargetRegistry") {
+                null
+            } else {
+                "BAIDU_SAMSUNG must use BaiduDomesticDexKitTargetRegistry"
+            },
+            if (dexKitRegistryByHostId["BAIDU_INTL"] == "BaiduIntlDexKitTargetRegistry") {
+                null
+            } else {
+                "BAIDU_INTL must use BaiduIntlDexKitTargetRegistry"
+            },
+        )
+        failIfNotEmpty("Baidu DexKit registry branch mapping mismatch", baiduDexKitRegistryMismatches)
 
         val featureKeysFile = sourceRoot.resolve(
             "com/xiyunmn/puredupan/hook/config/model/FeatureKeys.kt"

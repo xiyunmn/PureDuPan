@@ -72,7 +72,6 @@ internal object BaiduFeatureSets {
             baiduDomesticThemeCustomize,
             baiduDomesticAutomation,
             baiduDomesticDexKit,
-            baiduSamsungAd,
         )
 
     private val baiduSharedDiagnostics = listOf(
@@ -118,7 +117,6 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_HIDE_ABOUT_ME_REWARD_TEXT,
         FeatureKeys.KEY_HIDE_ABOUT_ME_SIGN_IN_DOT,
         FeatureKeys.KEY_REMOVE_ABOUT_ME_BANNER,
-        FeatureKeys.KEY_REMOVE_GAME_CENTER,
         FeatureKeys.KEY_REMOVE_MY_SERVICE,
     )
 
@@ -155,6 +153,7 @@ internal object BaiduFeatureSets {
 
     private val baiduDomesticStartup = listOf(
         FeatureKeys.KEY_BLOCK_IN_APP_DIALOG,
+        FeatureKeys.KEY_BLOCK_NOTIFICATION_PROMPT,
         FeatureKeys.KEY_BLOCK_SHARE_PUSH_GUIDE,
         FeatureKeys.KEY_BLOCK_UPDATE_DIALOG,
     )
@@ -170,6 +169,7 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY,
         FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER,
         FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND,
+        FeatureKeys.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH,
     )
 
     private val baiduDomesticMyPageCustomize = listOf(
@@ -219,7 +219,7 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduDomesticDexKit = listOf(
-        FeatureKeys.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
+        FeatureKeys.KEY_DEXKIT_STATUS,
     )
 
     private val baiduIntlStartup = listOf(
@@ -252,10 +252,6 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
     )
 
-    private val baiduSamsungAd = listOf(
-        FeatureKeys.KEY_BLOCK_NOTIFICATION_PROMPT,
-    )
-
     private val baiduIntlPerformanceCustomize = listOf(
         FeatureKeys.KEY_BLOCK_INTL_AIGC_WIDGET_BACKGROUND,
         FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT,
@@ -273,7 +269,7 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduIntlDexKit = listOf(
-        FeatureKeys.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
+        FeatureKeys.KEY_DEXKIT_STATUS,
     )
 
     private fun mergeKeys(vararg groups: Iterable<String>): Set<String> {

@@ -2,7 +2,7 @@ package com.xiyunmn.puredupan.hook.config.model
 
 object FeatureKeys {
     const val KEY_ENABLE_DETAILED_LOGGING = "enable_detailed_logging"
-    const val KEY_ENABLE_EXPERIMENTAL_DEXKIT = "enable_experimental_dexkit"
+    const val KEY_DEXKIT_STATUS = "enable_experimental_dexkit"
     const val KEY_SHOW_DEVICE_FINGERPRINT = "show_device_fingerprint"
     const val KEY_BLOCK_SPLASH_INTERSTITIAL = "block_splash_interstitial"
     const val KEY_REMOVE_HOT_START_SPLASH = "remove_hot_start_splash"
@@ -30,6 +30,7 @@ object FeatureKeys {
     const val KEY_HIDE_SEARCH_PAGE_AI_ENTRY = "hide_search_page_ai_entry"
     const val KEY_HIDE_SEARCH_PAGE_PLACEHOLDER = "hide_search_page_placeholder"
     const val KEY_HIDE_SEARCH_PAGE_RECOMMEND = "hide_search_page_recommend"
+    const val KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH = "hide_search_page_voice_search"
     const val KEY_SHARE_PAGE_CUSTOMIZE = "share_page_customize"
     const val KEY_MY_PAGE_CUSTOMIZE = "my_page_customize"
     const val KEY_REMOVE_GAME_CENTER = "remove_game_center"

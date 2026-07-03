@@ -1,6 +1,7 @@
 package com.xiyunmn.puredupan.hook.settings.registry
 
 import android.content.Context
+import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.config.runtime.DexKitSettingsRuntime
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCacheWarmUp
@@ -48,7 +49,7 @@ internal object SettingsDexKitState {
     fun markFullScanPendingFromSettings(context: Context) {
         if (!SettingsHostState.isFeatureVisibleForContext(
                 context,
-                SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
+                SettingsUserState.KEY_DEXKIT_STATUS,
             )
         ) {
             XposedCompat.logW("[SettingsDexKitState] full scan pending skipped: unsupported host")
@@ -60,7 +61,7 @@ internal object SettingsDexKitState {
     fun triggerFullScanFromSettings(context: Context): Boolean {
         if (!SettingsHostState.isFeatureVisibleForContext(
                 context,
-                SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
+                SettingsUserState.KEY_DEXKIT_STATUS,
             )
         ) {
             XposedCompat.logW("[SettingsDexKitState] full scan trigger skipped: unsupported host")
@@ -72,6 +73,7 @@ internal object SettingsDexKitState {
         }
         val started = DexKitCacheWarmUp.scanNow(
             host = host,
+            settings = ConfigManager.snapshot(),
             classLoader = context.classLoader,
             forceFullScan = true,
             reason = "settings manual scan",

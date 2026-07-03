@@ -1,9 +1,11 @@
 ﻿package com.xiyunmn.puredupan.hook.config
 
+import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
+
 data class SettingsSnapshot(
     // Logging
     val isDetailedLoggingEnabled: Boolean = false,
-    val isExperimentalDexKitEnabled: Boolean = false,
+    val isDexKitSupported: Boolean = false,
 
     // Splash / interstitial and dialog blocking
     val isSplashInterstitialBlockEnabled: Boolean = false,
@@ -34,6 +36,7 @@ data class SettingsSnapshot(
     val isSearchPageAiEntryHidden: Boolean = false,
     val isSearchPagePlaceholderHidden: Boolean = false,
     val isSearchPageRecommendHidden: Boolean = false,
+    val isSearchPageVoiceSearchHidden: Boolean = false,
     val isSharePageCustomizeEnabled: Boolean = false,
     val isMyPageCustomizeEnabled: Boolean = false,
     val isGameCenterRemoved: Boolean = false,
@@ -116,4 +119,53 @@ data class SettingsSnapshot(
 
     // Restricted features
     val areRestrictedFeaturesUnlocked: Boolean = false,
-)
+) {
+    fun isDexKitTargetFeatureEnabled(featureKey: String?): Boolean {
+        return when (featureKey) {
+            null -> true
+            FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL -> isSplashInterstitialBlockEnabled
+            FeatureKeys.KEY_REMOVE_HOT_START_SPLASH -> isHotStartSplashRemoveEnabled
+            FeatureKeys.KEY_BLOCK_UPDATE_DIALOG -> isUpdateDialogBlocked
+            FeatureKeys.KEY_REPLACE_BOTTOM_AI -> isBottomAiReplaced
+            FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE -> isThumbnailOperatorServiceDisabled
+            FeatureKeys.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART -> isMediaBrowserServiceAutostartDisabled
+            FeatureKeys.KEY_DISABLE_VIDEO_AD_PRELOAD -> isVideoAdPreloadDisabled
+            FeatureKeys.KEY_DISABLE_SWAN_PRELOAD -> isSwanPreloadDisabled
+            FeatureKeys.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD -> isIconResourceDownloadDisabled
+            FeatureKeys.KEY_AUTO_DAILY_SIGN_IN -> isAutoDailySignInEnabled
+            FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD -> isDynamicPluginAutoDownloadDisabled
+            FeatureKeys.KEY_BLOCK_INTL_STORY_DOUYIN_INIT -> isIntlStoryDouyinInitBlocked
+            FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET -> isIntlNonCoreDiffSocketDelayed
+            FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT -> isIntlAlbumAiInitBlocked
+            FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE -> isFollowSystemNightModeEnabled
+            else -> false
+        }
+    }
+
+    fun enablesDexKitTargetComparedTo(previous: SettingsSnapshot): Boolean {
+        return DEXKIT_TARGET_FEATURE_KEYS.any { featureKey ->
+            !previous.isDexKitTargetFeatureEnabled(featureKey) &&
+                isDexKitTargetFeatureEnabled(featureKey)
+        }
+    }
+
+    companion object {
+        val DEXKIT_TARGET_FEATURE_KEYS = setOf(
+            FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL,
+            FeatureKeys.KEY_REMOVE_HOT_START_SPLASH,
+            FeatureKeys.KEY_BLOCK_UPDATE_DIALOG,
+            FeatureKeys.KEY_REPLACE_BOTTOM_AI,
+            FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE,
+            FeatureKeys.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART,
+            FeatureKeys.KEY_DISABLE_VIDEO_AD_PRELOAD,
+            FeatureKeys.KEY_DISABLE_SWAN_PRELOAD,
+            FeatureKeys.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD,
+            FeatureKeys.KEY_AUTO_DAILY_SIGN_IN,
+            FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD,
+            FeatureKeys.KEY_BLOCK_INTL_STORY_DOUYIN_INIT,
+            FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET,
+            FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT,
+            FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
+        )
+    }
+}

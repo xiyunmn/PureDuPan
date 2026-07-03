@@ -1,17 +1,29 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance
 
-import android.content.Context
-import android.os.Bundle
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticDexKitHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
+import org.luckypray.dexkit.query.FindMethod
+import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object DomesticSwanPreloadResolver {
     const val PREFETCH_EVENT_CACHE_ID = "domestic_swan_prefetch_event"
 
     private const val TAG = "DomesticSwanPreloadResolver"
+    private const val MAX_DIAGNOSTIC_CANDIDATES = 5
+
+    private data class DexMethodCandidate(
+        val className: String,
+        val methodName: String,
+        val returnTypeName: String,
+        val paramTypeNames: List<String>,
+        val isConstructor: Boolean,
+        val modifiers: Int,
+    ) {
+        fun memberName(): String = "$className.$methodName"
+    }
 
     fun warmUpPrefetchEventCache(cl: ClassLoader): Boolean {
         return resolvePrefetchEventMethod(cl) != null
@@ -22,40 +34,71 @@ internal object DomesticSwanPreloadResolver {
             validatePrefetchEventRef(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.NotFound -> return resolveStablePrefetchEventMethod(cl)
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
-        val clazz = resolvePrefetchManagerClass(cl) ?: return null
-        val prefetchEventClass = XposedCompat.findClassOrNull(
+        XposedCompat.findClassOrNull(
             BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_EVENT,
             cl,
-        ) ?: return null
+        ) ?: return resolveStablePrefetchEventMethod(cl)
 
-        if (!isPrefetchManagerClass(clazz, cl)) {
-            DexKitCompat.markTargetError(TAG, PREFETCH_EVENT_CACHE_ID, "prefetch manager validation failed")
-            DexKitCompat.putCachedMethod(TAG, PREFETCH_EVENT_CACHE_ID, null)
-            return null
-        }
+        val candidates = DexKitCompat.withBridge(TAG, cl, resolverId = PREFETCH_EVENT_CACHE_ID) { bridge ->
+            bridge.setThreadNum(1)
+            bridge.findMethod(
+                FindMethod.create()
+                    .matcher(
+                        MethodMatcher.create()
+                            .returnType(Void.TYPE)
+                            .paramTypes(listOf(BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_EVENT)),
+                    ),
+            ).map { methodData ->
+                DexMethodCandidate(
+                    className = methodData.className,
+                    methodName = methodData.name,
+                    returnTypeName = methodData.returnTypeName,
+                    paramTypeNames = methodData.paramTypeNames,
+                    isConstructor = methodData.isConstructor,
+                    modifiers = methodData.modifiers,
+                )
+            }
+        } ?: return resolveStablePrefetchEventMethod(cl)
 
-        val matches = clazz.declaredMethods.filter { method ->
-            method.returnType == Void.TYPE &&
-                !Modifier.isStatic(method.modifiers) &&
-                method.parameterTypes.size == 1 &&
-                method.parameterTypes[0] == prefetchEventClass
-        }
-        val method = selectPrefetchEventEntryMethod(clazz, cl, matches)
-        if (method == null) {
+        val rejected = mutableListOf<String>()
+        val candidateMatches = candidates.mapNotNull { candidate ->
+            if (!candidate.isPrefetchEventShape()) return@mapNotNull null
+            val method = validateCandidate(cl, candidate, rejected) ?: return@mapNotNull null
+            candidate to method
+        }.sortedWith(compareBy { it.first.className })
+
+        val matches = candidateMatches
+            .groupBy { (_, method) -> method.declaringClass }
+            .mapNotNull { (clazz, entries) ->
+                val selected = selectPrefetchEventEntryMethod(
+                    clazz = clazz,
+                    cl = cl,
+                    matches = entries.map { it.second },
+                ) ?: return@mapNotNull null
+                val candidate = entries.firstOrNull { (_, method) -> methodKey(method) == methodKey(selected) }?.first
+                    ?: return@mapNotNull null
+                candidate to selected
+            }
+            .distinctBy { (_, method) -> methodKey(method) }
+            .sortedWith(compareBy({ it.first.className }, { it.first.methodName }))
+
+        val best = matches.singleOrNull()
+        if (best == null) {
+            val diagnostic = buildDiagnostic(candidates, matches, rejected)
             DexKitCompat.markTargetError(
                 TAG,
                 PREFETCH_EVENT_CACHE_ID,
-                "prefetch event entry method unresolved, matchCount=${matches.size}, " +
-                    "methods=${matches.joinToString { it.name }}",
+                diagnostic,
             )
             DexKitCompat.putCachedMethod(TAG, PREFETCH_EVENT_CACHE_ID, null)
-            return null
+            return resolveStablePrefetchEventMethod(cl)
         }
 
+        val method = best.second
         method.isAccessible = true
         DexKitCompat.putCachedMethod(
             TAG,
@@ -63,20 +106,6 @@ internal object DomesticSwanPreloadResolver {
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
         return method
-    }
-
-    fun resolveClientPuppetPreloadFallback(cl: ClassLoader): Method? {
-        val clazz = XposedCompat.findClassOrNull(
-            BaiduDomesticDexKitHookPoints.SWAN_CLIENT_PUPPET,
-            cl,
-        ) ?: return null
-        return clazz.declaredMethods.firstOrNull { method ->
-            method.name == "v0" &&
-                method.returnType == clazz &&
-                method.parameterTypes.size == 2 &&
-                Context::class.java.isAssignableFrom(method.parameterTypes[0]) &&
-                method.parameterTypes[1] == Bundle::class.java
-        }?.apply { isAccessible = true }
     }
 
     private fun validatePrefetchEventRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
@@ -96,8 +125,23 @@ internal object DomesticSwanPreloadResolver {
                 !Modifier.isStatic(method.modifiers) &&
                 method.parameterTypes.size == 1 &&
                 method.parameterTypes[0] == prefetchEventClass &&
-                implementsInterfaceMethod(managerInterface, method)
+                implementsInterfaceMethodBySignature(managerInterface, method)
         }?.apply { isAccessible = true }
+    }
+
+    private fun validateCandidate(
+        cl: ClassLoader,
+        candidate: DexMethodCandidate,
+        rejected: MutableList<String>,
+    ): Method? {
+        val method = validatePrefetchEventRef(
+            cl,
+            DexKitCompat.MethodRef(candidate.className, candidate.methodName),
+        )
+        if (method == null) {
+            rejected += "${candidate.memberName()} rejected: manager/signature mismatch"
+        }
+        return method
     }
 
     private fun selectPrefetchEventEntryMethod(
@@ -119,6 +163,10 @@ internal object DomesticSwanPreloadResolver {
             }
     }
 
+    private fun methodKey(method: Method): String =
+        method.declaringClass.name + "#" + method.name + "(" +
+            method.parameterTypes.joinToString(",") { it.name } + ")"
+
     private fun implementsInterfaceMethod(managerInterface: Class<*>, method: Method): Boolean {
         return managerInterface.declaredMethods.any { interfaceMethod ->
             interfaceMethod.name == method.name &&
@@ -134,22 +182,33 @@ internal object DomesticSwanPreloadResolver {
         }
     }
 
-    private fun resolvePrefetchManagerClass(cl: ClassLoader): Class<*>? {
-        return prefetchManagerClassNames()
-            .asSequence()
-            .mapNotNull { className -> XposedCompat.findClassOrNull(className, cl) }
-            .firstOrNull { clazz -> isPrefetchManagerClass(clazz, cl) }
+    private fun resolveStablePrefetchEventMethod(cl: ClassLoader): Method? {
+        val clazz = XposedCompat.findClassOrNull(
+            BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_STABLE_CLASS,
+            cl,
+        ) ?: return null
+        if (!isPrefetchManagerClass(clazz, cl)) return null
+        val prefetchEventClass = XposedCompat.findClassOrNull(
+            BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_EVENT,
+            cl,
+        ) ?: return null
+        val matches = clazz.declaredMethods.filter { method ->
+            method.returnType == Void.TYPE &&
+                !Modifier.isStatic(method.modifiers) &&
+                method.parameterTypes.size == 1 &&
+                method.parameterTypes[0] == prefetchEventClass
+        }
+        return selectPrefetchEventEntryMethod(clazz, cl, matches)?.also { method ->
+            method.isAccessible = true
+            DexKitCompat.markTargetSuccess(
+                TAG,
+                PREFETCH_EVENT_CACHE_ID,
+                "fallback:${method.declaringClass.name}.${method.name}",
+            )
+        }
     }
 
-    private fun prefetchManagerClassNames(): List<String> =
-        listOf(
-            BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_STABLE_CLASS,
-            BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER,
-            BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_JADX_NAME,
-        )
-
     private fun isPrefetchManagerClass(clazz: Class<*>, cl: ClassLoader): Boolean {
-        if (clazz.name !in prefetchManagerClassNames()) return false
         val managerInterface = XposedCompat.findClassOrNull(
             BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_INTERFACE,
             cl,
@@ -163,15 +222,46 @@ internal object DomesticSwanPreloadResolver {
     }
 
     private fun hasManagerTagField(clazz: Class<*>): Boolean {
-        val fieldNames = listOf(
-            BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_TAG_FIELD,
-            BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_TAG_FIELD_13_27,
-        )
-        return fieldNames.any { fieldName ->
-            runCatching {
-                clazz.getDeclaredField(fieldName).apply { isAccessible = true }
-                    .get(null) == BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_TAG
-            }.getOrDefault(false)
+        return clazz.declaredFields.any { field ->
+            Modifier.isStatic(field.modifiers) &&
+                field.type == String::class.java &&
+                runCatching {
+                    field.isAccessible = true
+                    field.get(null) == BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_MANAGER_TAG
+                }.getOrDefault(false)
+        }
+    }
+
+    private fun DexMethodCandidate.isPrefetchEventShape(): Boolean =
+        !isConstructor &&
+            !Modifier.isStatic(modifiers) &&
+            returnTypeName == "void" &&
+            paramTypeNames == listOf(BaiduDomesticDexKitHookPoints.SWAN_PREFETCH_EVENT)
+
+    private fun buildDiagnostic(
+        candidates: List<DexMethodCandidate>,
+        matches: List<Pair<DexMethodCandidate, Method>>,
+        rejected: List<String>,
+    ): String {
+        val topCandidates = candidates.take(MAX_DIAGNOSTIC_CANDIDATES)
+            .joinToString("\n") { candidate ->
+                "${candidate.memberName()} ${candidate.returnTypeName}(${candidate.paramTypeNames.joinToString()})"
+            }
+            .ifBlank { "-" }
+        val topMatches = matches.take(MAX_DIAGNOSTIC_CANDIDATES)
+            .joinToString("\n") { (candidate, method) ->
+                "${candidate.memberName()} -> ${method.declaringClass.name}.${method.name}"
+            }
+            .ifBlank { "-" }
+        val rejectedText = rejected.take(MAX_DIAGNOSTIC_CANDIDATES)
+            .joinToString("\n")
+            .ifBlank { "-" }
+        return buildString {
+            append("candidateCount=").append(candidates.size).append('\n')
+            append("matchCount=").append(matches.size).append('\n')
+            append("topCandidates=\n").append(topCandidates).append('\n')
+            append("topMatches=\n").append(topMatches).append('\n')
+            append("rejected=\n").append(rejectedText)
         }
     }
 }

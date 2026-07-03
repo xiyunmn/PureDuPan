@@ -1,5 +1,7 @@
 package com.xiyunmn.puredupan.hook.dexkit
 
+import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
+
 internal data class DexKitTargetDescriptor(
     val id: String,
     val target: String,
@@ -15,13 +17,21 @@ internal data class DexKitWarmUpTask(
 internal interface DexKitTargetRegistry {
     val descriptors: List<DexKitTargetDescriptor>
 
-    fun buildTasks(host: DexKitHostContext, classLoader: ClassLoader): List<DexKitWarmUpTask>
+    fun buildTasks(
+        host: DexKitHostContext,
+        settings: SettingsSnapshot,
+        classLoader: ClassLoader,
+    ): List<DexKitWarmUpTask>
 }
 
 internal object EmptyDexKitTargetRegistry : DexKitTargetRegistry {
     override val descriptors: List<DexKitTargetDescriptor> = emptyList()
 
-    override fun buildTasks(host: DexKitHostContext, classLoader: ClassLoader): List<DexKitWarmUpTask> {
+    override fun buildTasks(
+        host: DexKitHostContext,
+        settings: SettingsSnapshot,
+        classLoader: ClassLoader,
+    ): List<DexKitWarmUpTask> {
         return emptyList()
     }
 }

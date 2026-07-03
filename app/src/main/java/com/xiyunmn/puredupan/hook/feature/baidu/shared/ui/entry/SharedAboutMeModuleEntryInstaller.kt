@@ -9,14 +9,18 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRunti
 import io.github.libxposed.api.XposedModule
 
 internal object SharedAboutMeModuleEntryInstaller {
-    private const val SCAN_ICON_ID_NAME = "self_qrcode_scan_icon"
+    private val DEFAULT_SCAN_ICON_ID_NAMES = listOf(
+        "self_qrcode_scan_icon",
+        "self_qrcode_entrance_icon",
+        "self_qrcode_entrance_icon_new_pos",
+    )
 
     private val hookStates = linkedMapOf<String, HookState>()
 
     fun hook(
         cl: ClassLoader,
         tag: String,
-        scanIconIdNames: List<String> = listOf(SCAN_ICON_ID_NAME),
+        scanIconIdNames: List<String> = DEFAULT_SCAN_ICON_ID_NAMES,
     ) {
         val mod = XposedCompat.module ?: return
         val hookState = hookStates.getOrPut(tag) { HookState() }

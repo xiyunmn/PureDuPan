@@ -74,8 +74,8 @@ internal object HostProfileValidator {
             require(registryId.isNotBlank()) {
                 "Host ${profile.id} DexKit registry id must not be blank"
             }
-            require(FeatureKeys.KEY_ENABLE_EXPERIMENTAL_DEXKIT in featureKeys) {
-                "Host ${profile.id} DexKit registry requires experimental DexKit feature"
+            require(FeatureKeys.KEY_DEXKIT_STATUS in featureKeys) {
+                "Host ${profile.id} DexKit registry requires DexKit status feature key"
             }
             require(dexKitCapabilities.stableActivityClassNames.isNotEmpty()) {
                 "Host ${profile.id} DexKit registry requires stable activity signals"

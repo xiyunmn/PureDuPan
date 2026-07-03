@@ -9,19 +9,25 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
 internal object IntlHotStartSplashRemoveHook {
     private const val SPLASH_AD_ACTIVITY_CLASS_NAME = BaiduIntlHookPoints.SPLASH_AD_ACTIVITY
 
-    private val hookState = HookState()
+    private val fallbackHookState = HookState()
+    private val hotStartHookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
         if (!HookSettings.isHotStartSplashRemoveEnabled) return
+
+        hookSplashAdActivity(cl)
+        hookHotStartEntry(cl)
+    }
+
+    private fun hookHotStartEntry(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
-        if (!hookState.markInstalled()) return
+        if (!hotStartHookState.markInstalled()) return
 
         try {
-            hookSplashAdActivity(cl)
-
             val resolvedMethod = resolveWithDexKit(cl)
 
             if (resolvedMethod == null) {
+                hotStartHookState.reset()
                 XposedCompat.log("[IntlHotStartSplashRemoveHook] hot start entry NOT FOUND, fallback only")
                 return
             }
@@ -33,7 +39,7 @@ internal object IntlHotStartSplashRemoveHook {
                 "[IntlHotStartSplashRemoveHook] ${resolvedMethod.declaringClass.name}.${resolvedMethod.name} hooked",
             )
         } catch (t: Throwable) {
-            hookState.reset()
+            hotStartHookState.reset()
             XposedCompat.log("[IntlHotStartSplashRemoveHook] install FAILED: ${t.message}")
             XposedCompat.log(t)
         }
@@ -47,7 +53,10 @@ internal object IntlHotStartSplashRemoveHook {
 
     private fun hookSplashAdActivity(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
+        if (!fallbackHookState.markInstalled()) return
+
         val splashActivityClass = XposedCompat.findClassOrNull(SPLASH_AD_ACTIVITY_CLASS_NAME, cl) ?: run {
+            fallbackHookState.reset()
             XposedCompat.logD("[IntlHotStartSplashRemoveHook] SplashAdActivity class not found for fallback")
             return
         }
@@ -57,20 +66,27 @@ internal object IntlHotStartSplashRemoveHook {
             "onCreate",
             android.os.Bundle::class.java,
         ) ?: run {
+            fallbackHookState.reset()
             XposedCompat.logD("[IntlHotStartSplashRemoveHook] SplashAdActivity.onCreate not found for fallback")
             return
         }
 
-        mod.hook(onCreate).intercept { chain ->
-            val result = chain.proceed()
-            if (HookSettings.isHotStartSplashRemoveEnabled) {
-                (chain.thisObject as? Activity)?.let { activity ->
-                    XposedCompat.log("[IntlHotStartSplashRemoveHook] finishing SplashAdActivity fallback")
-                    activity.finish()
-                    activity.overridePendingTransition(0, 0)
+        try {
+            mod.hook(onCreate).intercept { chain ->
+                val result = chain.proceed()
+                if (HookSettings.isHotStartSplashRemoveEnabled) {
+                    (chain.thisObject as? Activity)?.let { activity ->
+                        XposedCompat.log("[IntlHotStartSplashRemoveHook] finishing SplashAdActivity fallback")
+                        activity.finish()
+                        activity.overridePendingTransition(0, 0)
+                    }
                 }
+                result
             }
-            result
+        } catch (t: Throwable) {
+            fallbackHookState.reset()
+            XposedCompat.log("[IntlHotStartSplashRemoveHook] fallback install FAILED: ${t.message}")
+            XposedCompat.log(t)
         }
     }
 }

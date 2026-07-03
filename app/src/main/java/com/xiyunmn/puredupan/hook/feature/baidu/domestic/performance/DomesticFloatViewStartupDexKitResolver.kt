@@ -2,7 +2,6 @@ package com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance
 
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
 import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticDexKitHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -18,7 +17,6 @@ internal object DomesticFloatViewStartupDexKitResolver {
     private data class DexMethodCandidate(
         val className: String,
         val methodName: String,
-        val descriptor: String,
         val returnTypeName: String,
         val paramTypeNames: List<String>,
         val isConstructor: Boolean,
@@ -72,10 +70,6 @@ internal object DomesticFloatViewStartupDexKitResolver {
                     ),
             ).mapTo(linkedSetOf()) { methodData -> methodData.className }
 
-            knownStableClassNames().forEach { className ->
-                startupTaskClassNames += className
-            }
-
             val startupTaskCandidates = startupTaskClassNames.flatMap { className ->
                 bridge.findMethod(
                     FindMethod.create()
@@ -90,7 +84,6 @@ internal object DomesticFloatViewStartupDexKitResolver {
                 DexMethodCandidate(
                     className = methodData.className,
                     methodName = methodData.name,
-                    descriptor = methodData.descriptor,
                     returnTypeName = methodData.returnTypeName,
                     paramTypeNames = methodData.paramTypeNames,
                     isConstructor = methodData.isConstructor,
@@ -116,7 +109,6 @@ internal object DomesticFloatViewStartupDexKitResolver {
                     DexMethodCandidate(
                         className = methodData.className,
                         methodName = methodData.name,
-                        descriptor = methodData.descriptor,
                         returnTypeName = methodData.returnTypeName,
                         paramTypeNames = methodData.paramTypeNames,
                         isConstructor = methodData.isConstructor,
@@ -172,34 +164,18 @@ internal object DomesticFloatViewStartupDexKitResolver {
         }
     }
 
-    private fun knownStableClassNames(): List<String> =
-        listOf(
-            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_STABLE_CLASS,
-            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_13_27_CLASS,
-            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_13_27_JADX_CLASS,
-        )
-
     private fun resolveStableMethod(cl: ClassLoader): Method? {
-        val preferredRefs = listOf(
+        val method = validateRef(
+            cl,
             DexKitCompat.MethodRef(
                 BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_STABLE_CLASS,
                 BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_STABLE_METHOD,
             ),
-            DexKitCompat.MethodRef(
-                BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_13_27_CLASS,
-                BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_13_27_METHOD,
-            ),
-            DexKitCompat.MethodRef(
-                BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_13_27_JADX_CLASS,
-                BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_13_27_METHOD,
-            ),
         )
-        for (ref in preferredRefs) {
-            val method = validateRef(cl, ref) ?: continue
+        if (method != null) {
             XposedCompat.logD("[$TAG] resolved stable initAudioCircleView: ${method.declaringClass.name}.${method.name}")
-            return method
         }
-        return null
+        return method
     }
 
     private fun validateCandidate(
@@ -222,24 +198,12 @@ internal object DomesticFloatViewStartupDexKitResolver {
         ref: DexKitCompat.MethodRef,
     ): Method? {
         val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
-        if (!isFloatViewStartupTaskClass(clazz)) return null
         return clazz.declaredMethods.firstOrNull { method ->
             method.name == ref.methodName &&
                 !Modifier.isStatic(method.modifiers) &&
                 method.returnType == Void.TYPE &&
                 method.parameterTypes.isEmpty()
         }?.apply { isAccessible = true }
-    }
-
-    private fun isFloatViewStartupTaskClass(clazz: Class<*>): Boolean {
-        val tokens = KotlinMetadataUtils.metadataTokens(clazz)
-        return listOf(
-            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_METADATA_CLASS,
-            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_GET_TASK_NAME_METHOD,
-            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_INIT_TASK_QUERY_TIP_VIEW_METHOD,
-            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_METHOD,
-            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_INIT_RETURN_THIRD_APP_VIEW_METHOD,
-        ).all { token -> token in tokens }
     }
 
     private fun DexMethodCandidate.isStartupTaskVoidMethodShape(): Boolean =
@@ -263,9 +227,6 @@ internal object DomesticFloatViewStartupDexKitResolver {
         when (method.name) {
             BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_STABLE_METHOD -> {
                 score += 200
-            }
-            BaiduDomesticDexKitHookPoints.FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_13_27_METHOD -> {
-                score += 180
             }
             "run" -> {
                 score -= 50

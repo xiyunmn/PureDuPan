@@ -7,7 +7,7 @@ import com.xiyunmn.puredupan.hook.config.model.FeatureAvailabilityStatus
 
 internal object SettingsUserState {
     const val KEY_ENABLE_DETAILED_LOGGING = ConfigManager.KEY_ENABLE_DETAILED_LOGGING
-    const val KEY_ENABLE_EXPERIMENTAL_DEXKIT = ConfigManager.KEY_ENABLE_EXPERIMENTAL_DEXKIT
+    const val KEY_DEXKIT_STATUS = ConfigManager.KEY_DEXKIT_STATUS
     const val KEY_SHOW_DEVICE_FINGERPRINT = ConfigManager.KEY_SHOW_DEVICE_FINGERPRINT
     const val KEY_BLOCK_SPLASH_INTERSTITIAL = ConfigManager.KEY_BLOCK_SPLASH_INTERSTITIAL
     const val KEY_REMOVE_HOT_START_SPLASH = ConfigManager.KEY_REMOVE_HOT_START_SPLASH
@@ -37,6 +37,7 @@ internal object SettingsUserState {
     const val KEY_HIDE_SEARCH_PAGE_AI_ENTRY = ConfigManager.KEY_HIDE_SEARCH_PAGE_AI_ENTRY
     const val KEY_HIDE_SEARCH_PAGE_PLACEHOLDER = ConfigManager.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER
     const val KEY_HIDE_SEARCH_PAGE_RECOMMEND = ConfigManager.KEY_HIDE_SEARCH_PAGE_RECOMMEND
+    const val KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH = ConfigManager.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH
     const val KEY_SHARE_PAGE_CUSTOMIZE = ConfigManager.KEY_SHARE_PAGE_CUSTOMIZE
     const val KEY_MY_PAGE_CUSTOMIZE = ConfigManager.KEY_MY_PAGE_CUSTOMIZE
     const val KEY_REMOVE_GAME_CENTER = ConfigManager.KEY_REMOVE_GAME_CENTER

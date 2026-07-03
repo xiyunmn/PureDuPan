@@ -23,9 +23,9 @@ internal object DebugSettingsRegistry {
     fun specs(hostPackageName: String): List<DebugSwitchSpec> {
         return listOf(
             DebugSwitchSpec(
-                SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
-                UiText.Settings.EXPERIMENTAL_DEXKIT_LABEL,
-                UiText.Settings.EXPERIMENTAL_DEXKIT_DESC,
+                SettingsUserState.KEY_DEXKIT_STATUS,
+                UiText.Settings.DEXKIT_STATUS_LABEL,
+                UiText.Settings.DEXKIT_STATUS_DESC,
                 action = DebugSettingsAction.DEXKIT_STATUS,
                 showSwitch = false,
             ),

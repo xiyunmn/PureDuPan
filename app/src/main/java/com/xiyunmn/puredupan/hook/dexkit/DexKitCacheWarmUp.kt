@@ -25,14 +25,15 @@ internal object DexKitCacheWarmUp {
 
     fun startIfNeeded(
         host: DexKitHostContext,
-        processName: String,
         settings: SettingsSnapshot,
+        processName: String,
         classLoader: ClassLoader,
+        onWarmUpFinished: (() -> Unit)? = null,
     ) {
         if (!host.isMainProcess(processName)) return
 
         val registry = HostDexKitTargetRegistries.forHost(host)
-        val tasks = registry.buildTasks(host, classLoader)
+        val tasks = registry.buildTasks(host, settings, classLoader)
         if (tasks.isEmpty()) {
             XposedCompat.logD("[DexKitCacheWarmUp] skipped: no available DexKit task for host=${host.hostId}")
             return
@@ -50,24 +51,34 @@ internal object DexKitCacheWarmUp {
             tasks = tasks,
             descriptors = registry.descriptors,
             forceFullScan = forceFullScan,
+            onWarmUpFinished = onWarmUpFinished,
         )
         if (!hooked) {
             XposedCompat.logW("[DexKitCacheWarmUp] stable activity signal unavailable, fallback scheduled")
         }
         mainHandler.postDelayed(
-            { startAutomaticWarmUpThread(tasks, registry.descriptors, forceFullScan, "fallback") },
+            {
+                startAutomaticWarmUpThread(
+                    tasks,
+                    registry.descriptors,
+                    forceFullScan,
+                    "fallback",
+                    onWarmUpFinished,
+                )
+            },
             FALLBACK_SCAN_DELAY_MS,
         )
     }
 
     fun scanNow(
         host: DexKitHostContext,
+        settings: SettingsSnapshot,
         classLoader: ClassLoader,
         forceFullScan: Boolean,
         reason: String,
     ): Boolean {
         val registry = HostDexKitTargetRegistries.forHost(host)
-        val tasks = registry.buildTasks(host, classLoader)
+        val tasks = registry.buildTasks(host, settings, classLoader)
         if (tasks.isEmpty()) {
             XposedCompat.logD("[DexKitCacheWarmUp] scan-now skipped: no available DexKit task for host=${host.hostId}")
             return false
@@ -81,8 +92,12 @@ internal object DexKitCacheWarmUp {
         )
     }
 
-    fun statusViews(host: DexKitHostContext): List<TargetStatusView> {
-        return HostDexKitTargetRegistries.forHost(host).descriptors.map { descriptor ->
+    fun statusViews(
+        host: DexKitHostContext,
+    ): List<TargetStatusView> {
+        return HostDexKitTargetRegistries.forHost(host).descriptors.filter { descriptor ->
+            isDescriptorVisible(host, descriptor)
+        }.map { descriptor ->
             val status = DexKitCompat.readTargetStatus(descriptor.id)
             TargetStatusView(
                 descriptor = descriptor,
@@ -109,6 +124,7 @@ internal object DexKitCacheWarmUp {
         tasks: List<DexKitWarmUpTask>,
         descriptors: List<DexKitTargetDescriptor>,
         forceFullScan: Boolean,
+        onWarmUpFinished: (() -> Unit)?,
     ): Boolean {
         val mod = XposedCompat.module ?: return false
         var installed = false
@@ -131,6 +147,7 @@ internal object DexKitCacheWarmUp {
                                 descriptors = descriptors,
                                 forceFullScan = forceFullScan,
                                 reason = "${clazz.name}.onWindowFocusChanged",
+                                onWarmUpFinished = onWarmUpFinished,
                             )
                         },
                         HOME_STABLE_SCAN_DELAY_MS,
@@ -149,6 +166,7 @@ internal object DexKitCacheWarmUp {
         descriptors: List<DexKitTargetDescriptor>,
         forceFullScan: Boolean,
         reason: String,
+        onWarmUpFinished: (() -> Unit)?,
     ): Boolean {
         if (!automaticScanStarted.compareAndSet(false, true)) return false
         return startWarmUpThread(
@@ -157,6 +175,7 @@ internal object DexKitCacheWarmUp {
             forceFullScan = forceFullScan,
             reason = reason,
             consumePendingFullScan = false,
+            onWarmUpFinished = onWarmUpFinished,
         )
     }
 
@@ -166,6 +185,7 @@ internal object DexKitCacheWarmUp {
         forceFullScan: Boolean,
         reason: String,
         consumePendingFullScan: Boolean,
+        onWarmUpFinished: (() -> Unit)? = null,
     ): Boolean {
         if (!scanRunning.compareAndSet(false, true)) {
             XposedCompat.logD("[DexKitCacheWarmUp] scan skipped: already running, reason=$reason")
@@ -184,6 +204,16 @@ internal object DexKitCacheWarmUp {
                 }
             } finally {
                 scanRunning.set(false)
+                onWarmUpFinished?.let { callback ->
+                    mainHandler.post {
+                        runCatching { callback() }
+                            .onFailure { t ->
+                                XposedCompat.logW(
+                                    "[DexKitCacheWarmUp] warm-up finish callback failed: ${t.message}",
+                                )
+                            }
+                    }
+                }
             }
         }, "WPH-DexKit-WarmUp").apply {
             isDaemon = true
@@ -266,6 +296,14 @@ internal object DexKitCacheWarmUp {
             append("message=").append(t.message ?: "-").append('\n')
             append("stacktrace=\n").append(lines)
         }
+    }
+
+    private fun isDescriptorVisible(
+        host: DexKitHostContext,
+        descriptor: DexKitTargetDescriptor,
+    ): Boolean {
+        val featureKey = descriptor.featureKey ?: return true
+        return host.isFeatureAvailable(featureKey)
     }
 
     private fun DexKitCompat.TargetStatus.isTerminal(): Boolean {

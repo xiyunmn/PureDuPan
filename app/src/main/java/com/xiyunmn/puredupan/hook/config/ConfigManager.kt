@@ -17,7 +17,7 @@ object ConfigManager {
     private const val KEY_USER_SETTINGS_VERSION_CODE = "user_settings_version_code"
 
     const val KEY_ENABLE_DETAILED_LOGGING = FeatureKeys.KEY_ENABLE_DETAILED_LOGGING
-    const val KEY_ENABLE_EXPERIMENTAL_DEXKIT = FeatureKeys.KEY_ENABLE_EXPERIMENTAL_DEXKIT
+    const val KEY_DEXKIT_STATUS = FeatureKeys.KEY_DEXKIT_STATUS
     const val KEY_SHOW_DEVICE_FINGERPRINT = FeatureKeys.KEY_SHOW_DEVICE_FINGERPRINT
     const val KEY_BLOCK_SPLASH_INTERSTITIAL = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL
     const val KEY_REMOVE_HOT_START_SPLASH = FeatureKeys.KEY_REMOVE_HOT_START_SPLASH
@@ -28,11 +28,8 @@ object ConfigManager {
     const val KEY_BLOCK_APP_STORE_REVIEW = FeatureKeys.KEY_BLOCK_APP_STORE_REVIEW
     const val KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG = FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG
     const val KEY_BLOCK_NOTIFICATION_PROMPT = FeatureKeys.KEY_BLOCK_NOTIFICATION_PROMPT
-    private const val LEGACY_BLOCK_SAMSUNG_NON_WIFI_DOWNLOAD_DIALOG =
-        "block_samsung_non_wifi_download_dialog"
     const val KEY_REPLACE_BOTTOM_AI = FeatureKeys.KEY_REPLACE_BOTTOM_AI
     const val KEY_HOME_CUSTOMIZE = FeatureKeys.KEY_HOME_CUSTOMIZE
-    private const val LEGACY_HOME_TOP_PROMOTION = "remove_top_ai"
     const val KEY_HIDE_HOME_TOP_PROMOTION = FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION
     const val KEY_HIDE_HOME_SEARCH_PLACEHOLDER = FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER
     const val KEY_HIDE_HOME_SEARCH_AIGC_ICON = FeatureKeys.KEY_HIDE_HOME_SEARCH_AIGC_ICON
@@ -48,6 +45,7 @@ object ConfigManager {
     const val KEY_HIDE_SEARCH_PAGE_AI_ENTRY = FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY
     const val KEY_HIDE_SEARCH_PAGE_PLACEHOLDER = FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER
     const val KEY_HIDE_SEARCH_PAGE_RECOMMEND = FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND
+    const val KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH = FeatureKeys.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH
     const val KEY_SHARE_PAGE_CUSTOMIZE = FeatureKeys.KEY_SHARE_PAGE_CUSTOMIZE
     const val KEY_MY_PAGE_CUSTOMIZE = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE
     const val KEY_REMOVE_GAME_CENTER = FeatureKeys.KEY_REMOVE_GAME_CENTER
@@ -64,7 +62,6 @@ object ConfigManager {
     const val KEY_HIDE_RENEW_BUTTON = FeatureKeys.KEY_HIDE_RENEW_BUTTON
     const val KEY_BLOCK_BOTTOM_BADGE = FeatureKeys.KEY_BLOCK_BOTTOM_BADGE
     const val KEY_BLOCK_ALBUM_BACKUP_BAR = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR
-    private const val LEGACY_HIDE_MEMBER_CARD_BACKGROUND = "hide_member_card_background"
     const val KEY_HIDE_ABOUT_ME_AI_COIN_ASSET = FeatureKeys.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET
     const val KEY_MEMBER_CARD_CUSTOMIZE = FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE
     const val KEY_REPLACE_MEMBER_CARD_BACKGROUND = FeatureKeys.KEY_REPLACE_MEMBER_CARD_BACKGROUND
@@ -130,7 +127,7 @@ object ConfigManager {
     @Volatile private var prefsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     val isDetailedLoggingEnabled: Boolean get() = settingsSnapshot.isDetailedLoggingEnabled
-    val isExperimentalDexKitEnabled: Boolean get() = settingsSnapshot.isExperimentalDexKitEnabled
+    val isDexKitSupported: Boolean get() = settingsSnapshot.isDexKitSupported
     val isSplashInterstitialBlockEnabled: Boolean get() = settingsSnapshot.isSplashInterstitialBlockEnabled
     val isHotStartSplashRemoveEnabled: Boolean get() = settingsSnapshot.isHotStartSplashRemoveEnabled
     val isInAppDialogBlocked: Boolean get() = settingsSnapshot.isInAppDialogBlocked
@@ -159,6 +156,7 @@ object ConfigManager {
     val isSearchPageAiEntryHidden: Boolean get() = settingsSnapshot.isSearchPageAiEntryHidden
     val isSearchPagePlaceholderHidden: Boolean get() = settingsSnapshot.isSearchPagePlaceholderHidden
     val isSearchPageRecommendHidden: Boolean get() = settingsSnapshot.isSearchPageRecommendHidden
+    val isSearchPageVoiceSearchHidden: Boolean get() = settingsSnapshot.isSearchPageVoiceSearchHidden
     val isSharePageCustomizeEnabled: Boolean get() = settingsSnapshot.isSharePageCustomizeEnabled
     val isMyPageCustomizeEnabled: Boolean get() = settingsSnapshot.isMyPageCustomizeEnabled
     val isGameCenterRemoved: Boolean get() = settingsSnapshot.isGameCenterRemoved
@@ -278,7 +276,6 @@ object ConfigManager {
             applyFeatureAvailabilityInternal(
                 ConfigHostRuntime.featureStatusMapForPackage(appCtx.packageName),
             )
-            migrateLegacyPrefsIfNeeded(appCtx, p, targetPrefsName)
             ensureUserSettingsVersion(p)
 
             val snapshot = refreshUserSettingsSnapshot(p)
@@ -293,10 +290,7 @@ object ConfigManager {
     fun snapshot(): SettingsSnapshot = settingsSnapshot
 
     fun readHomeTopPromotionHidden(p: SharedPreferences): Boolean {
-        return p.getBoolean(
-            KEY_HIDE_HOME_TOP_PROMOTION,
-            p.getBoolean(LEGACY_HOME_TOP_PROMOTION, false),
-        )
+        return p.getBoolean(KEY_HIDE_HOME_TOP_PROMOTION, false)
     }
 
     private fun replaceSettingsSnapshot(snapshot: SettingsSnapshot) {
@@ -308,7 +302,14 @@ object ConfigManager {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, _ ->
             synchronized(this@ConfigManager) {
                 if (prefs !== sharedPrefs) return@OnSharedPreferenceChangeListener
+                val previousSnapshot = settingsSnapshot
                 val snapshot = refreshUserSettingsSnapshot(sharedPrefs)
+                if (
+                    snapshot.isDexKitSupported &&
+                    snapshot.enablesDexKitTargetComparedTo(previousSnapshot)
+                ) {
+                    DexKitSettingsRuntime.markFullScanPendingFromConfigListener()
+                }
                 if (snapshot.isDetailedLoggingEnabled) {
                     appContext?.let { XposedCompat.initializeFileLogging(it) }
                 }
@@ -401,11 +402,7 @@ object ConfigManager {
         fun featureBoolean(key: String, defaultValue: Boolean = false): Boolean {
             return p.getBoolean(key, defaultValue) && isFeatureAvailable(key)
         }
-        val memberCardBackgroundReplaced = featureBoolean(
-            KEY_REPLACE_MEMBER_CARD_BACKGROUND,
-            p.getBoolean(LEGACY_HIDE_MEMBER_CARD_BACKGROUND, false) &&
-                isFeatureAvailable(KEY_REPLACE_MEMBER_CARD_BACKGROUND),
-        )
+        val memberCardBackgroundReplaced = featureBoolean(KEY_REPLACE_MEMBER_CARD_BACKGROUND)
         val memberCardBackgroundUri = p.getString(KEY_MEMBER_CARD_BACKGROUND_URI, null)
         val memberCardClickRemoved = featureBoolean(KEY_REMOVE_MEMBER_CARD_CLICK, false)
         val memberCardBackgroundViewedOnClick =
@@ -430,7 +427,7 @@ object ConfigManager {
                 memberCardClickRemoved ||
                 memberCardBackgroundViewedOnClick
         val hasHomeCustomizeOptionEnabled =
-                featureBoolean(KEY_HIDE_HOME_TOP_PROMOTION, readHomeTopPromotionHidden(p)) ||
+            featureBoolean(KEY_HIDE_HOME_TOP_PROMOTION, readHomeTopPromotionHidden(p)) ||
                 featureBoolean(KEY_HIDE_HOME_SEARCH_PLACEHOLDER, false) ||
                 featureBoolean(KEY_HIDE_HOME_SEARCH_AIGC_ICON, false) ||
                 featureBoolean(KEY_HIDE_HOME_TOOLBAR, false) ||
@@ -445,7 +442,8 @@ object ConfigManager {
         val hasSearchPageOptionEnabled =
             featureBoolean(KEY_HIDE_SEARCH_PAGE_AI_ENTRY, false) ||
                 featureBoolean(KEY_HIDE_SEARCH_PAGE_PLACEHOLDER, false) ||
-                featureBoolean(KEY_HIDE_SEARCH_PAGE_RECOMMEND, false)
+                featureBoolean(KEY_HIDE_SEARCH_PAGE_RECOMMEND, false) ||
+                featureBoolean(KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH, false)
         val hasSharePageOptionEnabled =
             featureBoolean(KEY_REMOVE_HOME_FAB, false)
         val hasMyPageOptionEnabled =
@@ -500,7 +498,7 @@ object ConfigManager {
 
         return SettingsSnapshot(
             isDetailedLoggingEnabled = p.getBoolean(KEY_ENABLE_DETAILED_LOGGING, false),
-            isExperimentalDexKitEnabled = doesCurrentHostSupportExperimentalDexKit(),
+            isDexKitSupported = doesCurrentHostSupportDexKit(),
             isSplashInterstitialBlockEnabled = featureBoolean(KEY_BLOCK_SPLASH_INTERSTITIAL, false),
             isHotStartSplashRemoveEnabled = featureBoolean(KEY_REMOVE_HOT_START_SPLASH, false),
             isInAppDialogBlocked = featureBoolean(KEY_BLOCK_IN_APP_DIALOG, false),
@@ -508,11 +506,7 @@ object ConfigManager {
             isFullScreenBackupBlocked = featureBoolean(KEY_BLOCK_FULL_SCREEN_BACKUP, false),
             isSharePushGuideBlocked = featureBoolean(KEY_BLOCK_SHARE_PUSH_GUIDE, false),
             isAppStoreReviewBlocked = featureBoolean(KEY_BLOCK_APP_STORE_REVIEW, false),
-            isNonWifiDownloadDialogBlocked = featureBoolean(
-                KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG,
-                p.getBoolean(LEGACY_BLOCK_SAMSUNG_NON_WIFI_DOWNLOAD_DIALOG, false) &&
-                    isFeatureAvailable(KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG),
-            ),
+            isNonWifiDownloadDialogBlocked = featureBoolean(KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG, false),
             isNotificationPromptBlocked = featureBoolean(KEY_BLOCK_NOTIFICATION_PROMPT, false),
             isBottomAiReplaced = featureBoolean(KEY_REPLACE_BOTTOM_AI, false),
             isHomeCustomizeEnabled = featureBoolean(KEY_HOME_CUSTOMIZE, hasHomeCustomizeOptionEnabled),
@@ -531,6 +525,7 @@ object ConfigManager {
             isSearchPageAiEntryHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_AI_ENTRY, false),
             isSearchPagePlaceholderHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_PLACEHOLDER, false),
             isSearchPageRecommendHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_RECOMMEND, false),
+            isSearchPageVoiceSearchHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH, false),
             isSharePageCustomizeEnabled = featureBoolean(KEY_SHARE_PAGE_CUSTOMIZE, hasSharePageOptionEnabled),
             isMyPageCustomizeEnabled = featureBoolean(KEY_MY_PAGE_CUSTOMIZE, hasMyPageOptionEnabled),
             isGameCenterRemoved = featureBoolean(KEY_REMOVE_GAME_CENTER, false),
@@ -698,9 +693,9 @@ object ConfigManager {
         )
     }
 
-    private fun doesCurrentHostSupportExperimentalDexKit(): Boolean {
+    private fun doesCurrentHostSupportDexKit(): Boolean {
         val packageName = appContext?.packageName ?: XposedCompat.currentPackageName() ?: return false
-        return ConfigHostRuntime.supportsExperimentalDexKit(packageName)
+        return ConfigHostRuntime.supportsDexKit(packageName)
     }
 
     private fun isCurrentIntlHost(): Boolean {
@@ -831,33 +826,4 @@ object ConfigManager {
             .replace('.', '_')
     }
 
-    private fun migrateLegacyPrefsIfNeeded(
-        context: Context,
-        namespacedPrefs: SharedPreferences,
-        targetPrefsName: String,
-    ) {
-        if (namespacedPrefs.all.isNotEmpty()) return
-        if (targetPrefsName == PREFS_NAME) return
-        val legacyPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val legacyAll = legacyPrefs.all
-        if (legacyAll.isEmpty()) return
-
-        val editor = namespacedPrefs.edit()
-        for ((key, value) in legacyAll) {
-            when (value) {
-                is Boolean -> editor.putBoolean(key, value)
-                is Int -> editor.putInt(key, value)
-                is Long -> editor.putLong(key, value)
-                is Float -> editor.putFloat(key, value)
-                is String -> editor.putString(key, value)
-                is Set<*> -> {
-                    @Suppress("UNCHECKED_CAST")
-                    editor.putStringSet(key, value.filterIsInstance<String>().toSet())
-                }
-            }
-        }
-        if (editor.commit()) {
-            XposedCompat.log("[ConfigManager] migrated legacy prefs to $targetPrefsName")
-        }
-    }
 }

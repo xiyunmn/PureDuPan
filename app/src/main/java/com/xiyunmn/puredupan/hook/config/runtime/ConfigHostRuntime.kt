@@ -14,8 +14,8 @@ internal object ConfigHostRuntime {
         return HostRuntimeState.featureStatusMapForPackage(packageName)
     }
 
-    fun supportsExperimentalDexKit(packageName: String): Boolean {
-        return HostRuntimeState.supportsExperimentalDexKit(packageName)
+    fun supportsDexKit(packageName: String): Boolean {
+        return HostRuntimeState.supportsDexKit(packageName)
     }
 
     fun canonicalPackageNameOrSelf(packageName: String): String {

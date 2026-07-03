@@ -67,8 +67,8 @@ internal object HookSettings {
             .apply()
     }
 
-    val isExperimentalDexKitEnabled: Boolean
-        get() = ConfigManager.isExperimentalDexKitEnabled
+    val isDexKitSupported: Boolean
+        get() = ConfigManager.isDexKitSupported
 
     val isSplashInterstitialBlockEnabled: Boolean
         get() = ConfigManager.isSplashInterstitialBlockEnabled
@@ -174,6 +174,9 @@ internal object HookSettings {
 
     val isSearchPageRecommendHidden: Boolean
         get() = ConfigManager.isSearchPageRecommendHidden
+
+    val isSearchPageVoiceSearchHidden: Boolean
+        get() = ConfigManager.isSearchPageVoiceSearchHidden
 
     val isHomeTopPromotionHidden: Boolean
         get() = ConfigManager.isHomeTopPromotionHidden

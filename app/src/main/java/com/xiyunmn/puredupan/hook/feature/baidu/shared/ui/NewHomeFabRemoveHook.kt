@@ -41,6 +41,7 @@ object NewHomeFabRemoveHook {
             val targetClass = XposedCompat.findClassOrNull(
                 newHomeFabFragmentClassName, cl
             ) ?: run {
+                hookState.reset()
                 XposedCompat.log("[NewHomeFabRemoveHook] NewHomePageFabFragment class NOT FOUND")
                 return
             }
@@ -48,6 +49,7 @@ object NewHomeFabRemoveHook {
             val paramClass = XposedCompat.findClassOrNull(
                 popupResponseClassName, cl
             ) ?: run {
+                hookState.reset()
                 XposedCompat.log("[NewHomeFabRemoveHook] PopupResponse class NOT FOUND")
                 return
             }
@@ -55,6 +57,7 @@ object NewHomeFabRemoveHook {
             val method = XposedCompat.findMethodOrNull(
                 targetClass, "onOperationActivitySuccess", paramClass
             ) ?: run {
+                hookState.reset()
                 XposedCompat.log("[NewHomeFabRemoveHook] onOperationActivitySuccess NOT FOUND")
                 return
             }

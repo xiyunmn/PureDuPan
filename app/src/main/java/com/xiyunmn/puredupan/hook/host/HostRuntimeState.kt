@@ -85,6 +85,14 @@ internal object HostRuntimeState {
         return currentUiHookPoints().settingsImageResultHostActivityClassNames
     }
 
+    fun currentStableActivityClassNames(): List<String> {
+        return XposedCompat.currentPackageName()
+            ?.let(::capabilitiesForPackage)
+            ?.dexKit
+            ?.stableActivityClassNames
+            .orEmpty()
+    }
+
     fun currentHomeCustomizeHookPoints(): HomeCustomizeHookPoints {
         return currentUiHookPoints().homeCustomize
     }
@@ -97,7 +105,7 @@ internal object HostRuntimeState {
         return currentStartupHookPoints().hotStartSplashBackgroundResumeAdStartMethodName
     }
 
-    fun supportsExperimentalDexKit(packageName: String): Boolean {
+    fun supportsDexKit(packageName: String): Boolean {
         return !capabilitiesForPackage(packageName).dexKit.targetRegistryId.isNullOrBlank()
     }
 

@@ -9,6 +9,8 @@ import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import java.util.Collections
+import java.util.WeakHashMap
 
 object BottomBarSimplifyFeature {
     private const val TAB_CONTAINER_ID = "rg_tabs"
@@ -20,6 +22,7 @@ object BottomBarSimplifyFeature {
     private const val TAB_DISCOVERY_ID = "rb_findresoure"
 
     private val hookState = HookState()
+    private val attachedAigcRoots = Collections.newSetFromMap(WeakHashMap<View, Boolean>())
 
     private data class TabTarget(
         val idName: String,
@@ -55,6 +58,7 @@ object BottomBarSimplifyFeature {
                 mainActivityClassName,
                 cl,
             ) ?: run {
+                hookState.reset()
                 XposedCompat.log(
                     "[BottomBarSimplifyFeature] MainActivity class NOT FOUND: " +
                         mainActivityClassName,
@@ -88,6 +92,7 @@ object BottomBarSimplifyFeature {
                     "onCreate",
                     Bundle::class.java,
                 ) ?: run {
+                    hookState.reset()
                     XposedCompat.log("[BottomBarSimplifyFeature] MainActivity tab init methods NOT FOUND")
                     return
                 }
@@ -123,6 +128,9 @@ object BottomBarSimplifyFeature {
 
         if (HookSettings.isBottomBarTabAigcHidden) {
             hideAigcFeatureSlot(activity)
+            if (isIntlHost(activity)) {
+                attachAigcSlotWatcher(activity)
+            }
         }
 
         var hiddenCount = 0
@@ -166,6 +174,51 @@ object BottomBarSimplifyFeature {
         }
     }
 
+    private fun attachAigcSlotWatcher(activity: Activity) {
+        val root = activity.window?.decorView ?: return
+        scheduleApplyAigcFeatureSlot(activity, root)
+        if (!attachedAigcRoots.add(root)) return
+
+        root.viewTreeObserver.addOnGlobalLayoutListener {
+            runCatching {
+                if (HookSettings.isBottomBarCustomEnabled && HookSettings.isBottomBarTabAigcHidden) {
+                    hideAigcFeatureSlot(activity)
+                }
+            }
+        }
+        root.viewTreeObserver.addOnPreDrawListener {
+            runCatching {
+                if (HookSettings.isBottomBarCustomEnabled && HookSettings.isBottomBarTabAigcHidden) {
+                    hideAigcFeatureSlot(activity)
+                }
+            }
+            true
+        }
+        XposedCompat.log("[BottomBarSimplifyFeature] AIGC slot watcher attached")
+    }
+
+    private fun scheduleApplyAigcFeatureSlot(activity: Activity, root: View) {
+        root.post {
+            runCatching {
+                if (HookSettings.isBottomBarCustomEnabled && HookSettings.isBottomBarTabAigcHidden) {
+                    hideAigcFeatureSlot(activity)
+                }
+            }
+        }
+        for (delay in listOf(80L, 240L, 600L, 1200L)) {
+            root.postDelayed(
+                {
+                    runCatching {
+                        if (HookSettings.isBottomBarCustomEnabled && HookSettings.isBottomBarTabAigcHidden) {
+                            hideAigcFeatureSlot(activity)
+                        }
+                    }
+                },
+                delay,
+            )
+        }
+    }
+
     private fun hideAigcFeatureSlot(activity: Activity) {
         runCatching {
             val aigcCloudTab = findViewByEntryName(activity, TAB_AIGC_CLOUD_ID)
@@ -188,7 +241,9 @@ object BottomBarSimplifyFeature {
             hideTabView(aigcAfxTab)
             hideTabView(aigcSlotContainer)
             hideTabView(findViewByEntryName(activity, TAB_AIGC_AFX_CLICK_AREA_ID))
-            hideTabView(findViewByEntryName(activity, TAB_AIGC_HI_LOTTIE_ID))
+            if (isIntlHost(activity)) {
+                hideTabView(findViewByEntryName(activity, TAB_AIGC_HI_LOTTIE_ID))
+            }
             hideTabView(raisedBackground)
 
             if (hadVisibleDedicatedAigcSlot) {
@@ -210,16 +265,27 @@ object BottomBarSimplifyFeature {
         return activity.findViewById(resId)
     }
 
+    private fun isIntlHost(activity: Activity): Boolean {
+        return BaiduFeatureRuntime.isIntlHost(activity)
+    }
+
     private fun hideTabView(view: View?) {
         if (view == null) return
-        view.visibility = View.GONE
+        var changed = false
+        if (view.visibility != View.GONE) {
+            view.visibility = View.GONE
+            changed = true
+        }
         val params = view.layoutParams
-        if (params is LinearLayout.LayoutParams) {
+        if (params is LinearLayout.LayoutParams && (params.width != 0 || params.weight != 0f)) {
             params.width = 0
             params.weight = 0f
             view.layoutParams = params
+            changed = true
         }
-        (view.parent as? ViewGroup)?.requestLayout()
+        if (changed) {
+            (view.parent as? ViewGroup)?.requestLayout()
+        }
     }
 
     private fun reflowLinearLayoutChildren(container: LinearLayout) {

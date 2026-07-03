@@ -20,7 +20,6 @@ internal object DomesticThumbnailOperatorDexKitResolver {
     private data class DexMethodCandidate(
         val className: String,
         val methodName: String,
-        val descriptor: String,
         val returnTypeName: String,
         val paramTypeNames: List<String>,
         val isConstructor: Boolean,
@@ -58,7 +57,6 @@ internal object DomesticThumbnailOperatorDexKitResolver {
                 DexMethodCandidate(
                     className = methodData.className,
                     methodName = methodData.name,
-                    descriptor = methodData.descriptor,
                     returnTypeName = methodData.returnTypeName,
                     paramTypeNames = methodData.paramTypeNames,
                     isConstructor = methodData.isConstructor,
@@ -125,7 +123,6 @@ internal object DomesticThumbnailOperatorDexKitResolver {
                 DexMethodCandidate(
                     className = methodData.className,
                     methodName = methodData.name,
-                    descriptor = methodData.descriptor,
                     returnTypeName = methodData.returnTypeName,
                     paramTypeNames = methodData.paramTypeNames,
                     isConstructor = methodData.isConstructor,
@@ -170,7 +167,7 @@ internal object DomesticThumbnailOperatorDexKitResolver {
     }
 
     private fun resolveFallbackClientComputeInit(cl: ClassLoader): Method? {
-        return resolveKnown13_27ClientComputeInit(cl)?.also { method ->
+        return resolveStableClientComputeInit(cl)?.also { method ->
             cacheResolved(CLIENT_COMPUTE_INIT_CACHE_ID, method)
             DexKitCompat.markTargetSuccess(
                 TAG,
@@ -178,14 +175,14 @@ internal object DomesticThumbnailOperatorDexKitResolver {
                 "fallback:${method.declaringClass.name}.${method.name}",
             )
             XposedCompat.logD(
-                "[$TAG] resolved known 13.27 client compute init fallback: " +
+                "[$TAG] resolved stable client compute init fallback: " +
                     "${method.declaringClass.name}.${method.name}",
             )
         }
     }
 
     private fun resolveFallbackThumbnailAddJob(cl: ClassLoader): Method? {
-        return resolveKnown13_27ThumbnailAddJob(cl)?.also { method ->
+        return resolveStableThumbnailAddJob(cl)?.also { method ->
             cacheResolved(THUMBNAIL_ADD_JOB_CACHE_ID, method)
             DexKitCompat.markTargetSuccess(
                 TAG,
@@ -193,38 +190,27 @@ internal object DomesticThumbnailOperatorDexKitResolver {
                 "fallback:${method.declaringClass.name}.${method.name}",
             )
             XposedCompat.logD(
-                "[$TAG] resolved known 13.27 thumbnail addJob fallback: " +
+                "[$TAG] resolved stable thumbnail addJob fallback: " +
                     "${method.declaringClass.name}.${method.name}",
             )
         }
     }
 
-    private fun resolveKnown13_27ClientComputeInit(cl: ClassLoader): Method? {
-        for (className in known13_27ClientComputeManagerClassNames()) {
-            val method = validateClientComputeInitRef(
-                cl,
-                DexKitCompat.MethodRef(
-                    className,
-                    BaiduDomesticDexKitHookPoints.CLIENT_COMPUTE_MANAGER_INIT_13_27_METHOD,
-                ),
-            )
-            if (method != null) return method
-        }
-        return null
-    }
-
-    private fun known13_27ClientComputeManagerClassNames(): List<String> =
-        listOf(
-            BaiduDomesticDexKitHookPoints.CLIENT_COMPUTE_MANAGER_13_27_CLASS,
-            BaiduDomesticDexKitHookPoints.CLIENT_COMPUTE_MANAGER_13_27_JADX_CLASS,
+    private fun resolveStableClientComputeInit(cl: ClassLoader): Method? =
+        validateClientComputeInitRef(
+            cl,
+            DexKitCompat.MethodRef(
+                BaiduDomesticDexKitHookPoints.CLIENT_COMPUTE_MANAGER_STABLE_CLASS,
+                BaiduDomesticDexKitHookPoints.CLIENT_COMPUTE_MANAGER_INIT_METHOD,
+            ),
         )
 
-    private fun resolveKnown13_27ThumbnailAddJob(cl: ClassLoader): Method? =
+    private fun resolveStableThumbnailAddJob(cl: ClassLoader): Method? =
         validateThumbnailAddJobRef(
             cl,
             DexKitCompat.MethodRef(
                 BaiduDomesticDexKitHookPoints.THUMBNAIL_OPERATOR_UTIL,
-                BaiduDomesticDexKitHookPoints.THUMBNAIL_ADD_JOB_13_27_METHOD,
+                BaiduDomesticDexKitHookPoints.THUMBNAIL_ADD_JOB_STABLE_METHOD,
             ),
         )
 

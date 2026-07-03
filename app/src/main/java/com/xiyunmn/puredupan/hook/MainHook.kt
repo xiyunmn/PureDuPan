@@ -10,7 +10,6 @@ import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam
 import io.github.libxposed.api.XposedModuleInterface.PackageLoadedParam
 import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam
-import com.xiyunmn.puredupan.hook.BuildConfig
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
@@ -18,7 +17,6 @@ class MainHook : XposedModule() {
 
     private val sAppContext = AtomicReference<Context?>(null)
     private val sAttachHookInstalled = AtomicBoolean(false)
-    private val sStaticHooksInstalled = AtomicBoolean(false)
     private val sPostAttachStaticHooksInstalled = AtomicBoolean(false)
     private var processName: String = ""
 
@@ -62,27 +60,6 @@ class MainHook : XposedModule() {
         XposedCompat.log(
             "[MainHook] handleLoadPackage: pkg=${hostSession.packageName}, cl=$cl, host=${hostSession.hostId}",
         )
-        val staticPlan = hostSession.staticPlan(processName)
-        if (staticPlan.isEmpty()) {
-            XposedCompat.logD("[MainHook] static hook plan empty for process=$processName, skip")
-        } else if (sStaticHooksInstalled.compareAndSet(false, true)) {
-            try {
-                XposedCompat.log("[MainHook] initialized. version=${BuildConfig.VERSION_NAME}(${BuildConfig.VERSION_CODE})")
-                HookInstaller.install(staticPlan, cl)
-                XposedCompat.log("[MainHook] All static hooks dispatched.")
-            } catch (e: Exception) {
-                sStaticHooksInstalled.set(false)
-                XposedCompat.log("[MainHook] static hook install FAILED: ${e.message}")
-                XposedCompat.log(e)
-            } catch (e: Error) {
-                sStaticHooksInstalled.set(false)
-                XposedCompat.logE("[MainHook] static hook install FATAL ERROR: ${e.message}")
-                throw e
-            }
-        } else {
-            XposedCompat.log("[MainHook] static hooks already installed, skip duplicate install")
-        }
-
         if (!hostSession.shouldInstallAttachHook(processName)) {
             XposedCompat.logD("[MainHook] Application.attach hook skipped for process=$processName")
             return
@@ -114,15 +91,14 @@ class MainHook : XposedModule() {
                 }
 
                 if (sPostAttachStaticHooksInstalled.compareAndSet(false, true)) {
-                    val settings = HookSettings.settingsSnapshot()
-                    HookInstaller.install(
-                        hostSession.postAttachPlan(processName, settings),
-                        cl,
-                    )
+                    installPostAttachPlan(hostSession, cl, "initial")
                     hostSession.startDexKitWarmUp(
                         processName = processName,
-                        settings = settings,
+                        settings = HookSettings.settingsSnapshot(),
                         classLoader = cl,
+                        onWarmUpFinished = {
+                            installPostAttachPlan(hostSession, cl, "dexkit-warm-up")
+                        },
                     )
                 }
 
@@ -140,7 +116,13 @@ class MainHook : XposedModule() {
         }
     }
 
-    // Removed: markAttachHookInstalled, markStaticHooksInstalled, markPostAttachStaticHooksInstalled
-    // These are now replaced by AtomicBoolean.compareAndSet() inline
+    private fun installPostAttachPlan(hostSession: HostLoadSession, cl: ClassLoader, reason: String) {
+        val settings = HookSettings.settingsSnapshot()
+        XposedCompat.logD("[MainHook] installing postAttach plan: reason=$reason, process=$processName")
+        HookInstaller.install(
+            hostSession.postAttachPlan(processName, settings),
+            cl,
+        )
+    }
 
 }
