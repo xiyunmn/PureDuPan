@@ -36,10 +36,8 @@ internal object BaiduSharedHookPoints {
         "com.baidu.netdisk.home25ai.feedhome.ui.view.fragment.NewHomeSaveCardView",
         "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.NewHomeSaveCardView",
     )
-    val HOME_RECENT_CARD_VIEWS = listOf(
-        "com.baidu.netdisk.home25ai.feedhome.ui.view.fragment.NewHomeRecentCardView",
-        "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.NewHomeRecentCardView",
-    )
+    const val HOME_RECENT_CARD_DATA_USE_CASE =
+        "com.baidu.netdisk.newfeedhome.feedhome.domain.GetRecentCardDataUseCase"
 
     const val MAIN_ACTIVITY_PRESENTER = "com.baidu.netdisk.ui.presenter.MainActivityPresenter"
 

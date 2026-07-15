@@ -9,7 +9,7 @@ internal data class HomeCustomizeHookPoints(
     val toolbarViewIdNames: List<String> = emptyList(),
     val storyCardViewClassNames: List<String> = emptyList(),
     val saveCardViewClassNames: List<String> = emptyList(),
-    val recentCardViewClassNames: List<String> = emptyList(),
+    val recentCardDataUseCaseClassName: String? = null,
     val home25aiContextCompanionClassName: String? = null,
     val loadHomeBannerMethodName: String? = null,
 )

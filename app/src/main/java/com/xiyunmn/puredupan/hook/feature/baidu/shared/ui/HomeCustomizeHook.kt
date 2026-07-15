@@ -13,6 +13,7 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import java.lang.reflect.Field
 import java.lang.reflect.Method
+import java.util.ArrayList
 
 /**
  * 顶部 AI 控件移除 Hook。
@@ -30,13 +31,13 @@ object HomeCustomizeHook {
     private const val FEED_TIP_HEADER_FIELD = "feedSettingTipViewHeader"
     private const val INIT_FEED_SETTING_TIP_HEADER_METHOD = "initFeedSettingTipHeader"
     private const val INIT_BANNER_CARD_VIEW_METHOD = "initBannerCardView"
-    private const val INIT_RECENT_CARD_VIEW_METHOD = "initRecentCardView"
     private const val INIT_SAVE_CARD_VIEW_METHOD = "initSaveCardView"
     private const val INIT_STORY_CARD_VIEW_METHOD = "initStoryCardView"
     private const val HOME_BANNER_FIELD = "headerBanner"
-    private const val HOME_RECENT_CARD_FIELD = "headerRecent"
     private const val HOME_SAVE_CARD_FIELD = "headerMySaves"
     private const val HOME_MEMORIES_CARD_FIELD = "headerMemories"
+    private const val EXPECT_KT_CLASS = "com.mars.united.core.architecture.ExpectKt"
+    private const val EXPECT_SUCCESS_METHOD = "success"
 
     private val hookState = HookState()
 
@@ -55,6 +56,7 @@ object HomeCustomizeHook {
             installedCount += hookHomeToolbarRenderEntry(cl)
             installedCount += hookHomeToolbarRootLayout(cl)
             installedCount += hookSearchboxAigcAnimation(cl)
+            installedCount += hookRecentCardDataUseCase(cl)
             installedCount += hookFeedRecommendView(cl)
             installedCount += hookStartupHomeBannerPreload(cl)
 
@@ -340,6 +342,50 @@ object HomeCustomizeHook {
             }
         }
         return 1
+    }
+
+    private fun hookRecentCardDataUseCase(cl: ClassLoader): Int {
+        if (!HookSettings.isHomeRecentSectionHidden) return 0
+        val mod = XposedCompat.module ?: return 0
+        val className = homeCustomizeHookPoints().recentCardDataUseCaseClassName
+        if (className == null) {
+            XposedCompat.log("[HomeCustomizeHook] recent card data use case host capability missing")
+            return 0
+        }
+        val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
+            XposedCompat.log("[HomeCustomizeHook] recent card data use case class NOT FOUND")
+            return 0
+        }
+        val successMethod = XposedCompat.findClassOrNull(EXPECT_KT_CLASS, cl)
+            ?.let { XposedCompat.findMethodOrNull(it, EXPECT_SUCCESS_METHOD, Any::class.java) }
+            ?: run {
+                XposedCompat.log("[HomeCustomizeHook] ExpectKt.success(Object) NOT FOUND")
+                return 0
+            }
+        val methods = clazz.declaredMethods.filter(::isRecentCardDataUseCaseInvokeMethod)
+        if (methods.isEmpty()) {
+            XposedCompat.log("[HomeCustomizeHook] recent card data use case invoke method NOT FOUND")
+            return 0
+        }
+        methods.forEach { method ->
+            method.isAccessible = true
+            mod.hook(method).intercept { chain ->
+                if (HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeRecentSectionHidden) {
+                    XposedCompat.logD("[HomeCustomizeHook] recent card data blocked")
+                    successMethod.invoke(null, emptyList<Any>())
+                } else {
+                    chain.proceed()
+                }
+            }
+        }
+        return methods.size
+    }
+
+    private fun isRecentCardDataUseCaseInvokeMethod(method: Method): Boolean {
+        return method.returnType == Any::class.java &&
+            method.parameterTypes.size == 2 &&
+            ArrayList::class.java.isAssignableFrom(method.parameterTypes[0]) &&
+            method.parameterTypes[1].name == "kotlin.coroutines.Continuation"
     }
 
     private fun hookFeedRecommendView(cl: ClassLoader): Int {
@@ -828,12 +874,6 @@ object HomeCustomizeHook {
                 methodName = INIT_SAVE_CARD_VIEW_METHOD,
                 fieldNames = listOf(HOME_SAVE_CARD_FIELD),
                 isHidden = { HookSettings.isHomeSaveSectionHidden },
-            ),
-            HomeSectionTarget(
-                label = "recent",
-                methodName = INIT_RECENT_CARD_VIEW_METHOD,
-                fieldNames = listOf(HOME_RECENT_CARD_FIELD),
-                isHidden = { HookSettings.isHomeRecentSectionHidden },
             ),
         )
     }

@@ -135,7 +135,7 @@ internal object HostProfileValidator {
         requireOptionalIdNames(profile, points.toolbarViewIdNames, "home toolbar view")
         requireOptionalClassNames(profile, points.storyCardViewClassNames, "home story card view")
         requireOptionalClassNames(profile, points.saveCardViewClassNames, "home save card view")
-        requireOptionalClassNames(profile, points.recentCardViewClassNames, "home recent card view")
+        requireOptionalClassName(profile, points.recentCardDataUseCaseClassName, "home recent card data use case")
         requireOptionalClassName(
             profile,
             points.home25aiContextCompanionClassName,
@@ -250,7 +250,7 @@ internal object HostProfileValidator {
             requireRequiredClassNames(profile, points.saveCardViewClassNames, "home save card view")
         }
         if (FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION in featureKeys) {
-            requireRequiredClassNames(profile, points.recentCardViewClassNames, "home recent card view")
+            requireRequiredClassName(profile, points.recentCardDataUseCaseClassName, "home recent card data use case")
         }
         if (FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION in featureKeys) {
             requireRequiredClassName(profile, points.home25aiContextCompanionClassName, "home25ai context companion")

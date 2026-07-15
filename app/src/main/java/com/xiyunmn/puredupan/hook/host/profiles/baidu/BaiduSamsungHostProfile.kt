@@ -68,7 +68,7 @@ internal val BaiduSamsungHostProfile = HostProfile(
                 feedFragmentClassNames = BaiduSharedHookPoints.FEED_FRAGMENT_CLASSES,
                 storyCardViewClassNames = listOf(BaiduSharedHookPoints.HOME_STORY_CARD_VIEW),
                 saveCardViewClassNames = BaiduSharedHookPoints.HOME_SAVE_CARD_VIEWS,
-                recentCardViewClassNames = BaiduSharedHookPoints.HOME_RECENT_CARD_VIEWS,
+                recentCardDataUseCaseClassName = BaiduSharedHookPoints.HOME_RECENT_CARD_DATA_USE_CASE,
             ),
         ),
         startupHookPoints = HostStartupHookPoints(
