@@ -66,7 +66,9 @@ internal val BaiduSamsungHostProfile = HostProfile(
                 home25aiContextCompanionClassName = BaiduSharedHookPoints.HOME25AI_CONTEXT_COMPANION,
                 loadHomeBannerMethodName = BaiduSharedHookPoints.HOME25AI_LOAD_HOME_BANNER_METHOD,
                 feedFragmentClassNames = BaiduSharedHookPoints.FEED_FRAGMENT_CLASSES,
-                storyCardViewClassNames = listOf(BaiduSharedHookPoints.HOME_STORY_CARD_VIEW),
+                storyCardRenderContextClassName = BaiduSharedHookPoints.STORY_CONTEXT,
+                storyCardRenderMethodName =
+                    BaiduSharedHookPoints.STORY_CONTEXT_GET_NEW_HOME_STORY_CARD_VIEW_METHOD,
                 saveCardViewModelClassName = BaiduSharedHookPoints.HOME_SAVE_CARD_VIEW_MODEL,
                 saveCardNoArgBlockedMethodNames =
                     BaiduSharedHookPoints.HOME_SAVE_CARD_DOMESTIC_NO_ARG_BLOCKED_METHODS,

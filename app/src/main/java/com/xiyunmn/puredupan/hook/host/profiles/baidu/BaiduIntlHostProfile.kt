@@ -54,7 +54,9 @@ internal val BaiduIntlHostProfile = HostProfile(
                 feedFragmentClassNames = BaiduSharedHookPoints.FEED_FRAGMENT_CLASSES,
                 toolbarFragmentClassNames = listOf(BaiduSharedHookPoints.INTL_FH_VAJRA_BAR_FRAGMENT),
                 toolbarViewIdNames = listOf(BaiduSharedHookPoints.INTL_VAJRA_AREA_ID),
-                storyCardViewClassNames = listOf(BaiduSharedHookPoints.HOME_STORY_CARD_VIEW),
+                storyCardRenderContextClassName = BaiduSharedHookPoints.STORY_CONTEXT,
+                storyCardRenderMethodName =
+                    BaiduSharedHookPoints.STORY_CONTEXT_GET_NEW_HOME_STORY_CARD_VIEW_METHOD,
                 saveCardViewModelClassName = BaiduSharedHookPoints.HOME_SAVE_CARD_VIEW_MODEL,
                 saveCardNoArgBlockedMethodNames =
                     BaiduSharedHookPoints.HOME_SAVE_CARD_INTL_NO_ARG_BLOCKED_METHODS,

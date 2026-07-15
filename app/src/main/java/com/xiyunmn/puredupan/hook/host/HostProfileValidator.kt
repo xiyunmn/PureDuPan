@@ -137,7 +137,16 @@ internal object HostProfileValidator {
         requireOptionalClassNames(profile, points.feedFragmentClassNames, "home feed fragment")
         requireOptionalClassNames(profile, points.toolbarFragmentClassNames, "home toolbar fragment")
         requireOptionalIdNames(profile, points.toolbarViewIdNames, "home toolbar view")
-        requireOptionalClassNames(profile, points.storyCardViewClassNames, "home story card view")
+        requireOptionalClassName(profile, points.storyCardRenderContextClassName, "home story card render context")
+        require(points.storyCardRenderMethodName == null || points.storyCardRenderMethodName.isNotBlank()) {
+            "Host ${profile.id} home story card render method name must not be blank"
+        }
+        require(
+            points.storyCardRenderContextClassName.isNullOrBlank() ==
+                points.storyCardRenderMethodName.isNullOrBlank(),
+        ) {
+            "Host ${profile.id} home story card render hook point must declare class and method together"
+        }
         requireOptionalClassName(profile, points.saveCardViewModelClassName, "home save card view model")
         requireOptionalNames(profile, points.saveCardNoArgBlockedMethodNames, "home save no-arg block method")
         requireOptionalNames(profile, points.saveCardSetListMethodNames, "home save set list method")
@@ -250,7 +259,10 @@ internal object HostProfileValidator {
             requireRequiredIdNames(profile, points.toolbarViewIdNames, "home toolbar view")
         }
         if (FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION in featureKeys) {
-            requireRequiredClassNames(profile, points.storyCardViewClassNames, "home story card view")
+            requireRequiredClassName(profile, points.storyCardRenderContextClassName, "home story card render context")
+            require(!points.storyCardRenderMethodName.isNullOrBlank()) {
+                "Host ${profile.id} requires home story card render method name"
+            }
         }
         if (FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION in featureKeys) {
             requireRequiredClassName(profile, points.saveCardViewModelClassName, "home save card view model")

@@ -31,7 +31,9 @@ internal object BaiduSharedHookPoints {
         "com.baidu.netdisk.feedhome.ui.view.fragment.FHFeedFragment",
         FEED_RECOMMEND_TAB_FRAGMENT,
     )
-    const val HOME_STORY_CARD_VIEW = "com.baidu.netdisk.newstory.ui.view.home.HomeStoryCardView"
+    const val STORY_CONTEXT =
+        "rubik.generate.context.bd_netdisk_com_baidu_netdisk_story.StoryContext"
+    const val STORY_CONTEXT_GET_NEW_HOME_STORY_CARD_VIEW_METHOD = "getNewHomeStoryCardView"
     const val HOME_SAVE_CARD_VIEW_MODEL =
         "com.baidu.netdisk.newfeedhome.feedhome.ui.viewmodels.NewHomeSaveCardViewModel"
     val HOME_SAVE_CARD_DOMESTIC_NO_ARG_BLOCKED_METHODS = listOf(

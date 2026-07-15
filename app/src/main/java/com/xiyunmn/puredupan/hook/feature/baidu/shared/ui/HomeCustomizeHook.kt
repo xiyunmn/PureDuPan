@@ -31,9 +31,7 @@ object HomeCustomizeHook {
     private const val FEED_TIP_HEADER_FIELD = "feedSettingTipViewHeader"
     private const val INIT_FEED_SETTING_TIP_HEADER_METHOD = "initFeedSettingTipHeader"
     private const val INIT_BANNER_CARD_VIEW_METHOD = "initBannerCardView"
-    private const val INIT_STORY_CARD_VIEW_METHOD = "initStoryCardView"
     private const val HOME_BANNER_FIELD = "headerBanner"
-    private const val HOME_MEMORIES_CARD_FIELD = "headerMemories"
     private const val EXPECT_KT_CLASS = "com.mars.united.core.architecture.ExpectKt"
     private const val EXPECT_SUCCESS_METHOD = "success"
 
@@ -56,6 +54,7 @@ object HomeCustomizeHook {
             installedCount += hookSearchboxAigcAnimation(cl)
             installedCount += hookRecentCardDataUseCase(cl)
             installedCount += hookSaveCardViewModel(cl)
+            installedCount += hookHomeStoryCardRenderEntry(cl)
             installedCount += hookFeedRecommendView(cl)
             installedCount += hookStartupHomeBannerPreload(cl)
 
@@ -499,6 +498,47 @@ object HomeCustomizeHook {
             method.parameterTypes[0] == Boolean::class.javaPrimitiveType
     }
 
+    private fun hookHomeStoryCardRenderEntry(cl: ClassLoader): Int {
+        if (!HookSettings.isHomeMemoriesSectionHidden) return 0
+        val mod = XposedCompat.module ?: return 0
+        val points = homeCustomizeHookPoints()
+        val className = points.storyCardRenderContextClassName
+        val methodName = points.storyCardRenderMethodName
+        if (className == null || methodName == null) {
+            XposedCompat.log("[HomeCustomizeHook] story card render host capability missing")
+            return 0
+        }
+        val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
+            XposedCompat.log("[HomeCustomizeHook] story card render context class NOT FOUND")
+            return 0
+        }
+        val methods = clazz.declaredMethods.filter { method ->
+            method.name == methodName && isHomeStoryCardRenderMethod(method)
+        }
+        if (methods.isEmpty()) {
+            XposedCompat.log("[HomeCustomizeHook] story card render method NOT FOUND")
+            return 0
+        }
+        methods.forEach { method ->
+            method.isAccessible = true
+            mod.hook(method).intercept { chain ->
+                if (HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeMemoriesSectionHidden) {
+                    XposedCompat.logD("[HomeCustomizeHook] story card render blocked: ${clazz.name}.${method.name}")
+                    val context = chain.args.firstOrNull { it is Context } as? Context
+                    context?.let(::createCollapsedFrameLayout) ?: chain.proceed()
+                } else {
+                    chain.proceed()
+                }
+            }
+        }
+        return methods.size
+    }
+
+    private fun isHomeStoryCardRenderMethod(method: Method): Boolean {
+        return FrameLayout::class.java.isAssignableFrom(method.returnType) &&
+            method.parameterTypes.any { Context::class.java.isAssignableFrom(it) }
+    }
+
     private fun hookFeedRecommendView(cl: ClassLoader): Int {
         if (!hasFeedRenderHookOption()) return 0
         val mod = XposedCompat.module ?: return 0
@@ -513,8 +553,6 @@ object HomeCustomizeHook {
                 XposedCompat.logD("[HomeCustomizeHook] $className not found, skipped")
                 return@forEach
             }
-
-            count += hookHomeSectionCreatorMethods(mod, clazz, className)
 
             val initFeedSettingTipHeader = XposedCompat.findMethodOrNull(
                 clazz,
@@ -591,44 +629,6 @@ object HomeCustomizeHook {
         adjustIntlFeedContainerOffset(root, resources, packageName)
     }
 
-    private fun hookHomeSectionCreatorMethods(
-        mod: io.github.libxposed.api.XposedModule,
-        clazz: Class<*>,
-        className: String,
-    ): Int {
-        var count = 0
-        homeSectionTargets().forEach { target ->
-            val methods = clazz.declaredMethods.filter { it.name == target.methodName }
-            if (methods.isEmpty()) {
-                XposedCompat.logD("[HomeCustomizeHook] $className.${target.methodName} not found")
-                return@forEach
-            }
-            methods.forEach { method ->
-                method.isAccessible = true
-                mod.hook(method).intercept { chain ->
-                    if (isHomeSectionHidden(target)) {
-                        createCollapsedReturnView(
-                            fragment = chain.thisObject,
-                            returnType = method.returnType,
-                        )?.let { collapsed ->
-                            XposedCompat.logD("[HomeCustomizeHook] ${target.label} section creator blocked")
-                            return@intercept collapsed
-                        }
-                    }
-                    val result = chain.proceed()
-                    if (isHomeSectionHidden(target)) {
-                        hideView(result as? View)
-                        hideHomeSectionFields(chain.thisObject, target)
-                        XposedCompat.logD("[HomeCustomizeHook] ${target.label} section hidden")
-                    }
-                    result
-                }
-                count += 1
-            }
-        }
-        return count
-    }
-
     private fun createCollapsedReturnView(fragment: Any?, returnType: Class<*>): View? {
         if (!View::class.java.isAssignableFrom(returnType)) return null
         if (!returnType.isAssignableFrom(FrameLayout::class.java)) return null
@@ -682,23 +682,6 @@ object HomeCustomizeHook {
                     field.isAccessible = true
                     hideView(field.get(fragment) as? View)
                     return
-                }
-                current = current.superclass
-            }
-        }
-    }
-
-    private fun hideHomeSectionFields(fragment: Any?, target: HomeSectionTarget) {
-        if (fragment == null) return
-        runCatching {
-            var current: Class<*>? = fragment.javaClass
-            while (current != null) {
-                target.fieldNames.forEach { fieldName ->
-                    val field = current.declaredFields.firstOrNull { it.name == fieldName }
-                    if (field != null) {
-                        field.isAccessible = true
-                        hideView(field.get(fragment) as? View)
-                    }
                 }
                 current = current.superclass
             }
@@ -926,6 +909,7 @@ object HomeCustomizeHook {
                     HookSettings.isHomeSearchPlaceholderHidden ||
                     HookSettings.isHomeSearchAigcIconHidden ||
                     HookSettings.isHomeToolbarHidden ||
+                    HookSettings.isHomeMemoriesSectionHidden ||
                     HookSettings.isHomeSaveSectionHidden ||
                     HookSettings.isHomeRecentSectionHidden ||
                     hasFeedRenderHookOption()
@@ -936,8 +920,7 @@ object HomeCustomizeHook {
         return HookSettings.isHomeCustomizeEnabled &&
             (
                 HookSettings.isHomeFeedTipHidden ||
-                    HookSettings.isHomeBannerHidden ||
-                    HookSettings.isHomeMemoriesSectionHidden
+                    HookSettings.isHomeBannerHidden
             )
     }
 
@@ -961,28 +944,6 @@ object HomeCustomizeHook {
         return HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeToolbarHidden
     }
 
-    private fun isHomeSectionHidden(target: HomeSectionTarget): Boolean {
-        return HookSettings.isHomeCustomizeEnabled && target.isHidden()
-    }
-
-    private fun homeSectionTargets(): List<HomeSectionTarget> {
-        return listOf(
-            HomeSectionTarget(
-                label = "memories",
-                methodName = INIT_STORY_CARD_VIEW_METHOD,
-                fieldNames = listOf(HOME_MEMORIES_CARD_FIELD),
-                isHidden = { HookSettings.isHomeMemoriesSectionHidden },
-            ),
-        )
-    }
-
     private fun homeCustomizeHookPoints() =
         BaiduFeatureRuntime.currentHomeCustomizeHookPoints()
-
-    private data class HomeSectionTarget(
-        val label: String,
-        val methodName: String,
-        val fieldNames: List<String>,
-        val isHidden: () -> Boolean,
-    )
 }
