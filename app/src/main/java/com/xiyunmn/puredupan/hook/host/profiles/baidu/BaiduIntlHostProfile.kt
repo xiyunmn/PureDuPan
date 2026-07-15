@@ -65,6 +65,9 @@ internal val BaiduIntlHostProfile = HostProfile(
                     BaiduSharedHookPoints.HOME_SAVE_CARD_INTL_SET_RECOMMEND_METHODS,
                 saveCardRedPotMethodNames = BaiduSharedHookPoints.HOME_SAVE_CARD_INTL_RED_POT_METHODS,
                 recentCardDataUseCaseClassName = BaiduSharedHookPoints.HOME_RECENT_CARD_DATA_USE_CASE,
+                netdiskContextCompanionClassName = BaiduSharedHookPoints.NETDISK_CONTEXT_COMPANION,
+                newHomeBannerCardViewMethodName =
+                    BaiduSharedHookPoints.NETDISK_GET_NEW_HOME_BANNER_CARD_VIEW_METHOD,
                 home25aiContextCompanionClassName = BaiduSharedHookPoints.HOME25AI_CONTEXT_COMPANION,
                 loadHomeBannerMethodName = BaiduSharedHookPoints.HOME25AI_LOAD_HOME_BANNER_METHOD,
             ),

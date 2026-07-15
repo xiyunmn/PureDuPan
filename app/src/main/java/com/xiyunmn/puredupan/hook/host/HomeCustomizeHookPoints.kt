@@ -15,6 +15,8 @@ internal data class HomeCustomizeHookPoints(
     val saveCardSetRecommendMethodNames: List<String> = emptyList(),
     val saveCardRedPotMethodNames: List<String> = emptyList(),
     val recentCardDataUseCaseClassName: String? = null,
+    val netdiskContextCompanionClassName: String? = null,
+    val newHomeBannerCardViewMethodName: String? = null,
     val home25aiContextCompanionClassName: String? = null,
     val loadHomeBannerMethodName: String? = null,
 )

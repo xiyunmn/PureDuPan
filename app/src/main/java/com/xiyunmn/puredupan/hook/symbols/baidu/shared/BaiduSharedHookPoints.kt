@@ -23,6 +23,9 @@ internal object BaiduSharedHookPoints {
     const val HOME25AI_CONTEXT_COMPANION =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_home25ai.Home25aiContext\$Companion"
     const val HOME25AI_LOAD_HOME_BANNER_METHOD = "loadHomeBanner"
+    const val NETDISK_CONTEXT_COMPANION =
+        "rubik.generate.context.bd_netdisk_com_baidu_netdisk_test_netdisk.NetdiskContext\$Companion"
+    const val NETDISK_GET_NEW_HOME_BANNER_CARD_VIEW_METHOD = "getNewHomeBannerCardView"
     const val FEED_RECOMMEND_TAB_FRAGMENT =
         "com.baidu.netdisk.home25ai.feedhome.ui.view.fragment.FeedRecommendTabFragment"
     val FEED_FRAGMENT_CLASSES = listOf(

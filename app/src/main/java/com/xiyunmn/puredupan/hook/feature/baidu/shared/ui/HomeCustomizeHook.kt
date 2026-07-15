@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
+import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -30,8 +31,6 @@ object HomeCustomizeHook {
     private const val FEED_CONTAINER_ID = "feed_container"
     private const val FEED_TIP_HEADER_FIELD = "feedSettingTipViewHeader"
     private const val INIT_FEED_SETTING_TIP_HEADER_METHOD = "initFeedSettingTipHeader"
-    private const val INIT_BANNER_CARD_VIEW_METHOD = "initBannerCardView"
-    private const val HOME_BANNER_FIELD = "headerBanner"
     private const val EXPECT_KT_CLASS = "com.mars.united.core.architecture.ExpectKt"
     private const val EXPECT_SUCCESS_METHOD = "success"
 
@@ -56,6 +55,7 @@ object HomeCustomizeHook {
             installedCount += hookSaveCardViewModel(cl)
             installedCount += hookHomeStoryCardRenderEntry(cl)
             installedCount += hookFeedRecommendView(cl)
+            installedCount += hookHomeBannerCardRenderEntry(cl)
             installedCount += hookStartupHomeBannerPreload(cl)
 
             if (installedCount == 0) {
@@ -540,7 +540,7 @@ object HomeCustomizeHook {
     }
 
     private fun hookFeedRecommendView(cl: ClassLoader): Int {
-        if (!hasFeedRenderHookOption()) return 0
+        if (!isFeedTipHidden()) return 0
         val mod = XposedCompat.module ?: return 0
         var count = 0
         val feedFragmentClasses = homeCustomizeHookPoints().feedFragmentClassNames.distinct()
@@ -574,36 +574,59 @@ object HomeCustomizeHook {
             } else {
                 XposedCompat.logD("[HomeCustomizeHook] $className.$INIT_FEED_SETTING_TIP_HEADER_METHOD not found")
             }
-
-            val initBannerCardView = XposedCompat.findMethodOrNull(
-                clazz,
-                INIT_BANNER_CARD_VIEW_METHOD,
-            )
-            if (initBannerCardView != null) {
-                mod.hook(initBannerCardView).intercept { chain ->
-                    if (isHomeBannerHidden()) {
-                        createCollapsedReturnView(
-                            fragment = chain.thisObject,
-                            returnType = initBannerCardView.returnType,
-                        )?.let { collapsed ->
-                            XposedCompat.logD("[HomeCustomizeHook] $className.$INIT_BANNER_CARD_VIEW_METHOD blocked")
-                            return@intercept collapsed
-                        }
-                    }
-                    val result = chain.proceed()
-                    if (isHomeBannerHidden()) {
-                        hideView(result as? View)
-                        hideHomeBannerField(chain.thisObject)
-                        XposedCompat.logD("[HomeCustomizeHook] $className.$INIT_BANNER_CARD_VIEW_METHOD hidden")
-                    }
-                    result
-                }
-                count += 1
-            } else {
-                XposedCompat.logD("[HomeCustomizeHook] $className.$INIT_BANNER_CARD_VIEW_METHOD not found")
-            }
         }
         return count
+    }
+
+    private fun hookHomeBannerCardRenderEntry(cl: ClassLoader): Int {
+        if (!isHomeBannerHidden()) return 0
+        val mod = XposedCompat.module ?: return 0
+        val points = homeCustomizeHookPoints()
+        val className = points.netdiskContextCompanionClassName
+        val methodName = points.newHomeBannerCardViewMethodName
+        if (className == null || methodName == null) {
+            XposedCompat.log("[HomeCustomizeHook] new home banner render host capability missing")
+            return 0
+        }
+        val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
+            XposedCompat.log("[HomeCustomizeHook] NetdiskContext.Companion class NOT FOUND")
+            return 0
+        }
+        val fragmentActivityClass = XposedCompat.findClassOrNull("androidx.fragment.app.FragmentActivity", cl)
+            ?: run {
+                XposedCompat.log("[HomeCustomizeHook] FragmentActivity class NOT FOUND")
+                return 0
+            }
+        val lifecycleOwnerClass = XposedCompat.findClassOrNull("androidx.lifecycle.LifecycleOwner", cl)
+            ?: run {
+                XposedCompat.log("[HomeCustomizeHook] LifecycleOwner class NOT FOUND")
+                return 0
+            }
+        val method = XposedCompat.findMethodOrNull(
+            clazz,
+            methodName,
+            Context::class.java,
+            AttributeSet::class.java,
+            fragmentActivityClass,
+            lifecycleOwnerClass,
+        ) ?: run {
+            XposedCompat.log("[HomeCustomizeHook] NetdiskContext.getNewHomeBannerCardView(...) NOT FOUND")
+            return 0
+        }
+        if (!FrameLayout::class.java.isAssignableFrom(method.returnType)) {
+            XposedCompat.log("[HomeCustomizeHook] NetdiskContext.getNewHomeBannerCardView return type mismatch")
+            return 0
+        }
+        mod.hook(method).intercept { chain ->
+            val context = chain.args.getOrNull(0) as? Context
+            if (isHomeBannerHidden() && context != null) {
+                XposedCompat.logD("[HomeCustomizeHook] NetdiskContext.getNewHomeBannerCardView blocked")
+                createCollapsedFrameLayout(context)
+            } else {
+                chain.proceed()
+            }
+        }
+        return 1
     }
 
     private fun adjustHomeToolbarRootLayout(root: View?) {
@@ -629,55 +652,12 @@ object HomeCustomizeHook {
         adjustIntlFeedContainerOffset(root, resources, packageName)
     }
 
-    private fun createCollapsedReturnView(fragment: Any?, returnType: Class<*>): View? {
-        if (!View::class.java.isAssignableFrom(returnType)) return null
-        if (!returnType.isAssignableFrom(FrameLayout::class.java)) return null
-        val context = fragmentContext(fragment) ?: return null
-        return createCollapsedFrameLayout(context)
-    }
-
-    private fun fragmentContext(fragment: Any?): Context? {
-        if (fragment == null) return null
-        return runCatching {
-            val requireContext = fragment.javaClass.methods.firstOrNull { method ->
-                method.name == "requireContext" &&
-                    method.parameterTypes.isEmpty() &&
-                    Context::class.java.isAssignableFrom(method.returnType)
-            }
-            (requireContext?.invoke(fragment) as? Context)
-                ?: run {
-                    val getContext = fragment.javaClass.methods.firstOrNull { method ->
-                        method.name == "getContext" &&
-                            method.parameterTypes.isEmpty() &&
-                            Context::class.java.isAssignableFrom(method.returnType)
-                    }
-                    getContext?.invoke(fragment) as? Context
-                }
-        }.getOrNull()
-    }
-
     private fun hideFeedTipHeaderField(fragment: Any?) {
         if (!isFeedTipHidden() || fragment == null) return
         runCatching {
             var current: Class<*>? = fragment.javaClass
             while (current != null) {
                 val field = current.declaredFields.firstOrNull { it.name == FEED_TIP_HEADER_FIELD }
-                if (field != null) {
-                    field.isAccessible = true
-                    hideView(field.get(fragment) as? View)
-                    return
-                }
-                current = current.superclass
-            }
-        }
-    }
-
-    private fun hideHomeBannerField(fragment: Any?) {
-        if (!isHomeBannerHidden() || fragment == null) return
-        runCatching {
-            var current: Class<*>? = fragment.javaClass
-            while (current != null) {
-                val field = current.declaredFields.firstOrNull { it.name == HOME_BANNER_FIELD }
                 if (field != null) {
                     field.isAccessible = true
                     hideView(field.get(fragment) as? View)

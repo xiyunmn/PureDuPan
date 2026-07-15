@@ -155,6 +155,20 @@ internal object HostProfileValidator {
         requireOptionalClassName(profile, points.recentCardDataUseCaseClassName, "home recent card data use case")
         requireOptionalClassName(
             profile,
+            points.netdiskContextCompanionClassName,
+            "netdisk context companion",
+        )
+        require(points.newHomeBannerCardViewMethodName == null || points.newHomeBannerCardViewMethodName.isNotBlank()) {
+            "Host ${profile.id} new home banner card view method name must not be blank"
+        }
+        require(
+            points.netdiskContextCompanionClassName.isNullOrBlank() ==
+                points.newHomeBannerCardViewMethodName.isNullOrBlank(),
+        ) {
+            "Host ${profile.id} new home banner render hook point must declare class and method together"
+        }
+        requireOptionalClassName(
+            profile,
             points.home25aiContextCompanionClassName,
             "home25ai context companion",
         )
@@ -277,6 +291,12 @@ internal object HostProfileValidator {
         }
         if (FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION in featureKeys) {
             requireRequiredClassName(profile, points.recentCardDataUseCaseClassName, "home recent card data use case")
+        }
+        if (FeatureKeys.KEY_HIDE_HOME_BANNER in featureKeys) {
+            requireRequiredClassName(profile, points.netdiskContextCompanionClassName, "netdisk context companion")
+            require(!points.newHomeBannerCardViewMethodName.isNullOrBlank()) {
+                "Host ${profile.id} requires new home banner card view method name"
+            }
         }
         if (FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION in featureKeys) {
             requireRequiredClassName(profile, points.home25aiContextCompanionClassName, "home25ai context companion")
