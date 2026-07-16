@@ -17,13 +17,6 @@ import java.util.WeakHashMap
  */
 object AboutMeGodModeHook {
     private const val BANNER_ID = "aboutme_banner"
-    private const val MY_SERVICE_ID = "cl_my_service"
-    private const val SIGN_IN_DOT_ID = "f1_entry_dot"
-    private val SIGN_IN_DOT_FALLBACK_IDS = listOf(
-        "fl_entry_dot",
-        "activity_entry_dot",
-        "entry_dot_view",
-    )
     private const val TEXT_MANAGE_SPACE = "管理空间"
     private const val TEXT_REWARD = "领奖励"
     private const val TEXT_ACCOUNT_EXIT = "账号、退出"
@@ -200,15 +193,6 @@ object AboutMeGodModeHook {
         if (config.isAboutMeBannerRemoved) {
             hideViewByEntryName(activity, root, BANNER_ID, "banner")
         }
-        if (config.isMyServiceRemoved) {
-            hideViewByEntryName(activity, root, MY_SERVICE_ID, "my_service")
-        }
-        if (config.isAboutMeSignInDotHidden) {
-            hideViewByEntryName(activity, root, SIGN_IN_DOT_ID, "sign_in_dot")
-            for (entryName in SIGN_IN_DOT_FALLBACK_IDS) {
-                hideViewByEntryName(activity, root, entryName, "sign_in_dot")
-            }
-        }
         if (config.isAboutMeManageSpaceTextHidden) {
             hideTextView(root, TEXT_MANAGE_SPACE, "manage_space_text")
         }
@@ -280,8 +264,6 @@ object AboutMeGodModeHook {
         return snapshot.isMyPageCustomizeEnabled &&
             (
                 snapshot.isAboutMeBannerRemoved ||
-                    snapshot.isMyServiceRemoved ||
-                    snapshot.isAboutMeSignInDotHidden ||
                     snapshot.isAboutMeManageSpaceTextHidden ||
                     snapshot.isAboutMeRewardTextHidden ||
                     snapshot.isAboutMeAccountExitTextHidden ||
