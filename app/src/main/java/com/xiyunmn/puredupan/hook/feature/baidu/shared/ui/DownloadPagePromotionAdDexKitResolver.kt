@@ -7,15 +7,13 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduTransferHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import org.luckypray.dexkit.query.FindClass
-import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.matchers.AnnotationElementMatcher
 import org.luckypray.dexkit.query.matchers.AnnotationEncodeArrayMatcher
 import org.luckypray.dexkit.query.matchers.AnnotationMatcher
 import org.luckypray.dexkit.query.matchers.ClassMatcher
-import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object DownloadPagePromotionAdDexKitResolver {
-    const val CACHE_ID = "domestic_download_page_promotion_ad_render_v1"
+    const val CACHE_ID = "shared_download_page_promotion_ad_render_v3"
 
     private const val TAG = "DownloadPagePromotionAdDexKitResolver"
     private const val KOTLIN_METADATA = "kotlin.Metadata"
@@ -25,19 +23,16 @@ internal object DownloadPagePromotionAdDexKitResolver {
         "Lcom/baidu/netdisk/ui/transfer/ITransferYoua;",
         "setGuideViewUI",
         "Lcom/baidu/netdisk/cloudimage/ui/state/AlbumGuideResult\$Success;",
-        "showYouaGuideView",
-        "cannelYouaGuideView",
+    )
+    private val albumGuideSuccessMetadataTokens = listOf(
+        "Lcom/baidu/netdisk/cloudimage/ui/state/AlbumGuideResult\$Success;",
     )
 
-    private data class DexMethodCandidate(
+    private data class DexClassCandidate(
         val className: String,
-        val methodName: String,
-        val returnTypeName: String,
-        val paramTypeNames: List<String>,
-        val isConstructor: Boolean,
         val modifiers: Int,
     ) {
-        fun memberName(): String = "$className.$methodName"
+        fun memberName(): String = className
     }
 
     fun warmUpDexKitCache(cl: ClassLoader): Boolean {
@@ -58,32 +53,22 @@ internal object DownloadPagePromotionAdDexKitResolver {
             bridge.findClass(
                 FindClass.create()
                     .matcher(youaGuideOwnerMatcher()),
-            ).flatMap { classData ->
-                classData.findMethod(
-                    FindMethod.create()
-                        .matcher(guideRenderMatcher()),
-                )
-            }.map { methodData ->
-                DexMethodCandidate(
-                    className = methodData.className,
-                    methodName = methodData.name,
-                    returnTypeName = methodData.returnTypeName,
-                    paramTypeNames = methodData.paramTypeNames,
-                    isConstructor = methodData.isConstructor,
-                    modifiers = methodData.modifiers,
+            ).map { classData ->
+                DexClassCandidate(
+                    className = classData.name,
+                    modifiers = classData.modifiers,
                 )
             }
         } ?: return resolveStableFallback(cl)
 
         val rejected = mutableListOf<String>()
         val matches = candidates.mapNotNull { candidate ->
-            if (!candidate.isGuideRenderShape()) return@mapNotNull null
             val method = validateCandidate(cl, candidate, rejected) ?: return@mapNotNull null
             candidate to method
         }.sortedWith(
-            compareByDescending<Pair<DexMethodCandidate, Method>> {
+            compareByDescending<Pair<DexClassCandidate, Method>> {
                 if (it.first.className == BaiduTransferHookPoints.YOUA_GUIDE) 1 else 0
-            }.thenBy { it.first.className }.thenBy { it.first.methodName },
+            }.thenBy { it.first.className }.thenBy { it.second.name },
         )
 
         val best = matches.firstOrNull()
@@ -110,6 +95,11 @@ internal object DownloadPagePromotionAdDexKitResolver {
             ?: return null
         if (!isYouaGuideOwner(clazz)) return null
         val method = findGuideRenderMethod(clazz) ?: return null
+        DexKitCompat.putCachedMethod(
+            TAG,
+            CACHE_ID,
+            DexKitCompat.MethodRef(method.declaringClass.name, method.name),
+        )
         DexKitCompat.markTargetSuccess(
             TAG,
             CACHE_ID,
@@ -120,15 +110,25 @@ internal object DownloadPagePromotionAdDexKitResolver {
 
     private fun validateCandidate(
         cl: ClassLoader,
-        candidate: DexMethodCandidate,
+        candidate: DexClassCandidate,
         rejected: MutableList<String>,
     ): Method? {
-        val method = validateRef(
-            cl,
-            DexKitCompat.MethodRef(candidate.className, candidate.methodName),
-        )
+        if (Modifier.isInterface(candidate.modifiers) || Modifier.isAbstract(candidate.modifiers)) {
+            rejected += "${candidate.memberName()} rejected: not concrete class"
+            return null
+        }
+        val clazz = XposedCompat.findClassOrNull(candidate.className, cl)
+        if (clazz == null) {
+            rejected += "${candidate.memberName()} rejected: class load failed"
+            return null
+        }
+        if (!isYouaGuideOwner(clazz)) {
+            rejected += "${candidate.memberName()} rejected: metadata/interface mismatch"
+            return null
+        }
+        val method = findGuideRenderMethod(clazz)
         if (method == null) {
-            rejected += "${candidate.memberName()} rejected: metadata/signature mismatch"
+            rejected += "${candidate.memberName()} rejected: render signature mismatch"
         }
         return method
     }
@@ -169,38 +169,29 @@ internal object DownloadPagePromotionAdDexKitResolver {
                             ),
                     ),
             )
-            .addMethod(guideRenderMatcher())
     }
-
-    private fun guideRenderMatcher(): MethodMatcher {
-        return MethodMatcher.create()
-            .returnType(Void.TYPE)
-            .paramTypes(BaiduTransferHookPoints.ALBUM_GUIDE_RESULT_SUCCESS)
-    }
-
-    private fun DexMethodCandidate.isGuideRenderShape(): Boolean =
-        !isConstructor &&
-            !Modifier.isStatic(modifiers) &&
-            returnTypeName == "void" &&
-            paramTypeNames.size == 1 &&
-            paramTypeNames[0] == BaiduTransferHookPoints.ALBUM_GUIDE_RESULT_SUCCESS
 
     private fun isGuideRenderMethod(method: Method): Boolean {
         if (Modifier.isStatic(method.modifiers)) return false
         if (method.returnType != Void.TYPE) return false
         val params = method.parameterTypes
         return params.size == 1 &&
-            params[0].name == BaiduTransferHookPoints.ALBUM_GUIDE_RESULT_SUCCESS
+            isAlbumGuideSuccessType(params[0])
+    }
+
+    private fun isAlbumGuideSuccessType(clazz: Class<*>): Boolean {
+        if (clazz.name == BaiduTransferHookPoints.ALBUM_GUIDE_RESULT_SUCCESS) return true
+        return KotlinMetadataUtils.metadataContainsAll(clazz, albumGuideSuccessMetadataTokens)
     }
 
     private fun buildDiagnostic(
-        candidates: List<DexMethodCandidate>,
-        matches: List<Pair<DexMethodCandidate, Method>>,
+        candidates: List<DexClassCandidate>,
+        matches: List<Pair<DexClassCandidate, Method>>,
         rejected: List<String>,
     ): String {
         val topCandidates = candidates.take(5)
             .joinToString("\n") { candidate ->
-                "${candidate.memberName()} ${candidate.returnTypeName}(${candidate.paramTypeNames.joinToString()})"
+                candidate.memberName()
             }
             .ifBlank { "-" }
         val topMatches = matches.take(5)
