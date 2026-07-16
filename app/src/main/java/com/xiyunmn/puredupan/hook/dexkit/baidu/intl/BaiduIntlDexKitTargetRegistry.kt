@@ -15,6 +15,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabModeDexKi
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlChangeSkinDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlAboutMeTopFragmentDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPagePromotionAdDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageSafetyFooterUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMePopupResponseHelperDexKitResolver
 
@@ -73,6 +74,12 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             target = "intl file page safety footer use case",
             featureKey = FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE,
             feature = "文件页底部数据安全提示",
+        ),
+        DexKitTargetDescriptor(
+            id = DownloadPagePromotionAdDexKitResolver.CACHE_ID,
+            target = "intl download page YouaGuide render method",
+            featureKey = FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE,
+            feature = "下载页推广广告",
         ),
         DexKitTargetDescriptor(
             id = IntlAboutMeTopFragmentDexKitResolver.CACHE_ID,
@@ -139,6 +146,15 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(FilePageSafetyFooterUseCaseDexKitResolver.CACHE_ID) {
                 FilePageSafetyFooterUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (
+            available(FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE) &&
+            settings.isDownloadPageCustomizeEnabled &&
+            settings.isDownloadPagePromotionAdHidden
+        ) {
+            tasks += DexKitWarmUpTask(DownloadPagePromotionAdDexKitResolver.CACHE_ID) {
+                DownloadPagePromotionAdDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         if (available(FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE)) {

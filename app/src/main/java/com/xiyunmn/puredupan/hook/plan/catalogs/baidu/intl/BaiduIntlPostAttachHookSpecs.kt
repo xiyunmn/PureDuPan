@@ -25,6 +25,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.entry.IntlAboutMeModuleE
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.entry.IntlHomeTitleBarModuleEntryHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlMemberCardCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.search.IntlSearchPageCustomizeHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPageCustomizeHook
 import com.xiyunmn.puredupan.hook.plan.HookSpec
 
 internal object BaiduIntlPostAttachHookSpecs {
@@ -87,6 +88,13 @@ internal object BaiduIntlPostAttachHookSpecs {
     )
 
     val searchPage = listOf(
+        HookSpec("DownloadPageCustomizeHook", { context, settings, derived ->
+            context.isMain &&
+                settings.isDownloadPageCustomizeEnabled &&
+                derived.hasDownloadPageCustomizeOption
+        }, featureKey = FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE) { cl ->
+            DownloadPageCustomizeHook.hook(cl)
+        },
         HookSpec("IntlSearchPageCustomizeHook", { context, settings, derived ->
             context.isMain &&
                 settings.isSearchPageCustomizeEnabled &&
