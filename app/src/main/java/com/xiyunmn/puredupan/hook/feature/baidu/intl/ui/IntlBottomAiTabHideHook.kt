@@ -1,10 +1,13 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.ui
 
+import android.app.Activity
+import android.view.View
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import org.luckypray.dexkit.query.FindClass
@@ -16,6 +19,13 @@ import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object IntlBottomAiTabHideHook {
+    private const val INIT_VIEW_METHOD = "initView"
+    private const val INIT_TABS_SKIN_METHOD = "initTabsSkin"
+    private const val REFRESH_TAB_SKIN_METHOD = "refreshTabSkin"
+    private const val DO_AI_CLOUD_GREET_ANIM_METHOD = "doAiCloudGreetAnim"
+    private const val DO_AI_CLOUD_WINK_ANIM_METHOD = "doAiCloudWinkAnim"
+    private const val ON_CLICK_METHOD = "onClick"
+
     private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
@@ -27,17 +37,33 @@ internal object IntlBottomAiTabHideHook {
         if (!hookState.markInstalled()) return
 
         try {
-            val method = IntlBottomAiTabModeDexKitResolver.resolve(cl) ?: run {
-                XposedCompat.log("[IntlBottomAiTabHideHook] getAiCloudTabMode equivalent NOT FOUND")
+            val className = BaiduFeatureRuntime.currentMainActivityClassName()
+            val clazz = className?.let { XposedCompat.findClassOrNull(it, cl) }
+            val method = clazz?.declaredMethods?.firstOrNull {
+                it.name == INIT_VIEW_METHOD && it.parameterTypes.isEmpty()
+            }
+
+            if (method == null) {
                 hookState.reset()
+                XposedCompat.log("[IntlBottomAiTabHideHook] MainActivity.initView NOT FOUND")
                 return
             }
-            mod.hook(method).intercept {
-                if (isEnabled()) 0L else it.proceed()
+
+            method.isAccessible = true
+            mod.hook(method).intercept { chain ->
+                val result = chain.proceed()
+                val activity = chain.thisObject as? Activity
+                if (activity != null && isEnabled()) {
+                    applyAigcTabHidden(activity)
+                }
+                result
             }
-            XposedCompat.log(
-                "[IntlBottomAiTabHideHook] hook INSTALLED: ${method.declaringClass.name}.${method.name}",
-            )
+            hookRefreshMethod(clazz, INIT_TABS_SKIN_METHOD)
+            hookRefreshMethod(clazz, REFRESH_TAB_SKIN_METHOD)
+            hookAiCloudAnimation(clazz, DO_AI_CLOUD_GREET_ANIM_METHOD)
+            hookAiCloudAnimation(clazz, DO_AI_CLOUD_WINK_ANIM_METHOD, Int::class.javaPrimitiveType!!)
+            hookAigcClick(clazz)
+            XposedCompat.log("[IntlBottomAiTabHideHook] hook INSTALLED: ${clazz.name}.$INIT_VIEW_METHOD")
         } catch (t: Throwable) {
             hookState.reset()
             XposedCompat.log("[IntlBottomAiTabHideHook] install FAILED: ${t.message}")
@@ -45,8 +71,111 @@ internal object IntlBottomAiTabHideHook {
         }
     }
 
+    private fun hookRefreshMethod(clazz: Class<*>, methodName: String) {
+        val method = clazz.declaredMethods.firstOrNull {
+            it.name == methodName && it.parameterTypes.isEmpty()
+        } ?: return
+        method.isAccessible = true
+        XposedCompat.module?.hook(method)?.intercept { chain ->
+            val result = chain.proceed()
+            val activity = chain.thisObject as? Activity
+            if (activity != null && isEnabled()) {
+                applyAigcTabHidden(activity)
+            }
+            result
+        }
+    }
+
+    private fun hookAiCloudAnimation(clazz: Class<*>, methodName: String, vararg paramTypes: Class<*>) {
+        val method = clazz.declaredMethods.firstOrNull {
+            it.name == methodName && it.parameterTypes.contentEquals(paramTypes)
+        } ?: return
+        method.isAccessible = true
+        XposedCompat.module?.hook(method)?.intercept { chain ->
+            val activity = chain.thisObject as? Activity
+            if (activity != null && isEnabled()) {
+                applyAigcTabHidden(activity)
+                return@intercept null
+            }
+            chain.proceed()
+        }
+    }
+
+    private fun hookAigcClick(clazz: Class<*>) {
+        val method = clazz.declaredMethods.firstOrNull {
+            it.name == ON_CLICK_METHOD &&
+                it.parameterTypes.size == 1 &&
+                it.parameterTypes[0] == View::class.java
+        } ?: return
+        method.isAccessible = true
+        XposedCompat.module?.hook(method)?.intercept { chain ->
+            val activity = chain.thisObject as? Activity
+            val view = chain.args.firstOrNull() as? View
+            if (activity != null && view != null && isEnabled() && isAigcTabView(activity, view)) {
+                applyAigcTabHidden(activity)
+                return@intercept null
+            }
+            chain.proceed()
+        }
+    }
+
+    private fun applyAigcTabHidden(activity: Activity) {
+        collapseViewById(activity, "aigc_cloud")
+        collapseViewById(activity, "aigc_hi_lottie")
+    }
+
+    private fun collapseViewById(activity: Activity, idName: String) {
+        val id = activity.resources.getIdentifier(idName, "id", activity.packageName)
+        if (id == 0) return
+        activity.findViewById<View>(id)?.let(::collapseView)
+    }
+
+    private fun collapseView(view: View) {
+        view.visibility = View.GONE
+        view.isEnabled = false
+        view.isClickable = false
+        view.setOnClickListener(null)
+    }
+
+    private fun isAigcTabView(activity: Activity, view: View): Boolean =
+        view.id == activity.resources.getIdentifier("aigc_cloud", "id", activity.packageName)
+
     private fun isEnabled(): Boolean =
         HookSettings.isBottomBarCustomEnabled && HookSettings.isBottomBarTabAigcHidden
+}
+
+internal object IntlBottomAiTabReplaceHook {
+    private val hookState = HookState()
+
+    internal fun hook(cl: ClassLoader) {
+        if (!isEnabled()) {
+            XposedCompat.log("[IntlBottomAiTabReplaceHook] skipped: config disabled")
+            return
+        }
+        val mod = XposedCompat.module ?: return
+        if (!hookState.markInstalled()) return
+
+        try {
+            val method = IntlBottomAiTabModeDexKitResolver.resolve(cl) ?: run {
+                XposedCompat.log("[IntlBottomAiTabReplaceHook] getAiCloudTabMode equivalent NOT FOUND")
+                hookState.reset()
+                return
+            }
+            mod.hook(method).intercept {
+                if (isEnabled()) 0L else it.proceed()
+            }
+            XposedCompat.log(
+                "[IntlBottomAiTabReplaceHook] hook INSTALLED: ${method.declaringClass.name}.${method.name}",
+            )
+        } catch (t: Throwable) {
+            hookState.reset()
+            XposedCompat.log("[IntlBottomAiTabReplaceHook] install FAILED: ${t.message}")
+            XposedCompat.log(t)
+        }
+    }
+
+    private fun isEnabled(): Boolean =
+        HookSettings.isBottomBarCustomEnabled && HookSettings.isBottomAiReplaced
 }
 
 internal object IntlBottomAiTabModeDexKitResolver {

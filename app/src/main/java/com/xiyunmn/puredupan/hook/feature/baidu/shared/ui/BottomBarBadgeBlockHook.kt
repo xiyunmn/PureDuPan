@@ -5,6 +5,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookUtils
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
+import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduBottomBarHookPoints
 
 /**
  * Blocks bottom-tab red-dot/text badges.
@@ -51,7 +52,8 @@ object BottomBarBadgeBlockHook {
             BaiduFeatureRuntime.currentMainActivityPresenterClassName()?.let { className ->
                 XposedCompat.findClassOrNull(className, cl)?.let { clazz ->
                     val methods = clazz.declaredMethods.filter {
-                        it.name == MAIN_ACTIVITY_PRESENTER_DRAW_UPDATE_INDICATOR_METHOD
+                        it.name == MAIN_ACTIVITY_PRESENTER_DRAW_UPDATE_INDICATOR_METHOD ||
+                            isDrawUpdateIndicatorShape(it)
                     }
                     for (method in methods) {
                         method.isAccessible = true
@@ -81,4 +83,17 @@ object BottomBarBadgeBlockHook {
     }
     private fun isEnabled(): Boolean =
         HookSettings.isBottomBarCustomEnabled && HookSettings.isBottomBarBadgeBlocked
+
+    private fun isDrawUpdateIndicatorShape(method: java.lang.reflect.Method): Boolean {
+        if (method.returnType != Void.TYPE) return false
+        val params = method.parameterTypes
+        return params.size == 7 &&
+            params[0].name == BaiduBottomBarHookPoints.LOTTIE_RADIO_BUTTON &&
+            params[1] == Boolean::class.javaPrimitiveType &&
+            params[2] == Boolean::class.javaPrimitiveType &&
+            params[3] == String::class.java &&
+            params[4] == Int::class.javaPrimitiveType &&
+            params[5] == Int::class.javaPrimitiveType &&
+            params[6] == Int::class.javaPrimitiveType
+    }
 }

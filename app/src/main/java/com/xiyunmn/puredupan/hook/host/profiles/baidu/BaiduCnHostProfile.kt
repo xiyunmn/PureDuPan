@@ -67,14 +67,17 @@ internal val BaiduCnHostProfile = HostProfile(
                 storyCardRenderContextClassName = BaiduSharedHookPoints.STORY_CONTEXT,
                 storyCardRenderMethodName =
                     BaiduSharedHookPoints.STORY_CONTEXT_GET_NEW_HOME_STORY_CARD_VIEW_METHOD,
-                saveCardViewModelClassName = BaiduSharedHookPoints.HOME_SAVE_CARD_VIEW_MODEL,
+                feedRecentCardRenderMethodName = BaiduSharedHookPoints.HOME_FEED_INIT_RECENT_CARD_VIEW_METHOD,
+                feedSaveCardRenderMethodName = BaiduSharedHookPoints.HOME_FEED_INIT_SAVE_CARD_VIEW_METHOD,
+                feedStoryCardRenderMethodName = BaiduSharedHookPoints.HOME_FEED_INIT_STORY_CARD_VIEW_METHOD,
+                saveCardViewModelClassNames = BaiduSharedHookPoints.HOME_SAVE_CARD_DOMESTIC_VIEW_MODELS,
                 saveCardNoArgBlockedMethodNames =
                     BaiduSharedHookPoints.HOME_SAVE_CARD_DOMESTIC_NO_ARG_BLOCKED_METHODS,
                 saveCardSetListMethodNames = BaiduSharedHookPoints.HOME_SAVE_CARD_DOMESTIC_SET_LIST_METHODS,
                 saveCardSetRecommendMethodNames =
                     BaiduSharedHookPoints.HOME_SAVE_CARD_DOMESTIC_SET_RECOMMEND_METHODS,
                 saveCardRedPotMethodNames = BaiduSharedHookPoints.HOME_SAVE_CARD_DOMESTIC_RED_POT_METHODS,
-                recentCardDataUseCaseClassName = BaiduSharedHookPoints.HOME_RECENT_CARD_DATA_USE_CASE,
+                recentCardDataUseCaseClassNames = BaiduSharedHookPoints.HOME_RECENT_CARD_DOMESTIC_DATA_USE_CASES,
                 netdiskContextCompanionClassName = BaiduSharedHookPoints.NETDISK_CONTEXT_COMPANION,
                 newHomeBannerCardViewMethodName =
                     BaiduSharedHookPoints.NETDISK_GET_NEW_HOME_BANNER_CARD_VIEW_METHOD,

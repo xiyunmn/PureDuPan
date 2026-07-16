@@ -25,6 +25,7 @@ internal data class HookSpec(
 internal class PlanContext(
     private val host: HookPlanHostContext,
 ) {
+    val hostId: String = host.hostId
     val isMain: Boolean = host.isMain
     val isPushService: Boolean = host.isPushService
     val supportsOemPushHook: Boolean = host.supportsOemPushHook

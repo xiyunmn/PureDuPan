@@ -1,6 +1,7 @@
 package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.shared
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
+import com.xiyunmn.puredupan.hook.host.HostIds
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.SplashBypassCore
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeBannerHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeCoinCenterBubbleHideHook
@@ -33,6 +34,8 @@ internal object BaiduSharedPostAttachHookSpecs {
             fun enabled(featureKey: String, value: Boolean): Boolean {
                 return context.isFeatureAvailable(featureKey) && value
             }
+            val canUseStaticAigcHide =
+                context.hostId == HostIds.BAIDU_CN || context.hostId == HostIds.BAIDU_SAMSUNG
 
             context.isMain &&
                 settings.isBottomBarCustomEnabled &&
@@ -41,7 +44,11 @@ internal object BaiduSharedPostAttachHookSpecs {
                         enabled(FeatureKeys.KEY_HIDE_TAB_FILE, settings.isBottomBarTabFileHidden) ||
                         enabled(FeatureKeys.KEY_HIDE_TAB_SHARE, settings.isBottomBarTabShareHidden) ||
                         enabled(FeatureKeys.KEY_HIDE_TAB_VIP, settings.isBottomBarTabVipHidden) ||
-                        enabled(FeatureKeys.KEY_HIDE_TAB_MINE, settings.isBottomBarTabMineHidden)
+                        enabled(FeatureKeys.KEY_HIDE_TAB_MINE, settings.isBottomBarTabMineHidden) ||
+                        (
+                            canUseStaticAigcHide &&
+                                enabled(FeatureKeys.KEY_HIDE_TAB_AIGC, settings.isBottomBarTabAigcHidden)
+                            )
                     )
         }, featureKey = FeatureKeys.KEY_CUSTOM_BOTTOM_BAR) { cl -> BottomBarStaticTabHideHook.hook(cl) },
         HookSpec("BottomBarBadgeBlockHook", { context, settings, _ ->

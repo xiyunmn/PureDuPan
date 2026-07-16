@@ -15,10 +15,12 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -53,8 +55,7 @@ internal object DomesticMemberCardCustomizeHook {
     private const val MEMBER_CARD_THIRD_BENEFIT_ID = "cl_third_card"
     private const val MEMBER_CARD_BENEFIT_DIVIDER_ID = "view_line"
     private const val MEMBER_CARD_BENEFIT_BAR_ID = "ll_root"
-    private const val MEMBER_CARD_SVIP_LEVEL_ID = "iv_vip_image"
-    private const val MEMBER_CARD_SVIP_NUMBER_ID = "tv_vip_number"
+    private const val MEMBER_CARD_SVIP_LEVEL_ROOT_ID = "rl_root"
     private const val MEMBER_CARD_SVIP_STATUS_ID = "tv_duration_content"
     private const val MEMBER_CARD_RENEW_BUTTON_ID = "tv_enter"
     private const val MEMBER_CARD_RENEW_DIVIDER_ID = "enter_line"
@@ -89,6 +90,7 @@ internal object DomesticMemberCardCustomizeHook {
             }
 
             hookOperationLogicGate(fragmentClass)
+            hookInitialRenderEntry(fragmentClass)
             hookCardRenderEntry(fragmentClass)
 
             XposedCompat.log("[MemberCardCustomizeHook] hook INSTALLED")
@@ -123,6 +125,39 @@ internal object DomesticMemberCardCustomizeHook {
         }
         XposedCompat.log(
             "[MemberCardCustomizeHook] operation logic gate INSTALLED: " +
+                "${method.declaringClass.name}.${method.name}",
+        )
+    }
+
+    /**
+     * 首帧占位修正。
+     *
+     * Heteromo.onCreateView 直接返回 binding.root；会员数据渲染入口 setCardUi 之前，
+     * rl_root 内的 tv_title/cl_title_root 可能短暂露出默认或上一态内容。这里仅在 SVIP 等级隐藏
+     * 开启时，对 onCreateView 返回的 root 做固定资源 ID 隐藏，不监听、不递归、不按文案匹配。
+     */
+    private fun hookInitialRenderEntry(fragmentClass: Class<*>) {
+        val mod = XposedCompat.module ?: return
+        if (!hasInitialRenderOption(HookSettings.memberCardSnapshot())) return
+
+        val method = XposedCompat.findMethodOrNull(
+            fragmentClass,
+            "onCreateView",
+            LayoutInflater::class.java,
+            ViewGroup::class.java,
+            Bundle::class.java,
+        ) ?: run {
+            XposedCompat.log("[MemberCardCustomizeHook] initial render entry: onCreateView NOT FOUND")
+            return
+        }
+
+        mod.hook(method).intercept { chain ->
+            val result = chain.proceed()
+            applyInitialMemberCardPlaceholders(result as? View)
+            result
+        }
+        XposedCompat.log(
+            "[MemberCardCustomizeHook] initial render entry INSTALLED: " +
                 "${method.declaringClass.name}.${method.name}",
         )
     }
@@ -239,10 +274,9 @@ internal object DomesticMemberCardCustomizeHook {
         }
 
         if (snapshot.isMemberCardSvipLevelHidden) {
-            hideByEntryName(root, resources, packageName, MEMBER_CARD_SVIP_LEVEL_ID) {
-                XposedCompat.logD("[MemberCardCustomizeHook] member card svip level hidden")
+            hideByEntryName(root, resources, packageName, MEMBER_CARD_SVIP_LEVEL_ROOT_ID) {
+                XposedCompat.logD("[MemberCardCustomizeHook] member card svip title root hidden")
             }
-            hideByEntryName(root, resources, packageName, MEMBER_CARD_SVIP_NUMBER_ID)
         }
 
         if (snapshot.isMemberCardSvipStatusHidden) {
@@ -264,6 +298,18 @@ internal object DomesticMemberCardCustomizeHook {
         }
     }
 
+    private fun applyInitialMemberCardPlaceholders(root: View?) {
+        if (root == null) return
+        val snapshot = HookSettings.memberCardSnapshot()
+        if (!hasInitialRenderOption(snapshot)) return
+
+        val resources = root.resources ?: return
+        val packageName = root.context?.packageName ?: return
+        hideByEntryName(root, resources, packageName, MEMBER_CARD_SVIP_LEVEL_ROOT_ID) {
+            XposedCompat.logD("[MemberCardCustomizeHook] initial svip title root hidden")
+        }
+    }
+
     private fun hasEnabledOption(snapshot: SettingsSnapshot): Boolean {
         return snapshot.isMemberCardCustomizeEnabled &&
             (
@@ -281,6 +327,12 @@ internal object DomesticMemberCardCustomizeHook {
                     snapshot.isMemberCardClickRemoved ||
                     snapshot.isMemberCardBackgroundViewedOnClick
             )
+    }
+
+    /** 仅首帧占位需要的固定入口选项。 */
+    private fun hasInitialRenderOption(snapshot: SettingsSnapshot): Boolean {
+        return snapshot.isMemberCardCustomizeEnabled &&
+            snapshot.isMemberCardSvipLevelHidden
     }
 
     /** 需要渲染入口 View 操作的选项（A + C），运营位（B）走逻辑门不在此列。 */

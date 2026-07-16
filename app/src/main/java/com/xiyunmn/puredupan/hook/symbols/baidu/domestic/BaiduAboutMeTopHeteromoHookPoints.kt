@@ -12,9 +12,9 @@ package com.xiyunmn.puredupan.hook.symbols.baidu.domestic
  * - [SET_CARD_UI_METHOD](CenterConfig, PopupResponse):void —— 调 setCardText 后设 ivVipImage、ivBg、主题，
  *   并调 initAiPoint() 渲染 layout_ai_coin。
  *
- * 混淆兼容：百度弱混淆分支与强混淆分支都会发布正式版。
- * - 弱/未混淆分支（国内 13.28.9/13.27.8、三星 13.27.8 已核验）：类名、方法名全明文，走稳定直连。
- * - 强混淆分支：类名与私有方法名被混淆，但 Kotlin @Metadata d2 数组保留明文类 token 与方法 token
+ * 混淆兼容：百度国内版/三星版后续正式版可能是弱混淆，也可能是强混淆。
+ * - 弱混淆样本（如国内 13.28.9）：类名、方法名全明文，走稳定直连 fallback。
+ * - 强混淆样本（国内 13.27.8、三星 13.27.8）：类名或私有方法名可能混淆，但 Kotlin @Metadata d2 数组保留明文类 token 与方法 token
  *   （同相册备份栏 9.2 已验证的抗混淆手段），由 DexKit resolver 用 [HETEROMO_METADATA_TOKEN] +
  *   方法 token 定位类，锚点方法 [MY_CARD_HAS_OPERATION_METHOD] 形状 (PopupResponse)->boolean。
  * 隐藏 binding 视图统一用明文资源 ID（resources.getIdentifier），不依赖 binding 字段反射，本就抗混淆。

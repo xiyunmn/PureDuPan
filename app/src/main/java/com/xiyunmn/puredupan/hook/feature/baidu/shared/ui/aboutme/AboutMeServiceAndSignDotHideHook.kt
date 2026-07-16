@@ -7,7 +7,9 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAboutMeHookPoints
+import java.lang.reflect.Field
 import java.lang.reflect.Modifier
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Hides "My service" and the sign-in entry red dot from their render entries.
@@ -33,6 +35,9 @@ object AboutMeServiceAndSignDotHideHook {
     )
 
     private val hookState = HookState()
+    private val helperRootFieldCache = ConcurrentHashMap<Class<*>, CachedField>()
+
+    private data class CachedField(val field: Field?)
 
     internal fun hook(cl: ClassLoader) {
         if (!isAnyEnabled()) {
@@ -65,6 +70,7 @@ object AboutMeServiceAndSignDotHideHook {
                 for (activityClassName in BaiduFeatureRuntime.currentAboutMeActivityClassNames()) {
                     installed += hookActivityRenderPoints(cl, activityClassName)
                 }
+                installed += hookPopupResponseHelperRefresh(cl)
             }
 
             if (installed == 0) {
@@ -119,7 +125,7 @@ object AboutMeServiceAndSignDotHideHook {
             val method = XposedCompat.findMethodOrNull(activityClass, methodName) ?: continue
             mod.hook(method).intercept { chain ->
                 val result = chain.proceed()
-                scheduleHideSignDot(chain.thisObject as? Activity, methodName)
+                hideSignDotFromActivity(chain.thisObject as? Activity, methodName)
                 result
             }
             count++
@@ -136,10 +142,29 @@ object AboutMeServiceAndSignDotHideHook {
         val method = XposedCompat.findMethodOrNull(activityClass, "setActivityEntry", popupResponseClass) ?: return 0
         mod.hook(method).intercept { chain ->
             val result = chain.proceed()
-            scheduleHideSignDot(chain.thisObject as? Activity, "setActivityEntry")
+            hideSignDotFromActivity(chain.thisObject as? Activity, "setActivityEntry")
             result
         }
         XposedCompat.logD("[$TAG] sign-dot render hook installed: ${activityClass.name}.setActivityEntry")
+        return 1
+    }
+
+    private fun hookPopupResponseHelperRefresh(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val method = AboutMePopupResponseHelperDexKitResolver.resolve(cl) ?: run {
+            XposedCompat.logD("[$TAG] PopupResponseHelper.refresh not resolved")
+            return 0
+        }
+        mod.hook(method).intercept { chain ->
+            val result = chain.proceed()
+            if (isSignDotEnabled()) {
+                hideSignDot(helperRoot(chain.thisObject), "PopupResponseHelper.refresh")
+            }
+            result
+        }
+        XposedCompat.logD(
+            "[$TAG] sign-dot render hook installed: ${method.declaringClass.name}.${method.name}",
+        )
         return 1
     }
 
@@ -148,17 +173,14 @@ object AboutMeServiceAndSignDotHideHook {
         hideByEntryName(root, MY_SERVICE_ID, "my service")
     }
 
-    private fun scheduleHideSignDot(activity: Activity?, source: String) {
+    private fun hideSignDotFromActivity(activity: Activity?, source: String) {
         if (activity == null || !isSignDotEnabled()) return
         val root = activity.window?.decorView ?: return
         hideSignDot(root, source)
-        root.post { hideSignDot(root, source) }
-        for (delay in listOf(80L, 240L, 600L)) {
-            root.postDelayed({ hideSignDot(root, source) }, delay)
-        }
     }
 
-    private fun hideSignDot(root: View, source: String) {
+    private fun hideSignDot(root: View?, source: String) {
+        if (root == null) return
         for (entryName in SIGN_DOT_IDS) {
             hideByEntryName(root, entryName, "sign-in dot", source)
         }
@@ -169,6 +191,38 @@ object AboutMeServiceAndSignDotHideHook {
             runCatching { it.javaClass.getMethod("getView").invoke(it) as? View }.getOrNull()
         }
     }
+
+    private fun helperRoot(helper: Any?): View? {
+        helper ?: return null
+        val lookup = helperRootFieldCache[helper.javaClass]
+            ?: CachedField(findHelperRootField(helper.javaClass)).also {
+                helperRootFieldCache[helper.javaClass] = it
+        }
+        return lookup.field?.let { field ->
+            runCatching {
+                field.get(helper) as? View
+            }.getOrNull()
+        }
+    }
+
+    private fun findHelperRootField(clazz: Class<*>): Field? {
+        val viewFields = mutableListOf<Field>()
+        var current: Class<*>? = clazz
+        while (current != null) {
+            for (field in current.declaredFields) {
+                if (Modifier.isStatic(field.modifiers)) continue
+                if (!View::class.java.isAssignableFrom(field.type)) continue
+                if (field.name == "rootView") return field.asAccessible()
+                viewFields += field
+            }
+            current = current.superclass
+        }
+        return viewFields.firstOrNull { it.type == View::class.java }
+            ?.asAccessible()
+            ?: viewFields.singleOrNull()?.asAccessible()
+    }
+
+    private fun Field.asAccessible(): Field = apply { isAccessible = true }
 
     private fun hideByEntryName(root: View, idName: String, label: String, source: String = "render entry") {
         val resources = root.resources ?: return

@@ -7,7 +7,7 @@ import com.xiyunmn.puredupan.hook.core.HookState
 /**
  * 底栏 AI Tab 模式 Hook。
  *
- * 通过宿主 AIGC tab mode provider 阻断 AIGC raised slot 生成。
+ * 通过宿主 AIGC tab mode provider 将底栏 AI 入口切换为会员入口。
  */
 internal object DomesticBottomAiTabReplaceHook {
     private val hookState = HookState()
@@ -44,5 +44,5 @@ internal object DomesticBottomAiTabReplaceHook {
 
     private fun isEnabled(): Boolean =
         HookSettings.isBottomBarCustomEnabled &&
-            (HookSettings.isBottomAiReplaced || HookSettings.isBottomBarTabAigcHidden)
+            HookSettings.isBottomAiReplaced
 }

@@ -20,6 +20,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticVid
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.DomesticCookieByBdussDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticColdStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticHotStartSplashDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMePopupResponseHelperDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.search.SearchPageVoiceSearchDexKitResolver
 
 internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
@@ -138,6 +139,12 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             feature = "member card customize",
             featureKey = FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE,
         ),
+        DexKitTargetDescriptor(
+            id = AboutMePopupResponseHelperDexKitResolver.CACHE_ID,
+            target = "about me PopupResponseHelper refresh method",
+            feature = "my page customize",
+            featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
+        ),
     )
 
     override fun buildTasks(
@@ -234,6 +241,11 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(AboutMeTopHeteromoDexKitResolver.CACHE_ID) {
                 AboutMeTopHeteromoDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (available(FeatureKeys.KEY_MY_PAGE_CUSTOMIZE)) {
+            tasks += DexKitWarmUpTask(AboutMePopupResponseHelperDexKitResolver.CACHE_ID) {
+                AboutMePopupResponseHelperDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         return tasks

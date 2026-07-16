@@ -147,12 +147,21 @@ internal object HostProfileValidator {
         ) {
             "Host ${profile.id} home story card render hook point must declare class and method together"
         }
-        requireOptionalClassName(profile, points.saveCardViewModelClassName, "home save card view model")
+        require(points.feedRecentCardRenderMethodName == null || points.feedRecentCardRenderMethodName.isNotBlank()) {
+            "Host ${profile.id} home recent card render method name must not be blank"
+        }
+        require(points.feedSaveCardRenderMethodName == null || points.feedSaveCardRenderMethodName.isNotBlank()) {
+            "Host ${profile.id} home save card render method name must not be blank"
+        }
+        require(points.feedStoryCardRenderMethodName == null || points.feedStoryCardRenderMethodName.isNotBlank()) {
+            "Host ${profile.id} home feed story card render method name must not be blank"
+        }
+        requireOptionalClassNames(profile, points.saveCardViewModelClassNames, "home save card view model")
         requireOptionalNames(profile, points.saveCardNoArgBlockedMethodNames, "home save no-arg block method")
         requireOptionalNames(profile, points.saveCardSetListMethodNames, "home save set list method")
         requireOptionalNames(profile, points.saveCardSetRecommendMethodNames, "home save set recommend method")
         requireOptionalNames(profile, points.saveCardRedPotMethodNames, "home save red pot method")
-        requireOptionalClassName(profile, points.recentCardDataUseCaseClassName, "home recent card data use case")
+        requireOptionalClassNames(profile, points.recentCardDataUseCaseClassNames, "home recent card data use case")
         requireOptionalClassName(
             profile,
             points.netdiskContextCompanionClassName,
@@ -270,9 +279,17 @@ internal object HostProfileValidator {
             require(!points.storyCardRenderMethodName.isNullOrBlank()) {
                 "Host ${profile.id} requires home story card render method name"
             }
+            requireRequiredClassNames(profile, points.feedFragmentClassNames, "home feed fragment")
+            require(!points.feedStoryCardRenderMethodName.isNullOrBlank()) {
+                "Host ${profile.id} requires home feed story card render method name"
+            }
         }
         if (FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION in featureKeys) {
-            requireRequiredClassName(profile, points.saveCardViewModelClassName, "home save card view model")
+            requireRequiredClassNames(profile, points.feedFragmentClassNames, "home feed fragment")
+            require(!points.feedSaveCardRenderMethodName.isNullOrBlank()) {
+                "Host ${profile.id} requires home save card render method name"
+            }
+            requireRequiredClassNames(profile, points.saveCardViewModelClassNames, "home save card view model")
             requireRequiredNames(profile, points.saveCardNoArgBlockedMethodNames, "home save no-arg block method")
             requireRequiredNames(profile, points.saveCardSetListMethodNames, "home save set list method")
             requireRequiredNames(
@@ -283,7 +300,11 @@ internal object HostProfileValidator {
             requireRequiredNames(profile, points.saveCardRedPotMethodNames, "home save red pot method")
         }
         if (FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION in featureKeys) {
-            requireRequiredClassName(profile, points.recentCardDataUseCaseClassName, "home recent card data use case")
+            requireRequiredClassNames(profile, points.feedFragmentClassNames, "home feed fragment")
+            require(!points.feedRecentCardRenderMethodName.isNullOrBlank()) {
+                "Host ${profile.id} requires home recent card render method name"
+            }
+            requireRequiredClassNames(profile, points.recentCardDataUseCaseClassNames, "home recent card data use case")
         }
         if (FeatureKeys.KEY_HIDE_HOME_BANNER in featureKeys) {
             requireRequiredClassName(profile, points.netdiskContextCompanionClassName, "netdisk context companion")

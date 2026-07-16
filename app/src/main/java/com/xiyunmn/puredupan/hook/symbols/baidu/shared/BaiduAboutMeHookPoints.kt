@@ -7,6 +7,12 @@ internal object BaiduAboutMeHookPoints {
     const val ABOUT_ME_BOTTOM_FRAGMENT = "com.baidu.netdisk.ui.aboutme.view.AboutMeBottomFragment"
     const val BASE_MIDDLE_VIEW_HOLDER = "com.baidu.netdisk.ui.aboutme.view.BaseMiddleViewHolder"
     const val ABOUT_MY_WELFARE_ADAPTER = "com.baidu.netdisk.ui.aboutme.view.AboutMyWelfareAdapter"
+    const val POPUP_RESPONSE_HELPER = "com.baidu.netdisk.ui.aboutme.view.PopupResponseHelper"
+    const val POPUP_RESPONSE = "com.baidu.netdisk.operation.io.PopupResponse"
+    const val POPUP_RESPONSE_HELPER_METADATA_TOKEN =
+        "Lcom/baidu/netdisk/ui/aboutme/view/PopupResponseHelper;"
+    const val POPUP_RESPONSE_HELPER_REFRESH_METADATA_TOKEN = "refresh"
+    const val POPUP_RESPONSE_HELPER_LAST_RESPONSE_METADATA_TOKEN = "lastResponse"
 
     const val COIN_CENTER_V2_FRAGMENT =
         "com.baidu.netdisk.operation.ui.fragment.coincenter.aboutme.NewAboutMeCoinCenterV2Fragment"

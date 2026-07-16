@@ -253,6 +253,7 @@ internal object BaiduFeatureSets {
 
     private val baiduIntlBottomBarCustomize = listOf(
         FeatureKeys.KEY_HIDE_TAB_AIGC,
+        FeatureKeys.KEY_REPLACE_BOTTOM_AI,
     )
 
     private val baiduIntlThemeCustomize = listOf(

@@ -1,9 +1,10 @@
-package com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.aboutme
+package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme
 
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
-import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduAboutMeTopHeteromoHookPoints
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
+import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAboutMeHookPoints
 import java.lang.reflect.Method
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
@@ -14,28 +15,18 @@ import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 /**
- * 定位国内版/三星版会员卡 AboutMeTopFragmentHeteromo 类（三渲染入口的宿主）。
- *
- * 用锚点方法 myCardHasOperation 形状 (PopupResponse)->boolean 定位类：命中后取 declaringClass 即为
- * Heteromo 类，setCardText/setCardUi 再在该类内按签名反射取（类内签名唯一）。
- *
- * - 弱混淆样本（如国内 13.28.9）：类名与方法名明文，走稳定直连 fallback。
- * - 强混淆样本（国内 13.27.8、三星 13.27.8）：类名或私有方法名可能混淆，但 Kotlin @Metadata d2 保留明文类 token 与方法 token，作为强锚点
- *   （同相册备份栏 9.2 已验证的抗混淆手段）。
- *
- * DexKitCompat 仅缓存方法，故缓存锚点方法 myCardHasOperation 的 MethodRef，declaringClass 即为目标类。
+ * Locates PopupResponseHelper.refresh(PopupResponse) across weak/strong obfuscation.
  */
-internal object AboutMeTopHeteromoDexKitResolver {
-    const val CACHE_ID = "domestic_aboutme_top_heteromo_v1"
+internal object AboutMePopupResponseHelperDexKitResolver {
+    const val CACHE_ID = "shared_aboutme_popup_response_helper_refresh_v1"
 
-    private const val TAG = "AboutMeTopHeteromoDexKitResolver"
+    private const val TAG = "AboutMePopupResponseHelperDexKitResolver"
     private const val KOTLIN_METADATA = "kotlin.Metadata"
 
-    private val HETEROMO_METADATA_TOKENS = listOf(
-        BaiduAboutMeTopHeteromoHookPoints.HETEROMO_METADATA_TOKEN,
-        BaiduAboutMeTopHeteromoHookPoints.SET_CARD_TEXT_METADATA_TOKEN,
-        BaiduAboutMeTopHeteromoHookPoints.SET_CARD_UI_METADATA_TOKEN,
-        BaiduAboutMeTopHeteromoHookPoints.MY_CARD_HAS_OPERATION_METADATA_TOKEN,
+    private val METADATA_TOKENS = listOf(
+        BaiduAboutMeHookPoints.POPUP_RESPONSE_HELPER_METADATA_TOKEN,
+        BaiduAboutMeHookPoints.POPUP_RESPONSE_HELPER_REFRESH_METADATA_TOKEN,
+        BaiduAboutMeHookPoints.POPUP_RESPONSE_HELPER_LAST_RESPONSE_METADATA_TOKEN,
     )
 
     private data class DexMethodCandidate(
@@ -53,12 +44,11 @@ internal object AboutMeTopHeteromoDexKitResolver {
         return resolve(cl) != null
     }
 
-    /** 返回 AboutMeTopFragmentHeteromo 类，供 hook 反射取三渲染入口方法。 */
-    fun resolve(cl: ClassLoader): Class<*>? {
+    fun resolve(cl: ClassLoader): Method? {
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateRef(cl, ref)
         }) {
-            is DexKitCompat.CachedResult.Found -> return cached.value.declaringClass
+            is DexKitCompat.CachedResult.Found -> return cached.value
             DexKitCompat.CachedResult.NotFound -> return resolveStableFallback(cl)
             DexKitCompat.CachedResult.Miss -> Unit
         }
@@ -67,11 +57,11 @@ internal object AboutMeTopHeteromoDexKitResolver {
             bridge.setThreadNum(1)
             bridge.findClass(
                 FindClass.create()
-                    .matcher(heteromoOwnerMatcher()),
+                    .matcher(helperOwnerMatcher()),
             ).flatMap { classData ->
                 classData.findMethod(
                     FindMethod.create()
-                        .matcher(myCardHasOperationMatcher()),
+                        .matcher(refreshMatcher()),
                 )
             }.map { methodData ->
                 DexMethodCandidate(
@@ -87,7 +77,7 @@ internal object AboutMeTopHeteromoDexKitResolver {
 
         val rejected = mutableListOf<String>()
         val matches = candidates.mapNotNull { candidate ->
-            if (!candidate.isMyCardHasOperationShape()) return@mapNotNull null
+            if (!candidate.isRefreshShape()) return@mapNotNull null
             val method = validateCandidate(cl, candidate, rejected) ?: return@mapNotNull null
             candidate to method
         }.sortedWith(
@@ -99,7 +89,7 @@ internal object AboutMeTopHeteromoDexKitResolver {
         val best = matches.firstOrNull()
         if (best == null) {
             val diagnostic = buildDiagnostic(candidates, matches, rejected)
-            XposedCompat.logW("[$TAG] AboutMeTopFragmentHeteromo unresolved: $diagnostic")
+            XposedCompat.logW("[$TAG] PopupResponseHelper.refresh unresolved: $diagnostic")
             DexKitCompat.markTargetError(TAG, CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, CACHE_ID, null)
             return resolveStableFallback(cl)
@@ -111,50 +101,24 @@ internal object AboutMeTopHeteromoDexKitResolver {
             CACHE_ID,
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
-        XposedCompat.log(
-            "[$TAG] resolved AboutMeTopFragmentHeteromo: ${method.declaringClass.name} " +
-                "(anchor ${method.name})",
-        )
-        return method.declaringClass
+        XposedCompat.log("[$TAG] resolved PopupResponseHelper.refresh: ${method.declaringClass.name}.${method.name}")
+        return method
     }
 
-    private fun resolveStableFallback(cl: ClassLoader): Class<*>? {
+    private fun resolveStableFallback(cl: ClassLoader): Method? {
         val clazz = XposedCompat.findClassOrNull(
-            BaiduAboutMeTopHeteromoHookPoints.ABOUT_ME_TOP_FRAGMENT_HETEROMO,
+            BaiduAboutMeHookPoints.POPUP_RESPONSE_HELPER,
             cl,
         ) ?: return null
-        if (!isHeteromoOwner(clazz)) return null
-        if (findMyCardHasOperationMethod(clazz) == null) return null
-        DexKitCompat.markTargetSuccess(TAG, CACHE_ID, "fallback:${clazz.name}")
-        return clazz
-    }
-
-    /** 运营位逻辑门：(PopupResponse)->boolean，类内唯一。 */
-    fun findMyCardHasOperationMethod(clazz: Class<*>): Method? {
-        return clazz.declaredMethods.firstOrNull { method ->
-            method.returnType == Boolean::class.javaPrimitiveType &&
-                method.parameterTypes.size == 1 &&
-                method.parameterTypes[0].name == BaiduAboutMeTopHeteromoHookPoints.POPUP_RESPONSE
-        }?.apply { isAccessible = true }
-    }
-
-    /** setCardText：(CenterConfig)->void，类内唯一（setCardUi$default 为 4 参，不匹配）。 */
-    fun findSetCardTextMethod(clazz: Class<*>): Method? {
-        return clazz.declaredMethods.firstOrNull { method ->
-            method.returnType == Void.TYPE &&
-                method.parameterTypes.size == 1 &&
-                method.parameterTypes[0].name == BaiduAboutMeTopHeteromoHookPoints.CENTER_CONFIG
-        }?.apply { isAccessible = true }
-    }
-
-    /** setCardUi：(CenterConfig, PopupResponse)->void，类内唯一。 */
-    fun findSetCardUiMethod(clazz: Class<*>): Method? {
-        return clazz.declaredMethods.firstOrNull { method ->
-            method.returnType == Void.TYPE &&
-                method.parameterTypes.size == 2 &&
-                method.parameterTypes[0].name == BaiduAboutMeTopHeteromoHookPoints.CENTER_CONFIG &&
-                method.parameterTypes[1].name == BaiduAboutMeTopHeteromoHookPoints.POPUP_RESPONSE
-        }?.apply { isAccessible = true }
+        if (!isHelperOwner(clazz)) return null
+        val method = findRefreshMethod(clazz) ?: return null
+        DexKitCompat.putCachedMethod(
+            TAG,
+            CACHE_ID,
+            DexKitCompat.MethodRef(method.declaringClass.name, method.name),
+        )
+        DexKitCompat.markTargetSuccess(TAG, CACHE_ID, "fallback:${method.declaringClass.name}.${method.name}")
+        return method
     }
 
     private fun validateCandidate(
@@ -162,10 +126,7 @@ internal object AboutMeTopHeteromoDexKitResolver {
         candidate: DexMethodCandidate,
         rejected: MutableList<String>,
     ): Method? {
-        val method = validateRef(
-            cl,
-            DexKitCompat.MethodRef(candidate.className, candidate.methodName),
-        )
+        val method = validateRef(cl, DexKitCompat.MethodRef(candidate.className, candidate.methodName))
         if (method == null) {
             rejected += "${candidate.memberName()} rejected: metadata/signature mismatch"
         }
@@ -174,21 +135,33 @@ internal object AboutMeTopHeteromoDexKitResolver {
 
     private fun validateRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
         val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
-        if (!isHeteromoOwner(clazz)) return null
+        if (!isHelperOwner(clazz)) return null
         return clazz.declaredMethods.firstOrNull { method ->
-            method.name == ref.methodName &&
-                method.returnType == Boolean::class.javaPrimitiveType &&
-                method.parameterTypes.size == 1 &&
-                method.parameterTypes[0].name == BaiduAboutMeTopHeteromoHookPoints.POPUP_RESPONSE
+            method.name == ref.methodName && isRefreshMethod(method)
         }?.apply { isAccessible = true }
     }
 
-    private fun isHeteromoOwner(clazz: Class<*>): Boolean {
-        if (clazz.name == BaiduAboutMeTopHeteromoHookPoints.ABOUT_ME_TOP_FRAGMENT_HETEROMO) return true
-        return KotlinMetadataUtils.metadataContainsAll(clazz, HETEROMO_METADATA_TOKENS)
+    private fun findRefreshMethod(clazz: Class<*>): Method? {
+        return clazz.declaredMethods.firstOrNull { method ->
+            isRefreshMethod(method)
+        }?.apply { isAccessible = true }
     }
 
-    private fun heteromoOwnerMatcher(): ClassMatcher {
+    private fun isRefreshMethod(method: Method): Boolean {
+        if (method.returnType != Void.TYPE) return false
+        val params = method.parameterTypes
+        if (params.size != 1) return false
+        val popupResponseClassName = BaiduFeatureRuntime.currentPopupResponseClassName()
+            ?: BaiduAboutMeHookPoints.POPUP_RESPONSE
+        return params[0].name == popupResponseClassName || params[0].name == BaiduAboutMeHookPoints.POPUP_RESPONSE
+    }
+
+    private fun isHelperOwner(clazz: Class<*>): Boolean {
+        if (clazz.name == BaiduAboutMeHookPoints.POPUP_RESPONSE_HELPER) return true
+        return KotlinMetadataUtils.metadataContainsAll(clazz, METADATA_TOKENS)
+    }
+
+    private fun helperOwnerMatcher(): ClassMatcher {
         return ClassMatcher.create()
             .addAnnotation(
                 AnnotationMatcher.create()
@@ -198,25 +171,28 @@ internal object AboutMeTopHeteromoDexKitResolver {
                             .name("d2")
                             .arrayValue(
                                 AnnotationEncodeArrayMatcher.create().apply {
-                                    HETEROMO_METADATA_TOKENS.forEach(::addString)
+                                    METADATA_TOKENS.forEach(::addString)
                                 },
                             ),
                     ),
             )
-            .addMethod(myCardHasOperationMatcher())
+            .addMethod(refreshMatcher())
     }
 
-    private fun myCardHasOperationMatcher(): MethodMatcher {
+    private fun refreshMatcher(): MethodMatcher {
+        val popupResponseClassName = BaiduFeatureRuntime.currentPopupResponseClassName()
+            ?: BaiduAboutMeHookPoints.POPUP_RESPONSE
         return MethodMatcher.create()
-            .returnType(Boolean::class.javaPrimitiveType!!)
-            .paramTypes(BaiduAboutMeTopHeteromoHookPoints.POPUP_RESPONSE)
+            .returnType(Void.TYPE)
+            .paramTypes(popupResponseClassName)
     }
 
-    private fun DexMethodCandidate.isMyCardHasOperationShape(): Boolean =
+    private fun DexMethodCandidate.isRefreshShape(): Boolean =
         !isConstructor &&
-            returnTypeName == "boolean" &&
+            returnTypeName == "void" &&
             paramTypeNames.size == 1 &&
-            paramTypeNames[0] == BaiduAboutMeTopHeteromoHookPoints.POPUP_RESPONSE
+            (paramTypeNames[0] == BaiduAboutMeHookPoints.POPUP_RESPONSE ||
+                paramTypeNames[0] == BaiduFeatureRuntime.currentPopupResponseClassName())
 
     private fun DexMethodCandidate.isBridgeOrSynthetic(): Boolean =
         (modifiers and 0x40) != 0 || (modifiers and 0x1000) != 0

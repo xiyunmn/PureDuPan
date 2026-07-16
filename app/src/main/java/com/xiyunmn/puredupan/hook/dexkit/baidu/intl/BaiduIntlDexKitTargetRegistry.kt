@@ -15,6 +15,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabModeDexKi
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlChangeSkinDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlAboutMeTopFragmentDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMePopupResponseHelperDexKitResolver
 
 internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
     override val descriptors = listOf(
@@ -51,8 +52,8 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         DexKitTargetDescriptor(
             id = IntlBottomAiTabModeDexKitResolver.CACHE_ID,
             target = "intl bottom AI tab mode getter",
-            featureKey = FeatureKeys.KEY_HIDE_TAB_AIGC,
-            feature = "隐藏底栏 AIGC",
+            featureKey = FeatureKeys.KEY_REPLACE_BOTTOM_AI,
+            feature = "底栏 AI 替换为会员",
         ),
         DexKitTargetDescriptor(
             id = IntlCookieByBdussDexKitResolver.CACHE_ID,
@@ -71,6 +72,12 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             target = "intl about me top fragment member card setCardUi",
             featureKey = FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE,
             feature = "会员卡定制",
+        ),
+        DexKitTargetDescriptor(
+            id = AboutMePopupResponseHelperDexKitResolver.CACHE_ID,
+            target = "intl about me PopupResponseHelper refresh method",
+            featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
+            feature = "我的页定制",
         ),
     )
 
@@ -107,7 +114,7 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
                 IntlChangeSkinDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
-        if (available(FeatureKeys.KEY_HIDE_TAB_AIGC)) {
+        if (available(FeatureKeys.KEY_REPLACE_BOTTOM_AI)) {
             tasks += DexKitWarmUpTask(IntlBottomAiTabModeDexKitResolver.CACHE_ID) {
                 IntlBottomAiTabModeDexKitResolver.warmUpDexKitCache(classLoader)
             }
@@ -125,6 +132,11 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(IntlAboutMeTopFragmentDexKitResolver.CACHE_ID) {
                 IntlAboutMeTopFragmentDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (available(FeatureKeys.KEY_MY_PAGE_CUSTOMIZE)) {
+            tasks += DexKitWarmUpTask(AboutMePopupResponseHelperDexKitResolver.CACHE_ID) {
+                AboutMePopupResponseHelperDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         return tasks

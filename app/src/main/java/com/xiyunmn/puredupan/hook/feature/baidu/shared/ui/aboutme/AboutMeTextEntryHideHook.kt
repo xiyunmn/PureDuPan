@@ -19,14 +19,15 @@ import java.lang.reflect.Method
 object AboutMeTextEntryHideHook {
     private const val TAG = "AboutMeTextEntryHideHook"
 
-    private const val TEXT_MANAGE_SPACE = "管理空间"
-    private const val TEXT_REWARD = "领奖励"
     private const val TEXT_ACCOUNT_EXIT = "账号、退出"
     private const val TEXT_STAR_SKIN = "明星皮肤上线啦"
     private const val TEXT_FREE_DATA_CARD = "免流量卡、领无限空间"
 
-    private const val TOP_MANAGE_SPACE_ID = "tv_quota_guide"
     private const val MIDDLE_MANAGE_SPACE_ID = "manage_space"
+    private const val MIDDLE_MANAGE_SPACE_ARROW_ID = "manage_space_arrow"
+    private const val REWARD_SUBTITLE_ROOT_ID = "cl_subtitle"
+    private const val REWARD_SUBTITLE_ARROW_ID = "iv_subtitle_arrow"
+    private const val INIT_VIEWS_METHOD = "initViews"
 
     private val hookState = HookState()
 
@@ -40,11 +41,16 @@ object AboutMeTextEntryHideHook {
 
         try {
             var installed = 0
-            installed += hookMiddleRows(cl)
-            installed += hookWelfareCards(cl)
-            installed += hookTopManageSpace(cl)
-            installed += hookFragmentManageSpace(cl, BaiduAboutMeHookPoints.ABOUT_ME_MIDDLE_FRAGMENT)
-            installed += hookFragmentManageSpace(cl, BaiduAboutMeHookPoints.ABOUT_ME_BOTTOM_FRAGMENT)
+            if (activeTextTargets().isNotEmpty()) {
+                installed += hookMiddleRows(cl)
+                installed += hookWelfareCards(cl)
+            }
+            if (isManageSpaceEnabled()) {
+                installed += hookBottomManageSpace(cl)
+            }
+            if (isRewardEnabled()) {
+                installed += hookCoinCenterRewardSubtitle(cl)
+            }
 
             if (installed == 0) {
                 hookState.reset()
@@ -124,43 +130,13 @@ object AboutMeTextEntryHideHook {
             params[0].name.contains("WelfareViewHolder")
     }
 
-    private fun hookTopManageSpace(cl: ClassLoader): Int {
+    private fun hookBottomManageSpace(cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
         val fragmentClass = XposedCompat.findClassOrNull(
-            BaiduAboutMeHookPoints.USER_TOP_FRAGMENT,
+            BaiduAboutMeHookPoints.ABOUT_ME_BOTTOM_FRAGMENT,
             cl,
         ) ?: run {
-            XposedCompat.logD("[$TAG] UserTopFragment not found")
-            return 0
-        }
-
-        var count = 0
-        for (method in fragmentClass.declaredMethods) {
-            if (method.name != "showManageSpace") continue
-            if (method.returnType != Void.TYPE || method.parameterTypes.size != 3) continue
-            method.isAccessible = true
-            mod.hook(method).intercept { chain ->
-                val result = chain.proceed()
-                if (isManageSpaceEnabled()) {
-                    hideTextByEntryName(
-                        fragmentRoot(chain.thisObject),
-                        TOP_MANAGE_SPACE_ID,
-                        TEXT_MANAGE_SPACE,
-                        "top manage space",
-                    )
-                }
-                result
-            }
-            count++
-            XposedCompat.logD("[$TAG] top manage-space hook installed: ${method.name}")
-        }
-        return count
-    }
-
-    private fun hookFragmentManageSpace(cl: ClassLoader, className: String): Int {
-        val mod = XposedCompat.module ?: return 0
-        val fragmentClass = XposedCompat.findClassOrNull(className, cl) ?: run {
-            XposedCompat.logD("[$TAG] fragment not found: $className")
+            XposedCompat.logD("[$TAG] AboutMeBottomFragment not found")
             return 0
         }
 
@@ -174,7 +150,7 @@ object AboutMeTextEntryHideHook {
                 result
             }
             count++
-            XposedCompat.logD("[$TAG] fragment manage-space hook installed: ${fragmentClass.simpleName}.${method.name}")
+            XposedCompat.logD("[$TAG] bottom manage-space hook installed: ${method.name}")
         }
         return count
     }
@@ -188,16 +164,21 @@ object AboutMeTextEntryHideHook {
     }
 
     private fun hideMiddleManageSpace(fragment: Any?, source: String) {
-        hideTextByEntryName(
-            fragmentRoot(fragment),
+        val root = fragmentRoot(fragment)
+        hideByEntryName(
+            root,
             MIDDLE_MANAGE_SPACE_ID,
-            TEXT_MANAGE_SPACE,
             "manage space via $source",
+        )
+        hideByEntryName(
+            root,
+            MIDDLE_MANAGE_SPACE_ARROW_ID,
+            "manage space arrow via $source",
         )
     }
 
     private fun hideConfiguredTexts(root: View?, source: String) {
-        val targets = activeTextTargets().filterNot { it.text == TEXT_MANAGE_SPACE }
+        val targets = activeTextTargets()
         if (root == null || targets.isEmpty()) return
         hideConfiguredTextInTree(root, targets, source)
     }
@@ -220,14 +201,47 @@ object AboutMeTextEntryHideHook {
         return hidden
     }
 
-    private fun hideTextByEntryName(root: View?, idName: String, expectedText: String, label: String): Boolean {
+    private fun hookCoinCenterRewardSubtitle(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val fragmentClass = XposedCompat.findClassOrNull(
+            BaiduAboutMeHookPoints.COIN_CENTER_V2_FRAGMENT,
+            cl,
+        ) ?: run {
+            XposedCompat.logD("[$TAG] NewAboutMeCoinCenterV2Fragment not found")
+            return 0
+        }
+        val tagDataClass = XposedCompat.findClassOrNull(
+            BaiduAboutMeHookPoints.COIN_CENTER_TAG_DATA,
+            cl,
+        ) ?: run {
+            XposedCompat.logD("[$TAG] CoinCenterTagData not found")
+            return 0
+        }
+        val method = XposedCompat.findMethodOrNull(fragmentClass, INIT_VIEWS_METHOD, tagDataClass) ?: run {
+            XposedCompat.logD("[$TAG] coin center initViews(CoinCenterTagData) not found")
+            return 0
+        }
+
+        mod.hook(method).intercept { chain ->
+            val result = chain.proceed()
+            if (isRewardEnabled()) {
+                val root = fragmentRoot(chain.thisObject)
+                hideByEntryName(root, REWARD_SUBTITLE_ROOT_ID, "reward subtitle")
+                hideByEntryName(root, REWARD_SUBTITLE_ARROW_ID, "reward subtitle arrow")
+            }
+            result
+        }
+        XposedCompat.logD("[$TAG] reward subtitle hook installed: ${method.name}")
+        return 1
+    }
+
+    private fun hideByEntryName(root: View?, idName: String, label: String): Boolean {
         if (root == null) return false
         val resources = root.resources ?: return false
         val packageName = root.context?.packageName ?: return false
         val id = resources.getIdentifier(idName, "id", packageName)
         if (id == 0) return false
-        val view = root.findViewById<TextView>(id) ?: return false
-        if (view.text?.toString() != expectedText) return false
+        val view = root.findViewById<View>(id) ?: return false
         hideView(view)
         XposedCompat.logD("[$TAG] $label hidden by id: $idName")
         return true
@@ -264,12 +278,6 @@ object AboutMeTextEntryHideHook {
         val options = HookSettings.aboutMeOptions()
         if (!options.isMyPageCustomizeEnabled) return emptyList()
         return buildList {
-            if (options.isAboutMeManageSpaceTextHidden) {
-                add(TextTarget(TEXT_MANAGE_SPACE, "manage_space_text"))
-            }
-            if (options.isAboutMeRewardTextHidden) {
-                add(TextTarget(TEXT_REWARD, "reward_text"))
-            }
             if (options.isAboutMeAccountExitTextHidden) {
                 add(TextTarget(TEXT_ACCOUNT_EXIT, "account_exit_text"))
             }
@@ -282,11 +290,17 @@ object AboutMeTextEntryHideHook {
         }
     }
 
-    private fun isAnyEnabled(): Boolean = activeTextTargets().isNotEmpty()
+    private fun isAnyEnabled(): Boolean =
+        activeTextTargets().isNotEmpty() || isManageSpaceEnabled() || isRewardEnabled()
 
     private fun isManageSpaceEnabled(): Boolean {
         val options = HookSettings.aboutMeOptions()
         return options.isMyPageCustomizeEnabled && options.isAboutMeManageSpaceTextHidden
+    }
+
+    private fun isRewardEnabled(): Boolean {
+        val options = HookSettings.aboutMeOptions()
+        return options.isMyPageCustomizeEnabled && options.isAboutMeRewardTextHidden
     }
 
     private data class TextTarget(val text: String, val label: String)

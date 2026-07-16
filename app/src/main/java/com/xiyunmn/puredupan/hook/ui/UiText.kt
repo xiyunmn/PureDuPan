@@ -131,7 +131,7 @@ object UiText {
         const val HIDE_MEMBER_CARD_BENEFIT_BAR_LABEL = "权益栏"
         const val HIDE_MEMBER_CARD_BENEFIT_BAR_DESC = "隐藏会员卡片中部的权益图标栏（ll_root）"
         const val HIDE_MEMBER_CARD_SVIP_LEVEL_LABEL = "SVIP 等级"
-        const val HIDE_MEMBER_CARD_SVIP_LEVEL_DESC = "隐藏会员卡片标题旁的 SVIP 等级图标（iv_vip_image）"
+        const val HIDE_MEMBER_CARD_SVIP_LEVEL_DESC = "隐藏会员卡片顶部的 SVIP 等级/标题区域（rl_root）"
         const val HIDE_MEMBER_CARD_SVIP_STATUS_LABEL = "SVIP 权益尊享中"
         const val HIDE_MEMBER_CARD_SVIP_STATUS_DESC = "隐藏会员卡片内的权益状态文案（tv_duration_content）"
         const val HIDE_MEMBER_CARD_RENEW_BUTTON_LABEL = "续费按钮"

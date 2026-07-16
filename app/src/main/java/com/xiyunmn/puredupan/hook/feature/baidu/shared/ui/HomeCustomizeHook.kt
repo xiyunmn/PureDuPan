@@ -53,6 +53,7 @@ object HomeCustomizeHook {
             installedCount += hookRecentCardDataUseCase(cl)
             installedCount += hookSaveCardViewModel(cl)
             installedCount += hookHomeStoryCardRenderEntry(cl)
+            installedCount += hookHomeHeaderCardRenderEntries(cl)
             installedCount += hookFeedSettingTipRenderEntry(cl)
             installedCount += hookHomeBannerCardRenderEntry(cl)
             installedCount += hookStartupHomeBannerPreload(cl)
@@ -389,13 +390,9 @@ object HomeCustomizeHook {
     private fun hookRecentCardDataUseCase(cl: ClassLoader): Int {
         if (!HookSettings.isHomeRecentSectionHidden) return 0
         val mod = XposedCompat.module ?: return 0
-        val className = homeCustomizeHookPoints().recentCardDataUseCaseClassName
-        if (className == null) {
+        val classNames = homeCustomizeHookPoints().recentCardDataUseCaseClassNames.distinct()
+        if (classNames.isEmpty()) {
             XposedCompat.log("[HomeCustomizeHook] recent card data use case host capability missing")
-            return 0
-        }
-        val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
-            XposedCompat.log("[HomeCustomizeHook] recent card data use case class NOT FOUND")
             return 0
         }
         val successMethod = XposedCompat.findClassOrNull(EXPECT_KT_CLASS, cl)
@@ -404,23 +401,35 @@ object HomeCustomizeHook {
                 XposedCompat.log("[HomeCustomizeHook] ExpectKt.success(Object) NOT FOUND")
                 return 0
             }
-        val methods = clazz.declaredMethods.filter(::isRecentCardDataUseCaseInvokeMethod)
-        if (methods.isEmpty()) {
-            XposedCompat.log("[HomeCustomizeHook] recent card data use case invoke method NOT FOUND")
-            return 0
-        }
-        methods.forEach { method ->
-            method.isAccessible = true
-            mod.hook(method).intercept { chain ->
-                if (HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeRecentSectionHidden) {
-                    XposedCompat.logD("[HomeCustomizeHook] recent card data blocked")
-                    successMethod.invoke(null, emptyList<Any>())
-                } else {
-                    chain.proceed()
+
+        var count = 0
+        classNames.forEach { className ->
+            val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
+                XposedCompat.logD("[HomeCustomizeHook] $className not found for recent data hook")
+                return@forEach
+            }
+            val methods = clazz.declaredMethods.filter(::isRecentCardDataUseCaseInvokeMethod)
+            if (methods.isEmpty()) {
+                XposedCompat.logD("[HomeCustomizeHook] recent data invoke not found: $className")
+                return@forEach
+            }
+            methods.forEach { method ->
+                method.isAccessible = true
+                mod.hook(method).intercept { chain ->
+                    if (HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeRecentSectionHidden) {
+                        XposedCompat.logD("[HomeCustomizeHook] recent card data blocked: ${clazz.name}.${method.name}")
+                        successMethod.invoke(null, emptyList<Any>())
+                    } else {
+                        chain.proceed()
+                    }
                 }
             }
+            count += methods.size
         }
-        return methods.size
+        if (count == 0) {
+            XposedCompat.log("[HomeCustomizeHook] recent card data use case invoke method NOT FOUND")
+        }
+        return count
     }
 
     private fun isRecentCardDataUseCaseInvokeMethod(method: Method): Boolean {
@@ -434,50 +443,52 @@ object HomeCustomizeHook {
         if (!HookSettings.isHomeSaveSectionHidden) return 0
         val mod = XposedCompat.module ?: return 0
         val points = homeCustomizeHookPoints()
-        val className = points.saveCardViewModelClassName
-        if (className == null) {
+        val classNames = points.saveCardViewModelClassNames.distinct()
+        if (classNames.isEmpty()) {
             XposedCompat.log("[HomeCustomizeHook] save card view model host capability missing")
             return 0
         }
-        val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
-            XposedCompat.log("[HomeCustomizeHook] save card view model class NOT FOUND")
-            return 0
-        }
 
-        val hookedMethods = mutableSetOf<Method>()
         var count = 0
-        count += hookSaveCardViewModelMethods(
-            mod = mod,
-            clazz = clazz,
-            methodNames = points.saveCardNoArgBlockedMethodNames,
-            label = "save card no-arg data method",
-            hookedMethods = hookedMethods,
-            matcher = ::isSaveCardNoArgVoidMethod,
-        )
-        count += hookSaveCardViewModelMethods(
-            mod = mod,
-            clazz = clazz,
-            methodNames = points.saveCardSetListMethodNames,
-            label = "save card set list method",
-            hookedMethods = hookedMethods,
-            matcher = ::isSaveCardSetListMethod,
-        )
-        count += hookSaveCardViewModelMethods(
-            mod = mod,
-            clazz = clazz,
-            methodNames = points.saveCardSetRecommendMethodNames,
-            label = "save card recommend method",
-            hookedMethods = hookedMethods,
-            matcher = ::isSaveCardSetRecommendMethod,
-        )
-        count += hookSaveCardViewModelMethods(
-            mod = mod,
-            clazz = clazz,
-            methodNames = points.saveCardRedPotMethodNames,
-            label = "save card red pot method",
-            hookedMethods = hookedMethods,
-            matcher = ::isSaveCardRedPotMethod,
-        )
+        classNames.forEach { className ->
+            val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
+                XposedCompat.logD("[HomeCustomizeHook] $className not found for save card hook")
+                return@forEach
+            }
+            val hookedMethods = mutableSetOf<Method>()
+            count += hookSaveCardViewModelMethods(
+                mod = mod,
+                clazz = clazz,
+                methodNames = points.saveCardNoArgBlockedMethodNames,
+                label = "save card no-arg data method",
+                hookedMethods = hookedMethods,
+                matcher = ::isSaveCardNoArgVoidMethod,
+            )
+            count += hookSaveCardViewModelMethods(
+                mod = mod,
+                clazz = clazz,
+                methodNames = points.saveCardSetListMethodNames,
+                label = "save card set list method",
+                hookedMethods = hookedMethods,
+                matcher = ::isSaveCardSetListMethod,
+            )
+            count += hookSaveCardViewModelMethods(
+                mod = mod,
+                clazz = clazz,
+                methodNames = points.saveCardSetRecommendMethodNames,
+                label = "save card recommend method",
+                hookedMethods = hookedMethods,
+                matcher = ::isSaveCardSetRecommendMethod,
+            )
+            count += hookSaveCardViewModelMethods(
+                mod = mod,
+                clazz = clazz,
+                methodNames = points.saveCardRedPotMethodNames,
+                label = "save card red pot method",
+                hookedMethods = hookedMethods,
+                matcher = ::isSaveCardRedPotMethod,
+            )
+        }
         if (count == 0) {
             XposedCompat.log("[HomeCustomizeHook] save card view model methods NOT FOUND")
         }
@@ -581,6 +592,92 @@ object HomeCustomizeHook {
     private fun isHomeStoryCardRenderMethod(method: Method): Boolean {
         return FrameLayout::class.java.isAssignableFrom(method.returnType) &&
             method.parameterTypes.any { Context::class.java.isAssignableFrom(it) }
+    }
+
+    private fun hookHomeHeaderCardRenderEntries(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val points = homeCustomizeHookPoints()
+        val feedFragmentClasses = points.feedFragmentClassNames.distinct()
+        if (feedFragmentClasses.isEmpty()) return 0
+
+        var count = 0
+        feedFragmentClasses.forEach { className ->
+            val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
+                XposedCompat.logD("[HomeCustomizeHook] $className not found for header card render hook")
+                return@forEach
+            }
+            count += hookHomeHeaderCardRenderEntry(
+                mod = mod,
+                clazz = clazz,
+                methodName = points.feedRecentCardRenderMethodName,
+                enabled = { HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeRecentSectionHidden },
+                label = "recent card render",
+                blockBeforeCreate = false,
+            )
+            count += hookHomeHeaderCardRenderEntry(
+                mod = mod,
+                clazz = clazz,
+                methodName = points.feedSaveCardRenderMethodName,
+                enabled = { HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeSaveSectionHidden },
+                label = "save card render",
+                blockBeforeCreate = false,
+            )
+            count += hookHomeHeaderCardRenderEntry(
+                mod = mod,
+                clazz = clazz,
+                methodName = points.feedStoryCardRenderMethodName,
+                enabled = { HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeMemoriesSectionHidden },
+                label = "story card render",
+                blockBeforeCreate = true,
+            )
+        }
+        return count
+    }
+
+    private fun hookHomeHeaderCardRenderEntry(
+        mod: io.github.libxposed.api.XposedModule,
+        clazz: Class<*>,
+        methodName: String?,
+        enabled: () -> Boolean,
+        label: String,
+        blockBeforeCreate: Boolean,
+    ): Int {
+        if (methodName == null || !enabled()) return 0
+        val methods = clazz.declaredMethods.filter { method ->
+            method.name == methodName &&
+                View::class.java.isAssignableFrom(method.returnType)
+        }
+        if (methods.isEmpty()) {
+            XposedCompat.logD("[HomeCustomizeHook] $label not found: ${clazz.name}.$methodName")
+            return 0
+        }
+        methods.forEach { method ->
+            method.isAccessible = true
+            mod.hook(method).intercept { chain ->
+                if (!enabled()) return@intercept chain.proceed()
+                if (blockBeforeCreate && FrameLayout::class.java.isAssignableFrom(method.returnType)) {
+                    val context = fragmentContext(chain.thisObject)
+                    if (context != null) {
+                        XposedCompat.logD("[HomeCustomizeHook] $label blocked: ${clazz.name}.${method.name}")
+                        return@intercept createCollapsedFrameLayout(context)
+                    }
+                }
+                val result = chain.proceed()
+                if (collapseView(result as? View)) {
+                    XposedCompat.logD("[HomeCustomizeHook] $label collapsed: ${clazz.name}.${method.name}")
+                }
+                result
+            }
+        }
+        return methods.size
+    }
+
+    private fun fragmentContext(fragment: Any?): Context? {
+        if (fragment == null) return null
+        return runCatching {
+            XposedCompat.findMethodOrNull(fragment.javaClass, "requireContext")?.invoke(fragment) as? Context
+                ?: XposedCompat.findMethodOrNull(fragment.javaClass, "getContext")?.invoke(fragment) as? Context
+        }.getOrNull()
     }
 
     /**

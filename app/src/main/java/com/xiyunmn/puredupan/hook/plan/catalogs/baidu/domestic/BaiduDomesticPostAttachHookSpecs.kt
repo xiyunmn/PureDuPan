@@ -237,7 +237,7 @@ internal object BaiduDomesticPostAttachHookSpecs {
         HookSpec("DomesticBottomAiTabReplaceHook", { context, settings, _ ->
             context.isMain &&
                 settings.isBottomBarCustomEnabled &&
-                (settings.isBottomAiReplaced || settings.isBottomBarTabAigcHidden)
+                settings.isBottomAiReplaced
         }, featureKey = FeatureKeys.KEY_REPLACE_BOTTOM_AI) { cl -> DomesticBottomAiTabReplaceHook.hook(cl) },
     )
 

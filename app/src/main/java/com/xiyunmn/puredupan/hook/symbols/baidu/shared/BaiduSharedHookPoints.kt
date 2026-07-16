@@ -30,6 +30,7 @@ internal object BaiduSharedHookPoints {
         "com.baidu.netdisk.home25ai.feedhome.ui.view.fragment.FeedRecommendTabFragment"
     val FEED_FRAGMENT_CLASSES = listOf(
         "com.baidu.netdisk.home25ai.feedhome.ui.view.fragment.FHFeedFragment",
+        "com.baidu.netdisk.guest25ai.feedhome.ui.view.fragment.FHFeedFragment",
         "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.FHFeedFragment",
         "com.baidu.netdisk.feedhome.ui.view.fragment.FHFeedFragment",
         FEED_RECOMMEND_TAB_FRAGMENT,
@@ -37,8 +38,17 @@ internal object BaiduSharedHookPoints {
     const val STORY_CONTEXT =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_story.StoryContext"
     const val STORY_CONTEXT_GET_NEW_HOME_STORY_CARD_VIEW_METHOD = "getNewHomeStoryCardView"
-    const val HOME_SAVE_CARD_VIEW_MODEL =
-        "com.baidu.netdisk.newfeedhome.feedhome.ui.viewmodels.NewHomeSaveCardViewModel"
+    const val HOME_FEED_INIT_RECENT_CARD_VIEW_METHOD = "initRecentCardView"
+    const val HOME_FEED_INIT_SAVE_CARD_VIEW_METHOD = "initSaveCardView"
+    const val HOME_FEED_INIT_STORY_CARD_VIEW_METHOD = "initStoryCardView"
+    val HOME_SAVE_CARD_DOMESTIC_VIEW_MODELS = listOf(
+        "com.baidu.netdisk.home25ai.feedhome.ui.viewmodels.NewHomeSaveCardViewModel",
+        "com.baidu.netdisk.guest25ai.feedhome.ui.viewmodels.NewHomeSaveCardViewModel",
+        "com.baidu.netdisk.newfeedhome.feedhome.ui.viewmodels.NewHomeSaveCardViewModel",
+    )
+    val HOME_SAVE_CARD_INTL_VIEW_MODELS = listOf(
+        "com.baidu.netdisk.newfeedhome.feedhome.ui.viewmodels.NewHomeSaveCardViewModel",
+    )
     val HOME_SAVE_CARD_DOMESTIC_NO_ARG_BLOCKED_METHODS = listOf(
         "cacheHomeSaveCard",
         "homeSaveCardInfo",
@@ -51,8 +61,15 @@ internal object BaiduSharedHookPoints {
     val HOME_SAVE_CARD_INTL_SET_RECOMMEND_METHODS = listOf("p1")
     val HOME_SAVE_CARD_DOMESTIC_RED_POT_METHODS = listOf("saveRedPot")
     val HOME_SAVE_CARD_INTL_RED_POT_METHODS = listOf("n1")
-    const val HOME_RECENT_CARD_DATA_USE_CASE =
-        "com.baidu.netdisk.newfeedhome.feedhome.domain.GetRecentCardDataUseCase"
+    val HOME_RECENT_CARD_DOMESTIC_DATA_USE_CASES = listOf(
+        "com.baidu.netdisk.home25ai.feedhome.domain.GetRecentCardDataUseCase",
+        "com.baidu.netdisk.guest25ai.feedhome.domain.GetRecentCardDataUseCase",
+        "com.baidu.netdisk.newfeedhome.feedhome.domain.GetRecentCardDataUseCase",
+        "com.baidu.netdisk.feedhome.domain.GetRecentCardDataUseCase",
+    )
+    val HOME_RECENT_CARD_INTL_DATA_USE_CASES = listOf(
+        "com.baidu.netdisk.newfeedhome.feedhome.domain.GetRecentCardDataUseCase",
+    )
 
     const val MAIN_ACTIVITY_PRESENTER = "com.baidu.netdisk.ui.presenter.MainActivityPresenter"
 
