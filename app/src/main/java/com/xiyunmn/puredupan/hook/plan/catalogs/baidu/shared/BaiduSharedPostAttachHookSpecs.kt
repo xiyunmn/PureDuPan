@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.shared
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.SplashBypassCore
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AboutMeGodModeHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeCoinCenterBubbleHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BottomBarBadgeBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BottomBarStaticTabHideHook
@@ -64,6 +65,13 @@ internal object BaiduSharedPostAttachHookSpecs {
                 settings.isMyPageCustomizeEnabled &&
                 derived.hasMyPageCustomizeOption
         }, featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE) { cl -> AboutMeGodModeHook.hook(cl) },
+        HookSpec("AboutMeCoinCenterBubbleHideHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isMyPageCustomizeEnabled &&
+                settings.isAboutMeCoinCenterBubbleHidden
+        }, featureKey = FeatureKeys.KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE) { cl ->
+            AboutMeCoinCenterBubbleHideHook.hook(cl)
+        },
     )
 
     val postMemberLead = listOf(

@@ -18,11 +18,6 @@ import java.util.WeakHashMap
 object AboutMeGodModeHook {
     private const val BANNER_ID = "aboutme_banner"
     private const val MY_SERVICE_ID = "cl_my_service"
-    private const val COIN_CENTER_BUBBLE_ID = "v_bubble"
-    private const val COIN_CENTER_LAYOUT_TAG = "fragment_new_aboutme_coincenter_v2"
-    private const val COIN_CENTER_ICON_ID = "iv_icon"
-    private const val COIN_CENTER_MONEY_ID = "tv_money"
-    private const val COIN_CENTER_YUAN_ID = "tv_yuan"
     private const val SIGN_IN_DOT_ID = "f1_entry_dot"
     private val SIGN_IN_DOT_FALLBACK_IDS = listOf(
         "fl_entry_dot",
@@ -208,13 +203,6 @@ object AboutMeGodModeHook {
         if (config.isMyServiceRemoved) {
             hideViewByEntryName(activity, root, MY_SERVICE_ID, "my_service")
         }
-        if (config.isAboutMeCoinCenterBubbleHidden) {
-            if (isSamsungHost(activity)) {
-                hideCoinCenterViews(activity, root)
-            } else {
-                hideViewByEntryName(activity, root, COIN_CENTER_BUBBLE_ID, "coin_center_bubble")
-            }
-        }
         if (config.isAboutMeSignInDotHidden) {
             hideViewByEntryName(activity, root, SIGN_IN_DOT_ID, "sign_in_dot")
             for (entryName in SIGN_IN_DOT_FALLBACK_IDS) {
@@ -235,91 +223,6 @@ object AboutMeGodModeHook {
         }
         if (config.isAboutMeFreeDataCardTextHidden) {
             hideTextView(root, TEXT_FREE_DATA_CARD, "free_data_card_text")
-        }
-    }
-
-    private fun hideCoinCenterViews(activity: Activity, root: View) {
-        val coinCenterRoot = findCoinCenterRoot(activity, root)
-        if (coinCenterRoot == null) {
-            hideViewByEntryName(activity, root, COIN_CENTER_BUBBLE_ID, "coin_center_bubble")
-            return
-        }
-
-        hideViewByEntryNameInRoot(activity, coinCenterRoot, COIN_CENTER_BUBBLE_ID, "coin_center_bubble")
-        hideViewByEntryNameInRoot(activity, coinCenterRoot, COIN_CENTER_ICON_ID, "coin_center_icon")
-
-        val balanceContainer = findCoinCenterBalanceContainer(activity, coinCenterRoot)
-        if (balanceContainer != null) {
-            hideView(balanceContainer, "coin_center_balance_container", "$COIN_CENTER_MONEY_ID/$COIN_CENTER_YUAN_ID")
-        } else {
-            hideViewByEntryNameInRoot(activity, coinCenterRoot, COIN_CENTER_MONEY_ID, "coin_center_money")
-            hideViewByEntryNameInRoot(activity, coinCenterRoot, COIN_CENTER_YUAN_ID, "coin_center_yuan")
-        }
-    }
-
-    private fun isSamsungHost(activity: Activity): Boolean {
-        return BaiduFeatureRuntime.isSamsungHost(activity)
-    }
-
-    private fun findCoinCenterRoot(activity: Activity, root: View): ViewGroup? {
-        val bubble = findViewByEntryNameInRoot(activity, root, COIN_CENTER_BUBBLE_ID)
-        val bubbleParent = bubble?.parent as? ViewGroup
-        if (bubbleParent != null && isCoinCenterRoot(activity, bubbleParent)) {
-            return bubbleParent
-        }
-
-        val taggedRoot = findViewGroupByTag(root, COIN_CENTER_LAYOUT_TAG)
-        if (taggedRoot != null) return taggedRoot
-
-        val balanceRoot = findCoinCenterRootByBalanceIds(activity, root)
-        if (balanceRoot != null) return balanceRoot
-
-        return bubbleParent
-    }
-
-    private fun isCoinCenterRoot(activity: Activity, root: View): Boolean {
-        return findViewByEntryNameInRoot(activity, root, COIN_CENTER_BUBBLE_ID) != null ||
-            findViewByEntryNameInRoot(activity, root, COIN_CENTER_MONEY_ID) != null ||
-            findViewByEntryNameInRoot(activity, root, COIN_CENTER_YUAN_ID) != null
-    }
-
-    private fun findViewGroupByTag(root: View, tagText: String): ViewGroup? {
-        if (root is ViewGroup && root.tag?.toString()?.contains(tagText) == true) {
-            return root
-        }
-        if (root !is ViewGroup) return null
-        for (index in 0 until root.childCount) {
-            val found = findViewGroupByTag(root.getChildAt(index), tagText)
-            if (found != null) return found
-        }
-        return null
-    }
-
-    private fun findCoinCenterRootByBalanceIds(activity: Activity, root: View): ViewGroup? {
-        val money = findViewByEntryNameInRoot(activity, root, COIN_CENTER_MONEY_ID)
-        val yuan = findViewByEntryNameInRoot(activity, root, COIN_CENTER_YUAN_ID)
-        val balanceChild = money ?: yuan ?: return null
-        var current = balanceChild.parent
-        while (current is ViewGroup) {
-            val hasBalanceText = findViewByEntryNameInRoot(activity, current, COIN_CENTER_MONEY_ID) != null ||
-                findViewByEntryNameInRoot(activity, current, COIN_CENTER_YUAN_ID) != null
-            val hasIcon = findViewByEntryNameInRoot(activity, current, COIN_CENTER_ICON_ID) != null
-            if (hasBalanceText && hasIcon) return current
-            current = current.parent
-        }
-        return null
-    }
-
-    private fun findCoinCenterBalanceContainer(activity: Activity, root: View): View? {
-        val money = findViewByEntryNameInRoot(activity, root, COIN_CENTER_MONEY_ID)
-        val yuan = findViewByEntryNameInRoot(activity, root, COIN_CENTER_YUAN_ID)
-        val moneyParent = money?.parent as? View
-        val yuanParent = yuan?.parent as? View
-        return when {
-            moneyParent != null && moneyParent == yuanParent -> moneyParent
-            moneyParent != null -> moneyParent
-            yuanParent != null -> yuanParent
-            else -> null
         }
     }
 
@@ -378,7 +281,6 @@ object AboutMeGodModeHook {
             (
                 snapshot.isAboutMeBannerRemoved ||
                     snapshot.isMyServiceRemoved ||
-                    snapshot.isAboutMeCoinCenterBubbleHidden ||
                     snapshot.isAboutMeSignInDotHidden ||
                     snapshot.isAboutMeManageSpaceTextHidden ||
                     snapshot.isAboutMeRewardTextHidden ||
