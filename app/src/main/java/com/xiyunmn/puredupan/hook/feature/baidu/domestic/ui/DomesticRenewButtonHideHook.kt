@@ -1,28 +1,29 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui
 
 import android.app.Activity
-import android.os.Bundle
 import android.view.View
-import android.view.ViewGroup
 import android.widget.TextView
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
-import java.util.Collections
-import java.util.WeakHashMap
+import java.lang.reflect.Method
 
 /**
- * Hides the "renew" action that appears at the top-right of AboutMeActivity while scrolling.
+ * 隐藏我的页顶部工具栏的续费入口（tvToolbarVipEntrance）。
  *
- * The view is created from ActivityAboutMeBinding and is not stable enough to address by field.
- * This hook therefore attaches a narrow DecorView traversal to AboutMeActivity only.
+ * 迁移到渲染入口层：hook AboutMeActivity.setTopButtonText(CenterConfig)，宿主在该方法内
+ * 对 tvToolbarVipEntrance 设置文案和点击跳转。proceed() 后按稳定资源名
+ * tv_toolbar_vip_entrance 单次 findViewById 定位并设为 GONE。资源名三端明文，
+ * setTopButtonText 方法名三端稳定未混淆，不纳入 DexKit。
+ *
+ * 已删除旧 View 树路径：AboutMeActivity DecorView 的 OnGlobalLayoutListener、
+ * decorView.post、全树递归 hideRenewButtons、文案「去续费/续费」匹配和 WeakHashMap 去重。
  */
 internal object DomesticRenewButtonHideHook {
     private const val TAG = "DomesticRenewButtonHideHook"
-
-    private val renewTexts = setOf("去续费", "续费")
-    private val attachedActivities = Collections.newSetFromMap(WeakHashMap<Activity, Boolean>())
+    private const val SET_TOP_BUTTON_TEXT_METHOD = "setTopButtonText"
+    private const val VIP_ENTRANCE_ID_NAME = "tv_toolbar_vip_entrance"
 
     private val hookState = HookState()
 
@@ -50,90 +51,54 @@ internal object DomesticRenewButtonHideHook {
                 return
             }
 
-            val method = XposedCompat.findMethodOrNull(
-                activityClass,
-                "onCreate",
-                Bundle::class.java,
-            ) ?: run {
+            val method = findSetTopButtonTextMethod(activityClass) ?: run {
                 hookState.reset()
-                XposedCompat.log("[$TAG] AboutMeActivity.onCreate NOT FOUND")
+                XposedCompat.log("[$TAG] AboutMeActivity.setTopButtonText NOT FOUND")
                 return
             }
 
             mod.hook(method).intercept { chain ->
                 val result = chain.proceed()
-                try {
-                    attachRenewButtonWatcher(chain.thisObject as? Activity)
-                } catch (e: Exception) {
-                    XposedCompat.logD("[$TAG] attach failed: ${e.message}")
+                if (isEnabled()) {
+                    hideVipEntrance(chain.thisObject as? Activity)
                 }
                 result
             }
 
-            XposedCompat.log("[$TAG] hook INSTALLED: AboutMeActivity.onCreate")
+            XposedCompat.log("[$TAG] hook INSTALLED: AboutMeActivity.setTopButtonText")
         } catch (e: Exception) {
             hookState.reset()
             XposedCompat.log("[$TAG] FAILED: ${e.message}")
         }
     }
 
-    private fun attachRenewButtonWatcher(activity: Activity?) {
-        if (activity == null) return
-        if (!attachedActivities.add(activity)) return
+    private fun findSetTopButtonTextMethod(clazz: Class<*>): Method? {
+        return clazz.declaredMethods.firstOrNull { method ->
+            method.name == SET_TOP_BUTTON_TEXT_METHOD &&
+                method.returnType == Void.TYPE &&
+                method.parameterTypes.size == 1
+        }?.apply { isAccessible = true }
+    }
 
-        val decorView = activity.window?.decorView ?: run {
-            XposedCompat.logD("[$TAG] decorView unavailable")
+    private fun hideVipEntrance(activity: Activity?) {
+        if (activity == null) return
+        val resources = activity.resources ?: return
+        val id = resources.getIdentifier(VIP_ENTRANCE_ID_NAME, "id", activity.packageName)
+        if (id == 0) {
+            XposedCompat.logD("[$TAG] $VIP_ENTRANCE_ID_NAME resource id not found")
             return
         }
-
-        decorView.post {
-            hideRenewButtons(decorView)
+        val view = activity.findViewById<View>(id) ?: return
+        if (view !is TextView) {
+            XposedCompat.logD("[$TAG] vip entrance is not a TextView: ${view.javaClass.name}")
+            return
         }
-        decorView.viewTreeObserver.addOnGlobalLayoutListener {
-            try {
-                hideRenewButtons(decorView)
-            } catch (_: Throwable) {
-                // Keep host layout callbacks stable.
-            }
+        if (view.visibility != View.GONE) {
+            view.visibility = View.GONE
+            XposedCompat.logD("[$TAG] renew button hidden via render entry")
         }
-
-        XposedCompat.log("[$TAG] watcher attached to AboutMeActivity DecorView")
-    }
-
-    private fun hideRenewButtons(root: View): Int {
-        if (!isEnabled()) return 0
-
-        var hidden = 0
-        if (isRenewButton(root)) {
-            if (root.visibility != View.GONE) {
-                root.visibility = View.GONE
-                XposedCompat.logD("[$TAG] renew button hidden: ${root.javaClass.name}")
-            }
-            hidden++
-        }
-
-        if (root is ViewGroup) {
-            for (index in 0 until root.childCount) {
-                hidden += hideRenewButtons(root.getChildAt(index))
-            }
-        }
-        return hidden
-    }
-
-    private fun isRenewButton(view: View): Boolean {
-        if (view !is TextView) return false
-        if (view.visibility == View.GONE) return false
-
-        val text = view.text?.toString()?.trim().orEmpty()
-        if (text !in renewTexts) return false
-
-        val className = view.javaClass.name
-        if (!className.contains("UITextView")) return false
-
-        return true
     }
 
     private fun isEnabled(): Boolean =
         HookSettings.isMyPageCustomizeEnabled && HookSettings.isRenewButtonHidden
-
 }
