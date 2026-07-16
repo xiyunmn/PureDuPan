@@ -18,7 +18,7 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAboutMeHookPoints
  * 走稳定直连，不纳入 DexKit。资源名 v_bubble 明文；隐藏用 getIdentifier，抗 binding 字段混淆。
  *
  * 属共享「我的页定制」域（KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE，baiduSharedMyPageCustomize，三端可见）。
- * 已从 AboutMeGodModeHook 的 DecorView OnGlobalLayout/OnPreDraw + findCoinCenterRoot 全树递归中移除本项。
+ * 已从旧 activity 根监听 + findCoinCenterRoot 全树递归中移除本项。
  */
 object AboutMeCoinCenterBubbleHideHook {
     private const val TAG = "AboutMeCoinCenterBubbleHideHook"

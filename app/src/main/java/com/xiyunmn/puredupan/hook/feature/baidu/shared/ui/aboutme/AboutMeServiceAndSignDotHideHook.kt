@@ -17,7 +17,7 @@ import java.lang.reflect.Modifier
  * the fragment root after the host callback finishes.
  *
  * The sign-in red dot belongs to the about-me activity top bar, so it stays at activity render
- * points with finite scheduling only; it no longer needs DecorView global/pre-draw listeners.
+ * points with finite scheduling only; it no longer needs activity-wide global/pre-draw listeners.
  */
 object AboutMeServiceAndSignDotHideHook {
     private const val TAG = "AboutMeServiceAndSignDotHideHook"

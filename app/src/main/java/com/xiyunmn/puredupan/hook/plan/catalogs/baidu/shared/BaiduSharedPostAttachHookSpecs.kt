@@ -2,10 +2,10 @@ package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.shared
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.SplashBypassCore
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AboutMeGodModeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeBannerHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeCoinCenterBubbleHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeServiceAndSignDotHideHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeTextEntryHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BottomBarBadgeBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BottomBarStaticTabHideHook
@@ -62,11 +62,6 @@ internal object BaiduSharedPostAttachHookSpecs {
     )
 
     val myPage = listOf(
-        HookSpec("AboutMeGodModeHook", { context, settings, derived ->
-            context.isMain &&
-                settings.isMyPageCustomizeEnabled &&
-                derived.hasMyPageCustomizeOption
-        }, featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE) { cl -> AboutMeGodModeHook.hook(cl) },
         HookSpec("AboutMeCoinCenterBubbleHideHook", { context, settings, _ ->
             context.isMain &&
                 settings.isMyPageCustomizeEnabled &&
@@ -90,6 +85,26 @@ internal object BaiduSharedPostAttachHookSpecs {
                 )
         }, featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE) { cl ->
             AboutMeServiceAndSignDotHideHook.hook(cl)
+        },
+        HookSpec("AboutMeTextEntryHideHook", { context, settings, _ ->
+            fun enabled(featureKey: String, value: Boolean): Boolean {
+                return context.isFeatureAvailable(featureKey) && value
+            }
+
+            context.isMain &&
+                settings.isMyPageCustomizeEnabled &&
+                (
+                    enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT, settings.isAboutMeManageSpaceTextHidden) ||
+                        enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_REWARD_TEXT, settings.isAboutMeRewardTextHidden) ||
+                        enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, settings.isAboutMeAccountExitTextHidden) ||
+                        enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, settings.isAboutMeStarSkinTextHidden) ||
+                        enabled(
+                            FeatureKeys.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT,
+                            settings.isAboutMeFreeDataCardTextHidden,
+                        )
+                    )
+        }, featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE) { cl ->
+            AboutMeTextEntryHideHook.hook(cl)
         },
     )
 

@@ -16,7 +16,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.aboutme.AboutMeTopHe
  * 属「我的页定制」域（KEY_HIDE_ABOUT_ME_AI_COIN_ASSET，仅国内/三星可见），故独立于会员卡 hook
  * 安装、独立设置门；与会员卡共用同一 setCardUi 渲染入口与 resolver。
  *
- * 已从 AboutMeGodModeHook 的 DecorView OnGlobalLayout/OnPreDraw + postDelayed 级联中移除本项。
+ * 已从旧 activity 根监听 + postDelayed 级联中移除本项。
  */
 internal object DomesticAboutMeAiCoinHideHook {
     private const val TAG = "DomesticAboutMeAiCoinHideHook"
