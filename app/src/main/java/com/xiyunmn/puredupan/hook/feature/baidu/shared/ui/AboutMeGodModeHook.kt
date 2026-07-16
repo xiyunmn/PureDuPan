@@ -29,7 +29,6 @@ object AboutMeGodModeHook {
         "activity_entry_dot",
         "entry_dot_view",
     )
-    private const val AI_COIN_ASSET_ID = "layout_ai_coin"
     private const val TEXT_MANAGE_SPACE = "管理空间"
     private const val TEXT_REWARD = "领奖励"
     private const val TEXT_ACCOUNT_EXIT = "账号、退出"
@@ -222,9 +221,6 @@ object AboutMeGodModeHook {
                 hideViewByEntryName(activity, root, entryName, "sign_in_dot")
             }
         }
-        if (config.isAboutMeAiCoinAssetHidden) {
-            hideViewByEntryName(activity, root, AI_COIN_ASSET_ID, "ai_coin_asset")
-        }
         if (config.isAboutMeManageSpaceTextHidden) {
             hideTextView(root, TEXT_MANAGE_SPACE, "manage_space_text")
         }
@@ -384,7 +380,6 @@ object AboutMeGodModeHook {
                     snapshot.isMyServiceRemoved ||
                     snapshot.isAboutMeCoinCenterBubbleHidden ||
                     snapshot.isAboutMeSignInDotHidden ||
-                    snapshot.isAboutMeAiCoinAssetHidden ||
                     snapshot.isAboutMeManageSpaceTextHidden ||
                     snapshot.isAboutMeRewardTextHidden ||
                     snapshot.isAboutMeAccountExitTextHidden ||

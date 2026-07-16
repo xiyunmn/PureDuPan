@@ -24,6 +24,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.domestic.startup.DomesticSplashA
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticBottomAiTabReplaceHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticGameCenterRemoveHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticGameCenterRuntimeBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticAboutMeAiCoinHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticRenewButtonHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticSystemNightModeSyncHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.entry.DomesticAboutMeModuleEntryHook
@@ -157,6 +158,13 @@ internal object BaiduDomesticPostAttachHookSpecs {
                 settings.isMyPageCustomizeEnabled &&
                 settings.isRenewButtonHidden
         }, featureKey = FeatureKeys.KEY_HIDE_RENEW_BUTTON) { cl -> DomesticRenewButtonHideHook.hook(cl) },
+        HookSpec("DomesticAboutMeAiCoinHideHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isMyPageCustomizeEnabled &&
+                settings.isAboutMeAiCoinAssetHidden
+        }, featureKey = FeatureKeys.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET) { cl ->
+            DomesticAboutMeAiCoinHideHook.hook(cl)
+        },
     )
 
     val startup = listOf(
