@@ -46,6 +46,14 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.AUTO_DAILY_SIGN_IN_LABEL,
                 UiText.Settings.AUTO_DAILY_SIGN_IN_INTL_DESC,
             )
+            this[SettingsUserState.KEY_UNLOCK_VIDEO_SPEED] = text(
+                UiText.Settings.UNLOCK_VIDEO_SPEED_LABEL,
+                UiText.Settings.UNLOCK_VIDEO_SPEED_INTL_DESC,
+            )
+            this[SettingsUserState.KEY_UNLOCK_VIDEO_QUALITY] = text(
+                UiText.Settings.UNLOCK_VIDEO_QUALITY_LABEL,
+                UiText.Settings.UNLOCK_VIDEO_QUALITY_INTL_DESC,
+            )
         }
     }
 
@@ -527,6 +535,14 @@ internal object SettingsHostTextCatalog {
             SettingsUserState.KEY_AUTO_DAILY_SIGN_IN to text(
                 UiText.Settings.AUTO_DAILY_SIGN_IN_LABEL,
                 UiText.Settings.AUTO_DAILY_SIGN_IN_DESC,
+            ),
+            SettingsUserState.KEY_UNLOCK_VIDEO_SPEED to text(
+                UiText.Settings.UNLOCK_VIDEO_SPEED_LABEL,
+                UiText.Settings.UNLOCK_VIDEO_SPEED_DESC,
+            ),
+            SettingsUserState.KEY_UNLOCK_VIDEO_QUALITY to text(
+                UiText.Settings.UNLOCK_VIDEO_QUALITY_LABEL,
+                UiText.Settings.UNLOCK_VIDEO_QUALITY_DESC,
             ),
             SettingsUserState.KEY_PERFORMANCE_OPTIMIZE to text(
                 UiText.Settings.PERFORMANCE_OPTIMIZE_LABEL,

@@ -88,6 +88,8 @@ data class SettingsSnapshot(
     val isNightModeSupportEnabled: Boolean = false,
     val isFollowSystemNightModeEnabled: Boolean = false,
     val isAutoDailySignInEnabled: Boolean = false,
+    val isVideoSpeedUnlockEnabled: Boolean = false,
+    val isVideoQualityUnlockEnabled: Boolean = false,
 
     // Performance optimize
     val isPerformanceOptimizeEnabled: Boolean = false,
@@ -141,6 +143,8 @@ data class SettingsSnapshot(
             FeatureKeys.KEY_DISABLE_SWAN_PRELOAD -> isSwanPreloadDisabled
             FeatureKeys.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD -> isIconResourceDownloadDisabled
             FeatureKeys.KEY_AUTO_DAILY_SIGN_IN -> isAutoDailySignInEnabled
+            FeatureKeys.KEY_UNLOCK_VIDEO_SPEED -> isVideoSpeedUnlockEnabled
+            FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY -> isVideoQualityUnlockEnabled
             FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD -> isDynamicPluginAutoDownloadDisabled
             FeatureKeys.KEY_BLOCK_INTL_STORY_DOUYIN_INIT -> isIntlStoryDouyinInitBlocked
             FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET -> isIntlNonCoreDiffSocketDelayed
@@ -171,6 +175,8 @@ data class SettingsSnapshot(
             FeatureKeys.KEY_DISABLE_SWAN_PRELOAD,
             FeatureKeys.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD,
             FeatureKeys.KEY_AUTO_DAILY_SIGN_IN,
+            FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,
+            FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,
             FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD,
             FeatureKeys.KEY_BLOCK_INTL_STORY_DOUYIN_INIT,
             FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET,

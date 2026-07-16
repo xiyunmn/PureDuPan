@@ -136,6 +136,12 @@ internal object HookSettings {
     val isAutoDailySignInEnabled: Boolean
         get() = ConfigManager.isAutoDailySignInEnabled
 
+    val isVideoSpeedUnlockEnabled: Boolean
+        get() = ConfigManager.isVideoSpeedUnlockEnabled
+
+    val isVideoQualityUnlockEnabled: Boolean
+        get() = ConfigManager.isVideoQualityUnlockEnabled
+
     val isBottomBarCustomEnabled: Boolean
         get() = ConfigManager.isBottomBarCustomEnabled
 

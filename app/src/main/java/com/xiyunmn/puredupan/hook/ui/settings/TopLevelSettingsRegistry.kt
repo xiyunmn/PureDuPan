@@ -184,6 +184,28 @@ internal object TopLevelSettingsRegistry {
                 },
             )
         )
+        add(
+            TopLevelSwitchSpec(
+                SettingsUserState.KEY_UNLOCK_VIDEO_SPEED,
+                UiText.Settings.UNLOCK_VIDEO_SPEED_LABEL,
+                if (isIntlHost) {
+                    UiText.Settings.UNLOCK_VIDEO_SPEED_INTL_DESC
+                } else {
+                    UiText.Settings.UNLOCK_VIDEO_SPEED_DESC
+                },
+            )
+        )
+        add(
+            TopLevelSwitchSpec(
+                SettingsUserState.KEY_UNLOCK_VIDEO_QUALITY,
+                UiText.Settings.UNLOCK_VIDEO_QUALITY_LABEL,
+                if (isIntlHost) {
+                    UiText.Settings.UNLOCK_VIDEO_QUALITY_INTL_DESC
+                } else {
+                    UiText.Settings.UNLOCK_VIDEO_QUALITY_DESC
+                },
+            )
+        )
     }
 
     val restrictedThemeSpecs: List<TopLevelSwitchSpec> = listOf(

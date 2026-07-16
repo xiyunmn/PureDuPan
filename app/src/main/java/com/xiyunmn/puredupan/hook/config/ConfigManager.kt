@@ -99,6 +99,8 @@ object ConfigManager {
     const val KEY_ENABLE_NIGHT_MODE_SUPPORT = FeatureKeys.KEY_ENABLE_NIGHT_MODE_SUPPORT
     const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE
     const val KEY_AUTO_DAILY_SIGN_IN = FeatureKeys.KEY_AUTO_DAILY_SIGN_IN
+    const val KEY_UNLOCK_VIDEO_SPEED = FeatureKeys.KEY_UNLOCK_VIDEO_SPEED
+    const val KEY_UNLOCK_VIDEO_QUALITY = FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY
     const val KEY_ACCELERATE_INTL_SPLASH_STARTUP = FeatureKeys.KEY_ACCELERATE_INTL_SPLASH_STARTUP
     const val KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER = FeatureKeys.KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER
     const val KEY_DISABLE_DATAPACK_SOCKET_REGISTER = FeatureKeys.KEY_DISABLE_DATAPACK_SOCKET_REGISTER
@@ -264,6 +266,10 @@ object ConfigManager {
         get() = settingsSnapshot.isIntlAlbumAiInitBlocked
     val isAutoDailySignInEnabled: Boolean
         get() = settingsSnapshot.isAutoDailySignInEnabled
+    val isVideoSpeedUnlockEnabled: Boolean
+        get() = settingsSnapshot.isVideoSpeedUnlockEnabled
+    val isVideoQualityUnlockEnabled: Boolean
+        get() = settingsSnapshot.isVideoQualityUnlockEnabled
     val areRestrictedFeaturesUnlocked: Boolean
         get() = settingsSnapshot.areRestrictedFeaturesUnlocked
 
@@ -619,6 +625,8 @@ object ConfigManager {
             isNightModeSupportEnabled = nightModeSupportEnabled,
             isFollowSystemNightModeEnabled = followSystemNightModeEnabled,
             isAutoDailySignInEnabled = featureBoolean(KEY_AUTO_DAILY_SIGN_IN, false),
+            isVideoSpeedUnlockEnabled = featureBoolean(KEY_UNLOCK_VIDEO_SPEED, false),
+            isVideoQualityUnlockEnabled = featureBoolean(KEY_UNLOCK_VIDEO_QUALITY, false),
             isPerformanceOptimizeEnabled = featureBoolean(KEY_PERFORMANCE_OPTIMIZE, hasPerformanceOptionEnabled),
             isIntlSplashStartupAccelerateEnabled = featureBoolean(
                 KEY_ACCELERATE_INTL_SPLASH_STARTUP,

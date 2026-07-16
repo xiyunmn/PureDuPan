@@ -27,6 +27,8 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.entry.IntlHomeTitleBarMo
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlMemberCardCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.search.IntlSearchPageCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPageCustomizeHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoQualityUnlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoSpeedUnlockHook
 import com.xiyunmn.puredupan.hook.plan.HookSpec
 
 internal object BaiduIntlPostAttachHookSpecs {
@@ -141,6 +143,16 @@ internal object BaiduIntlPostAttachHookSpecs {
                     settings.isFollowSystemNightModeEnabled)
         }, featureKey = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE) { cl ->
             SystemNightModeSyncHook.hook(cl)
+        },
+        HookSpec("BaiduVideoSpeedUnlockHook", { context, settings, _ ->
+            context.isMain && settings.isVideoSpeedUnlockEnabled
+        }, featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_SPEED) { cl ->
+            BaiduVideoSpeedUnlockHook.hook(cl)
+        },
+        HookSpec("BaiduVideoQualityUnlockHook", { context, settings, _ ->
+            context.isMain && settings.isVideoQualityUnlockEnabled
+        }, featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY) { cl ->
+            BaiduVideoQualityUnlockHook.hook(cl)
         },
     )
 

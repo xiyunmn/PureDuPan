@@ -173,6 +173,20 @@ object UiText {
         const val AUTO_DAILY_SIGN_IN_LABEL = "自动签到"
         const val AUTO_DAILY_SIGN_IN_RISK_HINT = "可能导致设备或账号风控，谨慎启用"
         const val AUTO_DAILY_SIGN_IN_DESC = "$AUTO_DAILY_SIGN_IN_RISK_HINT\n启动后自动尝试一次签到"
+        const val UNLOCK_VIDEO_SPEED_LABEL = "解锁视频倍速"
+        const val UNLOCK_VIDEO_SPEED_DESC =
+            "解除非会员在线视频倍速限制，支持弱/强混淆版本通用解析\n本地播放器改速率，不伪造会员身份"
+        const val UNLOCK_VIDEO_SPEED_INTL_DESC =
+            "解除非会员在线视频倍速限制\nDexKit 解析成功后覆盖强混淆方法名\n本地播放器改速率，不伪造会员身份"
+        const val UNLOCK_VIDEO_QUALITY_LABEL = "解锁视频画质"
+        const val UNLOCK_VIDEO_QUALITY_DESC =
+            "解除非会员画质选择的客户端限制，不伪造会员身份\n" +
+                "可开 720/原画等入口；普通超清 1080 若服务端拒流则无法保证可播\n" +
+                "仅放开视频画质权益位，不涉及高速通道/免广告等其它权益"
+        const val UNLOCK_VIDEO_QUALITY_INTL_DESC =
+            "解除非会员画质选择的客户端限制，不伪造会员身份\n" +
+                "DexKit 解析成功后覆盖强混淆方法名\n" +
+                "可开 720/原画等入口；普通超清 1080 若服务端拒流则无法保证可播"
         const val AUTO_DAILY_SIGN_IN_INTL_DESC =
             "$AUTO_DAILY_SIGN_IN_RISK_HINT\nDexKit 解析成功后生效\n启动后自动尝试一次签到"
         const val AUTO_DAILY_SIGN_IN_SUCCESS_TOAST = "自动签到成功"

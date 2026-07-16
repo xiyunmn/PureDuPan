@@ -229,6 +229,8 @@ internal object BaiduFeatureSets {
 
     private val baiduDomesticThemeCustomize = listOf(
         FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
+        FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,
+        FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,
     )
 
     private val baiduDomesticAutomation = listOf(
@@ -276,6 +278,8 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE,
         FeatureKeys.KEY_ENABLE_NIGHT_MODE_SUPPORT,
         FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
+        FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,
+        FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,
     )
 
     private val baiduIntlPerformanceCustomize = listOf(

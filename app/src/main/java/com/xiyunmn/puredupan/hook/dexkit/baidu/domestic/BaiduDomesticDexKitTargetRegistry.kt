@@ -25,6 +25,8 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageSafetyFooterUs
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeMiddleViewHolderDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMePopupResponseHelperDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.search.SearchPageVoiceSearchDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoQualityUnlockDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoSpeedUnlockDexKitResolver
 
 internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
     override val descriptors = listOf(
@@ -166,6 +168,48 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             feature = "my page customize",
             featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
         ),
+        DexKitTargetDescriptor(
+            id = BaiduVideoSpeedUnlockDexKitResolver.ONLINE_ENABLE_CACHE_ID,
+            target = "video speed online enable method",
+            feature = "unlock video speed",
+            featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,
+        ),
+        DexKitTargetDescriptor(
+            id = BaiduVideoSpeedUnlockDexKitResolver.HAS_PRIVILEGE_CACHE_ID,
+            target = "video speed privilege method",
+            feature = "unlock video speed",
+            featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,
+        ),
+        DexKitTargetDescriptor(
+            id = BaiduVideoSpeedUnlockDexKitResolver.VIDEO_PRIVILEGE_ONLINE_CACHE_ID,
+            target = "video privilege online speed enable method",
+            feature = "unlock video speed",
+            featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,
+        ),
+        DexKitTargetDescriptor(
+            id = BaiduVideoSpeedUnlockDexKitResolver.VIDEO_PRIVILEGE_PANEL_CACHE_ID,
+            target = "video privilege panel speed enable method",
+            feature = "unlock video speed",
+            featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,
+        ),
+        DexKitTargetDescriptor(
+            id = BaiduVideoQualityUnlockDexKitResolver.CAN_PLAY_RESOLUTION_CACHE_ID,
+            target = "video quality canPlayResolution method",
+            feature = "unlock video quality",
+            featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,
+        ),
+        DexKitTargetDescriptor(
+            id = BaiduVideoQualityUnlockDexKitResolver.VIDEO_PRIVILEGE_OWNER_CACHE_ID,
+            target = "video quality privilege owner class",
+            feature = "unlock video quality",
+            featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,
+        ),
+        DexKitTargetDescriptor(
+            id = BaiduVideoQualityUnlockDexKitResolver.VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID,
+            target = "video quality privilege methods",
+            feature = "unlock video quality",
+            featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,
+        ),
     )
 
     override fun buildTasks(
@@ -284,6 +328,31 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             }
             tasks += DexKitWarmUpTask(AboutMeMiddleViewHolderDexKitResolver.CACHE_ID) {
                 AboutMeMiddleViewHolderDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (available(FeatureKeys.KEY_UNLOCK_VIDEO_SPEED)) {
+            tasks += DexKitWarmUpTask(BaiduVideoSpeedUnlockDexKitResolver.ONLINE_ENABLE_CACHE_ID) {
+                BaiduVideoSpeedUnlockDexKitResolver.resolveIsSpeedUpOnlineEnable(classLoader) != null
+            }
+            tasks += DexKitWarmUpTask(BaiduVideoSpeedUnlockDexKitResolver.HAS_PRIVILEGE_CACHE_ID) {
+                BaiduVideoSpeedUnlockDexKitResolver.resolveHasSpeedPrivilege(classLoader) != null
+            }
+            tasks += DexKitWarmUpTask(BaiduVideoSpeedUnlockDexKitResolver.VIDEO_PRIVILEGE_ONLINE_CACHE_ID) {
+                BaiduVideoSpeedUnlockDexKitResolver.resolveVideoPrivilegeOnlineSpeedEnable(classLoader) != null
+            }
+            tasks += DexKitWarmUpTask(BaiduVideoSpeedUnlockDexKitResolver.VIDEO_PRIVILEGE_PANEL_CACHE_ID) {
+                BaiduVideoSpeedUnlockDexKitResolver.resolveVideoPrivilegeSpeedEnable(classLoader) != null
+            }
+        }
+        if (available(FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY)) {
+            tasks += DexKitWarmUpTask(BaiduVideoQualityUnlockDexKitResolver.CAN_PLAY_RESOLUTION_CACHE_ID) {
+                BaiduVideoQualityUnlockDexKitResolver.resolveCanPlayResolution(classLoader) != null
+            }
+            tasks += DexKitWarmUpTask(BaiduVideoQualityUnlockDexKitResolver.VIDEO_PRIVILEGE_OWNER_CACHE_ID) {
+                BaiduVideoQualityUnlockDexKitResolver.resolveVideoPrivilegeOwner(classLoader) != null
+            }
+            tasks += DexKitWarmUpTask(BaiduVideoQualityUnlockDexKitResolver.VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID) {
+                BaiduVideoQualityUnlockDexKitResolver.resolveVideoPrivilegeQualityMethods(classLoader).isNotEmpty()
             }
         }
         return tasks

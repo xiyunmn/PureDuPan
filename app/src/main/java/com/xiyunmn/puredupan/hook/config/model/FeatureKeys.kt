@@ -84,6 +84,8 @@ object FeatureKeys {
     const val KEY_ENABLE_NIGHT_MODE_SUPPORT = "enable_night_mode_support"
     const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = "follow_system_night_mode"
     const val KEY_AUTO_DAILY_SIGN_IN = "auto_daily_sign_in"
+    const val KEY_UNLOCK_VIDEO_SPEED = "unlock_video_speed"
+    const val KEY_UNLOCK_VIDEO_QUALITY = "unlock_video_quality"
     const val KEY_ACCELERATE_INTL_SPLASH_STARTUP = "accelerate_intl_splash_startup"
     const val KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER = "disable_garbage_clean_service_register"
     const val KEY_DISABLE_DATAPACK_SOCKET_REGISTER = "disable_datapack_socket_register"
