@@ -8,6 +8,7 @@ import com.xiyunmn.puredupan.hook.dexkit.DexKitTargetRegistry
 import com.xiyunmn.puredupan.hook.dexkit.DexKitWarmUpTask
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ad.DomesticUpdateDialogDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.BottomAiTabDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.membercard.AboutMeTopHeteromoDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticChangeSkinDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticDynamicPluginAutoDecisionDexKitResolver
@@ -131,6 +132,12 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             feature = "album backup bar block",
             featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
         ),
+        DexKitTargetDescriptor(
+            id = AboutMeTopHeteromoDexKitResolver.CACHE_ID,
+            target = "about me top heteromo member card fragment",
+            feature = "member card customize",
+            featureKey = FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE,
+        ),
     )
 
     override fun buildTasks(
@@ -222,6 +229,11 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH)) {
             tasks += DexKitWarmUpTask(SearchPageVoiceSearchDexKitResolver.CACHE_ID) {
                 SearchPageVoiceSearchDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (available(FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE)) {
+            tasks += DexKitWarmUpTask(AboutMeTopHeteromoDexKitResolver.CACHE_ID) {
+                AboutMeTopHeteromoDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         return tasks

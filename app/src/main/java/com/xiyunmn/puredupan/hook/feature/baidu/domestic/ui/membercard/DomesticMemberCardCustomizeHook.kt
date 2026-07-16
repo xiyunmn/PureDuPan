@@ -15,12 +15,10 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Build
-import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.view.Gravity
-import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -32,7 +30,6 @@ import android.widget.TextView
 import android.widget.Toast
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
-import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.ui.UiText
@@ -49,15 +46,6 @@ internal object DomesticMemberCardCustomizeHook {
     private const val MEMBER_CARD_ACTIVITY_CONTAINER_ID = "about_me_top"
     private const val MEMBER_CARD_ROOT_ID = "cl_aboutme_top"
     private const val MEMBER_CARD_BACKGROUND_ID = "iv_bg"
-    private const val MEMBER_CARD_OPERATION_ID = "operation_layout"
-    private const val MEMBER_CARD_OPERATION_BACKGROUND_ID = "iv_bg_operation"
-    private val MEMBER_CARD_OPERATION_CHILD_IDS = listOf(
-        "card_operation_cover",
-        "card_operation_cover_arrow",
-        "card_operation_title",
-        "card_operation_subtitle",
-        "tv_tip",
-    )
     private const val MEMBER_CARD_BENEFIT_ID = "cl_fifth_card"
     private const val MEMBER_CARD_FIRST_BENEFIT_ID = "cl_first_card"
     private const val MEMBER_CARD_SECOND_BENEFIT_ID = "cl_second_card"
@@ -66,13 +54,11 @@ internal object DomesticMemberCardCustomizeHook {
     private const val MEMBER_CARD_BENEFIT_BAR_ID = "ll_root"
     private const val MEMBER_CARD_SVIP_LEVEL_ID = "iv_vip_image"
     private const val MEMBER_CARD_SVIP_NUMBER_ID = "tv_vip_number"
-    private const val MEMBER_CARD_UNLOCK_SVIP_ROOT_ID = "rl_root"
-    private const val MEMBER_CARD_UNLOCK_SVIP_TEXT = "解锁SVIP"
     private const val MEMBER_CARD_SVIP_STATUS_ID = "tv_duration_content"
     private const val MEMBER_CARD_RENEW_BUTTON_ID = "tv_enter"
     private const val MEMBER_CARD_RENEW_DIVIDER_ID = "enter_line"
 
-    private val attachedRoots = Collections.newSetFromMap(WeakHashMap<View, Boolean>())
+    private val hookState = HookState()
     private data class AppliedBackground(
         val key: String,
         val bitmap: Bitmap,
@@ -85,48 +71,24 @@ internal object DomesticMemberCardCustomizeHook {
     private val appliedBackgrounds = Collections.synchronizedMap(WeakHashMap<ImageView, AppliedBackground>())
     private val originalSizes = Collections.synchronizedMap(WeakHashMap<View, OriginalSize>())
 
-    private val hookState = HookState()
-
     internal fun hook(cl: ClassLoader) {
         val snapshot = HookSettings.memberCardSnapshot()
         if (!hasEnabledOption(snapshot)) {
             XposedCompat.log("[MemberCardCustomizeHook] skipped: config disabled")
             return
         }
-        val mod = XposedCompat.module ?: return
+        if (XposedCompat.module == null) return
         if (!hookState.markInstalled()) return
 
         try {
-            val fragmentClass = XposedCompat.findClassOrNull(
-                BaiduDomesticHookPoints.ABOUT_ME_TOP_FRAGMENT_HETEROMO,
-                cl,
-            ) ?: run {
-                XposedCompat.log("[MemberCardCustomizeHook] AboutMeTopFragmentHeteromo class NOT FOUND")
+            val fragmentClass = AboutMeTopHeteromoDexKitResolver.resolve(cl) ?: run {
+                XposedCompat.log("[MemberCardCustomizeHook] AboutMeTopFragmentHeteromo NOT RESOLVED")
                 hookState.reset()
                 return
             }
 
-            val method = XposedCompat.findMethodOrNull(
-                fragmentClass,
-                BaiduDomesticHookPoints.ABOUT_ME_TOP_FRAGMENT_ON_VIEW_CREATED_METHOD,
-                View::class.java,
-                Bundle::class.java,
-            ) ?: run {
-                XposedCompat.log("[MemberCardCustomizeHook] onViewCreated(View, Bundle) NOT FOUND")
-                hookState.reset()
-                return
-            }
-
-            mod.hook(method).intercept { chain ->
-                val result = chain.proceed()
-                try {
-                    attachMemberCardWatcher(chain.args.firstOrNull() as? View)
-                } catch (e: Exception) {
-                    XposedCompat.logD("[MemberCardCustomizeHook] attach failed: ${e.message}")
-                }
-                result
-            }
-            hookOnCreateView(fragmentClass)
+            hookOperationLogicGate(fragmentClass)
+            hookCardRenderEntry(fragmentClass)
 
             XposedCompat.log("[MemberCardCustomizeHook] hook INSTALLED")
         } catch (e: Exception) {
@@ -136,55 +98,69 @@ internal object DomesticMemberCardCustomizeHook {
         }
     }
 
-    private fun hookOnCreateView(fragmentClass: Class<*>) {
+    /**
+     * B 类运营位隐藏（逻辑层，零 View 触碰）。
+     *
+     * hook myCardHasOperation(PopupResponse):boolean，命中隐藏开关时返回 false。
+     * operationData 变 null 后，宿主 setXxxTheme 自身执行 operationLayout.GONE + ivBgOperation.GONE。
+     */
+    private fun hookOperationLogicGate(fragmentClass: Class<*>) {
         val mod = XposedCompat.module ?: return
-        val method = XposedCompat.findMethodOrNull(
-            fragmentClass,
-            "onCreateView",
-            LayoutInflater::class.java,
-            ViewGroup::class.java,
-            Bundle::class.java,
-        ) ?: run {
-            XposedCompat.logD("[MemberCardCustomizeHook] onCreateView NOT FOUND, skipped")
+        if (!HookSettings.memberCardSnapshot().isMemberCardOperationHidden) return
+
+        val method = AboutMeTopHeteromoDexKitResolver.findMyCardHasOperationMethod(fragmentClass) ?: run {
+            XposedCompat.log("[MemberCardCustomizeHook] operation gate: myCardHasOperation NOT FOUND")
+            return
+        }
+        mod.hook(method).intercept { chain ->
+            if (HookSettings.memberCardSnapshot().isMemberCardOperationHidden) {
+                XposedCompat.logD("[MemberCardCustomizeHook] member card operation blocked at logic gate")
+                false
+            } else {
+                chain.proceed()
+            }
+        }
+        XposedCompat.log(
+            "[MemberCardCustomizeHook] operation logic gate INSTALLED: " +
+                "${method.declaringClass.name}.${method.name}",
+        )
+    }
+
+    /**
+     * A + C 类渲染入口。
+     *
+     * hook setCardUi(CenterConfig, PopupResponse)：宿主在其中先跑 setCardText（tvEnter/
+     * tvDurationContent/tvVipNumber/权益卡/clAboutmeTop 点击），再设 ivVipImage、ivBg 主题。
+     * 因此 proceed() 后所有 binding 就绪，单次按明文资源 ID 套用：隐藏权益/SVIP/状态/续费（C），
+     * 重套背景/尺寸/点击（A）。宿主每次数据变化重渲染即触发一次，无需 ViewTreeObserver / OnPreDraw。
+     */
+    private fun hookCardRenderEntry(fragmentClass: Class<*>) {
+        val mod = XposedCompat.module ?: return
+        if (!hasViewRenderOption(HookSettings.memberCardSnapshot())) return
+
+        val method = AboutMeTopHeteromoDexKitResolver.findSetCardUiMethod(fragmentClass) ?: run {
+            XposedCompat.log("[MemberCardCustomizeHook] render entry: setCardUi NOT FOUND")
             return
         }
         mod.hook(method).intercept { chain ->
             val result = chain.proceed()
             try {
-                val root = result as? View
+                val fragment = chain.thisObject
+                val root = fragment?.let {
+                    runCatching { it.javaClass.getMethod("getView").invoke(it) as? View }.getOrNull()
+                }
                 if (root != null) {
                     applyMemberCardCustomization(root)
-                    attachMemberCardWatcher(root)
                 }
             } catch (e: Exception) {
-                XposedCompat.logD("[MemberCardCustomizeHook] onCreateView apply failed: ${e.message}")
+                XposedCompat.logD("[MemberCardCustomizeHook] render entry apply failed: ${e.message}")
             }
             result
         }
-    }
-
-    private fun attachMemberCardWatcher(root: View?) {
-        if (root == null) return
-        if (!attachedRoots.add(root)) return
-
-        root.post { applyMemberCardCustomization(root) }
-        root.viewTreeObserver.addOnGlobalLayoutListener {
-            try {
-                applyMemberCardCustomization(root)
-            } catch (_: Throwable) {
-                // Keep host layout callbacks stable.
-            }
-        }
-        root.viewTreeObserver.addOnPreDrawListener {
-            try {
-                applyMemberCardCustomization(root)
-            } catch (_: Throwable) {
-                // Keep host draw callbacks stable.
-            }
-            true
-        }
-
-        XposedCompat.log("[MemberCardCustomizeHook] watcher attached")
+        XposedCompat.log(
+            "[MemberCardCustomizeHook] card render entry INSTALLED: " +
+                "${method.declaringClass.name}.${method.name}",
+        )
     }
 
     private fun applyMemberCardCustomization(root: View) {
@@ -213,29 +189,6 @@ internal object DomesticMemberCardCustomizeHook {
             applyCardSize(background, snapshot)
             if (snapshot.isMemberCardBackgroundReplaced && background is ImageView) {
                 applyCustomBackground(background, snapshot)
-            }
-        }
-
-        if (snapshot.isMemberCardOperationHidden) {
-            val operation = findViewByEntryName(root, resources, packageName, MEMBER_CARD_OPERATION_ID)
-            if (operation != null && operation.visibility != View.GONE) {
-                operation.visibility = View.GONE
-                XposedCompat.logD("[MemberCardCustomizeHook] member card operation hidden")
-            }
-            val operationBackground = findViewByEntryName(
-                root,
-                resources,
-                packageName,
-                MEMBER_CARD_OPERATION_BACKGROUND_ID,
-            )
-            if (operationBackground != null && operationBackground.visibility != View.GONE) {
-                operationBackground.visibility = View.GONE
-            }
-            for (idName in MEMBER_CARD_OPERATION_CHILD_IDS) {
-                val child = findViewByEntryName(root, resources, packageName, idName)
-                if (child != null && child.visibility != View.GONE) {
-                    child.visibility = View.GONE
-                }
             }
         }
 
@@ -289,7 +242,6 @@ internal object DomesticMemberCardCustomizeHook {
                 XposedCompat.logD("[MemberCardCustomizeHook] member card svip level hidden")
             }
             hideByEntryName(root, resources, packageName, MEMBER_CARD_SVIP_NUMBER_ID)
-            hideUnlockSvipEntry(root, resources, packageName)
         }
 
         if (snapshot.isMemberCardSvipStatusHidden) {
@@ -317,6 +269,25 @@ internal object DomesticMemberCardCustomizeHook {
                 snapshot.isMemberCardBackgroundReplaced ||
                 snapshot.isMemberCardSizeAdjusted ||
                     snapshot.isMemberCardOperationHidden ||
+                    snapshot.isMemberCardBenefitHidden ||
+                    snapshot.isMemberCardFirstBenefitHidden ||
+                    snapshot.isMemberCardSecondBenefitHidden ||
+                    snapshot.isMemberCardThirdBenefitHidden ||
+                    snapshot.isMemberCardBenefitBarHidden ||
+                    snapshot.isMemberCardSvipLevelHidden ||
+                    snapshot.isMemberCardSvipStatusHidden ||
+                    snapshot.isMemberCardRenewButtonHidden ||
+                    snapshot.isMemberCardClickRemoved ||
+                    snapshot.isMemberCardBackgroundViewedOnClick
+            )
+    }
+
+    /** 需要渲染入口 View 操作的选项（A + C），运营位（B）走逻辑门不在此列。 */
+    private fun hasViewRenderOption(snapshot: SettingsSnapshot): Boolean {
+        return snapshot.isMemberCardCustomizeEnabled &&
+            (
+                snapshot.isMemberCardBackgroundReplaced ||
+                    snapshot.isMemberCardSizeAdjusted ||
                     snapshot.isMemberCardBenefitHidden ||
                     snapshot.isMemberCardFirstBenefitHidden ||
                     snapshot.isMemberCardSecondBenefitHidden ||
@@ -468,109 +439,6 @@ internal object DomesticMemberCardCustomizeHook {
         view.isEnabled = false
         view.isClickable = false
         onHidden?.invoke()
-    }
-
-    private fun hideUnlockSvipEntry(
-        root: View,
-        resources: android.content.res.Resources,
-        packageName: String,
-    ) {
-        val unlockRoot = findViewByEntryName(
-            root,
-            resources,
-            packageName,
-            MEMBER_CARD_UNLOCK_SVIP_ROOT_ID,
-        )
-        if (unlockRoot != null && containsText(unlockRoot, MEMBER_CARD_UNLOCK_SVIP_TEXT)) {
-            hideView(unlockRoot) {
-                XposedCompat.logD("[MemberCardCustomizeHook] member card unlock svip entry hidden")
-            }
-            return
-        }
-        if (hideContainerByText(root, MEMBER_CARD_UNLOCK_SVIP_TEXT, MEMBER_CARD_UNLOCK_SVIP_ROOT_ID)) {
-            return
-        }
-        hideTextView(root, MEMBER_CARD_UNLOCK_SVIP_TEXT) {
-            XposedCompat.logD("[MemberCardCustomizeHook] member card unlock svip text hidden")
-        }
-    }
-
-    private fun hideView(view: View, onHidden: (() -> Unit)? = null) {
-        if (view.visibility == View.GONE && view.alpha == 0f && !view.isEnabled && !view.isClickable) return
-        view.visibility = View.GONE
-        view.alpha = 0f
-        view.isEnabled = false
-        view.isClickable = false
-        onHidden?.invoke()
-    }
-
-    private fun containsText(root: View, text: String): Boolean {
-        if (root is TextView && root.text?.toString()?.contains(text, ignoreCase = true) == true) {
-            return true
-        }
-        if (root !is ViewGroup) return false
-        for (index in 0 until root.childCount) {
-            if (containsText(root.getChildAt(index), text)) return true
-        }
-        return false
-    }
-
-    private fun hideContainerByText(
-        root: View,
-        text: String,
-        containerIdName: String,
-    ): Boolean {
-        val textView = findTextView(root, text) ?: return false
-        var current = textView.parent as? View
-        while (current != null && current !== root) {
-            val entryName = runCatching {
-                if (current.id != View.NO_ID) {
-                    current.resources.getResourceEntryName(current.id)
-                } else {
-                    null
-                }
-            }.getOrNull()
-            if (entryName == containerIdName) {
-                hideView(current) {
-                    XposedCompat.logD("[MemberCardCustomizeHook] member card unlock svip container hidden")
-                }
-                return true
-            }
-            current = current.parent as? View
-        }
-        val parent = textView.parent as? View
-        if (parent != null && parent !== root) {
-            hideView(parent) {
-                XposedCompat.logD("[MemberCardCustomizeHook] member card unlock svip parent hidden")
-            }
-            return true
-        }
-        return false
-    }
-
-    private fun findTextView(root: View, text: String): TextView? {
-        if (root is TextView && root.text?.toString()?.contains(text, ignoreCase = true) == true) {
-            return root
-        }
-        if (root !is ViewGroup) return null
-        for (index in 0 until root.childCount) {
-            val found = findTextView(root.getChildAt(index), text)
-            if (found != null) return found
-        }
-        return null
-    }
-
-    private fun hideTextView(root: View, text: String, onHidden: (() -> Unit)? = null): Boolean {
-        if (root is TextView && root.text?.toString()?.contains(text, ignoreCase = true) == true) {
-            hideView(root, onHidden)
-            return true
-        }
-        if (root !is ViewGroup) return false
-        var hidden = false
-        for (index in 0 until root.childCount) {
-            hidden = hideTextView(root.getChildAt(index), text, onHidden) || hidden
-        }
-        return hidden
     }
 
     private fun applyCardSize(

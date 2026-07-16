@@ -6,10 +6,6 @@ package com.xiyunmn.puredupan.hook.symbols.baidu.domestic
 internal object BaiduDomesticHookPoints {
     const val NAVIGATE_ACTIVITY = "com.baidu.netdisk.ui.Navigate"
 
-    const val ABOUT_ME_TOP_FRAGMENT_HETEROMO =
-        "com.baidu.netdisk.ui.aboutme.view.AboutMeTopFragmentHeteromo"
-    const val ABOUT_ME_TOP_FRAGMENT_ON_VIEW_CREATED_METHOD = "onViewCreated"
-
     const val BASE_ACTIVITY = "com.baidu.netdisk.BaseActivity"
     const val SETTINGS_ACTIVITY = "com.baidu.netdisk.ui.SettingsActivity"
     const val CHANGE_SKIN_KT = "com.baidu.netdisk.themskin.ChangeSkinKt"
