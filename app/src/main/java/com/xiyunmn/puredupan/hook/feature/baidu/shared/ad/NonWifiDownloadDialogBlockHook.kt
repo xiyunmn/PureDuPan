@@ -1,6 +1,8 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ad
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.HookUtils
@@ -10,7 +12,11 @@ import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 
 internal object NonWifiDownloadDialogBlockHook {
+    private const val DOWNLOAD_DONE_ACTION_HASH = -1297063280
     private val hookState = HookState()
+
+    @Volatile
+    private var downloadPushGuideScene: String? = null
 
     private data class RestartSchedulersInvoker(
         val target: Any,
@@ -61,6 +67,9 @@ internal object NonWifiDownloadDialogBlockHook {
                 className = BaiduTransferHookPoints.FLOW_ALERT_DIALOG_MANAGER,
                 tagPrefix = "FlowAlertDialogManager",
             )
+            installed += hookSingkilDialogMethods(cl)
+            installed += hookDownloadPushGuide(cl)
+            installed += hookDownloadDoneToast(cl)
 
             if (installed == 0) {
                 hookState.reset()
@@ -110,6 +119,57 @@ internal object NonWifiDownloadDialogBlockHook {
             methodName = BaiduTransferHookPoints.SHOW_NON_WIFI_ALERT_DOWNLOAD_BOTTOM_DIALOG_METHOD,
             tag = "$tagPrefix.showNonWiFiAlertDownloadBottomDialog",
         )
+        installed += hookDialogMethod(
+            cl = cl,
+            listenerClass = listenerClass,
+            wifiOnlyConfigMethod = wifiOnlyConfigMethod,
+            restartSchedulersInvoker = restartSchedulersInvoker,
+            className = className,
+            methodName = BaiduTransferHookPoints.SHOW_PERSIST_SETTING_BOTTOM_DIALOG_METHOD,
+            tag = "$tagPrefix.showPersistSettingBottomDialog",
+            requireFileDownloadListener = true,
+        )
+        installed += hookDialogMethod(
+            cl = cl,
+            listenerClass = listenerClass,
+            wifiOnlyConfigMethod = wifiOnlyConfigMethod,
+            restartSchedulersInvoker = restartSchedulersInvoker,
+            className = className,
+            methodName = BaiduTransferHookPoints.SHOW_WIFI_ONLY_DIALOG_BY_ADD_TASK_ON_2G3G_METHOD,
+            tag = "$tagPrefix.showWiFiOnlyDialogByAddTaskOn2G3G",
+            paramTypes = arrayOf(Boolean::class.javaPrimitiveType!!, listenerClass, Boolean::class.javaPrimitiveType!!),
+            listenerArgIndex = 1,
+            requireFileDownloadListener = true,
+        )
+        installed += hookDialogMethod(
+            cl = cl,
+            listenerClass = listenerClass,
+            wifiOnlyConfigMethod = wifiOnlyConfigMethod,
+            restartSchedulersInvoker = restartSchedulersInvoker,
+            className = className,
+            methodName = BaiduTransferHookPoints.SHOW_WIFI_ONLY_DIALOG_BY_ADD_TASK_ON_2G3G_WITH_3_PARAM_METHOD,
+            tag = "$tagPrefix.showWiFiOnlyDialogByAddTaskOn2G3GWith3Param",
+            paramTypes = arrayOf(Boolean::class.javaPrimitiveType!!, listenerClass, Boolean::class.javaPrimitiveType!!),
+            listenerArgIndex = 1,
+            requireFileDownloadListener = true,
+        )
+        installed += hookDialogMethod(
+            cl = cl,
+            listenerClass = listenerClass,
+            wifiOnlyConfigMethod = wifiOnlyConfigMethod,
+            restartSchedulersInvoker = restartSchedulersInvoker,
+            className = className,
+            methodName = BaiduTransferHookPoints.SHOW_WIFI_ONLY_DIALOG_BY_ADD_TASK_ON_2G3G_WITH_ACTIVITY_METHOD,
+            tag = "$tagPrefix.showWiFiOnlyDialogByAddTaskOn2G3GWithActivity",
+            paramTypes = arrayOf(
+                Activity::class.java,
+                Boolean::class.javaPrimitiveType!!,
+                listenerClass,
+                Boolean::class.javaPrimitiveType!!,
+            ),
+            listenerArgIndex = 2,
+            requireFileDownloadListener = true,
+        )
         return installed
     }
 
@@ -121,12 +181,15 @@ internal object NonWifiDownloadDialogBlockHook {
         className: String,
         methodName: String,
         tag: String,
+        paramTypes: Array<Class<*>> = arrayOf(listenerClass),
+        listenerArgIndex: Int = 0,
+        requireFileDownloadListener: Boolean = false,
     ): Int {
         val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
             XposedCompat.logD("[NonWifiDownloadDialogBlockHook] class not found: $className")
             return 0
         }
-        val method = XposedCompat.findMethodOrNull(clazz, methodName, listenerClass) ?: run {
+        val method = XposedCompat.findMethodOrNull(clazz, methodName, *paramTypes) ?: run {
             XposedCompat.logD("[NonWifiDownloadDialogBlockHook] method not found: $tag")
             return 0
         }
@@ -137,8 +200,239 @@ internal object NonWifiDownloadDialogBlockHook {
                 return@intercept chain.proceed()
             }
 
-            val listener = chain.args.firstOrNull()
+            val listener = chain.args.getOrNull(listenerArgIndex)
+            if (requireFileDownloadListener && !isFileDownloadObject(listener)) {
+                XposedCompat.logD("[NonWifiDownloadDialogBlockHook] $tag skipped: non-download listener")
+                return@intercept chain.proceed()
+            }
             if (confirmDownload(listener, wifiOnlyConfigMethod, restartSchedulersInvoker, chain.thisObject, tag)) {
+                HookUtils.getDefaultReturnValue(method.returnType)
+            } else {
+                chain.proceed()
+            }
+        }
+        return 1
+    }
+
+    private fun hookSingkilDialogMethods(cl: ClassLoader): Int {
+        val callbackClass = XposedCompat.findClassOrNull(BaiduTransferHookPoints.TASK_STATE_CALLBACK, cl) ?: run {
+            XposedCompat.logD("[NonWifiDownloadDialogBlockHook] ITaskStateCallback class not found")
+            return 0
+        }
+        var installed = 0
+        installed += hookSingkilDialogMethod(
+            cl = cl,
+            callbackClass = callbackClass,
+            className = BaiduTransferHookPoints.TRANSFER_CONTEXT_COMPANION,
+            tag = "TransferContext.Companion.showSingkilDialog",
+        )
+        installed += hookSingkilDialogMethod(
+            cl = cl,
+            callbackClass = callbackClass,
+            className = BaiduTransferHookPoints.TRANSFER_APIS,
+            tag = "TransferApis.showSingkilDialog",
+        )
+        return installed
+    }
+
+    private fun hookSingkilDialogMethod(
+        cl: ClassLoader,
+        callbackClass: Class<*>,
+        className: String,
+        tag: String,
+    ): Int {
+        val clazz = XposedCompat.findClassOrNull(className, cl) ?: return 0
+        val method = XposedCompat.findMethodOrNull(
+            clazz,
+            BaiduTransferHookPoints.SHOW_SINGKIL_DIALOG_METHOD,
+            callbackClass,
+        ) ?: return 0
+        val mod = XposedCompat.module ?: return 0
+        method.isAccessible = true
+        mod.hook(method).intercept { chain ->
+            if (!HookSettings.isNonWifiDownloadDialogBlocked) {
+                return@intercept chain.proceed()
+            }
+
+            val callback = chain.args.firstOrNull()
+            if (!isFileDownloadObject(callback)) {
+                XposedCompat.logD("[NonWifiDownloadDialogBlockHook] $tag skipped: non-download callback")
+                return@intercept chain.proceed()
+            }
+            if (startDownloadTaskCallback(callback, tag)) {
+                HookUtils.getDefaultReturnValue(method.returnType)
+            } else {
+                chain.proceed()
+            }
+        }
+        return 1
+    }
+
+    private fun hookDownloadPushGuide(cl: ClassLoader): Int {
+        var installed = 0
+        installed += hookDownloadPushGuide(
+            cl = cl,
+            commonClassName = BaiduTransferHookPoints.FILE_DOWNLOAD_PUSH_COMMON_API_COMP_MANAGER,
+            constantClassName = BaiduTransferHookPoints.FILE_DOWNLOAD_PUSH_CONSTANT_API_COMP_MANAGER,
+            tag = "PushCommonApiCompManager.showScenePushGuide",
+        )
+        installed += hookDownloadPushGuideSceneGetter(
+            cl = cl,
+            constantClassName = BaiduTransferHookPoints.FILE_DOWNLOAD_PUSH_CONSTANT_API_GEN,
+            tag = "PushConstantApiGen.getDownloadPushGuideScene",
+        )
+        installed += hookDownloadPushGuideWithCachedScene(
+            cl = cl,
+            commonClassName = BaiduTransferHookPoints.FILE_DOWNLOAD_PUSH_COMMON_API_GEN,
+            tag = "PushCommonApiGen.showScenePushGuide",
+        )
+        return installed
+    }
+
+    private fun hookDownloadPushGuide(
+        cl: ClassLoader,
+        commonClassName: String,
+        constantClassName: String,
+        tag: String,
+    ): Int {
+        val commonClass = XposedCompat.findClassOrNull(commonClassName, cl) ?: return 0
+        val scene = readDownloadPushGuideScene(cl, constantClassName) ?: return 0
+        val method = commonClass.declaredMethods.firstOrNull { candidate ->
+            candidate.name == BaiduTransferHookPoints.SHOW_SCENE_PUSH_GUIDE_METHOD &&
+                candidate.parameterTypes.size == 2 &&
+                candidate.parameterTypes[1] == String::class.java &&
+                candidate.returnType == Boolean::class.javaPrimitiveType
+        } ?: return 0
+        val mod = XposedCompat.module ?: return 0
+        method.isAccessible = true
+        return try {
+            mod.hook(method).intercept { chain ->
+                if (!HookSettings.isNonWifiDownloadDialogBlocked) {
+                    return@intercept chain.proceed()
+                }
+                val requestScene = chain.args.getOrNull(1) as? String
+                if (requestScene == scene) {
+                    XposedCompat.logD("[NonWifiDownloadDialogBlockHook] $tag suppressed for download scene")
+                    false
+                } else {
+                    chain.proceed()
+                }
+            }
+            1
+        } catch (e: RuntimeException) {
+            XposedCompat.logW(
+                "[NonWifiDownloadDialogBlockHook] hook $tag failed: " +
+                    "${e.javaClass.simpleName}: ${e.message}",
+            )
+            0
+        }
+    }
+
+    private fun hookDownloadPushGuideSceneGetter(
+        cl: ClassLoader,
+        constantClassName: String,
+        tag: String,
+    ): Int {
+        val constantClass = XposedCompat.findClassOrNull(constantClassName, cl) ?: return 0
+        val method = constantClass.declaredMethods.firstOrNull { candidate ->
+            candidate.name == BaiduTransferHookPoints.GET_DOWNLOAD_PUSH_GUIDE_SCENE_METHOD &&
+                candidate.parameterTypes.isEmpty() &&
+                candidate.returnType == String::class.java
+        } ?: return 0
+        val mod = XposedCompat.module ?: return 0
+        method.isAccessible = true
+        return try {
+            mod.hook(method).intercept { chain ->
+                val result = chain.proceed()
+                (result as? String)?.let { downloadPushGuideScene = it }
+                result
+            }
+            XposedCompat.logD("[NonWifiDownloadDialogBlockHook] $tag cache hook installed")
+            1
+        } catch (e: RuntimeException) {
+            XposedCompat.logW(
+                "[NonWifiDownloadDialogBlockHook] hook $tag failed: " +
+                    "${e.javaClass.simpleName}: ${e.message}",
+            )
+            0
+        }
+    }
+
+    private fun hookDownloadPushGuideWithCachedScene(
+        cl: ClassLoader,
+        commonClassName: String,
+        tag: String,
+    ): Int {
+        val commonClass = XposedCompat.findClassOrNull(commonClassName, cl) ?: return 0
+        val method = commonClass.declaredMethods.firstOrNull { candidate ->
+            candidate.name == BaiduTransferHookPoints.SHOW_SCENE_PUSH_GUIDE_METHOD &&
+                candidate.parameterTypes.size == 2 &&
+                candidate.parameterTypes[1] == String::class.java &&
+                candidate.returnType == Boolean::class.javaPrimitiveType
+        } ?: return 0
+        val mod = XposedCompat.module ?: return 0
+        method.isAccessible = true
+        return try {
+            mod.hook(method).intercept { chain ->
+                if (!HookSettings.isNonWifiDownloadDialogBlocked) {
+                    return@intercept chain.proceed()
+                }
+                val scene = downloadPushGuideScene
+                val requestScene = chain.args.getOrNull(1) as? String
+                if (scene != null && requestScene == scene) {
+                    XposedCompat.logD("[NonWifiDownloadDialogBlockHook] $tag suppressed for download scene")
+                    false
+                } else {
+                    chain.proceed()
+                }
+            }
+            1
+        } catch (e: RuntimeException) {
+            XposedCompat.logW(
+                "[NonWifiDownloadDialogBlockHook] hook $tag failed: " +
+                    "${e.javaClass.simpleName}: ${e.message}",
+            )
+            0
+        }
+    }
+
+    private fun readDownloadPushGuideScene(cl: ClassLoader, className: String): String? {
+        val clazz = XposedCompat.findClassOrNull(className, cl) ?: return null
+        val method = clazz.declaredMethods.firstOrNull { candidate ->
+            candidate.name == BaiduTransferHookPoints.GET_DOWNLOAD_PUSH_GUIDE_SCENE_METHOD &&
+                candidate.parameterTypes.isEmpty() &&
+                candidate.returnType == String::class.java
+        } ?: return null
+        return try {
+            method.isAccessible = true
+            method.invoke(null) as? String
+        } catch (e: ReflectiveOperationException) {
+            XposedCompat.logW(
+                "[NonWifiDownloadDialogBlockHook] getDownloadPushGuideScene failed: " +
+                    "${e.javaClass.simpleName}: ${e.message}",
+            )
+            null
+        }
+    }
+
+    private fun hookDownloadDoneToast(cl: ClassLoader): Int {
+        val clazz = XposedCompat.findClassOrNull(BaiduTransferHookPoints.DOWNLOAD_TOAST_POSTER_RECEIVER, cl)
+            ?: return 0
+        val method = XposedCompat.findMethodOrNull(
+            clazz,
+            "onReceive",
+            Context::class.java,
+            Intent::class.java,
+        ) ?: return 0
+        val mod = XposedCompat.module ?: return 0
+        method.isAccessible = true
+        mod.hook(method).intercept { chain ->
+            if (!HookSettings.isNonWifiDownloadDialogBlocked) {
+                return@intercept chain.proceed()
+            }
+            val intent = chain.args.getOrNull(1) as? Intent
+            if (intent?.action?.hashCode() == DOWNLOAD_DONE_ACTION_HASH) {
+                XposedCompat.logD("[NonWifiDownloadDialogBlockHook] download done toast suppressed")
                 HookUtils.getDefaultReturnValue(method.returnType)
             } else {
                 chain.proceed()
@@ -190,6 +484,52 @@ internal object NonWifiDownloadDialogBlockHook {
             )
             false
         }
+    }
+
+    private fun startDownloadTaskCallback(callback: Any?, tag: String): Boolean {
+        if (callback == null) return false
+        val onStartMethod = findNoArgMethodInHierarchy(
+            callback.javaClass,
+            BaiduTransferHookPoints.TASK_STATE_CALLBACK_ON_START_METHOD,
+        ) ?: run {
+            XposedCompat.logW("[NonWifiDownloadDialogBlockHook] onStart not found for $tag")
+            return false
+        }
+        return try {
+            onStartMethod.invoke(callback)
+            XposedCompat.logD("[NonWifiDownloadDialogBlockHook] $tag suppressed after onStart")
+            true
+        } catch (e: InvocationTargetException) {
+            XposedCompat.logE(
+                "[NonWifiDownloadDialogBlockHook] onStart threw in $tag: " +
+                    "${e.targetException?.javaClass?.simpleName}: ${e.targetException?.message}",
+            )
+            XposedCompat.log(e.targetException ?: e)
+            false
+        } catch (e: ReflectiveOperationException) {
+            XposedCompat.logW(
+                "[NonWifiDownloadDialogBlockHook] onStart invoke failed in $tag: " +
+                    "${e.javaClass.simpleName}: ${e.message}",
+            )
+            false
+        }
+    }
+
+    private fun isFileDownloadObject(value: Any?): Boolean {
+        if (value == null) return false
+        if (isFileDownloadClassName(value.javaClass.name)) return true
+        return value.javaClass.declaredFields.any { field ->
+            runCatching {
+                field.isAccessible = true
+                val fieldValue = field.get(value)
+                fieldValue != null && isFileDownloadClassName(fieldValue.javaClass.name)
+            }.getOrDefault(false)
+        }
+    }
+
+    private fun isFileDownloadClassName(name: String): Boolean {
+        return name.startsWith(BaiduTransferHookPoints.FILE_DOWNLOAD_API_PREFIX) ||
+            name.contains(BaiduTransferHookPoints.FD_DOWNLOAD_MANAGER_API_SIMPLE_NAME)
     }
 
     private fun findSetWifiOnlyConfigMethod(cl: ClassLoader): Method? {

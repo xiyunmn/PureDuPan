@@ -10,6 +10,7 @@ internal object BaiduFeatureSets {
             baiduSharedContentBlock,
             baiduSharedHomeCustomize,
             baiduSharedFilePageCustomize,
+            baiduDomesticDownloadPageCustomize,
             baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
             baiduSharedMemberCardCustomize,
@@ -58,6 +59,7 @@ internal object BaiduFeatureSets {
             baiduSharedContentBlock,
             baiduSharedHomeCustomize,
             baiduSharedFilePageCustomize,
+            baiduDomesticDownloadPageCustomize,
             baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
             baiduSharedMemberCardCustomize,
@@ -108,6 +110,13 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE,
         FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
         FeatureKeys.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP,
+    )
+
+    private val baiduDomesticDownloadPageCustomize = listOf(
+        FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE,
+        FeatureKeys.KEY_HIDE_DOWNLOAD_PAGE_GAME_GUIDE,
+        FeatureKeys.KEY_HIDE_DOWNLOAD_PAGE_PROMOTION_AD,
+        FeatureKeys.KEY_HIDE_DOWNLOAD_PAGE_MEMBER_PROMOTION,
     )
 
     private val baiduSharedMyPageCustomize = listOf(

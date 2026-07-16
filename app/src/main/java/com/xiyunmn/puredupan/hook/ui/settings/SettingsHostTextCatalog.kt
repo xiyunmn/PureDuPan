@@ -60,8 +60,8 @@ internal object SettingsHostTextCatalog {
                 "拦截网盘运行期间弹出的运营活动弹窗",
             )
             this[SettingsUserState.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG] = text(
-                "移除下载 WiFi 未连接弹窗",
-                "未连接 WiFi 时点击下载，自动确认并直接创建下载任务",
+                UiText.Settings.BLOCK_NON_WIFI_DOWNLOAD_DIALOG_LABEL,
+                UiText.Settings.BLOCK_NON_WIFI_DOWNLOAD_DIALOG_DESC,
             )
             this[SettingsUserState.KEY_BLOCK_NOTIFICATION_PROMPT] = text(
                 "移除消息通知弹窗",
@@ -295,6 +295,22 @@ internal object SettingsHostTextCatalog {
             SettingsUserState.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP to text(
                 UiText.Settings.HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_LABEL,
                 UiText.Settings.HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_DESC,
+            ),
+            SettingsUserState.KEY_DOWNLOAD_PAGE_CUSTOMIZE to text(
+                UiText.Settings.DOWNLOAD_PAGE_CUSTOMIZE_LABEL,
+                UiText.Settings.DOWNLOAD_PAGE_CUSTOMIZE_DESC,
+            ),
+            SettingsUserState.KEY_HIDE_DOWNLOAD_PAGE_GAME_GUIDE to text(
+                UiText.Settings.HIDE_DOWNLOAD_PAGE_GAME_GUIDE_LABEL,
+                UiText.Settings.HIDE_DOWNLOAD_PAGE_GAME_GUIDE_DESC,
+            ),
+            SettingsUserState.KEY_HIDE_DOWNLOAD_PAGE_PROMOTION_AD to text(
+                UiText.Settings.HIDE_DOWNLOAD_PAGE_PROMOTION_AD_LABEL,
+                UiText.Settings.HIDE_DOWNLOAD_PAGE_PROMOTION_AD_DESC,
+            ),
+            SettingsUserState.KEY_HIDE_DOWNLOAD_PAGE_MEMBER_PROMOTION to text(
+                UiText.Settings.HIDE_DOWNLOAD_PAGE_MEMBER_PROMOTION_LABEL,
+                UiText.Settings.HIDE_DOWNLOAD_PAGE_MEMBER_PROMOTION_DESC,
             ),
             SettingsUserState.KEY_SEARCH_PAGE_CUSTOMIZE to text(
                 UiText.Settings.SEARCH_PAGE_CUSTOMIZE_LABEL,

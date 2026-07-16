@@ -163,6 +163,18 @@ internal object HookSettings {
     val isFilePageBottomSafetyTipHidden: Boolean
         get() = ConfigManager.isFilePageBottomSafetyTipHidden
 
+    val isDownloadPageCustomizeEnabled: Boolean
+        get() = ConfigManager.isDownloadPageCustomizeEnabled
+
+    val isDownloadPageGameGuideHidden: Boolean
+        get() = ConfigManager.isDownloadPageGameGuideHidden
+
+    val isDownloadPagePromotionAdHidden: Boolean
+        get() = ConfigManager.isDownloadPagePromotionAdHidden
+
+    val isDownloadPageMemberPromotionHidden: Boolean
+        get() = ConfigManager.isDownloadPageMemberPromotionHidden
+
     val isSearchPageCustomizeEnabled: Boolean
         get() = ConfigManager.isSearchPageCustomizeEnabled
 

@@ -53,6 +53,55 @@ internal object PageCustomizeSettingsItemsBuilder {
         return editor
     }
 
+    fun downloadPageCustomizeItems(
+        prefs: SharedPreferences,
+        texts: SettingsTextResolver,
+        isFeatureVisible: (String) -> Boolean,
+    ): List<KeyedSwitchItem> {
+        return DownloadPageCustomizeSettingsRegistry.specs.map { spec ->
+            val visible = isFeatureVisible(spec.key)
+            val text = texts.text(spec.key, spec.label, spec.description)
+            KeyedSwitchItem(
+                key = spec.key,
+                item = SwitchItem(
+                    label = text.label,
+                    description = text.description,
+                    prefKey = null,
+                    supported = visible,
+                    defaultValue = prefs.getBoolean(spec.key, false),
+                    visible = visible,
+                ),
+            )
+        }
+    }
+
+    fun hasEnabledDownloadPageCustomizeOption(
+        isFeatureVisible: (String) -> Boolean,
+        isChecked: (String) -> Boolean,
+    ): Boolean {
+        return DownloadPageCustomizeSettingsRegistry.specs.any { spec ->
+            isFeatureVisible(spec.key) && isChecked(spec.key)
+        }
+    }
+
+    fun putDownloadPageCustomizeValues(
+        editor: SharedPreferences.Editor,
+        isFeatureVisible: (String) -> Boolean,
+        isChecked: (String) -> Boolean,
+    ): SharedPreferences.Editor {
+        val hasEnabledOption = hasEnabledDownloadPageCustomizeOption(
+            isFeatureVisible = isFeatureVisible,
+            isChecked = isChecked,
+        )
+        editor.putBoolean(SettingsUserState.KEY_DOWNLOAD_PAGE_CUSTOMIZE, hasEnabledOption)
+        DownloadPageCustomizeSettingsRegistry.specs.filter { spec ->
+            isFeatureVisible(spec.key)
+        }.forEach { spec ->
+            editor.putBoolean(spec.key, isChecked(spec.key))
+        }
+        return editor
+    }
+
     fun searchPageCustomizeItems(
         prefs: SharedPreferences,
         texts: SettingsTextResolver,

@@ -36,6 +36,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.NonWifiDownloadDialogB
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.SvipIconGuideBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.DomesticAutoDailySignInHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticHotStartSplashCompatHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPageCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.search.SearchPageCustomizeHook
 import com.xiyunmn.puredupan.hook.plan.HookSpec
 
@@ -255,6 +256,13 @@ internal object BaiduDomesticPostAttachHookSpecs {
     )
 
     val searchPage = listOf(
+        HookSpec("DownloadPageCustomizeHook", { context, settings, derived ->
+            context.isMain &&
+                settings.isDownloadPageCustomizeEnabled &&
+                derived.hasDownloadPageCustomizeOption
+        }, featureKey = FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE) { cl ->
+            DownloadPageCustomizeHook.hook(cl)
+        },
         HookSpec("SearchPageCustomizeHook", { context, settings, derived ->
             context.isMain &&
                 settings.isSearchPageCustomizeEnabled &&

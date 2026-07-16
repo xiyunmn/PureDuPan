@@ -41,6 +41,10 @@ object ConfigManager {
     const val KEY_HIDE_HOME_RECENT_SECTION = FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION
     const val KEY_FILE_PAGE_CUSTOMIZE = FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE
     const val KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP = FeatureKeys.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP
+    const val KEY_DOWNLOAD_PAGE_CUSTOMIZE = FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE
+    const val KEY_HIDE_DOWNLOAD_PAGE_GAME_GUIDE = FeatureKeys.KEY_HIDE_DOWNLOAD_PAGE_GAME_GUIDE
+    const val KEY_HIDE_DOWNLOAD_PAGE_PROMOTION_AD = FeatureKeys.KEY_HIDE_DOWNLOAD_PAGE_PROMOTION_AD
+    const val KEY_HIDE_DOWNLOAD_PAGE_MEMBER_PROMOTION = FeatureKeys.KEY_HIDE_DOWNLOAD_PAGE_MEMBER_PROMOTION
     const val KEY_SEARCH_PAGE_CUSTOMIZE = FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE
     const val KEY_HIDE_SEARCH_PAGE_AI_ENTRY = FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY
     const val KEY_HIDE_SEARCH_PAGE_PLACEHOLDER = FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER
@@ -154,6 +158,10 @@ object ConfigManager {
     val isHomeRecentSectionHidden: Boolean get() = settingsSnapshot.isHomeRecentSectionHidden
     val isFilePageCustomizeEnabled: Boolean get() = settingsSnapshot.isFilePageCustomizeEnabled
     val isFilePageBottomSafetyTipHidden: Boolean get() = settingsSnapshot.isFilePageBottomSafetyTipHidden
+    val isDownloadPageCustomizeEnabled: Boolean get() = settingsSnapshot.isDownloadPageCustomizeEnabled
+    val isDownloadPageGameGuideHidden: Boolean get() = settingsSnapshot.isDownloadPageGameGuideHidden
+    val isDownloadPagePromotionAdHidden: Boolean get() = settingsSnapshot.isDownloadPagePromotionAdHidden
+    val isDownloadPageMemberPromotionHidden: Boolean get() = settingsSnapshot.isDownloadPageMemberPromotionHidden
     val isSearchPageCustomizeEnabled: Boolean get() = settingsSnapshot.isSearchPageCustomizeEnabled
     val isSearchPageAiEntryHidden: Boolean get() = settingsSnapshot.isSearchPageAiEntryHidden
     val isSearchPagePlaceholderHidden: Boolean get() = settingsSnapshot.isSearchPagePlaceholderHidden
@@ -443,6 +451,10 @@ object ConfigManager {
         val hasFilePageOptionEnabled =
             featureBoolean(KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP, false) ||
                 featureBoolean(KEY_BLOCK_ALBUM_BACKUP_BAR, false)
+        val hasDownloadPageOptionEnabled =
+            featureBoolean(KEY_HIDE_DOWNLOAD_PAGE_GAME_GUIDE, false) ||
+                featureBoolean(KEY_HIDE_DOWNLOAD_PAGE_PROMOTION_AD, false) ||
+                featureBoolean(KEY_HIDE_DOWNLOAD_PAGE_MEMBER_PROMOTION, false)
         val hasSearchPageOptionEnabled =
             featureBoolean(KEY_HIDE_SEARCH_PAGE_AI_ENTRY, false) ||
                 featureBoolean(KEY_HIDE_SEARCH_PAGE_PLACEHOLDER, false) ||
@@ -527,6 +539,10 @@ object ConfigManager {
             isHomeRecentSectionHidden = featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false),
             isFilePageCustomizeEnabled = featureBoolean(KEY_FILE_PAGE_CUSTOMIZE, hasFilePageOptionEnabled),
             isFilePageBottomSafetyTipHidden = featureBoolean(KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP, false),
+            isDownloadPageCustomizeEnabled = featureBoolean(KEY_DOWNLOAD_PAGE_CUSTOMIZE, hasDownloadPageOptionEnabled),
+            isDownloadPageGameGuideHidden = featureBoolean(KEY_HIDE_DOWNLOAD_PAGE_GAME_GUIDE, false),
+            isDownloadPagePromotionAdHidden = featureBoolean(KEY_HIDE_DOWNLOAD_PAGE_PROMOTION_AD, false),
+            isDownloadPageMemberPromotionHidden = featureBoolean(KEY_HIDE_DOWNLOAD_PAGE_MEMBER_PROMOTION, false),
             isSearchPageCustomizeEnabled = featureBoolean(KEY_SEARCH_PAGE_CUSTOMIZE, hasSearchPageOptionEnabled),
             isSearchPageAiEntryHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_AI_ENTRY, false),
             isSearchPagePlaceholderHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_PLACEHOLDER, false),

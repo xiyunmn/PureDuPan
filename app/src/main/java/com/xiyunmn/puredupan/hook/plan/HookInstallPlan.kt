@@ -74,6 +74,19 @@ internal object HookInstallPlanner {
                     FeatureKeys.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP,
                     settings.isFilePageBottomSafetyTipHidden,
                 ),
+            hasDownloadPageCustomizeOption =
+                enabled(
+                    FeatureKeys.KEY_HIDE_DOWNLOAD_PAGE_GAME_GUIDE,
+                    settings.isDownloadPageGameGuideHidden,
+                ) ||
+                    enabled(
+                        FeatureKeys.KEY_HIDE_DOWNLOAD_PAGE_PROMOTION_AD,
+                        settings.isDownloadPagePromotionAdHidden,
+                    ) ||
+                    enabled(
+                        FeatureKeys.KEY_HIDE_DOWNLOAD_PAGE_MEMBER_PROMOTION,
+                        settings.isDownloadPageMemberPromotionHidden,
+                    ),
             hasSearchPageCustomizeOption =
                 enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY, settings.isSearchPageAiEntryHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER, settings.isSearchPagePlaceholderHidden) ||

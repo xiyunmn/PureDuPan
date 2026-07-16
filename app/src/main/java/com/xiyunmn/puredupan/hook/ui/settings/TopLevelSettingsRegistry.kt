@@ -7,6 +7,7 @@ internal enum class TopLevelSettingsAction {
     NONE,
     HOME_CUSTOMIZE,
     FILE_PAGE_CUSTOMIZE,
+    DOWNLOAD_PAGE_CUSTOMIZE,
     SEARCH_PAGE_CUSTOMIZE,
     SHARE_PAGE_CUSTOMIZE,
     MY_PAGE_CUSTOMIZE,
@@ -107,6 +108,13 @@ internal object TopLevelSettingsRegistry {
             UiText.Settings.FILE_PAGE_CUSTOMIZE_LABEL,
             UiText.Settings.FILE_PAGE_CUSTOMIZE_DESC,
             action = TopLevelSettingsAction.FILE_PAGE_CUSTOMIZE,
+            restricted = true,
+        ),
+        TopLevelSwitchSpec(
+            SettingsUserState.KEY_DOWNLOAD_PAGE_CUSTOMIZE,
+            UiText.Settings.DOWNLOAD_PAGE_CUSTOMIZE_LABEL,
+            UiText.Settings.DOWNLOAD_PAGE_CUSTOMIZE_DESC,
+            action = TopLevelSettingsAction.DOWNLOAD_PAGE_CUSTOMIZE,
             restricted = true,
         ),
         TopLevelSwitchSpec(

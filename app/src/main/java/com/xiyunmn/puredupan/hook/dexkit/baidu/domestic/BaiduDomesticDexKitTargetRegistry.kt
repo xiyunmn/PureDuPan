@@ -10,6 +10,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ad.DomesticUpdateDialog
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.BottomAiTabDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.aboutme.AboutMeTopHeteromoDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPagePromotionAdDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticChangeSkinDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticDynamicPluginAutoDecisionDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticFloatViewStartupDexKitResolver
@@ -20,6 +21,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticVid
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.DomesticCookieByBdussDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticColdStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticHotStartSplashDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageSafetyFooterUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMePopupResponseHelperDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.search.SearchPageVoiceSearchDexKitResolver
 
@@ -134,6 +136,18 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
         ),
         DexKitTargetDescriptor(
+            id = FilePageSafetyFooterUseCaseDexKitResolver.CACHE_ID,
+            target = "file page safety footer use case realExecute",
+            feature = "file page bottom safety tip",
+            featureKey = FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE,
+        ),
+        DexKitTargetDescriptor(
+            id = DownloadPagePromotionAdDexKitResolver.CACHE_ID,
+            target = "download page YouaGuide render method",
+            feature = "download page promotion ad",
+            featureKey = FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE,
+        ),
+        DexKitTargetDescriptor(
             id = AboutMeTopHeteromoDexKitResolver.CACHE_ID,
             target = "about me top heteromo member card fragment",
             feature = "member card customize",
@@ -241,6 +255,20 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(AboutMeTopHeteromoDexKitResolver.CACHE_ID) {
                 AboutMeTopHeteromoDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (available(FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE)) {
+            tasks += DexKitWarmUpTask(FilePageSafetyFooterUseCaseDexKitResolver.CACHE_ID) {
+                FilePageSafetyFooterUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (
+            available(FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE) &&
+            settings.isDownloadPageCustomizeEnabled &&
+            settings.isDownloadPagePromotionAdHidden
+        ) {
+            tasks += DexKitWarmUpTask(DownloadPagePromotionAdDexKitResolver.CACHE_ID) {
+                DownloadPagePromotionAdDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         if (available(FeatureKeys.KEY_MY_PAGE_CUSTOMIZE)) {

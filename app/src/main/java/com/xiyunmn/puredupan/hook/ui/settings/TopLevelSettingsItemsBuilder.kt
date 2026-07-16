@@ -159,6 +159,7 @@ internal object TopLevelSettingsItemsBuilder {
         return when (spec.action) {
             TopLevelSettingsAction.HOME_CUSTOMIZE -> defaultValues.homeCustomize
             TopLevelSettingsAction.FILE_PAGE_CUSTOMIZE -> defaultValues.filePageCustomize
+            TopLevelSettingsAction.DOWNLOAD_PAGE_CUSTOMIZE -> defaultValues.downloadPageCustomize
             TopLevelSettingsAction.SEARCH_PAGE_CUSTOMIZE -> defaultValues.searchPageCustomize
             TopLevelSettingsAction.SHARE_PAGE_CUSTOMIZE -> defaultValues.sharePageCustomize
             TopLevelSettingsAction.MY_PAGE_CUSTOMIZE -> defaultValues.myPageCustomize
@@ -177,6 +178,7 @@ internal object TopLevelSettingsItemsBuilder {
         return when (spec.action) {
             TopLevelSettingsAction.HOME_CUSTOMIZE -> actionHandlers.onHomeCustomizeClick
             TopLevelSettingsAction.FILE_PAGE_CUSTOMIZE -> actionHandlers.onFilePageCustomizeClick
+            TopLevelSettingsAction.DOWNLOAD_PAGE_CUSTOMIZE -> actionHandlers.onDownloadPageCustomizeClick
             TopLevelSettingsAction.SEARCH_PAGE_CUSTOMIZE -> actionHandlers.onSearchPageCustomizeClick
             TopLevelSettingsAction.SHARE_PAGE_CUSTOMIZE -> actionHandlers.onSharePageCustomizeClick
             TopLevelSettingsAction.MY_PAGE_CUSTOMIZE -> actionHandlers.onMyPageCustomizeClick

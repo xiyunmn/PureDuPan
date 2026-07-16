@@ -15,6 +15,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabModeDexKi
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlChangeSkinDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlAboutMeTopFragmentDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageSafetyFooterUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMePopupResponseHelperDexKitResolver
 
 internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
@@ -66,6 +67,12 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             target = "intl album backup bar add use case",
             featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
             feature = "屏蔽相册备份栏",
+        ),
+        DexKitTargetDescriptor(
+            id = FilePageSafetyFooterUseCaseDexKitResolver.CACHE_ID,
+            target = "intl file page safety footer use case",
+            featureKey = FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE,
+            feature = "文件页底部数据安全提示",
         ),
         DexKitTargetDescriptor(
             id = IntlAboutMeTopFragmentDexKitResolver.CACHE_ID,
@@ -127,6 +134,11 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR)) {
             tasks += DexKitWarmUpTask(AlbumBackupBarAddUseCaseDexKitResolver.CACHE_ID) {
                 AlbumBackupBarAddUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (available(FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE)) {
+            tasks += DexKitWarmUpTask(FilePageSafetyFooterUseCaseDexKitResolver.CACHE_ID) {
+                FilePageSafetyFooterUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         if (available(FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE)) {
