@@ -13,6 +13,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlStoryDouyin
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabModeDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlChangeSkinDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlHomeLeftScreenDrawerDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlAboutMeTopFragmentDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPagePromotionAdDexKitResolver
@@ -50,6 +51,12 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             target = "intl changeSkin method",
             featureKey = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
             feature = "夜间模式跟随系统",
+        ),
+        DexKitTargetDescriptor(
+            id = IntlHomeLeftScreenDrawerDexKitResolver.CACHE_ID,
+            target = "intl FHHomeDrawerLayout setLeftDrawerEnable method",
+            featureKey = FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE,
+            feature = "移除首页右滑事件",
         ),
         DexKitTargetDescriptor(
             id = IntlBottomAiTabModeDexKitResolver.CACHE_ID,
@@ -126,6 +133,11 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE)) {
             tasks += DexKitWarmUpTask(IntlChangeSkinDexKitResolver.CACHE_ID) {
                 IntlChangeSkinDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (available(FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE)) {
+            tasks += DexKitWarmUpTask(IntlHomeLeftScreenDrawerDexKitResolver.CACHE_ID) {
+                IntlHomeLeftScreenDrawerDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         if (available(FeatureKeys.KEY_REPLACE_BOTTOM_AI)) {

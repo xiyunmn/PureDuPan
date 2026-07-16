@@ -161,6 +161,9 @@ object UiText {
         const val CUSTOM_BOTTOM_BAR_LABEL = "底栏Tab定制"
         const val CUSTOM_BOTTOM_BAR_DESC = "自定义隐藏底部导航栏中的指定 Tab"
 
+        const val DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE_LABEL = "移除首页右滑事件"
+        const val DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE_DESC =
+            "DexKit 解析成功后生效\n阻止首页右滑进入负一屏"
         const val ENABLE_NIGHT_MODE_SUPPORT_LABEL = "启用夜间模式支持"
         const val ENABLE_NIGHT_MODE_SUPPORT_DESC = "内置夜间皮肤资源，并恢复宿主设置页中被隐藏的夜间模式开关"
         const val FOLLOW_SYSTEM_NIGHT_MODE_LABEL = "夜间模式跟随系统"

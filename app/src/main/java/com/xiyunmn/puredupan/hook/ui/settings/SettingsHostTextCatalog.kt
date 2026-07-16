@@ -484,6 +484,10 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.CUSTOM_BOTTOM_BAR_LABEL,
                 UiText.Settings.CUSTOM_BOTTOM_BAR_DESC,
             ),
+            SettingsUserState.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE to text(
+                UiText.Settings.DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE_LABEL,
+                UiText.Settings.DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE_DESC,
+            ),
             SettingsUserState.KEY_REPLACE_BOTTOM_AI to text(
                 UiText.Settings.REPLACE_BOTTOM_AI_LABEL,
                 UiText.Settings.REPLACE_BOTTOM_AI_DESC,

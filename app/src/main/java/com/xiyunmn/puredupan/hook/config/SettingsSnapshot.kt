@@ -84,6 +84,7 @@ data class SettingsSnapshot(
     val isIntlMemberCardUpgradeButtonHidden: Boolean = false,
     val isMemberCardClickRemoved: Boolean = false,
     val isMemberCardBackgroundViewedOnClick: Boolean = false,
+    val isIntlHomeLeftScreenSwipeDisabled: Boolean = false,
     val isNightModeSupportEnabled: Boolean = false,
     val isFollowSystemNightModeEnabled: Boolean = false,
     val isAutoDailySignInEnabled: Boolean = false,
@@ -145,6 +146,7 @@ data class SettingsSnapshot(
             FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET -> isIntlNonCoreDiffSocketDelayed
             FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT -> isIntlAlbumAiInitBlocked
             FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE -> isFollowSystemNightModeEnabled
+            FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE -> isIntlHomeLeftScreenSwipeDisabled
             else -> false
         }
     }
@@ -174,6 +176,7 @@ data class SettingsSnapshot(
             FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET,
             FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT,
             FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
+            FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE,
         )
     }
 }

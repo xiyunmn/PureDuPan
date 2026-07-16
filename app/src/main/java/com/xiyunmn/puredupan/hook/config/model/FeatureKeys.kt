@@ -80,6 +80,7 @@ object FeatureKeys {
     const val KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON = "hide_intl_member_card_upgrade_button"
     const val KEY_REMOVE_MEMBER_CARD_CLICK = "remove_member_card_click"
     const val KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK = "view_member_card_background_on_click"
+    const val KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE = "disable_intl_home_left_screen_swipe"
     const val KEY_ENABLE_NIGHT_MODE_SUPPORT = "enable_night_mode_support"
     const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = "follow_system_night_mode"
     const val KEY_AUTO_DAILY_SIGN_IN = "auto_daily_sign_in"

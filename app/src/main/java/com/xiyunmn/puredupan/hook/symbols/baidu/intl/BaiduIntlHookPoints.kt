@@ -42,6 +42,8 @@ internal object BaiduIntlHookPoints {
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_newfeedhome.NewfeedhomeContext\$Companion"
     const val NEW_FEED_HOME_TITLE_BAR_FRAGMENT =
         "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.FHTitleBarFragment"
+    const val FH_HOME_DRAWER_LAYOUT =
+        "com.baidu.netdisk.ui.widget.FHHomeDrawerLayout"
 
     const val DYNAMIC_CONTEXT =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_dynamic.DynamicContext"

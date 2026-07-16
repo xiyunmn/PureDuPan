@@ -273,6 +273,7 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduIntlThemeCustomize = listOf(
+        FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE,
         FeatureKeys.KEY_ENABLE_NIGHT_MODE_SUPPORT,
         FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
     )

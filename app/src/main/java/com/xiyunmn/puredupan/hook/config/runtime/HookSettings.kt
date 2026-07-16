@@ -121,6 +121,9 @@ internal object HookSettings {
     val isBottomBarBadgeBlocked: Boolean
         get() = ConfigManager.isBottomBarBadgeBlocked
 
+    val isIntlHomeLeftScreenSwipeDisabled: Boolean
+        get() = ConfigManager.isIntlHomeLeftScreenSwipeDisabled
+
     val isAlbumBackupBarBlocked: Boolean
         get() = ConfigManager.isAlbumBackupBarBlocked
 

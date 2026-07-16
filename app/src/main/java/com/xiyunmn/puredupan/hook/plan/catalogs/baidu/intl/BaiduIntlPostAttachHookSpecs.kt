@@ -19,6 +19,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.IntlLaunchHandoffOp
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashRemoveHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabReplaceHook
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlHomeLeftScreenSwipeDisableHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.NightModeSupportHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.SystemNightModeSyncHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.entry.IntlAboutMeModuleEntryHook
@@ -122,6 +123,12 @@ internal object BaiduIntlPostAttachHookSpecs {
     )
 
     val theme = listOf(
+        HookSpec("IntlHomeLeftScreenSwipeDisableHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isIntlHomeLeftScreenSwipeDisabled
+        }, featureKey = FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE) { cl ->
+            IntlHomeLeftScreenSwipeDisableHook.hook(cl)
+        },
         HookSpec("NightModeSupportHook", { context, settings, _ ->
             context.isMain &&
                 settings.isNightModeSupportEnabled

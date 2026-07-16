@@ -156,22 +156,35 @@ internal object TopLevelSettingsRegistry {
 
     val uiSpecs: List<TopLevelSwitchSpec> = emptyList()
 
-    fun themeSpecs(isIntlHost: Boolean): List<TopLevelSwitchSpec> = listOf(
-        TopLevelSwitchSpec(
-            SettingsUserState.KEY_ENABLE_NIGHT_MODE_SUPPORT,
-            UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_LABEL,
-            UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_DESC,
-        ),
-        TopLevelSwitchSpec(
-            SettingsUserState.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
-            UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_LABEL,
-            if (isIntlHost) {
-                UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_INTL_DESC
-            } else {
-                UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_DESC
-            },
-        ),
-    )
+    fun themeSpecs(isIntlHost: Boolean): List<TopLevelSwitchSpec> = buildList {
+        if (isIntlHost) {
+            add(
+                TopLevelSwitchSpec(
+                    SettingsUserState.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE,
+                    UiText.Settings.DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE_LABEL,
+                    UiText.Settings.DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE_DESC,
+                )
+            )
+        }
+        add(
+            TopLevelSwitchSpec(
+                SettingsUserState.KEY_ENABLE_NIGHT_MODE_SUPPORT,
+                UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_LABEL,
+                UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_DESC,
+            )
+        )
+        add(
+            TopLevelSwitchSpec(
+                SettingsUserState.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
+                UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_LABEL,
+                if (isIntlHost) {
+                    UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_INTL_DESC
+                } else {
+                    UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_DESC
+                },
+            )
+        )
+    }
 
     val restrictedThemeSpecs: List<TopLevelSwitchSpec> = listOf(
         TopLevelSwitchSpec(
