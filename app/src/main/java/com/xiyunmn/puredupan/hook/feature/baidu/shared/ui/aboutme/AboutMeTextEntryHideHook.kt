@@ -19,6 +19,7 @@ object AboutMeTextEntryHideHook {
     private const val TEXT_ACCOUNT_EXIT = "账号、退出"
     private const val TEXT_STAR_SKIN = "明星皮肤上线啦"
     private const val TEXT_FREE_DATA_CARD = "免流量卡、领无限空间"
+    private const val KEY_SETTINGS = "settings"
     private const val KEY_PERSONAL_THEME_SETTING = "personal_theme_setting"
 
     private const val MIDDLE_MANAGE_SPACE_ID = "manage_space"
@@ -76,6 +77,9 @@ object AboutMeTextEntryHideHook {
         method.isAccessible = true
         mod.hook(method).intercept { chain ->
             val node = chain.args.firstOrNull()
+            val accountExitNode = isAccountExitEnabled() &&
+                hasStringValue(node, KEY_SETTINGS) &&
+                hasStringValue(node, TEXT_ACCOUNT_EXIT)
             val starNode = isStarSkinEnabled() && hasStringValue(node, KEY_PERSONAL_THEME_SETTING)
             if (isAccountExitEnabled()) {
                 clearStringValues(node, setOf(TEXT_ACCOUNT_EXIT), "account/exit hint")
@@ -87,8 +91,11 @@ object AboutMeTextEntryHideHook {
                 clearStringValues(node, setOf(TEXT_FREE_DATA_CARD), "free-data middle row hint")
             }
             val result = chain.proceed()
+            if (accountExitNode) {
+                clearHolderHint(chain.thisObject, "account/exit")
+            }
             if (starNode) {
-                clearHolderHint(chain.thisObject)
+                clearHolderHint(chain.thisObject, "star-skin")
             }
             result
         }
@@ -282,7 +289,7 @@ object AboutMeTextEntryHideHook {
         }
     }
 
-    private fun clearHolderHint(holder: Any?) {
+    private fun clearHolderHint(holder: Any?, label: String) {
         holder ?: return
         var current: Class<*>? = holder.javaClass
         while (current != null && current != Any::class.java) {
@@ -295,7 +302,7 @@ object AboutMeTextEntryHideHook {
                 runCatching {
                     method.isAccessible = true
                     method.invoke(holder, "")
-                    XposedCompat.logD("[$TAG] star-skin render hint cleared")
+                    XposedCompat.logD("[$TAG] $label render hint cleared")
                 }
                 return
             }
