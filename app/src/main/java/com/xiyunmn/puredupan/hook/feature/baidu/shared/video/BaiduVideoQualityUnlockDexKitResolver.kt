@@ -18,8 +18,10 @@ import org.luckypray.dexkit.query.matchers.MethodMatcher
 /**
  * Resolves video-quality privilege gates under weak and strong obfuscation.
  *
- * Only quality-related methods are resolved. Global SVIP / high-speed /
- * ad-skip privileges are intentionally out of scope.
+ * Strategy (project convention):
+ * 1. DexKit cache / scan first.
+ * 2. Stable class/method names only as verified fallback.
+ * 3. Only quality-related methods are resolved; SVIP / high-speed / ad-skip stay out of scope.
  */
 internal object BaiduVideoQualityUnlockDexKitResolver {
     const val CAN_PLAY_RESOLUTION_CACHE_ID = "baidu_video_quality_can_play_resolution_v1"
@@ -65,18 +67,23 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
     }
 
     fun resolveCanPlayResolution(cl: ClassLoader): Method? {
-        resolveDirectCanPlayResolution(cl)?.let { return it }
-
         when (
             val cached = DexKitCompat.getCachedMethod(TAG, CAN_PLAY_RESOLUTION_CACHE_ID) { ref ->
                 validateCanPlayResolutionRef(cl, ref)
             }
         ) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.NotFound ->
+                return markStableFallback(CAN_PLAY_RESOLUTION_CACHE_ID) {
+                    resolveDirectCanPlayResolution(cl)
+                }
             DexKitCompat.CachedResult.Miss -> Unit
         }
-        if (DexKitCompat.shouldSkipScan(TAG, CAN_PLAY_RESOLUTION_CACHE_ID)) return null
+        if (DexKitCompat.shouldSkipScan(TAG, CAN_PLAY_RESOLUTION_CACHE_ID)) {
+            return markStableFallback(CAN_PLAY_RESOLUTION_CACHE_ID) {
+                resolveDirectCanPlayResolution(cl)
+            }
+        }
 
         val candidates = DexKitCompat.withBridge(TAG, cl, resolverId = CAN_PLAY_RESOLUTION_CACHE_ID) { bridge ->
             bridge.setThreadNum(1)
@@ -120,7 +127,9 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
                 )
             }
             (byClass + byMetadata).distinctBy { it.memberName() }
-        } ?: return null
+        } ?: return markStableFallback(CAN_PLAY_RESOLUTION_CACHE_ID) {
+            resolveDirectCanPlayResolution(cl)
+        }
 
         val rejected = mutableListOf<String>()
         val matches = candidates.mapNotNull { candidate ->
@@ -142,7 +151,9 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             XposedCompat.logW("[$TAG] canPlayResolution unresolved: $diagnostic")
             DexKitCompat.markTargetError(TAG, CAN_PLAY_RESOLUTION_CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, CAN_PLAY_RESOLUTION_CACHE_ID, null)
-            return null
+            return markStableFallback(CAN_PLAY_RESOLUTION_CACHE_ID) {
+                resolveDirectCanPlayResolution(cl)
+            }
         }
 
         val method = best.second
@@ -156,10 +167,6 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
     }
 
     fun resolveVideoPrivilegeOwner(cl: ClassLoader): Class<*>? {
-        XposedCompat.findClassOrNull(BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE, cl)
-            ?.takeIf { isVideoPrivilegeOwner(it) }
-            ?.let { return it }
-
         when (
             val cached = DexKitCompat.getCachedMethod(TAG, VIDEO_PRIVILEGE_OWNER_CACHE_ID) { ref ->
                 if (ref.methodName != OWNER_SENTINEL_METHOD) return@getCachedMethod null
@@ -167,17 +174,26 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             }
         ) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.NotFound ->
+                return markStableOwnerFallback {
+                    resolveDirectVideoPrivilegeOwner(cl)
+                }
             DexKitCompat.CachedResult.Miss -> Unit
         }
-        if (DexKitCompat.shouldSkipScan(TAG, VIDEO_PRIVILEGE_OWNER_CACHE_ID)) return null
+        if (DexKitCompat.shouldSkipScan(TAG, VIDEO_PRIVILEGE_OWNER_CACHE_ID)) {
+            return markStableOwnerFallback {
+                resolveDirectVideoPrivilegeOwner(cl)
+            }
+        }
 
         val owners = DexKitCompat.withBridge(TAG, cl, resolverId = VIDEO_PRIVILEGE_OWNER_CACHE_ID) { bridge ->
             bridge.setThreadNum(1)
             bridge.findClass(
                 FindClass.create().matcher(videoPrivilegeOwnerMatcher()),
             ).map { it.name }
-        } ?: return null
+        } ?: return markStableOwnerFallback {
+            resolveDirectVideoPrivilegeOwner(cl)
+        }
 
         val matched = owners.mapNotNull { className ->
             XposedCompat.findClassOrNull(className, cl)?.takeIf { isVideoPrivilegeOwner(it) }
@@ -188,7 +204,9 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             XposedCompat.logW("[$TAG] VideoPrivilege owner unresolved: $diagnostic")
             DexKitCompat.markTargetError(TAG, VIDEO_PRIVILEGE_OWNER_CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, VIDEO_PRIVILEGE_OWNER_CACHE_ID, null)
-            return null
+            return markStableOwnerFallback {
+                resolveDirectVideoPrivilegeOwner(cl)
+            }
         }
 
         XposedCompat.log("[$TAG] resolved VideoPrivilege owner: ${best.name}")
@@ -203,34 +221,8 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
     fun resolveVideoPrivilegeQualityMethods(cl: ClassLoader): List<Method> {
         val owner = resolveVideoPrivilegeOwner(cl) ?: return emptyList()
 
-        val named = owner.declaredMethods
-            .filter { method ->
-                !Modifier.isStatic(method.modifiers) &&
-                    method.parameterTypes.isEmpty() &&
-                    isBooleanLikeReturn(method.returnType) &&
-                    method.name in QUALITY_METHOD_NAMES
-            }
-            .onEach { method -> method.isAccessible = true }
-        if (named.isNotEmpty()) {
-            XposedCompat.logD(
-                "[$TAG] resolved VideoPrivilege quality methods by name: " +
-                    named.joinToString { "${it.declaringClass.name}.${it.name}" },
-            )
-            return named
-        }
-
-        // Strong/intl: method names are short (b/d/e/f), but they still call
-        // privilegeVideoPlay{Hd,Fhd,Original}Enabled. Resolve by invoke shape only.
-        return resolveObfuscatedVideoPrivilegeQualityMethods(cl, owner)
-    }
-
-    private fun resolveObfuscatedVideoPrivilegeQualityMethods(
-        cl: ClassLoader,
-        owner: Class<*>,
-    ): List<Method> {
         when (
             val cached = DexKitCompat.getCachedMethod(TAG, VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID) { ref ->
-                // Cache stores owner class + comma-separated method names in methodName.
                 if (ref.className != owner.name) return@getCachedMethod null
                 val names = ref.methodName.split(',').filter { it.isNotBlank() }
                 if (names.isEmpty()) return@getCachedMethod null
@@ -246,13 +238,16 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             }
         ) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return emptyList()
+            DexKitCompat.CachedResult.NotFound ->
+                return markStableQualityMethodsFallback(owner)
             DexKitCompat.CachedResult.Miss -> Unit
         }
         if (DexKitCompat.shouldSkipScan(TAG, VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID)) {
-            return emptyList()
+            return markStableQualityMethodsFallback(owner)
         }
 
+        // DexKit path: scan no-arg boolean methods on the owner and keep those that
+        // invoke quality privilege tokens (covers both weak names and strong short names).
         val candidates = DexKitCompat.withBridge(
             TAG,
             cl,
@@ -278,7 +273,7 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
                     invokeDescriptors = methodData.invokes.map { it.descriptor }.toSet(),
                 )
             }
-        } ?: return emptyList()
+        } ?: return markStableQualityMethodsFallback(owner)
 
         val matches = candidates.mapNotNull { candidate ->
             if (candidate.isConstructor || Modifier.isStatic(candidate.modifiers)) return@mapNotNull null
@@ -286,9 +281,11 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             if (candidate.returnTypeName != "boolean" && candidate.returnTypeName != "java.lang.Boolean") {
                 return@mapNotNull null
             }
-            if (!candidate.invokesQualityPrivilege()) return@mapNotNull null
-            // Exclude high-speed / mark / media-speed / isSVip helpers.
-            if (candidate.invokesNonQualityPrivilege()) return@mapNotNull null
+            // Accept either stable quality names or invoke-shape quality gates.
+            val isNamedQuality = candidate.methodName in QUALITY_METHOD_NAMES
+            val isInvokeQuality = candidate.invokesQualityPrivilege() &&
+                !candidate.invokesNonQualityPrivilege()
+            if (!isNamedQuality && !isInvokeQuality) return@mapNotNull null
             val method = owner.declaredMethods.firstOrNull { declared ->
                 declared.name == candidate.methodName &&
                     !Modifier.isStatic(declared.modifiers) &&
@@ -305,17 +302,17 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             val diagnostic = buildDiagnostic(
                 candidates = candidates,
                 matches = emptyList(),
-                rejected = listOf("no no-arg boolean methods invoke quality privilege tokens"),
+                rejected = listOf("no quality gate methods resolved by DexKit"),
             )
             XposedCompat.logW("[$TAG] VideoPrivilege quality methods unresolved: $diagnostic")
             DexKitCompat.markTargetError(TAG, VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID, null)
-            return emptyList()
+            return markStableQualityMethodsFallback(owner)
         }
 
         val joinedNames = methods.joinToString(",") { it.name }
         XposedCompat.log(
-            "[$TAG] resolved VideoPrivilege quality methods by invoke: " +
+            "[$TAG] resolved VideoPrivilege quality methods: " +
                 methods.joinToString { "${it.declaringClass.name}.${it.name}" },
         )
         DexKitCompat.putCachedMethod(
@@ -326,6 +323,60 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
         return methods
     }
 
+    private fun markStableQualityMethodsFallback(owner: Class<*>): List<Method> {
+        val named = owner.declaredMethods
+            .filter { method ->
+                !Modifier.isStatic(method.modifiers) &&
+                    method.parameterTypes.isEmpty() &&
+                    isBooleanLikeReturn(method.returnType) &&
+                    method.name in QUALITY_METHOD_NAMES
+            }
+            .onEach { method -> method.isAccessible = true }
+        if (named.isEmpty()) return emptyList()
+        DexKitCompat.putCachedMethod(
+            TAG,
+            VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID,
+            DexKitCompat.MethodRef(owner.name, named.joinToString(",") { it.name }),
+        )
+        XposedCompat.log(
+            "[$TAG] fallback quality methods: " +
+                named.joinToString { "${it.declaringClass.name}.${it.name}" },
+        )
+        return named
+    }
+
+    private fun markStableOwnerFallback(stableFallback: () -> Class<*>?): Class<*>? {
+        return stableFallback()?.also { owner ->
+            DexKitCompat.putCachedMethod(
+                TAG,
+                VIDEO_PRIVILEGE_OWNER_CACHE_ID,
+                DexKitCompat.MethodRef(owner.name, OWNER_SENTINEL_METHOD),
+            )
+            XposedCompat.log("[$TAG] fallback VideoPrivilege owner: ${owner.name}")
+        }
+    }
+
+    private fun markStableFallback(
+        cacheId: String,
+        stableFallback: () -> Method?,
+    ): Method? {
+        return stableFallback()?.also { method ->
+            DexKitCompat.putCachedMethod(
+                TAG,
+                cacheId,
+                DexKitCompat.MethodRef(method.declaringClass.name, method.name),
+            )
+            XposedCompat.log(
+                "[$TAG] fallback $cacheId: ${method.declaringClass.name}.${method.name}",
+            )
+        }
+    }
+
+    private fun resolveDirectVideoPrivilegeOwner(cl: ClassLoader): Class<*>? {
+        return XposedCompat.findClassOrNull(BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE, cl)
+            ?.takeIf { isVideoPrivilegeOwner(it) }
+    }
+
     private fun DexMethodCandidate.invokesQualityPrivilege(): Boolean {
         return invokeDescriptors.any { descriptor ->
             QUALITY_PRIVILEGE_INVOKE_TOKENS.any { token -> descriptor.contains(token) }
@@ -333,7 +384,6 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
     }
 
     private fun DexMethodCandidate.invokesNonQualityPrivilege(): Boolean {
-        // Keep scope narrow: skip helpers that touch non-quality privileges.
         val blocked = listOf(
             "privilegeVideoHighSpeedChannelEnabled",
             "privilegeMediaSpeedEnable",

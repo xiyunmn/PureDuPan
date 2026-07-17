@@ -16,6 +16,10 @@ import java.lang.reflect.Method
  * - No high-speed / ad-skip / export privilege rewrite
  * - Does not forge account cookies or server identity
  *
+ * Resolution convention:
+ * - DexKit first for canPlayResolution / VideoPrivilege quality methods
+ * - Stable class/method names only as verified fallback
+ *
  * Note: opening client gates only removes VIP dialogs and allows requesting
  * higher-quality streams. Ordinary 1080 (`M3U8_AUTO_1080`) may still fail if
  * the server rejects the stream; AI path (`M3U8_HQ_1080`) is separate.

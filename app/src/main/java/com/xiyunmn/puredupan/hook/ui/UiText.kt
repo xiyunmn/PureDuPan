@@ -25,7 +25,7 @@ object UiText {
         const val BLOCK_APP_STORE_REVIEW_LABEL = "屏蔽评分弹窗"
         const val BLOCK_APP_STORE_REVIEW_DESC = "去除切换到「文件」页面时弹出的评分引导弹窗"
         const val BLOCK_NON_WIFI_DOWNLOAD_DIALOG_LABEL = "移除下载弹窗"
-        const val BLOCK_NON_WIFI_DOWNLOAD_DIALOG_DESC = "点击下载时自动处理非WiFi、仅WiFi传输、流量特权、下载通知引导和下载完成提示"
+        const val BLOCK_NON_WIFI_DOWNLOAD_DIALOG_DESC = "移除点击下载时弹出的非WiFi、仅WiFi传输、流量特权、下载通知引导等弹窗"
         const val BLOCK_NOTIFICATION_PROMPT_LABEL = "移除消息通知弹窗"
         const val BLOCK_NOTIFICATION_PROMPT_DESC = "拦截应用内消息通知引导弹窗"
 
@@ -127,15 +127,15 @@ object UiText {
         const val MEMBER_CARD_SIZE_HEIGHT_LABEL = "会员卡片高度"
         const val MEMBER_CARD_SIZE_DEFAULT = "默认"
         const val HIDE_MEMBER_CARD_OPERATION_LABEL = "会员卡片活动入口"
-        const val HIDE_MEMBER_CARD_OPERATION_DESC = "隐藏会员卡片右上角运营活动入口；该入口来自会员卡运营位下发，当前使用本页视图级隐藏，不影响会员信息展示"
+        const val HIDE_MEMBER_CARD_OPERATION_DESC = "隐藏会员卡片右上角运营活动入口"
         const val HIDE_MEMBER_CARD_BENEFIT_LABEL = "等级福利"
-        const val HIDE_MEMBER_CARD_BENEFIT_DESC = "隐藏会员卡片权益区最后一个等级福利入口，保留其它权益格"
+        const val HIDE_MEMBER_CARD_BENEFIT_DESC = "隐藏会员卡片权益区最后一个等级福利入口"
         const val HIDE_MEMBER_CARD_FIRST_BENEFIT_LABEL = "等级福利卡片 1"
         const val HIDE_MEMBER_CARD_FIRST_BENEFIT_DESC = "隐藏会员卡片第一张等级福利卡片（cl_first_card）"
         const val HIDE_MEMBER_CARD_SECOND_BENEFIT_LABEL = "等级福利卡片 2"
         const val HIDE_MEMBER_CARD_SECOND_BENEFIT_DESC = "隐藏会员卡片第二张等级福利卡片（cl_second_card）"
         const val HIDE_MEMBER_CARD_THIRD_BENEFIT_LABEL = "专属权益"
-        const val HIDE_MEMBER_CARD_THIRD_BENEFIT_DESC = "隐藏会员卡片第三张专属权益卡片（cl_third_card）；当等级福利与专属权益同时隐藏时，会一并隐藏分隔线（view_line）"
+        const val HIDE_MEMBER_CARD_THIRD_BENEFIT_DESC = "隐藏会员卡片第三张专属权益卡片（cl_third_card）"
         const val HIDE_MEMBER_CARD_BENEFIT_BAR_LABEL = "权益栏"
         const val HIDE_MEMBER_CARD_BENEFIT_BAR_DESC = "隐藏会员卡片中部的权益图标栏（ll_root）"
         const val HIDE_MEMBER_CARD_SVIP_LEVEL_LABEL = "SVIP 等级"
@@ -143,14 +143,14 @@ object UiText {
         const val HIDE_MEMBER_CARD_SVIP_STATUS_LABEL = "SVIP 权益尊享中"
         const val HIDE_MEMBER_CARD_SVIP_STATUS_DESC = "隐藏会员卡片内的权益状态文案（tv_duration_content）"
         const val HIDE_MEMBER_CARD_RENEW_BUTTON_LABEL = "续费按钮"
-        const val HIDE_MEMBER_CARD_RENEW_BUTTON_DESC = "隐藏会员卡片内的立即续费/开通按钮，不影响等级和到期时间展示"
+        const val HIDE_MEMBER_CARD_RENEW_BUTTON_DESC = "隐藏会员卡片内的立即续费/开通按钮"
         const val HIDE_INTL_MEMBER_CARD_SVIP_LEVEL_LABEL = "SVIP等级"
         const val HIDE_INTL_MEMBER_CARD_SVIP_LEVEL_DESC = "隐藏会员卡片顶部的 SVIP 等级徽标（iv_vip_image）"
         const val HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON_LABEL = "升级按钮"
         const val HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON_DESC = "隐藏会员卡片右上角的“去升级”按钮（tv_enter）"
         const val MEMBER_CARD_CUSTOMIZE_LABEL = "会员卡片定制"
         const val REMOVE_MEMBER_CARD_CLICK_LABEL = "移除卡片点击跳转"
-        const val REMOVE_MEMBER_CARD_CLICK_DESC = "移除点击会员卡片跳转「我的会员/续费」的事件，不影响卡片内容展示"
+        const val REMOVE_MEMBER_CARD_CLICK_DESC = "移除点击会员卡片跳转「我的会员/续费」的点击事件"
         const val VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK_LABEL = "点击卡片查看背景图片"
         const val VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK_DESC = "将会员卡片点击事件替换为查看当前自定义背景图片；需先选择并启用会员卡背景"
         const val MEMBER_CARD_CUSTOMIZE_DESC = "管理「我的」页会员卡片背景、点击事件、运营活动入口、等级福利和续费按钮"
@@ -175,18 +175,16 @@ object UiText {
         const val AUTO_DAILY_SIGN_IN_DESC = "$AUTO_DAILY_SIGN_IN_RISK_HINT\n启动后自动尝试一次签到"
         const val UNLOCK_VIDEO_SPEED_LABEL = "解锁视频倍速"
         const val UNLOCK_VIDEO_SPEED_DESC =
-            "解除非会员在线视频倍速限制，支持弱/强混淆版本通用解析\n本地播放器改速率，不伪造会员身份"
+            "解除非会员在线视频倍速限制\n本地播放器改速率，不伪造会员身份"
         const val UNLOCK_VIDEO_SPEED_INTL_DESC =
-            "解除非会员在线视频倍速限制\nDexKit 解析成功后覆盖强混淆方法名\n本地播放器改速率，不伪造会员身份"
+            "DexKit 解析成功后生效\n解除非会员在线视频倍速限制\n本地播放器改速率，不伪造会员身份"
         const val UNLOCK_VIDEO_QUALITY_LABEL = "解锁视频画质"
         const val UNLOCK_VIDEO_QUALITY_DESC =
             "解除非会员画质选择的客户端限制，不伪造会员身份\n" +
-                "可开 720/原画等入口；普通超清 1080 若服务端拒流则无法保证可播\n" +
-                "仅放开视频画质权益位，不涉及高速通道/免广告等其它权益"
+                "可开 720P/帧彩映画；普通超清 1080P 若服务端拒流则无法保证可播"
         const val UNLOCK_VIDEO_QUALITY_INTL_DESC =
-            "解除非会员画质选择的客户端限制，不伪造会员身份\n" +
-                "DexKit 解析成功后覆盖强混淆方法名\n" +
-                "可开 720/原画等入口；普通超清 1080 若服务端拒流则无法保证可播"
+            "DexKit 解析成功后生效\n解除非会员画质选择的客户端限制，不伪造会员身份\n" +
+                "可开 720P/帧彩映画；超清 1080P 若服务端拒流则无法保证可播"
         const val AUTO_DAILY_SIGN_IN_INTL_DESC =
             "$AUTO_DAILY_SIGN_IN_RISK_HINT\nDexKit 解析成功后生效\n启动后自动尝试一次签到"
         const val AUTO_DAILY_SIGN_IN_SUCCESS_TOAST = "自动签到成功"

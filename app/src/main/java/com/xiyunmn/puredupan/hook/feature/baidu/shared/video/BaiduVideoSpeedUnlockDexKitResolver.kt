@@ -17,9 +17,9 @@ import org.luckypray.dexkit.query.matchers.MethodMatcher
 /**
  * Resolves video-speed privilege gates under weak and strong obfuscation.
  *
- * Strategy:
- * 1. Prefer stable method names when present (weak domestic builds).
- * 2. Fall back to string/call-shape DexKit scans for renamed Present methods.
+ * Strategy (project convention):
+ * 1. DexKit cache / scan first.
+ * 2. Stable class/method names only as verified fallback.
  * 3. Resolve obfuscated [VideoPrivilege] via Kotlin Metadata when needed.
  */
 internal object BaiduVideoSpeedUnlockDexKitResolver {
@@ -55,11 +55,6 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
     }
 
     fun resolveIsSpeedUpOnlineEnable(cl: ClassLoader): Method? {
-        resolveDirectPresentMethod(
-            cl,
-            BaiduVideoSpeedHookPoints.IS_SPEED_UP_ONLINE_ENABLE_METHOD,
-        )?.let { return it }
-
         return resolveCachedOrScan(
             cl = cl,
             cacheId = ONLINE_ENABLE_CACHE_ID,
@@ -73,15 +68,16 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
                     candidate.usingStrings.contains(BaiduVideoSpeedHookPoints.E_VIDEO_PRIVILEGE_KEY)
             },
             label = "isSpeedUpOnlineEnable",
+            stableFallback = {
+                resolveDirectPresentMethod(
+                    cl,
+                    BaiduVideoSpeedHookPoints.IS_SPEED_UP_ONLINE_ENABLE_METHOD,
+                )
+            },
         )
     }
 
     fun resolveHasSpeedPrivilege(cl: ClassLoader): Method? {
-        resolveDirectPresentMethod(
-            cl,
-            BaiduVideoSpeedHookPoints.HAS_SPEED_PRIVILEGE_METHOD,
-        )?.let { return it }
-
         return resolveCachedOrScan(
             cl = cl,
             cacheId = HAS_PRIVILEGE_CACHE_ID,
@@ -97,40 +93,48 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
                     candidate.looksLikeHasSpeedPrivilege()
             },
             label = "hasSpeedPrivilege",
+            stableFallback = {
+                resolveDirectPresentMethod(
+                    cl,
+                    BaiduVideoSpeedHookPoints.HAS_SPEED_PRIVILEGE_METHOD,
+                )
+            },
         )
     }
 
     fun resolveVideoPrivilegeOnlineSpeedEnable(cl: ClassLoader): Method? {
-        resolveDirectVideoPrivilegeMethod(
-            cl = cl,
-            methodName = BaiduVideoSpeedHookPoints.ONLINE_SPEED_ENABLE_METHOD,
-            paramCount = 1,
-            firstParamBoolean = true,
-        )?.let { return it }
-
         return resolveVideoPrivilegeMethod(
             cl = cl,
             cacheId = VIDEO_PRIVILEGE_ONLINE_CACHE_ID,
             paramCount = 1,
             firstParamBoolean = true,
             label = "onLineSpeedEnable",
+            stableFallback = {
+                resolveDirectVideoPrivilegeMethod(
+                    cl = cl,
+                    methodName = BaiduVideoSpeedHookPoints.ONLINE_SPEED_ENABLE_METHOD,
+                    paramCount = 1,
+                    firstParamBoolean = true,
+                )
+            },
         )
     }
 
     fun resolveVideoPrivilegeSpeedEnable(cl: ClassLoader): Method? {
-        resolveDirectVideoPrivilegeMethod(
-            cl = cl,
-            methodName = BaiduVideoSpeedHookPoints.SPEED_ENABLE_METHOD,
-            paramCount = 1,
-            firstParamBoolean = false,
-        )?.let { return it }
-
         return resolveVideoPrivilegeMethod(
             cl = cl,
             cacheId = VIDEO_PRIVILEGE_PANEL_CACHE_ID,
             paramCount = 1,
             firstParamBoolean = false,
             label = "speedEnable",
+            stableFallback = {
+                resolveDirectVideoPrivilegeMethod(
+                    cl = cl,
+                    methodName = BaiduVideoSpeedHookPoints.SPEED_ENABLE_METHOD,
+                    paramCount = 1,
+                    firstParamBoolean = false,
+                )
+            },
         )
     }
 
@@ -162,6 +166,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
         paramCount: Int,
         firstParamBoolean: Boolean,
         label: String,
+        stableFallback: () -> Method?,
     ): Method? {
         when (
             val cached = DexKitCompat.getCachedMethod(TAG, cacheId) { ref ->
@@ -169,17 +174,19 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
             }
         ) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.NotFound -> return markStableFallback(cacheId, stableFallback)
             DexKitCompat.CachedResult.Miss -> Unit
         }
-        if (DexKitCompat.shouldSkipScan(TAG, cacheId)) return null
+        if (DexKitCompat.shouldSkipScan(TAG, cacheId)) {
+            return markStableFallback(cacheId, stableFallback)
+        }
 
         val ownerClasses = DexKitCompat.withBridge(TAG, cl, resolverId = cacheId) { bridge ->
             bridge.setThreadNum(1)
             bridge.findClass(
                 FindClass.create().matcher(videoPrivilegeOwnerMatcher()),
             ).map { it.name }
-        } ?: return null
+        } ?: return markStableFallback(cacheId, stableFallback)
 
         val rejected = mutableListOf<String>()
         val matches = ownerClasses.flatMap { className ->
@@ -187,6 +194,25 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
             if (!isVideoPrivilegeOwner(clazz)) return@flatMap emptyList()
             clazz.declaredMethods.mapNotNull { method ->
                 if (!isVideoPrivilegeBooleanMethod(method, paramCount, firstParamBoolean)) {
+                    return@mapNotNull null
+                }
+                // Prefer the stable method name when available on this owner.
+                if (label == "onLineSpeedEnable" &&
+                    method.name != BaiduVideoSpeedHookPoints.ONLINE_SPEED_ENABLE_METHOD &&
+                    clazz.declaredMethods.any {
+                        it.name == BaiduVideoSpeedHookPoints.ONLINE_SPEED_ENABLE_METHOD &&
+                            isVideoPrivilegeBooleanMethod(it, paramCount, firstParamBoolean)
+                    }
+                ) {
+                    return@mapNotNull null
+                }
+                if (label == "speedEnable" &&
+                    method.name != BaiduVideoSpeedHookPoints.SPEED_ENABLE_METHOD &&
+                    clazz.declaredMethods.any {
+                        it.name == BaiduVideoSpeedHookPoints.SPEED_ENABLE_METHOD &&
+                            isVideoPrivilegeBooleanMethod(it, paramCount, firstParamBoolean)
+                    }
+                ) {
                     return@mapNotNull null
                 }
                 method.isAccessible = true
@@ -205,7 +231,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
             XposedCompat.logW("[$TAG] $label unresolved: $diagnostic")
             DexKitCompat.markTargetError(TAG, cacheId, diagnostic)
             DexKitCompat.putCachedMethod(TAG, cacheId, null)
-            return null
+            return markStableFallback(cacheId, stableFallback)
         }
 
         XposedCompat.log("[$TAG] resolved $label: ${best.declaringClass.name}.${best.name}")
@@ -223,6 +249,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
         matcherFactory: () -> MethodMatcher,
         accept: (DexMethodCandidate) -> Boolean,
         label: String,
+        stableFallback: () -> Method?,
     ): Method? {
         when (
             val cached = DexKitCompat.getCachedMethod(TAG, cacheId) { ref ->
@@ -230,10 +257,12 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
             }
         ) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
+            DexKitCompat.CachedResult.NotFound -> return markStableFallback(cacheId, stableFallback)
             DexKitCompat.CachedResult.Miss -> Unit
         }
-        if (DexKitCompat.shouldSkipScan(TAG, cacheId)) return null
+        if (DexKitCompat.shouldSkipScan(TAG, cacheId)) {
+            return markStableFallback(cacheId, stableFallback)
+        }
 
         val candidates = DexKitCompat.withBridge(TAG, cl, resolverId = cacheId) { bridge ->
             bridge.setThreadNum(1)
@@ -251,7 +280,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
                     invokeDescriptors = methodData.invokes.map { it.descriptor }.toSet(),
                 )
             }
-        } ?: return null
+        } ?: return markStableFallback(cacheId, stableFallback)
 
         val rejected = mutableListOf<String>()
         val matches = candidates.mapNotNull { candidate ->
@@ -268,7 +297,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
             XposedCompat.logW("[$TAG] $label unresolved: $diagnostic")
             DexKitCompat.markTargetError(TAG, cacheId, diagnostic)
             DexKitCompat.putCachedMethod(TAG, cacheId, null)
-            return null
+            return markStableFallback(cacheId, stableFallback)
         }
 
         val method = best.second
@@ -279,6 +308,22 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
         return method
+    }
+
+    private fun markStableFallback(
+        cacheId: String,
+        stableFallback: () -> Method?,
+    ): Method? {
+        return stableFallback()?.also { method ->
+            DexKitCompat.putCachedMethod(
+                TAG,
+                cacheId,
+                DexKitCompat.MethodRef(method.declaringClass.name, method.name),
+            )
+            XposedCompat.log(
+                "[$TAG] fallback $cacheId: ${method.declaringClass.name}.${method.name}",
+            )
+        }
     }
 
     private fun validateCandidate(

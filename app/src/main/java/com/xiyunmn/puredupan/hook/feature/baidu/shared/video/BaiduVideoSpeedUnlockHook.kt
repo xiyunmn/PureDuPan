@@ -12,7 +12,7 @@ import java.lang.reflect.Method
  *
  * Primary gate: MemberPrivilegeContext.privilegeMediaSpeedEnable (stable across hosts).
  * Insurance gates: VideoSpeedUpPresent / VideoPrivilege boolean methods, resolved via
- * stable names on weak builds and DexKit string/call-shape on strong builds.
+ * DexKit first with stable-name fallback.
  */
 object BaiduVideoSpeedUnlockHook {
     private const val TAG = "BaiduVideoSpeedUnlockHook"
