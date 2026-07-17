@@ -1,7 +1,7 @@
 name=PureDuPan
 description=百度网盘净化 Xposed 模块 - 去广告、精简界面、性能优化
 author=xiyunmn
-version=1.3.0
+version=1.4.0
 minApiVersion=101
 targetApiVersion=101
 staticScope=false
