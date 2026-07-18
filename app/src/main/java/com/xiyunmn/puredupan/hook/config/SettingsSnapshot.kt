@@ -30,6 +30,10 @@ data class SettingsSnapshot(
     val isHomeMemoriesSectionHidden: Boolean = false,
     val isHomeSaveSectionHidden: Boolean = false,
     val isHomeRecentSectionHidden: Boolean = false,
+    val isHomeRecentItemLimitEnabled: Boolean = false,
+    val homeRecentItemLimit: Int = 3,
+    val isHomeSaveVerticalLayoutEnabled: Boolean = false,
+    val homeSaveItemLimit: Int = 3,
     val isFilePageCustomizeEnabled: Boolean = false,
     val isFilePageBottomSafetyTipHidden: Boolean = false,
     val isDownloadPageCustomizeEnabled: Boolean = false,
@@ -154,6 +158,9 @@ data class SettingsSnapshot(
             FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT -> isIntlAlbumAiInitBlocked
             FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE -> isFollowSystemNightModeEnabled
             FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE -> isIntlHomeLeftScreenSwipeDisabled
+            FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED -> isHomeRecentItemLimitEnabled
+            FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT ->
+                isHomeRecentItemLimitEnabled && homeRecentItemLimit != 3
             else -> false
         }
     }
@@ -186,6 +193,8 @@ data class SettingsSnapshot(
             FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT,
             FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
             FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE,
+            FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED,
+            FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT,
         )
     }
 }

@@ -61,6 +61,10 @@ internal object SettingsDialogLayout {
         return createSectionTitle(context, padding, UiText.Settings.CUSTOM_HIDE_SECTION_SECTION_TITLE)
     }
 
+    fun createCustomSectionDisplaySectionTitle(context: Context, padding: Int): TextView {
+        return createSectionTitle(context, padding, UiText.Settings.CUSTOM_SECTION_DISPLAY_SECTION_TITLE)
+    }
+
     fun createMyPageContentPositionSectionTitle(context: Context, padding: Int): TextView {
         return createSectionTitle(context, padding, UiText.Settings.MY_PAGE_CONTENT_POSITION_SECTION_TITLE)
     }

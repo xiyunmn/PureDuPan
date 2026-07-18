@@ -30,6 +30,16 @@ internal object SettingsUserState {
     const val KEY_HIDE_HOME_MEMORIES_SECTION = ConfigManager.KEY_HIDE_HOME_MEMORIES_SECTION
     const val KEY_HIDE_HOME_SAVE_SECTION = ConfigManager.KEY_HIDE_HOME_SAVE_SECTION
     const val KEY_HIDE_HOME_RECENT_SECTION = ConfigManager.KEY_HIDE_HOME_RECENT_SECTION
+    const val KEY_HOME_RECENT_ITEM_LIMIT_ENABLED = ConfigManager.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED
+    const val KEY_HOME_RECENT_ITEM_LIMIT = ConfigManager.KEY_HOME_RECENT_ITEM_LIMIT
+    const val KEY_HOME_SAVE_VERTICAL_LAYOUT = ConfigManager.KEY_HOME_SAVE_VERTICAL_LAYOUT
+    const val KEY_HOME_SAVE_ITEM_LIMIT = ConfigManager.KEY_HOME_SAVE_ITEM_LIMIT
+    const val HOME_RECENT_ITEM_LIMIT_MIN = 1
+    const val HOME_RECENT_ITEM_LIMIT_MAX = 10
+    const val HOME_RECENT_ITEM_LIMIT_DEFAULT = 3
+    const val HOME_SAVE_ITEM_LIMIT_MIN = 1
+    const val HOME_SAVE_ITEM_LIMIT_MAX = 10
+    const val HOME_SAVE_ITEM_LIMIT_DEFAULT = 3
     const val KEY_FILE_PAGE_CUSTOMIZE = ConfigManager.KEY_FILE_PAGE_CUSTOMIZE
     const val KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP =
         ConfigManager.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP
@@ -191,6 +201,16 @@ internal object SettingsUserState {
 
     fun readHomeTopPromotionHidden(prefs: SharedPreferences): Boolean {
         return ConfigManager.readHomeTopPromotionHidden(prefs)
+    }
+
+    fun readHomeRecentItemLimit(prefs: SharedPreferences): Int {
+        return prefs.getInt(KEY_HOME_RECENT_ITEM_LIMIT, HOME_RECENT_ITEM_LIMIT_DEFAULT)
+            .coerceIn(HOME_RECENT_ITEM_LIMIT_MIN, HOME_RECENT_ITEM_LIMIT_MAX)
+    }
+
+    fun readHomeSaveItemLimit(prefs: SharedPreferences): Int {
+        return prefs.getInt(KEY_HOME_SAVE_ITEM_LIMIT, HOME_SAVE_ITEM_LIMIT_DEFAULT)
+            .coerceIn(HOME_SAVE_ITEM_LIMIT_MIN, HOME_SAVE_ITEM_LIMIT_MAX)
     }
 
     fun normalizeBottomBarSelection(selection: BottomBarTabSelection): BottomBarTabSelection {

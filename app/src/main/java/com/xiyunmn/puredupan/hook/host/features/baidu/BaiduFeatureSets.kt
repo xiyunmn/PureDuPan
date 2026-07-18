@@ -99,6 +99,10 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION,
         FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION,
         FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION,
+        FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED,
+        FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT,
+        FeatureKeys.KEY_HOME_SAVE_VERTICAL_LAYOUT,
+        FeatureKeys.KEY_HOME_SAVE_ITEM_LIMIT,
         FeatureKeys.KEY_HIDE_HOME_TOOLBAR,
         FeatureKeys.KEY_REMOVE_HOME_FAB,
     )

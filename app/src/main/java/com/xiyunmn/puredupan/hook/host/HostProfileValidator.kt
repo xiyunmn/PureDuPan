@@ -306,6 +306,16 @@ internal object HostProfileValidator {
             }
             requireRequiredClassNames(profile, points.recentCardDataUseCaseClassNames, "home recent card data use case")
         }
+        if (FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT in featureKeys) {
+            requireRequiredClassNames(
+                profile,
+                points.recentCardViewModelClassNames,
+                "home recent card view model",
+            )
+        }
+        if (FeatureKeys.KEY_HOME_SAVE_VERTICAL_LAYOUT in featureKeys) {
+            requireRequiredClassNames(profile, points.saveCardViewClassNames, "home save card view")
+        }
         if (FeatureKeys.KEY_HIDE_HOME_BANNER in featureKeys) {
             requireRequiredClassName(profile, points.netdiskContextCompanionClassName, "netdisk context companion")
             require(!points.newHomeBannerCardViewMethodName.isNullOrBlank()) {

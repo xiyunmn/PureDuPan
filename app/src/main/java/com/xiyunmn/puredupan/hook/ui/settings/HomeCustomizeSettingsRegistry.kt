@@ -7,6 +7,7 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 internal enum class HomeCustomizeSettingsSection {
     TOP_WIDGET,
     CONTENT_SECTION,
+    CUSTOM_SECTION_DISPLAY,
 }
 
 internal data class HomeCustomizeSwitchSpec(
@@ -77,6 +78,18 @@ internal object HomeCustomizeSettingsRegistry {
             UiText.Settings.HIDE_HOME_MEMORIES_SECTION_LABEL,
             UiText.Settings.HIDE_HOME_MEMORIES_SECTION_DESC,
             HomeCustomizeSettingsSection.CONTENT_SECTION,
+        ),
+        booleanSpec(
+            SettingsUserState.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED,
+            UiText.Settings.HOME_RECENT_ITEM_LIMIT_LABEL,
+            UiText.Settings.HOME_RECENT_ITEM_LIMIT_DESC,
+            HomeCustomizeSettingsSection.CUSTOM_SECTION_DISPLAY,
+        ),
+        booleanSpec(
+            SettingsUserState.KEY_HOME_SAVE_VERTICAL_LAYOUT,
+            UiText.Settings.HOME_SAVE_VERTICAL_LAYOUT_LABEL,
+            UiText.Settings.HOME_SAVE_VERTICAL_LAYOUT_DESC,
+            HomeCustomizeSettingsSection.CUSTOM_SECTION_DISPLAY,
         ),
     )
 

@@ -267,6 +267,18 @@ internal object HookSettings {
     val isHomeRecentSectionHidden: Boolean
         get() = ConfigManager.isHomeRecentSectionHidden
 
+    val isHomeRecentItemLimitEnabled: Boolean
+        get() = ConfigManager.isHomeRecentItemLimitEnabled
+
+    val homeRecentItemLimit: Int
+        get() = ConfigManager.homeRecentItemLimit
+
+    val isHomeSaveVerticalLayoutEnabled: Boolean
+        get() = ConfigManager.isHomeSaveVerticalLayoutEnabled
+
+    val homeSaveItemLimit: Int
+        get() = ConfigManager.homeSaveItemLimit
+
     val isPerformanceOptimizeEnabled: Boolean
         get() = ConfigManager.isPerformanceOptimizeEnabled
 

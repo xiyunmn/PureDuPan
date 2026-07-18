@@ -22,6 +22,8 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.DomesticCookie
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticColdStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticHotStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageSafetyFooterUseCaseDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeRecentItemLimitDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeRecentScrollRangeDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeMiddleViewHolderDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMePopupResponseHelperDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.search.SearchPageVoiceSearchDexKitResolver
@@ -210,7 +212,21 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             feature = "unlock video quality",
             featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,
         ),
-    )
+    ) + HomeRecentItemLimitDexKitResolver.cacheIds.map { id ->
+        DexKitTargetDescriptor(
+            id = id,
+            target = "home recent item limit method",
+            feature = "home recent item limit",
+            featureKey = FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT,
+        )
+    } + HomeRecentScrollRangeDexKitResolver.cacheIds.map { id ->
+        DexKitTargetDescriptor(
+            id = id,
+            target = "home recent scroll range method",
+            feature = "home recent item limit",
+            featureKey = FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED,
+        )
+    }
 
     override fun buildTasks(
         host: DexKitHostContext,
@@ -311,6 +327,20 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(FilePageSafetyFooterUseCaseDexKitResolver.CACHE_ID) {
                 FilePageSafetyFooterUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (available(FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT)) {
+            HomeRecentItemLimitDexKitResolver.cacheIds.forEach { id ->
+                tasks += DexKitWarmUpTask(id) {
+                    HomeRecentItemLimitDexKitResolver.warmUpDexKitCache(classLoader)
+                }
+            }
+        }
+        if (available(FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED)) {
+            HomeRecentScrollRangeDexKitResolver.cacheIds.forEach { id ->
+                tasks += DexKitWarmUpTask(id) {
+                    HomeRecentScrollRangeDexKitResolver.warmUpDexKitCache(classLoader)
+                }
             }
         }
         if (

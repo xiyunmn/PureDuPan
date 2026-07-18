@@ -47,6 +47,10 @@ object ConfigManager {
     const val KEY_HIDE_HOME_MEMORIES_SECTION = FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION
     const val KEY_HIDE_HOME_SAVE_SECTION = FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION
     const val KEY_HIDE_HOME_RECENT_SECTION = FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION
+    const val KEY_HOME_RECENT_ITEM_LIMIT_ENABLED = FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED
+    const val KEY_HOME_RECENT_ITEM_LIMIT = FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT
+    const val KEY_HOME_SAVE_VERTICAL_LAYOUT = FeatureKeys.KEY_HOME_SAVE_VERTICAL_LAYOUT
+    const val KEY_HOME_SAVE_ITEM_LIMIT = FeatureKeys.KEY_HOME_SAVE_ITEM_LIMIT
     const val KEY_FILE_PAGE_CUSTOMIZE = FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE
     const val KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP = FeatureKeys.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP
     const val KEY_DOWNLOAD_PAGE_CUSTOMIZE = FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE
@@ -176,6 +180,11 @@ object ConfigManager {
     val isHomeMemoriesSectionHidden: Boolean get() = settingsSnapshot.isHomeMemoriesSectionHidden
     val isHomeSaveSectionHidden: Boolean get() = settingsSnapshot.isHomeSaveSectionHidden
     val isHomeRecentSectionHidden: Boolean get() = settingsSnapshot.isHomeRecentSectionHidden
+    val isHomeRecentItemLimitEnabled: Boolean get() = settingsSnapshot.isHomeRecentItemLimitEnabled
+    val homeRecentItemLimit: Int get() = settingsSnapshot.homeRecentItemLimit
+    val isHomeSaveVerticalLayoutEnabled: Boolean
+        get() = settingsSnapshot.isHomeSaveVerticalLayoutEnabled
+    val homeSaveItemLimit: Int get() = settingsSnapshot.homeSaveItemLimit
     val isFilePageCustomizeEnabled: Boolean get() = settingsSnapshot.isFilePageCustomizeEnabled
     val isFilePageBottomSafetyTipHidden: Boolean get() = settingsSnapshot.isFilePageBottomSafetyTipHidden
     val isDownloadPageCustomizeEnabled: Boolean get() = settingsSnapshot.isDownloadPageCustomizeEnabled
@@ -451,6 +460,12 @@ object ConfigManager {
         fun featureBoolean(key: String, defaultValue: Boolean = false): Boolean {
             return p.getBoolean(key, defaultValue) && isFeatureAvailable(key)
         }
+        fun featureInt(key: String, defaultValue: Int): Int {
+            return if (isFeatureAvailable(key)) p.getInt(key, defaultValue) else defaultValue
+        }
+        val homeRecentItemLimitEnabled = featureBoolean(KEY_HOME_RECENT_ITEM_LIMIT_ENABLED, false)
+        val homeRecentItemLimit = featureInt(KEY_HOME_RECENT_ITEM_LIMIT, 3).coerceIn(1, 10)
+        val homeSaveItemLimit = featureInt(KEY_HOME_SAVE_ITEM_LIMIT, 3).coerceIn(1, 10)
         val memberCardBackgroundReplaced = featureBoolean(KEY_REPLACE_MEMBER_CARD_BACKGROUND)
         val memberCardBackgroundUri = p.getString(KEY_MEMBER_CARD_BACKGROUND_URI, null)
         val memberCardClickRemoved = featureBoolean(KEY_REMOVE_MEMBER_CARD_CLICK, false)
@@ -484,7 +499,9 @@ object ConfigManager {
                 featureBoolean(KEY_HIDE_HOME_BANNER, false) ||
                 featureBoolean(KEY_HIDE_HOME_MEMORIES_SECTION, false) ||
                 featureBoolean(KEY_HIDE_HOME_SAVE_SECTION, false) ||
-                featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false)
+                featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false) ||
+                homeRecentItemLimitEnabled ||
+                featureBoolean(KEY_HOME_SAVE_VERTICAL_LAYOUT, false)
         val hasFilePageOptionEnabled =
             featureBoolean(KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP, false) ||
                 featureBoolean(KEY_BLOCK_ALBUM_BACKUP_BAR, false)
@@ -581,6 +598,10 @@ object ConfigManager {
             isHomeMemoriesSectionHidden = featureBoolean(KEY_HIDE_HOME_MEMORIES_SECTION, false),
             isHomeSaveSectionHidden = featureBoolean(KEY_HIDE_HOME_SAVE_SECTION, false),
             isHomeRecentSectionHidden = featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false),
+            isHomeRecentItemLimitEnabled = homeRecentItemLimitEnabled,
+            homeRecentItemLimit = homeRecentItemLimit,
+            isHomeSaveVerticalLayoutEnabled = featureBoolean(KEY_HOME_SAVE_VERTICAL_LAYOUT, false),
+            homeSaveItemLimit = homeSaveItemLimit,
             isFilePageCustomizeEnabled = featureBoolean(KEY_FILE_PAGE_CUSTOMIZE, hasFilePageOptionEnabled),
             isFilePageBottomSafetyTipHidden = featureBoolean(KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP, false),
             isDownloadPageCustomizeEnabled = featureBoolean(KEY_DOWNLOAD_PAGE_CUSTOMIZE, hasDownloadPageOptionEnabled),

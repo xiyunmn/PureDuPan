@@ -18,6 +18,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlAboutMeTo
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPagePromotionAdDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageSafetyFooterUseCaseDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeRecentItemLimitDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeMiddleViewHolderDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMePopupResponseHelperDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoQualityUnlockDexKitResolver
@@ -151,7 +152,14 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,
             feature = "解锁视频画质",
         ),
-    )
+    ) + HomeRecentItemLimitDexKitResolver.cacheIds.map { id ->
+        DexKitTargetDescriptor(
+            id = id,
+            target = "home recent item limit method",
+            featureKey = FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT,
+            feature = "首页最近栏数量",
+        )
+    }
 
     override fun buildTasks(
         host: DexKitHostContext,
@@ -209,6 +217,13 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(FilePageSafetyFooterUseCaseDexKitResolver.CACHE_ID) {
                 FilePageSafetyFooterUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (available(FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT)) {
+            HomeRecentItemLimitDexKitResolver.cacheIds.forEach { id ->
+                tasks += DexKitWarmUpTask(id) {
+                    HomeRecentItemLimitDexKitResolver.warmUpDexKitCache(classLoader)
+                }
             }
         }
         if (

@@ -287,6 +287,26 @@ internal object PageCustomizeSettingsDialogs {
                 isFeatureVisible = settingsSession::isFeatureVisible,
             )
             val rowsByKey = createRowsByKey(context, prefs, padding, homeItems)
+            val recentItemLimitSlider = MemberCardSettingsControls.createIntSliderRow(
+                context = context,
+                label = UiText.Settings.HOME_RECENT_ITEM_LIMIT_VALUE_LABEL,
+                description = UiText.Settings.HOME_RECENT_ITEM_LIMIT_VALUE_DESC,
+                padding = padding,
+                minValue = SettingsUserState.HOME_RECENT_ITEM_LIMIT_MIN,
+                maxValue = SettingsUserState.HOME_RECENT_ITEM_LIMIT_MAX,
+                initialValue = SettingsUserState.readHomeRecentItemLimit(prefs),
+                valueFormatter = { value -> "${value} 条" },
+            )
+            val saveItemLimitSlider = MemberCardSettingsControls.createIntSliderRow(
+                context = context,
+                label = UiText.Settings.HOME_SAVE_ITEM_LIMIT_LABEL,
+                description = UiText.Settings.HOME_SAVE_ITEM_LIMIT_DESC,
+                padding = padding,
+                minValue = SettingsUserState.HOME_SAVE_ITEM_LIMIT_MIN,
+                maxValue = SettingsUserState.HOME_SAVE_ITEM_LIMIT_MAX,
+                initialValue = SettingsUserState.readHomeSaveItemLimit(prefs),
+                valueFormatter = { value -> "${value} 项" },
+            )
 
             fun visibleHomeRows(section: HomeCustomizeSettingsSection): List<View> {
                 return PageCustomizeSettingsItemsBuilder.homeCustomizeItemsIn(section, homeItems)
@@ -309,12 +329,64 @@ internal object PageCustomizeSettingsDialogs {
                 rows = visibleHomeRows(HomeCustomizeSettingsSection.CONTENT_SECTION),
                 addDividerBefore = root.childCount > 0,
             )
+            val customSectionRows = buildList {
+                PageCustomizeSettingsItemsBuilder.homeCustomizeItemsIn(
+                    HomeCustomizeSettingsSection.CUSTOM_SECTION_DISPLAY,
+                    homeItems,
+                ).filter { it.item.visible }.forEach { entry ->
+                    rowsByKey[entry.key]?.let(::add)
+                    if (
+                        entry.key == SettingsUserState.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED &&
+                        settingsSession.isFeatureVisible(SettingsUserState.KEY_HOME_RECENT_ITEM_LIMIT)
+                    ) {
+                        add(recentItemLimitSlider.row)
+                    }
+                    if (
+                        entry.key == SettingsUserState.KEY_HOME_SAVE_VERTICAL_LAYOUT &&
+                        settingsSession.isFeatureVisible(SettingsUserState.KEY_HOME_SAVE_ITEM_LIMIT)
+                    ) {
+                        add(saveItemLimitSlider.row)
+                    }
+                }
+            }
+            SettingsDialogLayout.addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = SettingsDialogLayout.createCustomSectionDisplaySectionTitle(context, padding),
+                rows = customSectionRows,
+                addDividerBefore = root.childCount > 0,
+            )
 
             val switchesByKey = collectSwitchesByKey(rowsByKey)
             if (switchesByKey.values.any { it == null }) {
                 XposedCompat.logW("$LOG_TAG showHome failed: switch view missing")
                 return
             }
+            val recentItemLimitSwitch =
+                switchesByKey[SettingsUserState.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED]
+            val saveVerticalLayoutSwitch =
+                switchesByKey[SettingsUserState.KEY_HOME_SAVE_VERTICAL_LAYOUT]
+            fun updateRecentItemLimitSliderEnabled() {
+                setViewTreeEnabled(
+                    recentItemLimitSlider.row,
+                    recentItemLimitSwitch?.isChecked == true,
+                )
+            }
+            recentItemLimitSwitch?.setOnCheckedChangeListener { _, _ ->
+                updateRecentItemLimitSliderEnabled()
+            }
+            updateRecentItemLimitSliderEnabled()
+            fun updateSaveItemLimitSliderEnabled() {
+                setViewTreeEnabled(
+                    saveItemLimitSlider.row,
+                    saveVerticalLayoutSwitch?.isChecked == true,
+                )
+            }
+            saveVerticalLayoutSwitch?.setOnCheckedChangeListener { _, _ ->
+                updateSaveItemLimitSliderEnabled()
+            }
+            updateSaveItemLimitSliderEnabled()
 
             val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.HOME_CUSTOMIZE_DIALOG_TITLE)
@@ -328,6 +400,8 @@ internal object PageCustomizeSettingsDialogs {
                         editor = prefs.edit(),
                         isFeatureVisible = settingsSession::isFeatureVisible,
                         isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                        recentItemLimit = recentItemLimitSlider.getValue(),
+                        saveItemLimit = saveItemLimitSlider.getValue(),
                     ).apply()
                     Toast.makeText(
                         context,
@@ -522,6 +596,20 @@ internal object PageCustomizeSettingsDialogs {
             switchesByKey[key] = SettingsSwitchRows.findSwitchView(row)
         }
         return switchesByKey
+    }
+
+    private fun setViewTreeEnabled(root: View, enabled: Boolean) {
+        setViewEnabledRecursively(root, enabled)
+        root.alpha = if (enabled) 1f else 0.45f
+    }
+
+    private fun setViewEnabledRecursively(root: View, enabled: Boolean) {
+        root.isEnabled = enabled
+        if (root is ViewGroup) {
+            for (index in 0 until root.childCount) {
+                setViewEnabledRecursively(root.getChildAt(index), enabled)
+            }
+        }
     }
 
     private fun List<KeyedSwitchItem>.visibleRows(rowsByKey: Map<String, View>): List<View> {

@@ -336,6 +336,8 @@ internal object PageCustomizeSettingsItemsBuilder {
         editor: SharedPreferences.Editor,
         isFeatureVisible: (String) -> Boolean,
         isChecked: (String) -> Boolean,
+        recentItemLimit: Int,
+        saveItemLimit: Int,
     ): SharedPreferences.Editor {
         val hasEnabledOption = hasEnabledHomeCustomizeOption(
             isFeatureVisible = isFeatureVisible,
@@ -346,6 +348,24 @@ internal object PageCustomizeSettingsItemsBuilder {
             isFeatureVisible(spec.key)
         }.forEach { spec ->
             editor.putBoolean(spec.key, isChecked(spec.key))
+        }
+        if (isFeatureVisible(SettingsUserState.KEY_HOME_RECENT_ITEM_LIMIT)) {
+            editor.putInt(
+                SettingsUserState.KEY_HOME_RECENT_ITEM_LIMIT,
+                recentItemLimit.coerceIn(
+                    SettingsUserState.HOME_RECENT_ITEM_LIMIT_MIN,
+                    SettingsUserState.HOME_RECENT_ITEM_LIMIT_MAX,
+                ),
+            )
+        }
+        if (isFeatureVisible(SettingsUserState.KEY_HOME_SAVE_ITEM_LIMIT)) {
+            editor.putInt(
+                SettingsUserState.KEY_HOME_SAVE_ITEM_LIMIT,
+                saveItemLimit.coerceIn(
+                    SettingsUserState.HOME_SAVE_ITEM_LIMIT_MIN,
+                    SettingsUserState.HOME_SAVE_ITEM_LIMIT_MAX,
+                ),
+            )
         }
         return editor
     }
