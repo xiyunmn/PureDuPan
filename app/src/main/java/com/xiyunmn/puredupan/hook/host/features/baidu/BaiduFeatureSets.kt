@@ -254,6 +254,7 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduIntlHomeCustomize = listOf(
+        FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER,
         FeatureKeys.KEY_HIDE_HOME_BANNER,
     )
 
