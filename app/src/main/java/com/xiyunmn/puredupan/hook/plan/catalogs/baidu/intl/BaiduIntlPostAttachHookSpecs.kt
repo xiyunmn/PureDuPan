@@ -20,6 +20,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotSta
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabReplaceHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlHomeLeftScreenSwipeDisableHook
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlHomeSaveCardCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.NightModeSupportHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.SystemNightModeSyncHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.entry.IntlAboutMeModuleEntryHook
@@ -32,6 +33,17 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoSpeedUnlo
 import com.xiyunmn.puredupan.hook.plan.HookSpec
 
 internal object BaiduIntlPostAttachHookSpecs {
+    val home = listOf(
+        HookSpec("IntlHomeSaveCardCustomizeHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isHomeCustomizeEnabled &&
+                settings.isHomeSaveVerticalLayoutEnabled &&
+                !settings.isHomeSaveSectionHidden
+        }, featureKey = FeatureKeys.KEY_HOME_SAVE_VERTICAL_LAYOUT) { cl ->
+            IntlHomeSaveCardCustomizeHook.hook(cl)
+        },
+    )
+
     val automation = listOf(
         HookSpec("IntlAutoDailySignInHook", { context, _, _ ->
             context.isMain

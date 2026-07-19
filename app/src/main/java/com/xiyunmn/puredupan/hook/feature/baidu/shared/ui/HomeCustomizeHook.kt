@@ -76,7 +76,9 @@ object HomeCustomizeHook {
             installedCount += hookSearchboxAigcAnimation(cl)
             installedCount += hookRecentCardDataUseCase(cl)
             installedCount += hookSaveCardViewModel(cl)
-            installedCount += hookSaveCardVerticalLayout(cl)
+            if (!usesIntlSaveCardImplementation()) {
+                installedCount += hookSaveCardVerticalLayout(cl)
+            }
             installedCount += hookHiddenFeedScrollContainer(cl)
             installedCount += hookHomeStoryCardRenderEntry(cl)
             installedCount += hookHomeHeaderCardRenderEntries(cl)
@@ -615,12 +617,16 @@ object HomeCustomizeHook {
                 listOf(methods.cacheWriter, methods.stateWriter).forEach { method ->
                     mod.hook(method).intercept { chain ->
                         val limited = recentLimitForCall.get()
-                        if (
+                        val rewrittenArgs = if (
                             limited != null &&
                             isRecentItemLimitCustomized() &&
                             !HookSettings.isHomeRecentSectionHidden
                         ) {
-                            chain.args[0] = limited
+                            val args = chain.args.toTypedArray()
+                            args[0] = limited
+                            args
+                        } else {
+                            null
                         }
                         XposedCompat.logD {
                             "[HomeCustomizeHook] recent writer: " +
@@ -628,7 +634,7 @@ object HomeCustomizeHook {
                                 "input=${(chain.args.firstOrNull() as? List<*>)?.size}, " +
                                 "activeLimit=${limited?.size}"
                         }
-                        chain.proceed()
+                        if (rewrittenArgs != null) chain.proceed(rewrittenArgs) else chain.proceed()
                     }
                 }
             }
@@ -2056,4 +2062,8 @@ object HomeCustomizeHook {
 
     private fun homeCustomizeHookPoints() =
         BaiduFeatureRuntime.currentHomeCustomizeHookPoints()
+
+    private fun usesIntlSaveCardImplementation(): Boolean {
+        return BaiduFeatureRuntime.usesIntlHomeSaveCardImplementation()
+    }
 }

@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime
 import android.content.Context
 import com.xiyunmn.puredupan.hook.host.HostPackages
 import com.xiyunmn.puredupan.hook.host.HostRuntimeState
+import com.xiyunmn.puredupan.hook.host.HomeSaveCardImplementation
 
 internal object BaiduFeatureRuntime {
     fun currentMainActivityClassName(): String? =
@@ -31,6 +32,9 @@ internal object BaiduFeatureRuntime {
 
     fun currentHomeCustomizeHookPoints() =
         HostRuntimeState.currentHomeCustomizeHookPoints()
+
+    fun usesIntlHomeSaveCardImplementation(): Boolean =
+        currentHomeCustomizeHookPoints().saveCardImplementation == HomeSaveCardImplementation.INTL
 
     fun currentHotStartSplashLifecycleManagerClassName(): String? =
         HostRuntimeState.currentHotStartSplashLifecycleManagerClassName()

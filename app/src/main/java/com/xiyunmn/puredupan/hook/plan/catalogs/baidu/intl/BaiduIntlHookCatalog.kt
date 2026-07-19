@@ -12,6 +12,7 @@ internal object BaiduIntlHookCatalog : HookCatalog {
             BaiduIntlPostAttachHookSpecs.ad +
             BaiduSharedPostAttachHookSpecs.splashBypass +
             BaiduSharedPostAttachHookSpecs.middle +
+            BaiduIntlPostAttachHookSpecs.home +
             BaiduSharedPostAttachHookSpecs.myPage +
             BaiduIntlPostAttachHookSpecs.memberCard +
             BaiduIntlPostAttachHookSpecs.searchPage +

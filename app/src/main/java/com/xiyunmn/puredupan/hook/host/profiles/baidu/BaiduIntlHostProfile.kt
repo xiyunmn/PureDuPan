@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.host.profiles.baidu
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.config.model.MemberCardLayoutMode
 import com.xiyunmn.puredupan.hook.host.HomeCustomizeHookPoints
+import com.xiyunmn.puredupan.hook.host.HomeSaveCardImplementation
 import com.xiyunmn.puredupan.hook.host.HostCapabilities
 import com.xiyunmn.puredupan.hook.host.HostDexKitCapabilities
 import com.xiyunmn.puredupan.hook.host.HostDiagnosticsCapabilities
@@ -69,6 +70,7 @@ internal val BaiduIntlHostProfile = HostProfile(
                 saveCardSetRecommendMethodNames =
                     BaiduSharedHookPoints.HOME_SAVE_CARD_INTL_SET_RECOMMEND_METHODS,
                 saveCardRedPotMethodNames = BaiduSharedHookPoints.HOME_SAVE_CARD_INTL_RED_POT_METHODS,
+                saveCardImplementation = HomeSaveCardImplementation.INTL,
                 recentCardDataUseCaseClassNames = BaiduSharedHookPoints.HOME_RECENT_CARD_INTL_DATA_USE_CASES,
                 recentCardViewModelClassNames = BaiduHomeCardHookPoints.INTL_RECENT_CARD_VIEW_MODELS,
                 netdiskContextCompanionClassName = BaiduSharedHookPoints.NETDISK_CONTEXT_COMPANION,
