@@ -211,15 +211,12 @@ object HomeCustomizeHook {
             )
             if (onCreateView != null) {
                 mod.hook(onCreateView).intercept { chain ->
+                    val result = chain.proceed()
                     if (isHomeToolbarHidden()) {
-                        XposedCompat.logD("[HomeCustomizeHook] $className.onCreateView blocked")
-                        createCollapsedView(
-                            inflaterArg = chain.args.getOrNull(0),
-                            containerArg = chain.args.getOrNull(1),
-                        ) ?: chain.proceed()
-                    } else {
-                        chain.proceed()
+                        collapseView(result as? View)
+                        XposedCompat.logD("[HomeCustomizeHook] $className.onCreateView result collapsed")
                     }
+                    result
                 }
                 count += 1
             } else {
@@ -234,32 +231,18 @@ object HomeCustomizeHook {
             )
             if (onViewCreated != null) {
                 mod.hook(onViewCreated).intercept { chain ->
+                    val result = chain.proceed()
                     if (isHomeToolbarHidden()) {
-                        XposedCompat.logD("[HomeCustomizeHook] $className.onViewCreated blocked")
-                        null
-                    } else {
-                        chain.proceed()
+                        collapseView(chain.args.firstOrNull() as? View)
+                        XposedCompat.logD("[HomeCustomizeHook] $className.onViewCreated root collapsed")
                     }
+                    result
                 }
                 count += 1
             } else {
                 XposedCompat.logD("[HomeCustomizeHook] $className.onViewCreated not found for toolbar render hook")
             }
 
-            val onResume = XposedCompat.findMethodOrNull(clazz, "onResume")
-            if (onResume != null) {
-                mod.hook(onResume).intercept { chain ->
-                    if (isHomeToolbarHidden()) {
-                        XposedCompat.logD("[HomeCustomizeHook] $className.onResume blocked")
-                        null
-                    } else {
-                        chain.proceed()
-                    }
-                }
-                count += 1
-            } else {
-                XposedCompat.logD("[HomeCustomizeHook] $className.onResume not found for toolbar render hook")
-            }
         }
         return count
     }
