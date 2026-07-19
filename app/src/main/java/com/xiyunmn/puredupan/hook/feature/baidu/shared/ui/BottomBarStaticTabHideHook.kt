@@ -1,6 +1,7 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
 import android.app.Activity
+import android.content.Intent
 import android.view.View
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
@@ -12,11 +13,17 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRunti
  */
 internal object BottomBarStaticTabHideHook {
     private const val INIT_VIEW_METHOD = "initView"
+    private const val INIT_TABS_METHOD = "initTabs"
     private const val INIT_TABS_SKIN_METHOD = "initTabsSkin"
+    private const val REFRESH_TAB_VIEW_TEXT_METHOD = "refreshTabViewText"
+    private const val SET_NORMAL_TAB_IMG_METHOD = "setNormalTabImg"
+    private const val SET_SKIN_TAB_IMG_METHOD = "setSkinTabImg"
     private const val SET_TAB_RAISED_BG_VISIBLE_METHOD = "setTabRaisedBgVisible"
     private const val ON_CLICK_METHOD = "onClick"
 
     private val hookState = HookState()
+    private val refreshVisualDepth = ThreadLocal<Int>()
+    private val selectedTabDuringRefresh = ThreadLocal<View>()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -39,16 +46,40 @@ internal object BottomBarStaticTabHideHook {
                 return
             }
 
-            method.isAccessible = true
-            mod.hook(method).intercept { chain ->
-                val result = chain.proceed()
-                if (isEnabled()) {
-                    applyStaticTabVisibility(chain.thisObject as Activity)
+            val initTabsMethod = clazz.declaredMethods.firstOrNull {
+                it.name == INIT_TABS_METHOD &&
+                    it.parameterTypes.size == 1 &&
+                    it.parameterTypes[0] == Intent::class.java
+            }
+            if (initTabsMethod != null) {
+                initTabsMethod.isAccessible = true
+                mod.hook(initTabsMethod).intercept { chain ->
+                    if (isEnabled()) {
+                        applyStaticTabVisibility(chain.thisObject as Activity)
+                        applyAigcFallbackVisibility(chain.thisObject as Activity)
+                    }
+                    chain.proceed()
                 }
-                result
+                XposedCompat.log(
+                    "[BottomBarStaticTabHideHook] hook INSTALLED: " +
+                        "${clazz.name}.$INIT_TABS_METHOD (pre-selection)",
+                )
+            } else {
+                method.isAccessible = true
+                mod.hook(method).intercept { chain ->
+                    val result = chain.proceed()
+                    if (isEnabled()) {
+                        applyStaticTabVisibility(chain.thisObject as Activity)
+                    }
+                    result
+                }
+                XposedCompat.log(
+                    "[BottomBarStaticTabHideHook] hook INSTALLED: " +
+                        "${clazz.name}.$INIT_VIEW_METHOD (post-init fallback)",
+                )
             }
             hookAigcRefreshMethods(clazz)
-            XposedCompat.log("[BottomBarStaticTabHideHook] hook INSTALLED: ${clazz.name}.$INIT_VIEW_METHOD")
+            hookRefreshSelectedTabProtection(clazz)
         } catch (t: Throwable) {
             hookState.reset()
             XposedCompat.log("[BottomBarStaticTabHideHook] install FAILED: ${t.message}")
@@ -59,8 +90,8 @@ internal object BottomBarStaticTabHideHook {
     private fun hookAigcRefreshMethods(clazz: Class<*>) {
         if (!HookSettings.isBottomBarTabAigcHidden) return
         if (XposedCompat.module == null) return
-        hookInitTabsSkin(clazz)
         hookSetTabRaisedBgVisible(clazz)
+        hookInitTabsSkin(clazz)
         hookAigcClick(clazz)
     }
 
@@ -73,7 +104,7 @@ internal object BottomBarStaticTabHideHook {
             val result = chain.proceed()
             val activity = chain.thisObject as? Activity
             if (activity != null && shouldHideAigcTab(activity)) {
-                applyAigcTabHidden(activity)
+                collapseViewById(activity, "main_tab_raised_bg")
             }
             result
         }
@@ -90,6 +121,49 @@ internal object BottomBarStaticTabHideHook {
             val activity = chain.thisObject as? Activity
             if (activity != null && shouldHideAigcTab(activity)) {
                 chain.args[0] = false
+            }
+            chain.proceed()
+        }
+    }
+
+    private fun hookRefreshSelectedTabProtection(clazz: Class<*>) {
+        val method = clazz.declaredMethods.firstOrNull {
+            it.name == REFRESH_TAB_VIEW_TEXT_METHOD && it.parameterTypes.size == 1
+        } ?: return
+        method.isAccessible = true
+        XposedCompat.module?.hook(method)?.intercept { chain ->
+            val depth = refreshVisualDepth.get() ?: 0
+            val previousSelectedTab = selectedTabDuringRefresh.get()
+            val selectedTab = chain.args.firstOrNull() as? View
+            refreshVisualDepth.set(depth + 1)
+            if (selectedTab != null) selectedTabDuringRefresh.set(selectedTab) else selectedTabDuringRefresh.remove()
+            try {
+                chain.proceed()
+            } finally {
+                if (depth == 0) refreshVisualDepth.remove() else refreshVisualDepth.set(depth)
+                if (previousSelectedTab == null) {
+                    selectedTabDuringRefresh.remove()
+                } else {
+                    selectedTabDuringRefresh.set(previousSelectedTab)
+                }
+            }
+        }
+        hookTabImageReset(clazz, SET_NORMAL_TAB_IMG_METHOD, tabArgumentIndex = 3)
+        hookTabImageReset(clazz, SET_SKIN_TAB_IMG_METHOD, tabArgumentIndex = 2)
+    }
+
+    private fun hookTabImageReset(
+        clazz: Class<*>,
+        name: String,
+        tabArgumentIndex: Int,
+    ) {
+        val method = clazz.declaredMethods.firstOrNull { it.name == name } ?: return
+        method.isAccessible = true
+        XposedCompat.module?.hook(method)?.intercept { chain ->
+            val tab = chain.args.getOrNull(tabArgumentIndex) as? View
+            val selectedTab = selectedTabDuringRefresh.get()
+            if ((refreshVisualDepth.get() ?: 0) > 0 && tab != null && tab.id == selectedTab?.id) {
+                return@intercept null
             }
             chain.proceed()
         }
@@ -118,22 +192,10 @@ internal object BottomBarStaticTabHideHook {
         hideTab(activity, "rb_share", HookSettings.isBottomBarTabShareHidden)
         hideTab(activity, "rb_findresoure", HookSettings.isBottomBarTabVipHidden)
         hideTab(activity, "rb_about_me", HookSettings.isBottomBarTabMineHidden)
-        hideAigcTab(activity, HookSettings.isBottomBarTabAigcHidden)
     }
 
-    private fun hideTab(activity: Activity, idName: String, hidden: Boolean) {
-        if (!hidden) return
-        val id = activity.resources.getIdentifier(idName, "id", activity.packageName)
-        if (id == 0) return
-        activity.findViewById<View>(id)?.visibility = View.GONE
-    }
-
-    private fun hideAigcTab(activity: Activity, hidden: Boolean) {
-        if (!hidden || !shouldHideAigcTab(activity)) return
-        applyAigcTabHidden(activity)
-    }
-
-    private fun applyAigcTabHidden(activity: Activity) {
+    private fun applyAigcFallbackVisibility(activity: Activity) {
+        if (!shouldHideAigcTab(activity)) return
         hideAigcContainerByChildId(activity, "aigc_cloud")
         hideAigcContainerByChildId(activity, "aigc_afx")
         collapseViewById(activity, "aigc_hi_lottie")
@@ -160,6 +222,13 @@ internal object BottomBarStaticTabHideHook {
         view.isEnabled = false
         view.isClickable = false
         view.setOnClickListener(null)
+    }
+
+    private fun hideTab(activity: Activity, idName: String, hidden: Boolean) {
+        if (!hidden) return
+        val id = activity.resources.getIdentifier(idName, "id", activity.packageName)
+        if (id == 0) return
+        activity.findViewById<View>(id)?.visibility = View.GONE
     }
 
     private fun shouldHideAigcTab(activity: Activity): Boolean =
