@@ -21,6 +21,7 @@ internal data class BaiduSystemNightModeHookPoints(
     val settingsActivityClassName: String,
     val skinLoaderListenerClassName: String,
     val settingsItemViewClassName: String,
+    val skinConfigClassName: String,
     val changeSkinKtClassName: String? = null,
     val changeSkinKtFallbackClassNames: List<String> = emptyList(),
     val skinManagerClassName: String? = null,
@@ -31,6 +32,10 @@ internal data class BaiduSystemNightModeHookPoints(
     val settingsSwitchViewIdName: String = "dark_settings",
     val beforeApplyDarkSkin: ((Activity) -> Boolean)? = null,
     val afterApplySkin: ((Activity, Boolean, String) -> Unit)? = null,
+    val bottomBarHomeFoldedFieldNames: List<String>,
+    val bottomBarThemeRefreshMethodNames: List<String>,
+    val bottomBarThemeRefreshCompletionMethodName: String? = null,
+    val gateColdStartBottomBar: Boolean = false,
 )
 
 /**
@@ -54,6 +59,13 @@ internal class BaiduSystemNightModeSyncHook(
     }
 
     private val hookState = HookState()
+    private val bottomBarThemeRefresh = BaiduBottomBarThemeRefreshCompat(
+        logTag = logTag,
+        homeFoldedFieldNames = hookPoints.bottomBarHomeFoldedFieldNames,
+        themeRefreshMethodNames = hookPoints.bottomBarThemeRefreshMethodNames,
+        themeRefreshCompletionMethodName = hookPoints.bottomBarThemeRefreshCompletionMethodName,
+        gateColdStartBottomBar = hookPoints.gateColdStartBottomBar,
+    )
     @Volatile private var refreshTabSkinHooked = false
     @Volatile private var settingsActivityHooked = false
     @Volatile private var changeSkinObserverHooked = false
@@ -81,6 +93,7 @@ internal class BaiduSystemNightModeSyncHook(
                 }
 
             installRefreshTabSkinHook(cl)
+            bottomBarThemeRefresh.hook(cl)
             installSettingsActivityHook(cl)
             installChangeSkinObserverHook(cl)
             installSkinManagerObserverHook(cl)
@@ -336,11 +349,14 @@ internal class BaiduSystemNightModeSyncHook(
 
     private fun runNightModeSync(cl: ClassLoader, activity: Activity) {
         try {
-            val uiMode = activity.resources.configuration.uiMode and
-                Configuration.UI_MODE_NIGHT_MASK
-            val isSystemNight = uiMode == Configuration.UI_MODE_NIGHT_YES
+            val isSystemNight = resolveSystemNight(activity)
 
             if (lastAppliedNightMode == isSystemNight) return
+            if (lastAppliedNightMode == null && resolveCurrentHostNightMode(cl, activity) == isSystemNight) {
+                lastAppliedNightMode = isSystemNight
+                logD("host skin already matches system: night=$isSystemNight")
+                return
+            }
             if (isSystemNight && hookPoints.beforeApplyDarkSkin?.invoke(activity) == false) {
                 log("Dark skin preparation failed")
                 return
@@ -350,22 +366,48 @@ internal class BaiduSystemNightModeSyncHook(
             val changeMethod = resolveChangeSkinMethod(cl)
             if (changeMethod != null) {
                 changeMethod.isAccessible = true
+                bottomBarThemeRefresh.expectHostThemeChange()
                 applySystemSkin(activity, changeMethod, listenerClass, isSystemNight)
                 lastAppliedNightMode = isSystemNight
                 return
             }
 
-            if (hookPoints.allowSkinManagerApplyFallback &&
-                applySystemSkinWithSkinManager(cl, activity, listenerClass, isSystemNight)
-            ) {
-                lastAppliedNightMode = isSystemNight
-                return
+            if (hookPoints.allowSkinManagerApplyFallback) {
+                bottomBarThemeRefresh.expectHostThemeChange()
+                if (applySystemSkinWithSkinManager(cl, activity, listenerClass, isSystemNight)) {
+                    lastAppliedNightMode = isSystemNight
+                    return
+                }
+                bottomBarThemeRefresh.cancelExpectedHostThemeChange()
             }
 
             log("No available skin backend")
         } catch (e: Throwable) {
+            bottomBarThemeRefresh.cancelExpectedHostThemeChange()
             log("Sync error: ${e.message}")
         }
+    }
+
+    private fun resolveCurrentHostNightMode(cl: ClassLoader, activity: Activity): Boolean? {
+        return runCatching {
+            val skinConfigClass = XposedCompat.findClassOrNull(hookPoints.skinConfigClassName, cl)
+                ?: return@runCatching null
+            val isDefaultSkin = XposedCompat.findMethodOrNull(
+                skinConfigClass,
+                "isDefaultSkin",
+                android.content.Context::class.java,
+            ) ?: return@runCatching null
+            if (isDefaultSkin.invoke(null, activity) == true) return@runCatching false
+
+            val getCustomSkinPath = XposedCompat.findMethodOrNull(
+                skinConfigClass,
+                "getCustomSkinPath",
+                android.content.Context::class.java,
+            ) ?: return@runCatching null
+            val path = getCustomSkinPath.invoke(null, activity) as? String ?: return@runCatching null
+            path.substringAfterLast('/').substringAfterLast('\\') ==
+                hookPoints.darkSkinTheme.substringAfterLast('/').substringAfterLast('\\')
+        }.getOrNull()
     }
 
     private fun resolveChangeSkinMethod(cl: ClassLoader): Method? {

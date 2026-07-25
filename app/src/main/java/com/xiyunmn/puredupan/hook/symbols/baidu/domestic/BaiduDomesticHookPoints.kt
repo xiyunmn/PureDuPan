@@ -11,6 +11,7 @@ internal object BaiduDomesticHookPoints {
     const val CHANGE_SKIN_KT = "com.baidu.netdisk.themskin.ChangeSkinKt"
     const val SKIN_LOADER_LISTENER = "com.netdisk.themeskin.listener.SkinLoaderListener"
     const val SKIN_MANAGER = "com.netdisk.themeskin.loader.SkinManager"
+    const val SKIN_CONFIG = "com.netdisk.themeskin.SkinConfig"
     const val SETTINGS_ITEM_VIEW = "com.baidu.netdisk.ui.widget.SettingsItemView"
 
     const val ABOUT_ME_GAME_CENTER_FRAGMENT =

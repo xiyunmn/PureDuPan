@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.intl.ui
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BaiduSystemNightModeHookPoints
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BaiduSystemNightModeSyncHook
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
+import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduBottomBarHookPoints
 
 object SystemNightModeSyncHook {
     private val delegate = BaiduSystemNightModeSyncHook(
@@ -13,6 +14,7 @@ object SystemNightModeSyncHook {
             skinLoaderListenerClassName = BaiduIntlHookPoints.SKIN_LOADER_LISTENER,
             settingsItemViewClassName = BaiduIntlHookPoints.SETTINGS_ITEM_VIEW,
             skinManagerClassName = BaiduIntlHookPoints.SKIN_MANAGER,
+            skinConfigClassName = BaiduIntlHookPoints.SKIN_CONFIG,
             darkSkinTheme = BaiduIntlHookPoints.DARK_SKIN_THEME,
             changeSkinMethodResolver = IntlChangeSkinDexKitResolver::resolve,
             settingsSwitchViewIdName = BaiduIntlHookPoints.DARK_SETTINGS_ID_NAME,
@@ -20,6 +22,8 @@ object SystemNightModeSyncHook {
             afterApplySkin = { _, _, reason ->
                 IntlHomeThemeRefreshCompat.refresh(reason)
             },
+            bottomBarHomeFoldedFieldNames = BaiduBottomBarHookPoints.INTL_HOME_FOLDED_FIELDS,
+            bottomBarThemeRefreshMethodNames = BaiduBottomBarHookPoints.INTL_THEME_REFRESH_METHODS,
         ),
     )
 

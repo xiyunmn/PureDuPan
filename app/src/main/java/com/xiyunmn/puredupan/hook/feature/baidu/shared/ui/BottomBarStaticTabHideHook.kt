@@ -15,15 +15,10 @@ internal object BottomBarStaticTabHideHook {
     private const val INIT_VIEW_METHOD = "initView"
     private const val INIT_TABS_METHOD = "initTabs"
     private const val INIT_TABS_SKIN_METHOD = "initTabsSkin"
-    private const val REFRESH_TAB_VIEW_TEXT_METHOD = "refreshTabViewText"
-    private const val SET_NORMAL_TAB_IMG_METHOD = "setNormalTabImg"
-    private const val SET_SKIN_TAB_IMG_METHOD = "setSkinTabImg"
     private const val SET_TAB_RAISED_BG_VISIBLE_METHOD = "setTabRaisedBgVisible"
     private const val ON_CLICK_METHOD = "onClick"
 
     private val hookState = HookState()
-    private val refreshVisualDepth = ThreadLocal<Int>()
-    private val selectedTabDuringRefresh = ThreadLocal<View>()
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -79,7 +74,6 @@ internal object BottomBarStaticTabHideHook {
                 )
             }
             hookAigcRefreshMethods(clazz)
-            hookRefreshSelectedTabProtection(clazz)
         } catch (t: Throwable) {
             hookState.reset()
             XposedCompat.log("[BottomBarStaticTabHideHook] install FAILED: ${t.message}")
@@ -120,50 +114,7 @@ internal object BottomBarStaticTabHideHook {
         XposedCompat.module?.hook(method)?.intercept { chain ->
             val activity = chain.thisObject as? Activity
             if (activity != null && shouldHideAigcTab(activity)) {
-                chain.args[0] = false
-            }
-            chain.proceed()
-        }
-    }
-
-    private fun hookRefreshSelectedTabProtection(clazz: Class<*>) {
-        val method = clazz.declaredMethods.firstOrNull {
-            it.name == REFRESH_TAB_VIEW_TEXT_METHOD && it.parameterTypes.size == 1
-        } ?: return
-        method.isAccessible = true
-        XposedCompat.module?.hook(method)?.intercept { chain ->
-            val depth = refreshVisualDepth.get() ?: 0
-            val previousSelectedTab = selectedTabDuringRefresh.get()
-            val selectedTab = chain.args.firstOrNull() as? View
-            refreshVisualDepth.set(depth + 1)
-            if (selectedTab != null) selectedTabDuringRefresh.set(selectedTab) else selectedTabDuringRefresh.remove()
-            try {
-                chain.proceed()
-            } finally {
-                if (depth == 0) refreshVisualDepth.remove() else refreshVisualDepth.set(depth)
-                if (previousSelectedTab == null) {
-                    selectedTabDuringRefresh.remove()
-                } else {
-                    selectedTabDuringRefresh.set(previousSelectedTab)
-                }
-            }
-        }
-        hookTabImageReset(clazz, SET_NORMAL_TAB_IMG_METHOD, tabArgumentIndex = 3)
-        hookTabImageReset(clazz, SET_SKIN_TAB_IMG_METHOD, tabArgumentIndex = 2)
-    }
-
-    private fun hookTabImageReset(
-        clazz: Class<*>,
-        name: String,
-        tabArgumentIndex: Int,
-    ) {
-        val method = clazz.declaredMethods.firstOrNull { it.name == name } ?: return
-        method.isAccessible = true
-        XposedCompat.module?.hook(method)?.intercept { chain ->
-            val tab = chain.args.getOrNull(tabArgumentIndex) as? View
-            val selectedTab = selectedTabDuringRefresh.get()
-            if ((refreshVisualDepth.get() ?: 0) > 0 && tab != null && tab.id == selectedTab?.id) {
-                return@intercept null
+                return@intercept chain.proceed(arrayOf(false))
             }
             chain.proceed()
         }
