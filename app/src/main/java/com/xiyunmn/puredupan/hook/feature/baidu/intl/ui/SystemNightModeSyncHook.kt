@@ -17,10 +17,19 @@ object SystemNightModeSyncHook {
             changeSkinMethodResolver = IntlChangeSkinDexKitResolver::resolve,
             settingsSwitchViewIdName = BaiduIntlHookPoints.DARK_SETTINGS_ID_NAME,
             beforeApplyDarkSkin = IntlNightModeSkinAssetInstaller::ensureDarkSkinAvailable,
+            afterApplySkin = { _, _, reason ->
+                IntlHomeThemeRefreshCompat.refresh(reason)
+            },
         ),
     )
 
     internal fun hook(cl: ClassLoader) {
+        IntlHomeThemeRefreshCompat.hook(
+            cl,
+            BaiduIntlHookPoints.NEW_FEED_HOME_FRAGMENT,
+            BaiduIntlHookPoints.FH_FEED_FRAGMENT,
+            BaiduIntlHookPoints.NEW_FEED_HOME_TITLE_BAR_FRAGMENT,
+        )
         delegate.hook(cl)
     }
 }
