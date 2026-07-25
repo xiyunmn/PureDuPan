@@ -11,7 +11,6 @@ internal object BaiduAboutMeHookPoints {
     const val MIDDLE_NODE = "xq0.MiddleNode"
     const val MIDDLE_NODE_METADATA_TOKEN =
         "Lcom/baidu/netdisk/ui/aboutme/model/operation/MiddleNode;"
-    const val ABOUT_MY_WELFARE_ADAPTER = "com.baidu.netdisk.ui.aboutme.view.AboutMyWelfareAdapter"
     const val POPUP_RESPONSE_HELPER = "com.baidu.netdisk.ui.aboutme.view.PopupResponseHelper"
     const val POPUP_RESPONSE = "com.baidu.netdisk.operation.io.PopupResponse"
     const val POPUP_RESPONSE_HELPER_METADATA_TOKEN =

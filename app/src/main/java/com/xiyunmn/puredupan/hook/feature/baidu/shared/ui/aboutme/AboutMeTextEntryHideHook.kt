@@ -1,6 +1,7 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme
 
 import android.view.View
+import android.widget.TextView
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -16,12 +17,12 @@ import java.util.concurrent.ConcurrentHashMap
 object AboutMeTextEntryHideHook {
     private const val TAG = "AboutMeTextEntryHideHook"
 
-    private const val TEXT_ACCOUNT_EXIT = "账号、退出"
-    private const val TEXT_STAR_SKIN = "明星皮肤上线啦"
-    private const val TEXT_FREE_DATA_CARD = "免流量卡、领无限空间"
     private const val KEY_SETTINGS = "settings"
     private const val KEY_PERSONAL_THEME_SETTING = "personal_theme_setting"
+    // The misspelling is part of the host's persisted node-key contract.
+    private const val KEY_MORE_SERVICE = "more_servce"
 
+    private const val MIDDLE_HINT_ID = "item_hint"
     private const val MIDDLE_MANAGE_SPACE_ID = "manage_space"
     private const val MIDDLE_MANAGE_SPACE_ARROW_ID = "manage_space_arrow"
     private const val REWARD_SUBTITLE_ROOT_ID = "cl_subtitle"
@@ -43,9 +44,6 @@ object AboutMeTextEntryHideHook {
             var installed = 0
             if (isAccountExitEnabled() || isStarSkinEnabled() || isFreeDataCardEnabled()) {
                 installed += hookMiddleRows(cl)
-            }
-            if (isFreeDataCardEnabled()) {
-                installed += hookWelfareItems(cl)
             }
             if (isManageSpaceEnabled()) {
                 installed += hookBottomManageSpace(cl)
@@ -77,25 +75,18 @@ object AboutMeTextEntryHideHook {
         method.isAccessible = true
         mod.hook(method).intercept { chain ->
             val node = chain.args.firstOrNull()
-            val accountExitNode = isAccountExitEnabled() &&
-                hasStringValue(node, KEY_SETTINGS) &&
-                hasStringValue(node, TEXT_ACCOUNT_EXIT)
+            val accountExitNode = isAccountExitEnabled() && hasStringValue(node, KEY_SETTINGS)
             val starNode = isStarSkinEnabled() && hasStringValue(node, KEY_PERSONAL_THEME_SETTING)
-            if (isAccountExitEnabled()) {
-                clearStringValues(node, setOf(TEXT_ACCOUNT_EXIT), "account/exit hint")
-            }
-            if (isStarSkinEnabled()) {
-                clearStringValues(node, setOf(TEXT_STAR_SKIN), "star-skin hint")
-            }
-            if (isFreeDataCardEnabled()) {
-                clearStringValues(node, setOf(TEXT_FREE_DATA_CARD), "free-data middle row hint")
-            }
+            val freeDataCardNode = isFreeDataCardEnabled() && hasStringValue(node, KEY_MORE_SERVICE)
             val result = chain.proceed()
             if (accountExitNode) {
-                clearHolderHint(chain.thisObject, "account/exit")
+                clearHolderHintById(chain.thisObject, "account/exit")
             }
             if (starNode) {
-                clearHolderHint(chain.thisObject, "star-skin")
+                clearHolderHintById(chain.thisObject, "star-skin")
+            }
+            if (freeDataCardNode) {
+                clearHolderHintById(chain.thisObject, "free-data card")
             }
             result
         }
@@ -103,41 +94,6 @@ object AboutMeTextEntryHideHook {
             "[$TAG] middle model hook installed: ${method.declaringClass.name}.${method.name}",
         )
         return 1
-    }
-
-    private fun hookWelfareItems(cl: ClassLoader): Int {
-        val mod = XposedCompat.module ?: return 0
-        val adapterClass = XposedCompat.findClassOrNull(
-            BaiduAboutMeHookPoints.ABOUT_MY_WELFARE_ADAPTER,
-            cl,
-        ) ?: run {
-            XposedCompat.logD("[$TAG] AboutMyWelfareAdapter not found")
-            return 0
-        }
-
-        var count = 0
-        for (method in adapterClass.declaredMethods) {
-            if (!isWelfareSetItemsMethod(method)) continue
-            method.isAccessible = true
-            mod.hook(method).intercept { chain ->
-                if (isFreeDataCardEnabled()) {
-                    (chain.args.firstOrNull() as? List<*>)?.forEach { item ->
-                        clearStringValues(item, setOf(TEXT_FREE_DATA_CARD), "free-data welfare item")
-                    }
-                }
-                chain.proceed()
-            }
-            count++
-            XposedCompat.logD("[$TAG] welfare model hook installed: ${method.name}")
-        }
-        return count
-    }
-
-    private fun isWelfareSetItemsMethod(method: Method): Boolean {
-        val params = method.parameterTypes
-        return method.returnType == Void.TYPE &&
-            params.size == 1 &&
-            List::class.java.isAssignableFrom(params[0])
     }
 
     private fun hookBottomManageSpace(cl: ClassLoader): Int {
@@ -253,25 +209,6 @@ object AboutMeTextEntryHideHook {
         }
     }
 
-    private fun clearStringValues(target: Any?, values: Set<String>, label: String): Boolean {
-        target ?: return false
-        var changed = false
-        for (field in stringFields(target.javaClass)) {
-            val current = runCatching { field.get(target) as? String }.getOrNull() ?: continue
-            if (values.none { current == it || current.contains(it) }) continue
-            runCatching {
-                field.set(target, "")
-                changed = true
-            }.onFailure {
-                XposedCompat.logD("[$TAG] $label field clear failed: ${field.name}, ${it.message}")
-            }
-        }
-        if (changed) {
-            XposedCompat.logD("[$TAG] $label cleared from model: ${target.javaClass.name}")
-        }
-        return changed
-    }
-
     private fun stringFields(clazz: Class<*>): List<Field> {
         return stringFieldCache.getOrPut(clazz) {
             buildList {
@@ -289,25 +226,22 @@ object AboutMeTextEntryHideHook {
         }
     }
 
-    private fun clearHolderHint(holder: Any?, label: String) {
-        holder ?: return
-        var current: Class<*>? = holder.javaClass
-        while (current != null && current != Any::class.java) {
-            val method = current.declaredMethods.firstOrNull {
-                it.name == "setHint" &&
-                    it.returnType == Void.TYPE &&
-                    it.parameterTypes.contentEquals(arrayOf(String::class.java))
-            }
-            if (method != null) {
-                runCatching {
-                    method.isAccessible = true
-                    method.invoke(holder, "")
-                    XposedCompat.logD("[$TAG] $label render hint cleared")
-                }
-                return
-            }
-            current = current.superclass
-        }
+    private fun clearHolderHintById(holder: Any?, label: String) {
+        val itemView = holderItemView(holder) ?: return
+        val resources = itemView.resources ?: return
+        val packageName = itemView.context?.packageName ?: return
+        val hintId = resources.getIdentifier(MIDDLE_HINT_ID, "id", packageName)
+        if (hintId == 0) return
+        val hintView = itemView.findViewById<View>(hintId) as? TextView ?: return
+        hintView.text = ""
+        XposedCompat.logD("[$TAG] $label render hint cleared by id: $MIDDLE_HINT_ID")
+    }
+
+    private fun holderItemView(holder: Any?): View? {
+        holder ?: return null
+        return runCatching {
+            holder.javaClass.getField("itemView").get(holder) as? View
+        }.getOrNull()
     }
 
     private fun isAnyEnabled(): Boolean =

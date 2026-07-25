@@ -119,22 +119,6 @@ internal object SettingsHostTextCatalog {
                 "签到小红点",
                 "隐藏「我的」页右上角签到入口旁的小红点",
             )
-            this[SettingsUserState.KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT] = text(
-                "管理空间",
-                "隐藏「设置与服务」中的管理空间入口文本",
-            )
-            this[SettingsUserState.KEY_HIDE_ABOUT_ME_REWARD_TEXT] = text(
-                "领奖励",
-                "隐藏「设置与服务」中的领奖励入口文本",
-            )
-            this[SettingsUserState.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT] = text(
-                "账号、退出",
-                "隐藏「设置与服务」中的账号、退出入口文本",
-            )
-            this[SettingsUserState.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT] = text(
-                "明星皮肤上线啦",
-                "隐藏「个性设置」中的明星皮肤入口文本",
-            )
             this[SettingsUserState.KEY_MEMBER_CARD_CUSTOMIZE] = text(
                 "会员卡片定制",
                 "管理「我的」页会员卡片背景、点击事件、等级福利和升级按钮",
