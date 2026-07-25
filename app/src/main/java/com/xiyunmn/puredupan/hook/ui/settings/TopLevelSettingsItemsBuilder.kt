@@ -71,7 +71,7 @@ internal object TopLevelSettingsItemsBuilder {
             if (restrictedUnlocked) {
                 addAll(
                     topLevelItems(
-                        TopLevelSettingsRegistry.restrictedThemeSpecs,
+                        TopLevelSettingsRegistry.restrictedThemeSpecs(isIntlHost),
                         defaultValues,
                         actionHandlers,
                         texts,

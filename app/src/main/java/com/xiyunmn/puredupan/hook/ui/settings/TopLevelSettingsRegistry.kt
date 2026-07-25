@@ -184,31 +184,29 @@ internal object TopLevelSettingsRegistry {
                 },
             )
         )
-        add(
-            TopLevelSwitchSpec(
-                SettingsUserState.KEY_UNLOCK_VIDEO_SPEED,
-                UiText.Settings.UNLOCK_VIDEO_SPEED_LABEL,
-                if (isIntlHost) {
-                    UiText.Settings.UNLOCK_VIDEO_SPEED_INTL_DESC
-                } else {
-                    UiText.Settings.UNLOCK_VIDEO_SPEED_DESC
-                },
-            )
-        )
-        add(
-            TopLevelSwitchSpec(
-                SettingsUserState.KEY_UNLOCK_VIDEO_QUALITY,
-                UiText.Settings.UNLOCK_VIDEO_QUALITY_LABEL,
-                if (isIntlHost) {
-                    UiText.Settings.UNLOCK_VIDEO_QUALITY_INTL_DESC
-                } else {
-                    UiText.Settings.UNLOCK_VIDEO_QUALITY_DESC
-                },
-            )
-        )
     }
 
-    val restrictedThemeSpecs: List<TopLevelSwitchSpec> = listOf(
+    fun restrictedThemeSpecs(isIntlHost: Boolean): List<TopLevelSwitchSpec> = listOf(
+        TopLevelSwitchSpec(
+            SettingsUserState.KEY_UNLOCK_VIDEO_SPEED,
+            UiText.Settings.UNLOCK_VIDEO_SPEED_LABEL,
+            if (isIntlHost) {
+                UiText.Settings.UNLOCK_VIDEO_SPEED_INTL_DESC
+            } else {
+                UiText.Settings.UNLOCK_VIDEO_SPEED_DESC
+            },
+            restricted = true,
+        ),
+        TopLevelSwitchSpec(
+            SettingsUserState.KEY_UNLOCK_VIDEO_QUALITY,
+            UiText.Settings.UNLOCK_VIDEO_QUALITY_LABEL,
+            if (isIntlHost) {
+                UiText.Settings.UNLOCK_VIDEO_QUALITY_INTL_DESC
+            } else {
+                UiText.Settings.UNLOCK_VIDEO_QUALITY_DESC
+            },
+            restricted = true,
+        ),
         TopLevelSwitchSpec(
             SettingsUserState.KEY_AUTO_DAILY_SIGN_IN,
             UiText.Settings.AUTO_DAILY_SIGN_IN_LABEL,
