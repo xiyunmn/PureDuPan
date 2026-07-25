@@ -17,7 +17,7 @@ import java.lang.reflect.Method
  * - Does not forge account cookies or server identity
  *
  * Resolution convention:
- * - DexKit first for canPlayResolution / VideoPrivilege quality methods
+ * - DexKit first for VideoPrivilege quality methods
  * - Stable class/method names only as verified fallback
  *
  * Note: opening client gates only removes VIP dialogs and allows requesting
@@ -45,7 +45,6 @@ object BaiduVideoQualityUnlockHook {
         var installed = 0
         try {
             installed += hookMemberPrivilegeQualityFlags(mod, cl)
-            installed += hookCanPlayResolution(mod, cl)
             installed += hookVideoPrivilegeQualityMethods(mod, cl)
 
             if (installed == 0) {
@@ -91,18 +90,6 @@ object BaiduVideoQualityUnlockHook {
             XposedCompat.logW("[$TAG] MemberPrivilege video quality flags NOT FOUND")
         }
         return count
-    }
-
-    private fun hookCanPlayResolution(mod: XposedModule, cl: ClassLoader): Int {
-        val method = BaiduVideoQualityUnlockDexKitResolver.resolveCanPlayResolution(cl)
-        if (method == null) {
-            XposedCompat.logD(
-                "[$TAG] canPlayResolution unresolved " +
-                    "(MemberPrivilege quality flags may still cover personal path)",
-            )
-            return 0
-        }
-        return if (installBooleanForceTrue(mod, method, "canPlayResolution")) 1 else 0
     }
 
     private fun hookVideoPrivilegeQualityMethods(mod: XposedModule, cl: ClassLoader): Int {

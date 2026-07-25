@@ -17,6 +17,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlStoryDouyin
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlTaskScoreRefreshDelayHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.IntlLaunchHandoffOptimizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashRemoveHook
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlAlbumBackupBarBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabReplaceHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlHomeLeftScreenSwipeDisableHook
@@ -133,6 +134,14 @@ internal object BaiduIntlPostAttachHookSpecs {
                 settings.isBottomBarTabAigcHidden
         }, featureKey = FeatureKeys.KEY_HIDE_TAB_AIGC) { cl ->
             IntlBottomAiTabHideHook.hook(cl)
+        },
+        // 国际版相册备份栏走渲染入口（工厂 new AlbumBackupBarView → 返回 null）；国内/三星
+        // 走共享数据层 AddUseCase 短路（见 BaiduSharedPostAttachHookSpecs.postMemberLead，
+        // 已排除 intl）。intl 13.11.9 R8 剥离 @Metadata，AddUseCase 无静态存活锚点。
+        HookSpec("IntlAlbumBackupBarBlockHook", { context, settings, _ ->
+            context.isMain && settings.isAlbumBackupBarBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR) { cl ->
+            IntlAlbumBackupBarBlockHook.hook(cl)
         },
     )
 

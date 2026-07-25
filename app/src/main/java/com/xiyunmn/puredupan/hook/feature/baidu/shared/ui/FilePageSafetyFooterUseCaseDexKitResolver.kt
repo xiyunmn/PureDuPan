@@ -153,7 +153,7 @@ internal object FilePageSafetyFooterUseCaseDexKitResolver {
     }
 
     private fun isUseCaseOwner(clazz: Class<*>): Boolean {
-        return KotlinMetadataUtils.metadataContainsAll(clazz, metadataTokens)
+        return KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, metadataTokens)
     }
 
     private fun isRealExecuteMethod(method: Method): Boolean {

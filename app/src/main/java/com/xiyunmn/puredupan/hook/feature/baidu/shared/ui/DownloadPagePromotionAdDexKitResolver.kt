@@ -151,7 +151,7 @@ internal object DownloadPagePromotionAdDexKitResolver {
             return false
         }
         if (clazz.name == BaiduTransferHookPoints.YOUA_GUIDE) return true
-        return KotlinMetadataUtils.metadataContainsAll(clazz, youaGuideMetadataTokens)
+        return KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, youaGuideMetadataTokens)
     }
 
     private fun youaGuideOwnerMatcher(): ClassMatcher {
@@ -181,7 +181,7 @@ internal object DownloadPagePromotionAdDexKitResolver {
 
     private fun isAlbumGuideSuccessType(clazz: Class<*>): Boolean {
         if (clazz.name == BaiduTransferHookPoints.ALBUM_GUIDE_RESULT_SUCCESS) return true
-        return KotlinMetadataUtils.metadataContainsAll(clazz, albumGuideSuccessMetadataTokens)
+        return KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, albumGuideSuccessMetadataTokens)
     }
 
     private fun buildDiagnostic(

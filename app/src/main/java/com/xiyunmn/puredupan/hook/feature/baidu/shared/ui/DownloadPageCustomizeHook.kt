@@ -6,6 +6,7 @@ import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.HookUtils
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduTransferHookPoints
 
 /**
@@ -98,6 +99,13 @@ internal object DownloadPageCustomizeHook {
     }
 
     private fun hookPromotionAd(cl: ClassLoader): Int {
+        // 国际版无下载页 YouaGuide 推广广告（13.11.9 R8 剥离 @Metadata，该 UseCase 亦无
+        // 静态存活锚点，功能本身在国际版缺失）。跳过 DexKit 解析，避免徒劳扫描与 double-failure；
+        // 国内/三星保留数据层路径不变。游戏推荐/会员推广走明文类，不受本守卫影响。
+        if (BaiduFeatureRuntime.isCurrentIntlHost()) {
+            XposedCompat.logD("[DownloadPageCustomizeHook] promotion ad skipped: intl host has no YouaGuide")
+            return 0
+        }
         val mod = XposedCompat.module ?: return 0
         val method = DownloadPagePromotionAdDexKitResolver.resolve(cl) ?: run {
             XposedCompat.log("[DownloadPageCustomizeHook] YouaGuide render method NOT FOUND")

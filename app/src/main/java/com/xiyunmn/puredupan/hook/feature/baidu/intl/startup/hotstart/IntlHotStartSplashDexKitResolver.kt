@@ -149,7 +149,7 @@ internal object IntlHotStartSplashDexKitResolver {
         ref: DexKitCompat.MethodRef,
     ): ResolveResult? {
         val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
-        if (!metadataContainsAll(clazz, classMetadataTokens)) return null
+        if (!metadataContainsAllOrAbsent(clazz, classMetadataTokens)) return null
         val method = XposedCompat.findMethodOrNull(
             clazz,
             ref.methodName,
@@ -181,6 +181,17 @@ internal object IntlHotStartSplashDexKitResolver {
         return tokens.all { token ->
             metadataTokens.any { it == token || it.contains(token) }
         }
+    }
+
+    /**
+     * Softened metadata gate: strict when @Metadata is present (cn / samsung),
+     * but degrades to "pass" when R8 has stripped @Metadata (intl 13.11.9) so
+     * the static-boolean(Activity) shape + usingStrings body-hint scoring takes
+     * over as the trust anchor.
+     */
+    private fun metadataContainsAllOrAbsent(clazz: Class<*>, tokens: Collection<String>): Boolean {
+        if (metadataTokens(clazz).isEmpty()) return true
+        return metadataContainsAll(clazz, tokens)
     }
 
     private fun metadataTokens(clazz: Class<*>): Set<String> {

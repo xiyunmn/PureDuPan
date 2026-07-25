@@ -147,7 +147,7 @@ internal object BottomAiTabDexKitResolver {
 
     private fun isAiCloudTabOwner(clazz: Class<*>): Boolean {
         if (clazz.name == BaiduDomesticHookPoints.AI_CLOUD_TAB_AMIS_KT) return true
-        return KotlinMetadataUtils.metadataContainsAll(clazz, AI_CLOUD_TAB_METADATA_TOKENS)
+        return KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, AI_CLOUD_TAB_METADATA_TOKENS)
     }
 
     private fun aiCloudTabOwnerMatcher(): ClassMatcher {

@@ -1,9 +1,9 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.video
 
-import android.content.Context
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduVideoQualityHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -24,7 +24,6 @@ import org.luckypray.dexkit.query.matchers.MethodMatcher
  * 3. Only quality-related methods are resolved; SVIP / high-speed / ad-skip stay out of scope.
  */
 internal object BaiduVideoQualityUnlockDexKitResolver {
-    const val CAN_PLAY_RESOLUTION_CACHE_ID = "baidu_video_quality_can_play_resolution_v1"
     const val VIDEO_PRIVILEGE_OWNER_CACHE_ID = "baidu_video_quality_privilege_owner_v1"
     const val VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID = "baidu_video_quality_privilege_methods_v2"
 
@@ -32,6 +31,21 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
     private const val KOTLIN_METADATA = "kotlin.Metadata"
     private const val OWNER_SENTINEL_METHOD = "<owner>"
     private const val MAX_DIAGNOSTIC_CANDIDATES = 5
+
+    // intl 13.11.9 R8 剥离 @Metadata 且 VideoPrivilege 混淆为 sz0.a，仅此宿主追加混淆候选
+    // 与形状锚；cn/samsung 保留明文 VideoPrivilege + @Metadata d2 原路径，不受影响。
+    private fun isIntlHost(): Boolean = BaiduFeatureRuntime.isCurrentIntlHost()
+
+    // 明文 VideoPrivilege 类（弱混淆/国内）优先；intl 追加混淆类 sz0.a 兜底。
+    private fun videoPrivilegeClassCandidates(): List<String> =
+        if (isIntlHost()) {
+            listOf(
+                BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE,
+                BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE_OBFUSCATED,
+            )
+        } else {
+            listOf(BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE)
+        }
 
     private val QUALITY_METHOD_NAMES = setOf(
         BaiduVideoQualityHookPoints.CAN_PLAY_720_METHOD,
@@ -60,110 +74,9 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
     }
 
     fun warmUpDexKitCache(cl: ClassLoader): Boolean {
-        val canPlay = resolveCanPlayResolution(cl) != null
         val owner = resolveVideoPrivilegeOwner(cl) != null
         val qualityMethods = resolveVideoPrivilegeQualityMethods(cl).isNotEmpty()
-        return canPlay || owner || qualityMethods
-    }
-
-    fun resolveCanPlayResolution(cl: ClassLoader): Method? {
-        when (
-            val cached = DexKitCompat.getCachedMethod(TAG, CAN_PLAY_RESOLUTION_CACHE_ID) { ref ->
-                validateCanPlayResolutionRef(cl, ref)
-            }
-        ) {
-            is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound ->
-                return markStableFallback(CAN_PLAY_RESOLUTION_CACHE_ID) {
-                    resolveDirectCanPlayResolution(cl)
-                }
-            DexKitCompat.CachedResult.Miss -> Unit
-        }
-        if (DexKitCompat.shouldSkipScan(TAG, CAN_PLAY_RESOLUTION_CACHE_ID)) {
-            return markStableFallback(CAN_PLAY_RESOLUTION_CACHE_ID) {
-                resolveDirectCanPlayResolution(cl)
-            }
-        }
-
-        val candidates = DexKitCompat.withBridge(TAG, cl, resolverId = CAN_PLAY_RESOLUTION_CACHE_ID) { bridge ->
-            bridge.setThreadNum(1)
-            val byClass = bridge.findMethod(
-                FindMethod.create()
-                    .matcher(
-                        MethodMatcher.create()
-                            .declaredClass(BaiduVideoQualityHookPoints.GET_ONLINE_RESOLUTION_TYPE_KT)
-                            .returnType(Boolean::class.javaPrimitiveType!!)
-                            .paramCount(2),
-                    ),
-            ).map { methodData ->
-                DexMethodCandidate(
-                    className = methodData.className,
-                    methodName = methodData.name,
-                    returnTypeName = methodData.returnTypeName,
-                    paramTypeNames = methodData.paramTypeNames,
-                    isConstructor = methodData.isConstructor,
-                    modifiers = methodData.modifiers,
-                )
-            }
-            val byMetadata = bridge.findClass(
-                FindClass.create().matcher(canPlayResolutionOwnerMatcher()),
-            ).flatMap { classData ->
-                classData.findMethod(
-                    FindMethod.create()
-                        .matcher(
-                            MethodMatcher.create()
-                                .returnType(Boolean::class.javaPrimitiveType!!)
-                                .paramCount(2),
-                        ),
-                )
-            }.map { methodData ->
-                DexMethodCandidate(
-                    className = methodData.className,
-                    methodName = methodData.name,
-                    returnTypeName = methodData.returnTypeName,
-                    paramTypeNames = methodData.paramTypeNames,
-                    isConstructor = methodData.isConstructor,
-                    modifiers = methodData.modifiers,
-                )
-            }
-            (byClass + byMetadata).distinctBy { it.memberName() }
-        } ?: return markStableFallback(CAN_PLAY_RESOLUTION_CACHE_ID) {
-            resolveDirectCanPlayResolution(cl)
-        }
-
-        val rejected = mutableListOf<String>()
-        val matches = candidates.mapNotNull { candidate ->
-            if (!candidate.isCanPlayResolutionShape()) return@mapNotNull null
-            val method = validateCanPlayResolutionRef(
-                cl,
-                DexKitCompat.MethodRef(candidate.className, candidate.methodName),
-            )
-            if (method == null) {
-                rejected += "${candidate.memberName()} rejected: signature mismatch"
-                return@mapNotNull null
-            }
-            candidate to method
-        }
-
-        val best = matches.singleOrNull()
-        if (best == null) {
-            val diagnostic = buildDiagnostic(candidates, matches, rejected)
-            XposedCompat.logW("[$TAG] canPlayResolution unresolved: $diagnostic")
-            DexKitCompat.markTargetError(TAG, CAN_PLAY_RESOLUTION_CACHE_ID, diagnostic)
-            DexKitCompat.putCachedMethod(TAG, CAN_PLAY_RESOLUTION_CACHE_ID, null)
-            return markStableFallback(CAN_PLAY_RESOLUTION_CACHE_ID) {
-                resolveDirectCanPlayResolution(cl)
-            }
-        }
-
-        val method = best.second
-        XposedCompat.log("[$TAG] resolved canPlayResolution: ${method.declaringClass.name}.${method.name}")
-        DexKitCompat.putCachedMethod(
-            TAG,
-            CAN_PLAY_RESOLUTION_CACHE_ID,
-            DexKitCompat.MethodRef(method.declaringClass.name, method.name),
-        )
-        return method
+        return owner || qualityMethods
     }
 
     fun resolveVideoPrivilegeOwner(cl: ClassLoader): Class<*>? {
@@ -373,8 +286,13 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
     }
 
     private fun resolveDirectVideoPrivilegeOwner(cl: ClassLoader): Class<*>? {
-        return XposedCompat.findClassOrNull(BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE, cl)
-            ?.takeIf { isVideoPrivilegeOwner(it) }
+        // 明文 VideoPrivilege（弱混淆/国内）优先；intl 追加混淆类 sz0.a 兜底
+        // （与倍速 owner 同类，isVideoPrivilegeOwner 经 OrAbsent 软化后接受）。
+        for (className in videoPrivilegeClassCandidates()) {
+            val clazz = XposedCompat.findClassOrNull(className, cl) ?: continue
+            if (isVideoPrivilegeOwner(clazz)) return clazz
+        }
+        return null
     }
 
     private fun DexMethodCandidate.invokesQualityPrivilege(): Boolean {
@@ -396,64 +314,10 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
         }
     }
 
-    private fun resolveDirectCanPlayResolution(cl: ClassLoader): Method? {
-        val clazz = XposedCompat.findClassOrNull(
-            BaiduVideoQualityHookPoints.GET_ONLINE_RESOLUTION_TYPE_KT,
-            cl,
-        ) ?: return null
-        return clazz.declaredMethods.firstOrNull { method ->
-            method.name == BaiduVideoQualityHookPoints.CAN_PLAY_RESOLUTION_METHOD &&
-                isCanPlayResolutionMethod(method)
-        }?.apply { isAccessible = true }
-    }
-
-    private fun validateCanPlayResolutionRef(
-        cl: ClassLoader,
-        ref: DexKitCompat.MethodRef,
-    ): Method? {
-        val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
-        if (!isCanPlayResolutionOwner(clazz)) return null
-        return clazz.declaredMethods.firstOrNull { method ->
-            method.name == ref.methodName && isCanPlayResolutionMethod(method)
-        }?.apply { isAccessible = true }
-    }
-
-    private fun DexMethodCandidate.isCanPlayResolutionShape(): Boolean {
-        return !isConstructor &&
-            Modifier.isStatic(modifiers) &&
-            (returnTypeName == "boolean" || returnTypeName == "java.lang.Boolean") &&
-            paramTypeNames.size == 2 &&
-            (
-                paramTypeNames[0] == Context::class.java.name ||
-                    paramTypeNames[0] == "android.content.Context"
-                )
-    }
-
-    private fun isCanPlayResolutionMethod(method: Method): Boolean {
-        if (!Modifier.isStatic(method.modifiers)) return false
-        if (!isBooleanLikeReturn(method.returnType)) return false
-        if (method.parameterTypes.size != 2) return false
-        return Context::class.java.isAssignableFrom(method.parameterTypes[0])
-    }
-
-    private fun isCanPlayResolutionOwner(clazz: Class<*>): Boolean {
-        if (clazz.name == BaiduVideoQualityHookPoints.GET_ONLINE_RESOLUTION_TYPE_KT) return true
-        return KotlinMetadataUtils.metadataContainsAll(
-            clazz,
-            listOf(
-                BaiduVideoQualityHookPoints.GET_ONLINE_RESOLUTION_TYPE_METADATA_TOKEN,
-                BaiduVideoQualityHookPoints.CAN_PLAY_RESOLUTION_METADATA_NAME,
-            ),
-        ) || KotlinMetadataUtils.metadataContainsAll(
-            clazz,
-            listOf(BaiduVideoQualityHookPoints.CAN_PLAY_RESOLUTION_METADATA_NAME),
-        )
-    }
-
     private fun isVideoPrivilegeOwner(clazz: Class<*>): Boolean {
         if (clazz.name == BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE) return true
         if (clazz.simpleName == BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE_SIMPLE_NAME) return true
-        return KotlinMetadataUtils.metadataContainsAll(
+        return KotlinMetadataUtils.metadataContainsAllOrAbsent(
             clazz,
             listOf(BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE_METADATA_TOKEN),
         ) || KotlinMetadataUtils.metadataContainsAll(
@@ -472,24 +336,18 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             type.name == "java.lang.Boolean"
     }
 
-    private fun canPlayResolutionOwnerMatcher(): ClassMatcher {
-        return ClassMatcher.create()
-            .addAnnotation(
-                AnnotationMatcher.create()
-                    .type(KOTLIN_METADATA)
-                    .addElement(
-                        AnnotationElementMatcher.create()
-                            .name("d2")
-                            .arrayValue(
-                                AnnotationEncodeArrayMatcher.create().apply {
-                                    addString(BaiduVideoQualityHookPoints.CAN_PLAY_RESOLUTION_METADATA_NAME)
-                                },
-                            ),
-                    ),
-            )
-    }
-
     private fun videoPrivilegeOwnerMatcher(): ClassMatcher {
+        // intl 13.11.9 R8 剥离 @Metadata、类名混淆为 sz0.a：改用 `boolean X(SpeedPanelUIState)`
+        // 形状锚（intl 全 APK 仅 VideoPrivilege 等价类声明此形状，与倍速 owner 同类）。
+        // cn/samsung 保留明文 VideoPrivilege + @Metadata d2 原路径，不受影响。
+        if (isIntlHost()) {
+            return ClassMatcher.create()
+                .addMethod(
+                    MethodMatcher.create()
+                        .returnType(Boolean::class.javaPrimitiveType!!)
+                        .paramTypes(BaiduVideoQualityHookPoints.SPEED_PANEL_UI_STATE),
+                )
+        }
         return ClassMatcher.create()
             .addAnnotation(
                 AnnotationMatcher.create()

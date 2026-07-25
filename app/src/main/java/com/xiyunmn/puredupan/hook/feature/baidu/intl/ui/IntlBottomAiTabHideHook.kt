@@ -183,8 +183,15 @@ internal object IntlBottomAiTabModeDexKitResolver {
 
     private const val TAG = "IntlBottomAiTabModeDexKitResolver"
     private const val KOTLIN_METADATA = "kotlin.Metadata"
-    private const val STABLE_CLASS_NAME = "pz._"
+
+    // 13.11.9（intl）R8 全局剥离 @Metadata 后，旧混淆类 `pz._` 消失，AI 云 tab 模式
+    // getter 迁移到 `yy._`（jadx 重命名为 yy.C_），方法真实名仍为 `_`：static long()。
+    // 唯一稳定锚点是类内 static final 字段常量 "ai_cloud_tab_node"（<clinit> 内 const-string
+    // 存活），全 dex 仅 yy._ 与 uk.k 引用，配合 static long() 无参形状可唯一定位。
+    private const val STABLE_CLASS_NAME = "yy._"
     private const val STABLE_METHOD_NAME = "_"
+
+    private const val AI_CLOUD_TAB_NODE_STRING = "ai_cloud_tab_node"
 
     private val metadataTokens = listOf(
         "AI_CLOUD_TAB_NODE",
@@ -303,27 +310,20 @@ internal object IntlBottomAiTabModeDexKitResolver {
 
     private fun validateRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
         val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
-        if (!KotlinMetadataUtils.metadataContainsAll(clazz, metadataTokens)) return null
+        // @Metadata 存在时（cn/samsung）保持严格 token 校验；intl 13.11.9 剥离后降级，
+        // 由 static long() 形状 + usingEqStrings("ai_cloud_tab_node") owner 锚点兜底。
+        if (!KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, metadataTokens)) return null
         return clazz.declaredMethods.firstOrNull { method ->
             method.name == ref.methodName && isTabModeGetter(method)
         }?.apply { isAccessible = true }
     }
 
     private fun aiCloudTabOwnerMatcher(): ClassMatcher {
+        // intl 13.11.9 R8 剥离 @Metadata 后，改用类内 static final 字段字符串常量
+        // "ai_cloud_tab_node"（intl 全 APK 仅 uk.k 与 yy._ 两处持有）锚定 owner，
+        // 再由 tabModeGetterMatcher 的 static long() 形状收窄到 getAiCloudTabMode 等价方法。
         return ClassMatcher.create()
-            .addAnnotation(
-                AnnotationMatcher.create()
-                    .type(KOTLIN_METADATA)
-                    .addElement(
-                        AnnotationElementMatcher.create()
-                            .name("d2")
-                            .arrayValue(
-                                AnnotationEncodeArrayMatcher.create().apply {
-                                    metadataTokens.forEach(::addString)
-                                },
-                            ),
-                    ),
-            )
+            .usingEqStrings(AI_CLOUD_TAB_NODE_STRING)
             .addMethod(tabModeGetterMatcher())
     }
 

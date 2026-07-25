@@ -166,12 +166,12 @@ internal object AboutMeMiddleViewHolderDexKitResolver {
 
     private fun isViewHolderOwner(clazz: Class<*>): Boolean {
         if (clazz.name == BaiduAboutMeHookPoints.BASE_MIDDLE_VIEW_HOLDER) return true
-        return KotlinMetadataUtils.metadataContainsAll(clazz, viewHolderMetadataTokens)
+        return KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, viewHolderMetadataTokens)
     }
 
     private fun isMiddleNodeClass(clazz: Class<*>): Boolean {
         if (clazz.name == BaiduAboutMeHookPoints.MIDDLE_NODE) return true
-        return KotlinMetadataUtils.metadataContainsAll(clazz, middleNodeMetadataTokens)
+        return KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, middleNodeMetadataTokens)
     }
 
     private fun viewHolderOwnerMatcher(): ClassMatcher {

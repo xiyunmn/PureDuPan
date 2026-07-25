@@ -195,12 +195,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,
         ),
         DexKitTargetDescriptor(
-            id = BaiduVideoQualityUnlockDexKitResolver.CAN_PLAY_RESOLUTION_CACHE_ID,
-            target = "video quality canPlayResolution method",
-            feature = "unlock video quality",
-            featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,
-        ),
-        DexKitTargetDescriptor(
             id = BaiduVideoQualityUnlockDexKitResolver.VIDEO_PRIVILEGE_OWNER_CACHE_ID,
             target = "video quality privilege owner class",
             feature = "unlock video quality",
@@ -375,9 +369,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             }
         }
         if (available(FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY)) {
-            tasks += DexKitWarmUpTask(BaiduVideoQualityUnlockDexKitResolver.CAN_PLAY_RESOLUTION_CACHE_ID) {
-                BaiduVideoQualityUnlockDexKitResolver.resolveCanPlayResolution(classLoader) != null
-            }
             tasks += DexKitWarmUpTask(BaiduVideoQualityUnlockDexKitResolver.VIDEO_PRIVILEGE_OWNER_CACHE_ID) {
                 BaiduVideoQualityUnlockDexKitResolver.resolveVideoPrivilegeOwner(classLoader) != null
             }

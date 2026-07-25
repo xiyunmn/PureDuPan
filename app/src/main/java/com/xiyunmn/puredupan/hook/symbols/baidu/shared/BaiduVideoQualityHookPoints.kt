@@ -13,8 +13,17 @@ internal object BaiduVideoQualityHookPoints {
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_platform_business_member_privilege.MemberPrivilegeContext\$Companion"
     const val VIDEO_PRIVILEGE =
         "com.baidu.netdisk.video.business.VideoPrivilege"
-    const val GET_ONLINE_RESOLUTION_TYPE_KT =
-        "com.baidu.netdisk.video.logic.player.source.GetOnlineResolutionTypeKt"
+
+    /**
+     * 13.11.9（intl）R8 全局剥离 @Metadata 后，明文类 `VideoPrivilege` 消失，真实类
+     * 混淆为 `sz0.a`（与倍速同一个类，ctor 取 FragmentActivity）。画质门体
+     * `___/e/b/d/f` 均为 `MemberPrivilegeContext.Companion.privilegeVideoPlay*Enabled() || …`。
+     * owner 改用 `boolean X(SpeedPanelUIState)` 方法形状锚定（intl 全 APK 仅 sz0.a
+     * 声明此形状），摆脱已被剥离的 @Metadata。旧明文类名保留兼容弱混淆/国内样本。
+     */
+    const val VIDEO_PRIVILEGE_OBFUSCATED = "sz0.a"
+    const val SPEED_PANEL_UI_STATE =
+        "com.baidu.netdisk.video.logic.layer.area.speed.SpeedPanelUIState"
 
     const val PRIVILEGE_VIDEO_PLAY_HD_METHOD = "privilegeVideoPlayHdEnabled"
     const val PRIVILEGE_VIDEO_PLAY_FHD_METHOD = "privilegeVideoPlayFhdEnabled"
@@ -25,12 +34,9 @@ internal object BaiduVideoQualityHookPoints {
     const val PLAY_HD_ENABLED_METHOD = "playHdEnabled"
     const val PLAY_FHD_ENABLED_METHOD = "playFhdEnabled"
     const val PLAY_ORIGINAL_ENABLED_METHOD = "playOriginalEnabled"
-    const val CAN_PLAY_RESOLUTION_METHOD = "canPlayResolution"
 
     const val VIDEO_PRIVILEGE_METADATA_TOKEN =
         "Lcom/baidu/netdisk/video/business/VideoPrivilege;"
-    const val GET_ONLINE_RESOLUTION_TYPE_METADATA_TOKEN =
-        "Lcom/baidu/netdisk/video/logic/player/source/GetOnlineResolutionTypeKt;"
     const val VIDEO_PRIVILEGE_SIMPLE_NAME = "VideoPrivilege"
-    const val CAN_PLAY_RESOLUTION_METADATA_NAME = "canPlayResolution"
+    const val SPEED_PANEL_UI_STATE_SIMPLE_NAME = "SpeedPanelUIState"
 }

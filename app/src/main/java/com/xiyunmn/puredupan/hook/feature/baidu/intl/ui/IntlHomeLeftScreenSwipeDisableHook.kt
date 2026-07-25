@@ -216,7 +216,7 @@ internal object IntlHomeLeftScreenDrawerDexKitResolver {
 
     private fun validateRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
         val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
-        if (!KotlinMetadataUtils.metadataContainsAll(clazz, metadataTokens)) return null
+        if (!KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, metadataTokens)) return null
         return clazz.declaredMethods.firstOrNull { method ->
             method.name == ref.methodName && isSetLeftDrawerEnable(method)
         }?.apply { isAccessible = true }

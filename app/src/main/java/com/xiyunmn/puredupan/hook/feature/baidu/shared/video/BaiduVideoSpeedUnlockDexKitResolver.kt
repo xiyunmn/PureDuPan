@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.video
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduVideoSpeedHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -32,6 +33,22 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
     private const val MAX_DIAGNOSTIC_CANDIDATES = 5
     private const val KOTLIN_METADATA = "kotlin.Metadata"
     private val BOOLEAN_INVOKE_PATTERN = Regex("""->.+\(Z\)Z""")
+
+    // intl 13.11.9 R8 剥离 @Metadata 且类名混淆为 sz0.a，仅此宿主追加混淆候选；
+    // cn/samsung 保留明文 VideoPrivilege + @Metadata d2 原路径，不受影响。
+    // 经 facade 判宿主，避免 feature 层直接 import host 层（架构守卫要求）。
+    private fun isIntlHost(): Boolean = BaiduFeatureRuntime.isCurrentIntlHost()
+
+    // 明文 VideoPrivilege 类（弱混淆/国内）优先；intl 追加混淆类 sz0.a 兜底。
+    private fun videoPrivilegeClassCandidates(): List<String> =
+        if (isIntlHost()) {
+            listOf(
+                BaiduVideoSpeedHookPoints.VIDEO_PRIVILEGE,
+                BaiduVideoSpeedHookPoints.VIDEO_PRIVILEGE_OBFUSCATED,
+            )
+        } else {
+            listOf(BaiduVideoSpeedHookPoints.VIDEO_PRIVILEGE)
+        }
 
     private data class DexMethodCandidate(
         val className: String,
@@ -152,12 +169,24 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
         paramCount: Int,
         firstParamBoolean: Boolean,
     ): Method? {
-        val clazz = XposedCompat.findClassOrNull(BaiduVideoSpeedHookPoints.VIDEO_PRIVILEGE, cl)
-            ?: return null
-        return clazz.declaredMethods.firstOrNull { method ->
-            method.name == methodName &&
+        // Weak/domestic builds keep the plaintext VideoPrivilege class + method name;
+        // intl 13.11.9 obfuscates the class to sz0.a and the methods to c/g. On that
+        // build the boolean(boolean)/boolean(SpeedPanelUIState) shapes are unique within
+        // the class, so match by plaintext name first and fall back to the unique shape.
+        for (className in videoPrivilegeClassCandidates()) {
+            val clazz = XposedCompat.findClassOrNull(className, cl) ?: continue
+            if (!isVideoPrivilegeOwner(clazz)) continue
+            val byName = clazz.declaredMethods.firstOrNull { method ->
+                method.name == methodName &&
+                    isVideoPrivilegeBooleanMethod(method, paramCount, firstParamBoolean)
+            }
+            if (byName != null) return byName.apply { isAccessible = true }
+            val byShape = clazz.declaredMethods.filter { method ->
                 isVideoPrivilegeBooleanMethod(method, paramCount, firstParamBoolean)
-        }?.apply { isAccessible = true }
+            }
+            byShape.singleOrNull()?.let { return it.apply { isAccessible = true } }
+        }
+        return null
     }
 
     private fun resolveVideoPrivilegeMethod(
@@ -366,7 +395,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
     private fun isPresentOwner(clazz: Class<*>): Boolean {
         if (clazz.name == BaiduVideoSpeedHookPoints.VIDEO_SPEED_UP_PRESENT) return true
         if (clazz.simpleName == BaiduVideoSpeedHookPoints.PRESENT_SIMPLE_NAME) return true
-        return KotlinMetadataUtils.metadataContainsAll(
+        return KotlinMetadataUtils.metadataContainsAllOrAbsent(
             clazz,
             listOf(
                 BaiduVideoSpeedHookPoints.PRESENT_METADATA_TOKEN,
@@ -385,7 +414,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
     private fun isVideoPrivilegeOwner(clazz: Class<*>): Boolean {
         if (clazz.name == BaiduVideoSpeedHookPoints.VIDEO_PRIVILEGE) return true
         if (clazz.simpleName == BaiduVideoSpeedHookPoints.VIDEO_PRIVILEGE_SIMPLE_NAME) return true
-        return KotlinMetadataUtils.metadataContainsAll(
+        return KotlinMetadataUtils.metadataContainsAllOrAbsent(
             clazz,
             listOf(BaiduVideoSpeedHookPoints.VIDEO_PRIVILEGE_METADATA_TOKEN),
         ) || KotlinMetadataUtils.metadataContainsAll(
@@ -454,6 +483,18 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
     }
 
     private fun videoPrivilegeOwnerMatcher(): ClassMatcher {
+        // intl 13.11.9 R8 剥离 @Metadata 且类名混淆为 sz0.a，改用
+        // `boolean X(SpeedPanelUIState)` 方法形状锚（intl 全 APK 仅 sz0.a 声明此形状）。
+        // cn/samsung 保留明文类 + 完整 @Metadata，恢复原 d2 token 锚以收窄候选集，
+        // 避免形状锚在弱混淆样本上放宽匹配。
+        if (isIntlHost()) {
+            return ClassMatcher.create()
+                .addMethod(
+                    MethodMatcher.create()
+                        .returnType(Boolean::class.javaPrimitiveType!!)
+                        .paramTypes(BaiduVideoSpeedHookPoints.SPEED_PANEL_UI_STATE),
+                )
+        }
         return ClassMatcher.create()
             .addAnnotation(
                 AnnotationMatcher.create()

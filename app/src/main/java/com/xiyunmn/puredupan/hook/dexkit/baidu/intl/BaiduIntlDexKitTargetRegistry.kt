@@ -13,14 +13,11 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlStoryDouyin
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabModeDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlChangeSkinDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlAlbumBackupBarFactoryDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlHomeLeftScreenDrawerDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlAboutMeTopFragmentDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPagePromotionAdDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageSafetyFooterUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeRecentItemLimitDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeMiddleViewHolderDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMePopupResponseHelperDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoQualityUnlockDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoSpeedUnlockDexKitResolver
 
@@ -75,34 +72,16 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             feature = "自动签到",
         ),
         DexKitTargetDescriptor(
-            id = AlbumBackupBarAddUseCaseDexKitResolver.CACHE_ID,
-            target = "intl album backup bar add use case",
+            id = IntlAlbumBackupBarFactoryDexKitResolver.CACHE_ID,
+            target = "intl album backup bar floating factory render method",
             featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
             feature = "屏蔽相册备份栏",
-        ),
-        DexKitTargetDescriptor(
-            id = FilePageSafetyFooterUseCaseDexKitResolver.CACHE_ID,
-            target = "intl file page safety footer use case",
-            featureKey = FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE,
-            feature = "文件页底部数据安全提示",
-        ),
-        DexKitTargetDescriptor(
-            id = DownloadPagePromotionAdDexKitResolver.CACHE_ID,
-            target = "intl download page YouaGuide render method",
-            featureKey = FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE,
-            feature = "下载页推广广告",
         ),
         DexKitTargetDescriptor(
             id = IntlAboutMeTopFragmentDexKitResolver.CACHE_ID,
             target = "intl about me top fragment member card setCardUi",
             featureKey = FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE,
             feature = "会员卡定制",
-        ),
-        DexKitTargetDescriptor(
-            id = AboutMePopupResponseHelperDexKitResolver.CACHE_ID,
-            target = "intl about me PopupResponseHelper refresh method",
-            featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
-            feature = "我的页定制",
         ),
         DexKitTargetDescriptor(
             id = AboutMeMiddleViewHolderDexKitResolver.CACHE_ID,
@@ -133,12 +112,6 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             target = "intl video privilege panel speed enable method",
             featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,
             feature = "解锁视频倍速",
-        ),
-        DexKitTargetDescriptor(
-            id = BaiduVideoQualityUnlockDexKitResolver.CAN_PLAY_RESOLUTION_CACHE_ID,
-            target = "intl video quality canPlayResolution method",
-            featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,
-            feature = "解锁视频画质",
         ),
         DexKitTargetDescriptor(
             id = BaiduVideoQualityUnlockDexKitResolver.VIDEO_PRIVILEGE_OWNER_CACHE_ID,
@@ -210,15 +183,13 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             }
         }
         if (available(FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR)) {
-            tasks += DexKitWarmUpTask(AlbumBackupBarAddUseCaseDexKitResolver.CACHE_ID) {
-                AlbumBackupBarAddUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
+            tasks += DexKitWarmUpTask(IntlAlbumBackupBarFactoryDexKitResolver.CACHE_ID) {
+                IntlAlbumBackupBarFactoryDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
-        if (available(FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE)) {
-            tasks += DexKitWarmUpTask(FilePageSafetyFooterUseCaseDexKitResolver.CACHE_ID) {
-                FilePageSafetyFooterUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
+        // 国际版无 ShowSafetyFooterUseCase 数据层路径（走旧版 ListView 渲染，隐藏靠明文
+        // MyNetdiskFragment.initSafetyBottomView 渲染入口 hook）。FilePageCustomizeHook 已宿主
+        // 门控跳过数据层解析，故不注册该 warmup（国内/三星 registry 保留）。
         if (available(FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT)) {
             HomeRecentItemLimitDexKitResolver.cacheIds.forEach { id ->
                 tasks += DexKitWarmUpTask(id) {
@@ -226,24 +197,17 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
                 }
             }
         }
-        if (
-            available(FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE) &&
-            settings.isDownloadPageCustomizeEnabled &&
-            settings.isDownloadPagePromotionAdHidden
-        ) {
-            tasks += DexKitWarmUpTask(DownloadPagePromotionAdDexKitResolver.CACHE_ID) {
-                DownloadPagePromotionAdDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
+        // 国际版无下载页 YouaGuide 推广广告，DownloadPageCustomizeHook 已宿主门控跳过，
+        // 故不注册该 DexKit warmup（国内/三星 registry 保留）。
         if (available(FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(IntlAboutMeTopFragmentDexKitResolver.CACHE_ID) {
                 IntlAboutMeTopFragmentDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         if (available(FeatureKeys.KEY_MY_PAGE_CUSTOMIZE)) {
-            tasks += DexKitWarmUpTask(AboutMePopupResponseHelperDexKitResolver.CACHE_ID) {
-                AboutMePopupResponseHelperDexKitResolver.warmUpDexKitCache(classLoader)
-            }
+            // 国际版签到红点走 activity render points 明文路径；PopupResponseHelper.refresh
+            // 在 intl 无静态存活锚点，AboutMeServiceAndSignDotHideHook 已宿主门控跳过，故不
+            // 注册该 warmup（国内/三星 registry 保留）。AboutMeMiddleViewHolder 仍需 warmup。
             tasks += DexKitWarmUpTask(AboutMeMiddleViewHolderDexKitResolver.CACHE_ID) {
                 AboutMeMiddleViewHolderDexKitResolver.warmUpDexKitCache(classLoader)
             }
@@ -263,9 +227,6 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             }
         }
         if (available(FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY)) {
-            tasks += DexKitWarmUpTask(BaiduVideoQualityUnlockDexKitResolver.CAN_PLAY_RESOLUTION_CACHE_ID) {
-                BaiduVideoQualityUnlockDexKitResolver.resolveCanPlayResolution(classLoader) != null
-            }
             tasks += DexKitWarmUpTask(BaiduVideoQualityUnlockDexKitResolver.VIDEO_PRIVILEGE_OWNER_CACHE_ID) {
                 BaiduVideoQualityUnlockDexKitResolver.resolveVideoPrivilegeOwner(classLoader) != null
             }

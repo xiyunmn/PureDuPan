@@ -150,6 +150,13 @@ object AboutMeServiceAndSignDotHideHook {
     }
 
     private fun hookPopupResponseHelperRefresh(cl: ClassLoader): Int {
+        // 国际版无该 PopupResponseHelper 签到红点入口（13.11.9 R8 剥离 @Metadata，该 helper 亦无
+        // 静态存活锚点，功能本身在国际版缺失）。跳过 DexKit 解析，避免徒劳扫描与 double-failure；
+        // 签到红点的其余明文 activity 渲染入口不受本守卫影响，国内/三星路径不变。
+        if (BaiduFeatureRuntime.isCurrentIntlHost()) {
+            XposedCompat.logD("[$TAG] PopupResponseHelper refresh skipped: intl host has no such helper")
+            return 0
+        }
         val mod = XposedCompat.module ?: return 0
         val method = AboutMePopupResponseHelperDexKitResolver.resolve(cl) ?: run {
             XposedCompat.logD("[$TAG] PopupResponseHelper.refresh not resolved")

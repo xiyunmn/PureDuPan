@@ -168,7 +168,7 @@ internal object AlbumBackupBarAddUseCaseDexKitResolver {
 
     private fun isAddUseCaseOwner(clazz: Class<*>): Boolean {
         if (clazz.name == BaiduAlbumBackupBarHookPoints.ALBUM_BACKUP_BAR_ADD_USE_CASE) return true
-        return KotlinMetadataUtils.metadataContainsAll(clazz, ADD_USE_CASE_METADATA_TOKENS)
+        return KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, ADD_USE_CASE_METADATA_TOKENS)
     }
 
     private fun addUseCaseOwnerMatcher(): ClassMatcher {

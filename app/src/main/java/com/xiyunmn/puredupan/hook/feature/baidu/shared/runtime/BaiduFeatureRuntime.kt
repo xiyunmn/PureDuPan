@@ -1,6 +1,7 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime
 
 import android.content.Context
+import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.host.HostPackages
 import com.xiyunmn.puredupan.hook.host.HostRuntimeState
 import com.xiyunmn.puredupan.hook.host.HomeSaveCardImplementation
@@ -50,4 +51,11 @@ internal object BaiduFeatureRuntime {
 
     fun isIntlHost(context: Context): Boolean =
         HostRuntimeState.canonicalPackageNameOrSelf(context.packageName) == HostPackages.BAIDU_INTL
+
+    // 无 context 的当前宿主判定（DexKit resolver 层用）：基于当前进程包名规范化。
+    // 供 shared resolver 隔离 intl 专属锚点，避免 feature 层直接 import host 层。
+    fun isCurrentIntlHost(): Boolean =
+        XposedCompat.currentPackageName()
+            ?.let { HostRuntimeState.canonicalPackageNameOrSelf(it) == HostPackages.BAIDU_INTL }
+            ?: false
 }

@@ -214,7 +214,7 @@ internal object SearchPageCustomizeHook {
             XposedCompat.log("[SearchPageCustomizeHook] MainPreSearchTabVM class NOT FOUND")
             return 0
         }
-        if (!metadataContainsAll(
+        if (!metadataContainsAllOrAbsent(
                 vmClass,
                 listOf(
                     "MainPreSearchTabVM",
@@ -365,7 +365,7 @@ internal object SearchPageCustomizeHook {
     }
 
     private fun findAiSearchCardMethod(clazz: Class<*>): Method? {
-        if (!metadataContainsAll(clazz, listOf("AiSearchCard", "MAIN_SEARCH_AI_SEARCH_GLOBAL"))) {
+        if (!metadataContainsAllOrAbsent(clazz, listOf("AiSearchCard", "MAIN_SEARCH_AI_SEARCH_GLOBAL"))) {
             XposedCompat.logW("[SearchPageCustomizeHook] AiSearchCardKt metadata signature mismatch")
             return null
         }
@@ -420,7 +420,7 @@ internal object SearchPageCustomizeHook {
     }
 
     private fun findSearchAiRecommendCardMethod(clazz: Class<*>): Method? {
-        if (!metadataContainsAll(clazz, listOf("SearchAIRecommendCard", "AIRecommendResult"))) {
+        if (!metadataContainsAllOrAbsent(clazz, listOf("SearchAIRecommendCard", "AIRecommendResult"))) {
             XposedCompat.logW("[SearchPageCustomizeHook] SearchAIRecommendKt metadata signature mismatch")
             return null
         }
@@ -454,6 +454,15 @@ internal object SearchPageCustomizeHook {
         return tokens.all { token ->
             metadataTokens.any { it == token || it.contains(token) }
         }
+    }
+
+    /**
+     * @Metadata 存在时（cn/samsung）保持严格 token 校验；intl 13.11.9 R8 全局剥离
+     * @Metadata 后降级放行，由后续明文类名 + 强方法签名形状（参数类型/数量）兜底。
+     */
+    private fun metadataContainsAllOrAbsent(clazz: Class<*>, tokens: Collection<String>): Boolean {
+        if (metadataTokens(clazz).isEmpty()) return true
+        return metadataContainsAll(clazz, tokens)
     }
 
     private fun metadataTokens(clazz: Class<*>): Set<String> {

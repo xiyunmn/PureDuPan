@@ -185,7 +185,7 @@ internal object AboutMeTopHeteromoDexKitResolver {
 
     private fun isHeteromoOwner(clazz: Class<*>): Boolean {
         if (clazz.name == BaiduAboutMeTopHeteromoHookPoints.ABOUT_ME_TOP_FRAGMENT_HETEROMO) return true
-        return KotlinMetadataUtils.metadataContainsAll(clazz, HETEROMO_METADATA_TOKENS)
+        return KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, HETEROMO_METADATA_TOKENS)
     }
 
     private fun heteromoOwnerMatcher(): ClassMatcher {

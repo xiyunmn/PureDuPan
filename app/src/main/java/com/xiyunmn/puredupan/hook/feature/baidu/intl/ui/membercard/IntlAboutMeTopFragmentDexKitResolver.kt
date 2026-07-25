@@ -162,7 +162,7 @@ internal object IntlAboutMeTopFragmentDexKitResolver {
 
     private fun isFragmentOwner(clazz: Class<*>): Boolean {
         if (clazz.name == BaiduIntlMemberCardHookPoints.ABOUT_ME_TOP_FRAGMENT) return true
-        return KotlinMetadataUtils.metadataContainsAll(clazz, FRAGMENT_METADATA_TOKENS)
+        return KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, FRAGMENT_METADATA_TOKENS)
     }
 
     private fun fragmentOwnerMatcher(): ClassMatcher {

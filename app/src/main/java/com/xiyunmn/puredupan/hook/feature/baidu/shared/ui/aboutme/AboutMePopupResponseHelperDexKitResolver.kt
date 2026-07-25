@@ -158,7 +158,7 @@ internal object AboutMePopupResponseHelperDexKitResolver {
 
     private fun isHelperOwner(clazz: Class<*>): Boolean {
         if (clazz.name == BaiduAboutMeHookPoints.POPUP_RESPONSE_HELPER) return true
-        return KotlinMetadataUtils.metadataContainsAll(clazz, METADATA_TOKENS)
+        return KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, METADATA_TOKENS)
     }
 
     private fun helperOwnerMatcher(): ClassMatcher {
