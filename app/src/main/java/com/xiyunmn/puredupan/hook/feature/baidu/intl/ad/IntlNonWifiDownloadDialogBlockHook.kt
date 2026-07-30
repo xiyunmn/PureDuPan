@@ -12,6 +12,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlTransferHookPoints
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
+import java.lang.reflect.Modifier
 import java.util.Collections
 import java.util.WeakHashMap
 
@@ -208,7 +209,8 @@ internal object IntlNonWifiDownloadDialogBlockHook {
             XposedCompat.logD("[IntlNonWifiDownloadDialogBlockHook] class not found: $className")
             return 0
         }
-        val method = XposedCompat.findMethodOrNull(clazz, methodName, *paramTypes) ?: run {
+        val method = XposedCompat.findMethodOrNull(clazz, methodName, *paramTypes)
+            ?.takeUnless { Modifier.isAbstract(it.modifiers) } ?: run {
             XposedCompat.logD("[IntlNonWifiDownloadDialogBlockHook] method not found: $tag")
             return 0
         }
@@ -272,7 +274,7 @@ internal object IntlNonWifiDownloadDialogBlockHook {
             clazz,
             BaiduIntlTransferHookPoints.SHOW_SINGKIL_DIALOG_METHOD,
             callbackClass,
-        ) ?: return 0
+        )?.takeUnless { Modifier.isAbstract(it.modifiers) } ?: return 0
         val mod = XposedCompat.module ?: return 0
         method.isAccessible = true
         mod.hook(method).intercept { chain ->
@@ -324,7 +326,8 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         val commonClass = XposedCompat.findClassOrNull(commonClassName, cl) ?: return 0
         val scene = readDownloadPushGuideScene(cl, constantClassName) ?: return 0
         val method = commonClass.declaredMethods.firstOrNull { candidate ->
-            candidate.name == BaiduIntlTransferHookPoints.SHOW_SCENE_PUSH_GUIDE_METHOD &&
+            !Modifier.isAbstract(candidate.modifiers) &&
+                candidate.name == BaiduIntlTransferHookPoints.SHOW_SCENE_PUSH_GUIDE_METHOD &&
                 candidate.parameterTypes.size == 2 &&
                 candidate.parameterTypes[1] == String::class.java &&
                 candidate.returnType == Boolean::class.javaPrimitiveType
@@ -361,7 +364,8 @@ internal object IntlNonWifiDownloadDialogBlockHook {
     ): Int {
         val constantClass = XposedCompat.findClassOrNull(constantClassName, cl) ?: return 0
         val method = constantClass.declaredMethods.firstOrNull { candidate ->
-            candidate.name == BaiduIntlTransferHookPoints.GET_DOWNLOAD_PUSH_GUIDE_SCENE_METHOD &&
+            !Modifier.isAbstract(candidate.modifiers) &&
+                candidate.name == BaiduIntlTransferHookPoints.GET_DOWNLOAD_PUSH_GUIDE_SCENE_METHOD &&
                 candidate.parameterTypes.isEmpty() &&
                 candidate.returnType == String::class.java
         } ?: return 0
@@ -391,7 +395,8 @@ internal object IntlNonWifiDownloadDialogBlockHook {
     ): Int {
         val commonClass = XposedCompat.findClassOrNull(commonClassName, cl) ?: return 0
         val method = commonClass.declaredMethods.firstOrNull { candidate ->
-            candidate.name == BaiduIntlTransferHookPoints.SHOW_SCENE_PUSH_GUIDE_METHOD &&
+            !Modifier.isAbstract(candidate.modifiers) &&
+                candidate.name == BaiduIntlTransferHookPoints.SHOW_SCENE_PUSH_GUIDE_METHOD &&
                 candidate.parameterTypes.size == 2 &&
                 candidate.parameterTypes[1] == String::class.java &&
                 candidate.returnType == Boolean::class.javaPrimitiveType
@@ -425,7 +430,8 @@ internal object IntlNonWifiDownloadDialogBlockHook {
     private fun readDownloadPushGuideScene(cl: ClassLoader, className: String): String? {
         val clazz = XposedCompat.findClassOrNull(className, cl) ?: return null
         val method = clazz.declaredMethods.firstOrNull { candidate ->
-            candidate.name == BaiduIntlTransferHookPoints.GET_DOWNLOAD_PUSH_GUIDE_SCENE_METHOD &&
+            !Modifier.isAbstract(candidate.modifiers) &&
+                candidate.name == BaiduIntlTransferHookPoints.GET_DOWNLOAD_PUSH_GUIDE_SCENE_METHOD &&
                 candidate.parameterTypes.isEmpty() &&
                 candidate.returnType == String::class.java
         } ?: return null
@@ -449,7 +455,7 @@ internal object IntlNonWifiDownloadDialogBlockHook {
             "onReceive",
             Context::class.java,
             Intent::class.java,
-        ) ?: return 0
+        )?.takeUnless { Modifier.isAbstract(it.modifiers) } ?: return 0
         val mod = XposedCompat.module ?: return 0
         method.isAccessible = true
         mod.hook(method).intercept { chain ->
