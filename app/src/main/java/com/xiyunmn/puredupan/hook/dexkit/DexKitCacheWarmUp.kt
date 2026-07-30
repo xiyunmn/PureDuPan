@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.dexkit
 import android.app.Activity
 import android.os.Handler
 import android.os.Looper
+import android.os.Process
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import java.util.concurrent.atomic.AtomicBoolean
@@ -193,6 +194,12 @@ internal object DexKitCacheWarmUp {
         }
         Thread({
             try {
+                runCatching { Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND) }
+                    .onFailure { t ->
+                        XposedCompat.logD(
+                            "[DexKitCacheWarmUp] background priority unavailable: ${t.message}",
+                        )
+                    }
                 val pendingForceFullScan = if (consumePendingFullScan) {
                     DexKitCompat.consumeFullScanPending()
                 } else {
@@ -279,6 +286,7 @@ internal object DexKitCacheWarmUp {
                 XposedCompat.logW("[DexKitCacheWarmUp] task failed: ${task.id}, ${t.message}")
                 XposedCompat.log(t)
             }
+            Thread.yield()
         }
         XposedCompat.log(
             "[DexKitCacheWarmUp] warm-up END: found=$foundCount/${tasks.size}, skipped=$skippedCount",

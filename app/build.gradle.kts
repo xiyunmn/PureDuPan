@@ -281,6 +281,41 @@ val validateHookArchitecture = tasks.register("validateHookArchitecture") {
         failIfNotEmpty("Legacy architecture source paths", legacySourcePathMatches)
 
         val sourceTextByPath = allKotlinFiles.associate { it.relativePath() to it.readText() }
+        val dexKitCompatPath = "com/xiyunmn/puredupan/hook/dexkit/DexKitCompat.kt"
+        val dexKitCompatText = sourceTextByPath[dexKitCompatPath]
+            ?: throw GradleException("DexKitCompat source missing: $dexKitCompatPath")
+        val dexKitCacheSchema = Regex("""CACHE_SCHEMA\s*=\s*(\d+)""")
+            .find(dexKitCompatText)
+            ?.groupValues
+            ?.get(1)
+            ?.toIntOrNull()
+            ?: throw GradleException("DexKit CACHE_SCHEMA is missing or invalid")
+        if (dexKitCacheSchema < 7) {
+            throw GradleException("DexKit CACHE_SCHEMA must be at least 7")
+        }
+        listOf("putCachedMethod", "recordTargetStatus").forEach { functionName ->
+            val functionBody = Regex(
+                """fun\s+$functionName\s*\([\s\S]*?\n\s*}""",
+            ).find(dexKitCompatText)?.value.orEmpty()
+            if ("isTargetResolutionPersistenceAllowed()" !in functionBody ||
+                "persistence deferred until warm-up" !in functionBody
+            ) {
+                throw GradleException(
+                    "DexKit $functionName must defer persistence outside warm-up",
+                )
+            }
+        }
+        val fallbackFirstWarmUpPattern = Regex(
+            """fun\s+warmUpDexKitCache\b[\s\S]{0,220}return\s+[\s\S]{0,120}fallback[\s\S]{0,80}\|\|""",
+            RegexOption.IGNORE_CASE,
+        )
+        val fallbackFirstWarmUpMatches = sourceTextByPath.mapNotNull { (path, text) ->
+            if (fallbackFirstWarmUpPattern.containsMatchIn(text)) path else null
+        }
+        failIfNotEmpty(
+            "DexKit warm-up must not test fallback before scan resolution",
+            fallbackFirstWarmUpMatches,
+        )
         val oldArchitecturePatterns = listOf(
             Regex("""\bHostFlavor\b"""),
             Regex("""\.flavor\b"""),
@@ -920,4 +955,5 @@ listOf("debug", "beta", "release").forEach { buildType ->
 dependencies {
     compileOnly(libs.xposed.api)
     implementation(libs.dexkit)
+    testImplementation(libs.junit)
 }

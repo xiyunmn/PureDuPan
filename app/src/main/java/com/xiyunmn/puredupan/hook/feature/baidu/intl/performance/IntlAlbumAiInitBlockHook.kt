@@ -103,8 +103,9 @@ internal object IntlAlbumAiInitBlockHook {
     }
 
     internal fun warmUpDexKitCache(cl: ClassLoader): Boolean {
-        return resolveStableInitFallbackMethods(cl).isNotEmpty() ||
-            resolveDirectAlbumAiInitMethod(cl) != null
+        val directInitMethod = resolveDirectAlbumAiInitMethod(cl)
+        if (directInitMethod != null) return true
+        return resolveStableInitFallbackMethods(cl).isNotEmpty()
     }
 
     private fun hookStableInitMethods(cl: ClassLoader): Int {

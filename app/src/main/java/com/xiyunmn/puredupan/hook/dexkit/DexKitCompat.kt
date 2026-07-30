@@ -13,7 +13,7 @@ import org.luckypray.dexkit.DexKitBridge
 internal object DexKitCompat {
     private const val LIB_NAME = "dexkit"
     private const val LIB_FILE_NAME = "libdexkit.so"
-    private const val CACHE_SCHEMA = 5
+    private const val CACHE_SCHEMA = 7
     private const val CACHE_PREFIX = "dexkit_method_cache_v$CACHE_SCHEMA"
     private const val STATUS_PREFIX = "dexkit_target_status_v$CACHE_SCHEMA"
     private const val KEY_FORCE_FULL_SCAN = "dexkit_force_full_scan"
@@ -27,6 +27,7 @@ internal object DexKitCompat {
     @Volatile private var loadState: LoadState = LoadState.Unknown
     @Volatile private var runtimeProvider: RuntimeProvider? = null
     private val memoryCache = ConcurrentHashMap<String, CacheEntry>()
+    private val scanSession = ThreadLocal<ScanSession?>()
     private val scanAllowed = object : ThreadLocal<Boolean>() {
         override fun initialValue(): Boolean = false
     }
@@ -70,6 +71,50 @@ internal object DexKitCompat {
         val moduleStatePrefsProvider: (Context) -> SharedPreferences,
     )
 
+    private class ScanSession {
+        private data class Entry(
+            val classLoader: ClassLoader,
+            val useMemoryDexFile: Boolean,
+            val bridge: DexKitBridge,
+        )
+
+        private val entries = mutableListOf<Entry>()
+
+        fun find(classLoader: ClassLoader, useMemoryDexFile: Boolean): DexKitBridge? =
+            entries.firstOrNull { entry ->
+                entry.classLoader === classLoader &&
+                    entry.useMemoryDexFile == useMemoryDexFile
+            }?.bridge
+
+        fun add(
+            classLoader: ClassLoader,
+            useMemoryDexFile: Boolean,
+            bridge: DexKitBridge,
+        ) {
+            entries += Entry(classLoader, useMemoryDexFile, bridge)
+        }
+
+        fun discard(classLoader: ClassLoader, useMemoryDexFile: Boolean) {
+            val iterator = entries.iterator()
+            while (iterator.hasNext()) {
+                val entry = iterator.next()
+                if (entry.classLoader === classLoader &&
+                    entry.useMemoryDexFile == useMemoryDexFile
+                ) {
+                    iterator.remove()
+                    runCatching { entry.bridge.close() }
+                }
+            }
+        }
+
+        fun close() {
+            entries.asReversed().forEach { entry ->
+                runCatching { entry.bridge.close() }
+            }
+            entries.clear()
+        }
+    }
+
     internal fun setRuntimeProvider(
         appContextProvider: () -> Context?,
         moduleStatePrefsProvider: (Context) -> SharedPreferences,
@@ -92,15 +137,32 @@ internal object DexKitCompat {
             return null
         }
         if (!ensureLoaded(tag)) return null
+        val session = scanSession.get()
         return try {
-            XposedCompat.logD("[$tag] DexKit bridge create: useMemoryDexFile=$useMemoryDexFile")
-            DexKitBridge.create(cl, useMemoryDexFile).use(block)
+            if (session == null) {
+                XposedCompat.logD("[$tag] DexKit bridge create: useMemoryDexFile=$useMemoryDexFile")
+                DexKitBridge.create(cl, useMemoryDexFile).use(block)
+            } else {
+                val cachedBridge = session.find(cl, useMemoryDexFile)
+                val bridge = cachedBridge ?: DexKitBridge.create(cl, useMemoryDexFile).also {
+                    session.add(cl, useMemoryDexFile, it)
+                    XposedCompat.logD(
+                        "[$tag] DexKit bridge session created: useMemoryDexFile=$useMemoryDexFile",
+                    )
+                }
+                if (cachedBridge != null) {
+                    XposedCompat.logD("[$tag] DexKit bridge session reused")
+                }
+                block(bridge)
+            }
         } catch (t: UnsatisfiedLinkError) {
+            session?.discard(cl, useMemoryDexFile)
             markUnavailable("${t.javaClass.simpleName}: ${t.message}")
             resolverId?.let { markTargetError(tag, it, buildBridgeFailureDetail(t)) }
             XposedCompat.logD("[$tag] DexKit unavailable: ${t.message}")
             null
         } catch (t: Throwable) {
+            session?.discard(cl, useMemoryDexFile)
             resolverId?.let { markTargetError(tag, it, buildBridgeFailureDetail(t)) }
             XposedCompat.logW("[$tag] DexKit bridge failed: ${t.message}")
             null
@@ -109,13 +171,23 @@ internal object DexKitCompat {
 
     fun <T> runWithScanningAllowed(block: () -> T): T {
         val previous = scanAllowed.get() == true
+        val previousSession = scanSession.get()
+        val ownsSession = previousSession == null
+        if (ownsSession) scanSession.set(ScanSession())
         scanAllowed.set(true)
         return try {
             block()
         } finally {
+            if (ownsSession) {
+                scanSession.get()?.close()
+                scanSession.remove()
+            }
             scanAllowed.set(previous)
         }
     }
+
+    internal fun isTargetResolutionPersistenceAllowed(): Boolean =
+        scanAllowed.get() == true
 
     fun <T> getCachedMethod(
         tag: String,
@@ -158,6 +230,12 @@ internal object DexKitCompat {
     }
 
     fun putCachedMethod(tag: String, resolverId: String, ref: MethodRef?) {
+        if (!isTargetResolutionPersistenceAllowed()) {
+            XposedCompat.logD(
+                "[$tag] DexKit cache persistence deferred until warm-up: $resolverId",
+            )
+            return
+        }
         val fingerprint = hostFingerprint() ?: return
         val keyPrefix = cacheKeyPrefix(resolverId)
         val prefs = statePrefs() ?: return
@@ -402,6 +480,12 @@ internal object DexKitCompat {
         state: String,
         detail: String?,
     ) {
+        if (!isTargetResolutionPersistenceAllowed()) {
+            XposedCompat.logD(
+                "[$tag] DexKit status persistence deferred until warm-up: $resolverId -> $state",
+            )
+            return
+        }
         val fingerprint = hostFingerprint() ?: return
         val keyPrefix = targetStatusKeyPrefix(resolverId)
         statePrefs()?.edit()

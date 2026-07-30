@@ -313,6 +313,11 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
                 SearchPageVoiceSearchDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
+        if (available(FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR)) {
+            tasks += DexKitWarmUpTask(AlbumBackupBarAddUseCaseDexKitResolver.CACHE_ID) {
+                AlbumBackupBarAddUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
         if (available(FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(AboutMeTopHeteromoDexKitResolver.CACHE_ID) {
                 AboutMeTopHeteromoDexKitResolver.warmUpDexKitCache(classLoader)
@@ -337,11 +342,7 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
                 }
             }
         }
-        if (
-            available(FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE) &&
-            settings.isDownloadPageCustomizeEnabled &&
-            settings.isDownloadPagePromotionAdHidden
-        ) {
+        if (available(FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(DownloadPagePromotionAdDexKitResolver.CACHE_ID) {
                 DownloadPagePromotionAdDexKitResolver.warmUpDexKitCache(classLoader)
             }

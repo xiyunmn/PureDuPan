@@ -39,7 +39,9 @@ internal object DomesticHotStartSplashCompatHook {
                 java.lang.Long.TYPE,
             ) ?: run {
                 hookState.reset()
-                XposedCompat.log("[DomesticHotStartSplashCompatHook] backgroundResumeAdStart method NOT FOUND")
+                XposedCompat.logD(
+                    "[DomesticHotStartSplashCompatHook] legacy backgroundResumeAdStart method unavailable",
+                )
                 return
             }
 
