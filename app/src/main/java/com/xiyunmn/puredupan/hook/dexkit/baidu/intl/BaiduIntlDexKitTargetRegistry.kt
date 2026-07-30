@@ -187,9 +187,9 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
                 IntlAlbumBackupBarFactoryDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
-        // 国际版无 ShowSafetyFooterUseCase 数据层路径（走旧版 ListView 渲染，隐藏靠明文
-        // MyNetdiskFragment.initSafetyBottomView 渲染入口 hook）。FilePageCustomizeHook 已宿主
-        // 门控跳过数据层解析，故不注册该 warmup（国内/三星 registry 保留）。
+        // 国际版无 ShowSafetyFooterUseCase 数据层路径；FilePageCustomizeHook 使用
+        // FileListRecyclerView footer 参数边界覆盖实际 v2 页面，并保留旧 ListView 明文入口。
+        // 故不注册该 UseCase warm-up（国内/三星 registry 保留）。
         if (available(FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT)) {
             HomeRecentItemLimitDexKitResolver.cacheIds.forEach { id ->
                 tasks += DexKitWarmUpTask(id) {
