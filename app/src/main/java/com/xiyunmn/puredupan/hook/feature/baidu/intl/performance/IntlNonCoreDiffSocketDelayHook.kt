@@ -157,7 +157,7 @@ internal object IntlNonCoreDiffSocketDelayHook {
             resolveSocketRegisterRef(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return resolveFallbackSocketRegisterMethod(cl)
+            DexKitCompat.CachedResult.NotFound -> return null
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
@@ -167,7 +167,7 @@ internal object IntlNonCoreDiffSocketDelayHook {
             XposedCompat.logW("[IntlNonCoreDiffSocketDelayHook] Function1 class NOT FOUND for DexKit resolve")
             null
         } else {
-            DexKitCompat.withBridge(TAG, cl) { bridge ->
+            DexKitCompat.withBridge(TAG, cl, resolverId = SOCKET_REGISTER_CACHE_ID) { bridge ->
                 bridge.setThreadNum(1)
                 bridge.findMethod(
                     FindMethod.create()
@@ -192,10 +192,9 @@ internal object IntlNonCoreDiffSocketDelayHook {
 
         if (result.isEmpty()) {
             XposedCompat.logD("[IntlNonCoreDiffSocketDelayHook] socket register candidate not found by DexKit")
-            return resolveFallbackSocketRegisterMethod(cl) ?: run {
-                DexKitCompat.putCachedMethod(TAG, SOCKET_REGISTER_CACHE_ID, null)
-                null
-            }
+            DexKitCompat.markTargetScanMiss(TAG, SOCKET_REGISTER_CACHE_ID, "candidateCount=0")
+            DexKitCompat.putCachedMethod(TAG, SOCKET_REGISTER_CACHE_ID, null)
+            return null
         }
 
         val candidates = result.mapNotNull { methodData ->
@@ -219,7 +218,7 @@ internal object IntlNonCoreDiffSocketDelayHook {
                 "validatedCandidateCount=${candidates.size}",
             )
             DexKitCompat.putCachedMethod(TAG, SOCKET_REGISTER_CACHE_ID, null)
-            return resolveFallbackSocketRegisterMethod(cl)
+            return null
         }
 
         val method = candidates.single()
@@ -228,27 +227,13 @@ internal object IntlNonCoreDiffSocketDelayHook {
                 "${method.declaringClass.name}.${method.name}",
         )
         cacheResolvedSocketRegister(method)
+        DexKitCompat.markTargetSuccess(
+            TAG,
+            SOCKET_REGISTER_CACHE_ID,
+            "dexkit:${method.declaringClass.name}.${method.name}",
+        )
         return method
     }
-
-    private fun resolveFallbackSocketRegisterMethod(cl: ClassLoader): Method? {
-        return resolveKnown13_11SocketRegisterMethod(cl)?.also { method ->
-            cacheResolvedSocketRegister(method)
-            XposedCompat.logD(
-                "[IntlNonCoreDiffSocketDelayHook] resolved known socket register fallback: " +
-                    "${method.declaringClass.name}.${method.name}",
-            )
-        }
-    }
-
-    private fun resolveKnown13_11SocketRegisterMethod(cl: ClassLoader): Method? =
-        resolveSocketRegisterRef(
-            cl,
-            DexKitCompat.MethodRef(
-                BaiduIntlSocketHookPoints.SOCKET_MANAGER_13_11_CLASS,
-                BaiduIntlSocketHookPoints.SOCKET_REGISTER_13_11_METHOD,
-            ),
-        )
 
     private fun cacheResolvedSocketRegister(method: Method) {
         DexKitCompat.putCachedMethod(

@@ -11,6 +11,8 @@ import org.luckypray.dexkit.query.matchers.MethodMatcher
 import org.luckypray.dexkit.result.MethodData
 
 internal object HomeRecentItemLimitDexKitResolver {
+    const val STATUS_CACHE_ID = "shared_home_recent_limit_methods_v3"
+
     val sourceCacheIds = (0..2).map { index -> "shared_home_recent_limit_source_v2_$index" }
     val cacheWriterCacheIds = (0..2).map { index -> "shared_home_recent_limit_cache_writer_v2_$index" }
     val stateWriterCacheIds = (0..2).map { index -> "shared_home_recent_limit_state_writer_v2_$index" }
@@ -38,11 +40,29 @@ internal object HomeRecentItemLimitDexKitResolver {
 
     fun resolve(cl: ClassLoader): List<ResolvedMethods> {
         val cached = readCached(cl)
-        if (cached.isNotEmpty()) return cached
+        if (cached.isNotEmpty()) {
+            markResolution("cache", cached)
+            return cached
+        }
 
         val refs = scan(cl)
         refs.forEachIndexed(::cacheRefs)
-        return readCached(cl).ifEmpty { resolveStableFallback(cl) }
+        val scanned = readCached(cl)
+        if (scanned.isNotEmpty()) {
+            markResolution("dexkit", scanned)
+            return scanned
+        }
+
+        if (DexKitCompat.isTargetResolutionPersistenceAllowed()) {
+            DexKitCompat.markTargetScanMiss(
+                TAG,
+                STATUS_CACHE_ID,
+                "candidateGroupCount=0",
+            )
+        }
+        return resolveStableFallback(cl).also { fallback ->
+            if (fallback.isNotEmpty()) markResolution("fallback", fallback)
+        }
     }
 
     private fun readCached(cl: ClassLoader): List<ResolvedMethods> {
@@ -69,7 +89,7 @@ internal object HomeRecentItemLimitDexKitResolver {
     }
 
     private fun scan(cl: ClassLoader): List<MethodRefs> {
-        val refs = DexKitCompat.withBridge(TAG, resolverId = sourceCacheIds.first(), cl = cl) {
+        val refs = DexKitCompat.withBridge(TAG, resolverId = STATUS_CACHE_ID, cl = cl) {
             bridge ->
             bridge.setThreadNum(1)
             val sources = BaiduHomeCardHookPoints.DOMESTIC_RECENT_CARD_VIEW_MODELS
@@ -89,7 +109,7 @@ internal object HomeRecentItemLimitDexKitResolver {
                 .sortedBy { refs -> refs.source.className }
                 .take(sourceCacheIds.size)
         }.orEmpty()
-        if (refs.isEmpty()) {
+        if (refs.isEmpty() && DexKitCompat.isTargetResolutionPersistenceAllowed()) {
             XposedCompat.logD("[$TAG] DexKit scan miss; checking stable fallback")
         }
         return refs
@@ -138,6 +158,14 @@ internal object HomeRecentItemLimitDexKitResolver {
         DexKitCompat.putCachedMethod(TAG, sourceCacheIds[index], refs.source)
         DexKitCompat.putCachedMethod(TAG, cacheWriterCacheIds[index], refs.cacheWriter)
         DexKitCompat.putCachedMethod(TAG, stateWriterCacheIds[index], refs.stateWriter)
+    }
+
+    private fun markResolution(source: String, methods: List<ResolvedMethods>) {
+        val members = methods.joinToString { resolved ->
+            val owner = resolved.source.declaringClass.name
+            "$owner.${resolved.source.name}/${resolved.cacheWriter.name}/${resolved.stateWriter.name}"
+        }
+        DexKitCompat.markTargetSuccess(TAG, STATUS_CACHE_ID, "$source:$members")
     }
 
     private fun resolveStableFallback(cl: ClassLoader): List<ResolvedMethods> {

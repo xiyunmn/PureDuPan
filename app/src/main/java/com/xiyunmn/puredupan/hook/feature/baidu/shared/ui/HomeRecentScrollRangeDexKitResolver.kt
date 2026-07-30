@@ -30,7 +30,10 @@ internal object HomeRecentScrollRangeDexKitResolver {
     fun warmUpDexKitCache(cl: ClassLoader): Boolean = resolve(cl) != null
 
     fun resolve(cl: ClassLoader): ResolvedMethods? {
-        readCached(cl)?.let { return it }
+        readCached(cl)?.let { cached ->
+            markResolution("cache", cached)
+            return cached
+        }
 
         val refs = scan(cl)
         if (refs != null) {
@@ -40,9 +43,14 @@ internal object HomeRecentScrollRangeDexKitResolver {
                     "${refs.callback.className}.${refs.callback.methodName}, " +
                     "${refs.updateSize.className}.${refs.updateSize.methodName}",
             )
-            readCached(cl)?.let { return it }
+            readCached(cl)?.let { scanned ->
+                markResolution("dexkit", scanned)
+                return scanned
+            }
         }
-        return resolveStableFallback(cl)
+        return resolveStableFallback(cl)?.also { fallback ->
+            markResolution("fallback", fallback)
+        }
     }
 
     private fun readCached(cl: ClassLoader): ResolvedMethods? {
@@ -105,6 +113,13 @@ internal object HomeRecentScrollRangeDexKitResolver {
     private fun cacheRefs(refs: MethodRefs) {
         DexKitCompat.putCachedMethod(TAG, CALLBACK_CACHE_ID, refs.callback)
         DexKitCompat.putCachedMethod(TAG, UPDATE_SIZE_CACHE_ID, refs.updateSize)
+    }
+
+    private fun markResolution(source: String, methods: ResolvedMethods) {
+        val detail = "$source:${methods.callback.declaringClass.name}.${methods.callback.name}," +
+            "${methods.updateSize.declaringClass.name}.${methods.updateSize.name}"
+        DexKitCompat.markTargetSuccess(TAG, CALLBACK_CACHE_ID, detail)
+        DexKitCompat.markTargetSuccess(TAG, UPDATE_SIZE_CACHE_ID, detail)
     }
 
     private fun resolveStableFallback(cl: ClassLoader): ResolvedMethods? {

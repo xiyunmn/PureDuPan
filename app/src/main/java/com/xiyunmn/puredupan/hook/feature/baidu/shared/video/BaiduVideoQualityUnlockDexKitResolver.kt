@@ -32,20 +32,12 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
     private const val OWNER_SENTINEL_METHOD = "<owner>"
     private const val MAX_DIAGNOSTIC_CANDIDATES = 5
 
-    // intl 13.11.9 R8 剥离 @Metadata 且 VideoPrivilege 混淆为 sz0.a，仅此宿主追加混淆候选
-    // 与形状锚；cn/samsung 保留明文 VideoPrivilege + @Metadata d2 原路径，不受影响。
+    // intl 13.11.9 R8 剥离 @Metadata 后改用 SpeedPanelUIState 方法形状扫描 owner。
     private fun isIntlHost(): Boolean = BaiduFeatureRuntime.isCurrentIntlHost()
 
-    // 明文 VideoPrivilege 类（弱混淆/国内）优先；intl 追加混淆类 sz0.a 兜底。
+    // fallback 只允许跨版本明文类；混淆 owner 必须由 DexKit 动态发现。
     private fun videoPrivilegeClassCandidates(): List<String> =
-        if (isIntlHost()) {
-            listOf(
-                BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE,
-                BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE_OBFUSCATED,
-            )
-        } else {
-            listOf(BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE)
-        }
+        listOf(BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE)
 
     private val QUALITY_METHOD_NAMES = setOf(
         BaiduVideoQualityHookPoints.CAN_PLAY_720_METHOD,
@@ -126,6 +118,11 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             TAG,
             VIDEO_PRIVILEGE_OWNER_CACHE_ID,
             DexKitCompat.MethodRef(best.name, OWNER_SENTINEL_METHOD),
+        )
+        DexKitCompat.markTargetSuccess(
+            TAG,
+            VIDEO_PRIVILEGE_OWNER_CACHE_ID,
+            "dexkit:${best.name}",
         )
         return best
     }
@@ -231,6 +228,11 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID,
             DexKitCompat.MethodRef(owner.name, joinedNames),
         )
+        DexKitCompat.markTargetSuccess(
+            TAG,
+            VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID,
+            "dexkit:${methods.joinToString { "${it.declaringClass.name}.${it.name}" }}",
+        )
         return methods
     }
 
@@ -249,6 +251,11 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID,
             DexKitCompat.MethodRef(owner.name, named.joinToString(",") { it.name }),
         )
+        DexKitCompat.markTargetSuccess(
+            TAG,
+            VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID,
+            "fallback:${named.joinToString { "${it.declaringClass.name}.${it.name}" }}",
+        )
         XposedCompat.log(
             "[$TAG] fallback quality methods: " +
                 named.joinToString { "${it.declaringClass.name}.${it.name}" },
@@ -262,6 +269,11 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
                 TAG,
                 VIDEO_PRIVILEGE_OWNER_CACHE_ID,
                 DexKitCompat.MethodRef(owner.name, OWNER_SENTINEL_METHOD),
+            )
+            DexKitCompat.markTargetSuccess(
+                TAG,
+                VIDEO_PRIVILEGE_OWNER_CACHE_ID,
+                "fallback:${owner.name}",
             )
             XposedCompat.log("[$TAG] fallback VideoPrivilege owner: ${owner.name}")
         }
@@ -284,8 +296,7 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
     }
 
     private fun resolveDirectVideoPrivilegeOwner(cl: ClassLoader): Class<*>? {
-        // 明文 VideoPrivilege（弱混淆/国内）优先；intl 追加混淆类 sz0.a 兜底
-        // （与倍速 owner 同类，isVideoPrivilegeOwner 经 OrAbsent 软化后接受）。
+        // 仅允许明文 VideoPrivilege fallback；混淆 owner 由 DexKit 形状扫描。
         for (className in videoPrivilegeClassCandidates()) {
             val clazz = XposedCompat.findClassOrNull(className, cl) ?: continue
             if (isVideoPrivilegeOwner(clazz)) return clazz

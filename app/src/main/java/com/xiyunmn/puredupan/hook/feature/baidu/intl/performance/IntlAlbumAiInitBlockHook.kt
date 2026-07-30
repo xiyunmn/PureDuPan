@@ -105,7 +105,17 @@ internal object IntlAlbumAiInitBlockHook {
     internal fun warmUpDexKitCache(cl: ClassLoader): Boolean {
         val directInitMethod = resolveDirectAlbumAiInitMethod(cl)
         if (directInitMethod != null) return true
-        return resolveStableInitFallbackMethods(cl).isNotEmpty()
+        val fallback = resolveStableInitFallbackMethods(cl)
+        if (fallback.isNotEmpty()) {
+            DexKitCompat.markTargetSuccess(
+                TAG,
+                DIRECT_ALBUM_AI_INIT_CACHE_ID,
+                "fallback:" + fallback.joinToString { method ->
+                    "${method.declaringClass.name}.${method.name}"
+                },
+            )
+        }
+        return fallback.isNotEmpty()
     }
 
     private fun hookStableInitMethods(cl: ClassLoader): Int {
@@ -327,12 +337,23 @@ internal object IntlAlbumAiInitBlockHook {
         when (val cached = DexKitCompat.getCachedMethod(TAG, DIRECT_ALBUM_AI_INIT_CACHE_ID) { ref ->
             resolveDirectAlbumAiInitRef(cl, ref)
         }) {
-            is DexKitCompat.CachedResult.Found -> return cached.value
+            is DexKitCompat.CachedResult.Found -> {
+                DexKitCompat.markTargetSuccess(
+                    TAG,
+                    DIRECT_ALBUM_AI_INIT_CACHE_ID,
+                    "cache:${cached.value.declaringClass.name}.${cached.value.name}",
+                )
+                return cached.value
+            }
             DexKitCompat.CachedResult.NotFound -> return null
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
-        val scanned = DexKitCompat.withBridge(TAG, cl) { bridge ->
+        val scanned = DexKitCompat.withBridge(
+            TAG,
+            cl,
+            resolverId = DIRECT_ALBUM_AI_INIT_CACHE_ID,
+        ) { bridge ->
                 bridge.setThreadNum(1)
                 bridge.findMethod(
                     FindMethod.create()
@@ -357,6 +378,11 @@ internal object IntlAlbumAiInitBlockHook {
 
         if (result.isEmpty()) {
             XposedCompat.logD("[IntlAlbumAiInitBlockHook] direct album AI init candidate not found")
+            DexKitCompat.markTargetScanMiss(
+                TAG,
+                DIRECT_ALBUM_AI_INIT_CACHE_ID,
+                "candidateCount=0",
+            )
             DexKitCompat.putCachedMethod(TAG, DIRECT_ALBUM_AI_INIT_CACHE_ID, null)
             return null
         }
@@ -392,6 +418,11 @@ internal object IntlAlbumAiInitBlockHook {
             TAG,
             DIRECT_ALBUM_AI_INIT_CACHE_ID,
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
+        )
+        DexKitCompat.markTargetSuccess(
+            TAG,
+            DIRECT_ALBUM_AI_INIT_CACHE_ID,
+            "dexkit:${method.declaringClass.name}.${method.name}",
         )
         return method
     }

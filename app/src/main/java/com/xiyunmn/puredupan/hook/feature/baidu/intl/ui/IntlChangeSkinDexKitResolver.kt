@@ -132,7 +132,12 @@ internal object IntlChangeSkinDexKitResolver {
         cl: ClassLoader,
         useMemoryDexFile: Boolean,
     ): List<DexMethodCandidate>? {
-        return DexKitCompat.withBridge(TAG, cl, useMemoryDexFile = useMemoryDexFile) { bridge ->
+        return DexKitCompat.withBridge(
+            TAG,
+            cl,
+            useMemoryDexFile = useMemoryDexFile,
+            resolverId = CACHE_ID,
+        ) { bridge ->
             bridge.setThreadNum(1)
             val candidates = bridge.findMethod(
                 FindMethod.create()

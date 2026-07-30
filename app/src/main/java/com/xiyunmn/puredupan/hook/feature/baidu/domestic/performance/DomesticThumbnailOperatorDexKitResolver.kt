@@ -44,7 +44,11 @@ internal object DomesticThumbnailOperatorDexKitResolver {
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
-        val candidates = DexKitCompat.withBridge(TAG, cl) { bridge ->
+        val candidates = DexKitCompat.withBridge(
+            TAG,
+            cl,
+            resolverId = CLIENT_COMPUTE_INIT_CACHE_ID,
+        ) { bridge ->
             bridge.setThreadNum(1)
             bridge.findMethod(
                 FindMethod.create()
@@ -100,7 +104,11 @@ internal object DomesticThumbnailOperatorDexKitResolver {
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
-        val candidates = DexKitCompat.withBridge(TAG, cl) { bridge ->
+        val candidates = DexKitCompat.withBridge(
+            TAG,
+            cl,
+            resolverId = THUMBNAIL_ADD_JOB_CACHE_ID,
+        ) { bridge ->
             bridge.setThreadNum(1)
             bridge.findMethod(
                 FindMethod.create()

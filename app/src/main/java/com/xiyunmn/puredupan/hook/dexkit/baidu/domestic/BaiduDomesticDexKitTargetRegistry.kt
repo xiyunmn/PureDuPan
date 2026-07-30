@@ -206,14 +206,14 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             feature = "unlock video quality",
             featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,
         ),
-    ) + HomeRecentItemLimitDexKitResolver.cacheIds.map { id ->
+    ) + listOf(
         DexKitTargetDescriptor(
-            id = id,
-            target = "home recent item limit method",
+            id = HomeRecentItemLimitDexKitResolver.STATUS_CACHE_ID,
+            target = "home recent item limit method group",
             feature = "home recent item limit",
             featureKey = FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT,
-        )
-    } + HomeRecentScrollRangeDexKitResolver.cacheIds.map { id ->
+        ),
+    ) + HomeRecentScrollRangeDexKitResolver.cacheIds.map { id ->
         DexKitTargetDescriptor(
             id = id,
             target = "home recent scroll range method",
@@ -329,10 +329,12 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             }
         }
         if (available(FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT)) {
-            HomeRecentItemLimitDexKitResolver.cacheIds.forEach { id ->
-                tasks += DexKitWarmUpTask(id) {
-                    HomeRecentItemLimitDexKitResolver.warmUpDexKitCache(classLoader)
-                }
+            tasks += DexKitWarmUpTask(
+                id = HomeRecentItemLimitDexKitResolver.STATUS_CACHE_ID,
+                cacheIds = HomeRecentItemLimitDexKitResolver.cacheIds +
+                    HomeRecentItemLimitDexKitResolver.STATUS_CACHE_ID,
+            ) {
+                HomeRecentItemLimitDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         if (available(FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED)) {

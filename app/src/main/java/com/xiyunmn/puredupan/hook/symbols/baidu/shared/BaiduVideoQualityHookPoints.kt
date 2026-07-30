@@ -14,14 +14,6 @@ internal object BaiduVideoQualityHookPoints {
     const val VIDEO_PRIVILEGE =
         "com.baidu.netdisk.video.business.VideoPrivilege"
 
-    /**
-     * 13.11.9（intl）R8 全局剥离 @Metadata 后，明文类 `VideoPrivilege` 消失，真实类
-     * 混淆为 `sz0.a`（与倍速同一个类，ctor 取 FragmentActivity）。画质门体
-     * `___/e/b/d/f` 均为 `MemberPrivilegeContext.Companion.privilegeVideoPlay*Enabled() || …`。
-     * owner 改用 `boolean X(SpeedPanelUIState)` 方法形状锚定（intl 全 APK 仅 sz0.a
-     * 声明此形状），摆脱已被剥离的 @Metadata。旧明文类名保留兼容弱混淆/国内样本。
-     */
-    const val VIDEO_PRIVILEGE_OBFUSCATED = "sz0.a"
     const val SPEED_PANEL_UI_STATE =
         "com.baidu.netdisk.video.logic.layer.area.speed.SpeedPanelUIState"
 

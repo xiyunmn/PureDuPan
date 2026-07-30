@@ -50,16 +50,11 @@ internal object IntlHotStartSplashDexKitResolver {
             validateCachedResult(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return resolveKnownFallback(cl)?.also { result ->
-                XposedCompat.logD(
-                    "[$TAG] resolved known hot-start entry fallback: " +
-                        "${result.className}.${result.methodName}",
-                )
-            }
+            DexKitCompat.CachedResult.NotFound -> return resolveStableFallback(cl)
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
-        val methods = DexKitCompat.withBridge(TAG, cl) { bridge ->
+        val methods = DexKitCompat.withBridge(TAG, cl, resolverId = CACHE_ID) { bridge ->
                 bridge.setThreadNum(1)
 
                 bridge.findMethod(
@@ -83,7 +78,7 @@ internal object IntlHotStartSplashDexKitResolver {
                 }
         }
 
-        val best = methods.orEmpty().mapNotNull { methodData ->
+        val rankedCandidates = methods.orEmpty().mapNotNull { methodData ->
                 if (!methodData.isHotStartShape()) return@mapNotNull null
                 val result = validateCachedResult(
                     cl,
@@ -96,51 +91,60 @@ internal object IntlHotStartSplashDexKitResolver {
                     .thenBy { it.first.className }
                     .thenBy { it.first.methodName },
             )
-            .firstOrNull()
+        val best = rankedCandidates.firstOrNull()
+        val bestScore = best?.let { score(it.first) } ?: 0
+        val ambiguousBest = rankedCandidates.drop(1).any { score(it.first) == bestScore }
 
-        if (best != null) {
+        if (best != null && bestScore > 0 && !ambiguousBest) {
             XposedCompat.log(
                 "[$TAG] resolved ${best.second.className}.${best.second.methodName} " +
-                    "score=${score(best.first)}",
+                    "score=$bestScore",
             )
             val result = best.second
-            cacheResolved(result)
+            cacheResolved(result, "dexkit")
             return result
         }
 
-        resolveKnownFallback(cl)?.let { result ->
-            cacheResolved(result)
-            XposedCompat.logD(
-                "[$TAG] resolved known hot-start entry: " +
-                    "${result.className}.${result.methodName}",
-            )
-            return result
-        }
+        DexKitCompat.markTargetScanMiss(
+            TAG,
+            CACHE_ID,
+            "validatedCandidateCount=${rankedCandidates.size}, " +
+                "ambiguousBest=$ambiguousBest, bestScore=$bestScore",
+        )
+        resolveStableFallback(cl)?.let { return it }
 
         XposedCompat.log("[IntlHotStartSplashDexKitResolver] no candidate matched")
         DexKitCompat.putCachedMethod(TAG, CACHE_ID, null)
         return null
     }
 
-    private fun resolveKnownFallback(cl: ClassLoader): ResolveResult? {
-        for (className in BaiduIntlHookPoints.HOT_START_MANAGER_CLASSES) {
-            val result = validateCachedResult(
-                cl,
-                DexKitCompat.MethodRef(
-                    className,
-                    BaiduIntlHookPoints.HOT_START_ON_RESUME_METHOD,
-                ),
-            )
-            if (result != null) return result
-        }
-        return null
+    private fun resolveStableFallback(cl: ClassLoader): ResolveResult? {
+        val clazz = XposedCompat.findClassOrNull(BaiduIntlHookPoints.HOT_START_MANAGER_CLASS, cl)
+            ?: return null
+        if (!metadataContainsAllOrAbsent(clazz, classMetadataTokens)) return null
+        val method = clazz.declaredMethods.singleOrNull { candidate ->
+            Modifier.isStatic(candidate.modifiers) &&
+                candidate.returnType == Boolean::class.javaPrimitiveType &&
+                candidate.parameterTypes.contentEquals(arrayOf(Activity::class.java))
+        } ?: return null
+        val result = ResolveResult(clazz.name, method.name)
+        cacheResolved(result, "fallback")
+        XposedCompat.logD(
+            "[$TAG] resolved stable hot-start entry fallback: ${result.className}.${result.methodName}",
+        )
+        return result
     }
 
-    private fun cacheResolved(result: ResolveResult) {
+    private fun cacheResolved(result: ResolveResult, source: String) {
         DexKitCompat.putCachedMethod(
             TAG,
             CACHE_ID,
             DexKitCompat.MethodRef(result.className, result.methodName),
+        )
+        DexKitCompat.markTargetSuccess(
+            TAG,
+            CACHE_ID,
+            "$source:${result.className}.${result.methodName}",
         )
     }
 

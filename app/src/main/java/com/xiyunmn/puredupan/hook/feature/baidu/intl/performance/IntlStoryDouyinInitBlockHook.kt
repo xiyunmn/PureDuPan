@@ -135,11 +135,11 @@ internal object IntlStoryDouyinInitBlockHook {
             resolveStoryInitRef(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return resolveFallbackStoryInitMethod(cl)
+            DexKitCompat.CachedResult.NotFound -> return null
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
-        val scanned = DexKitCompat.withBridge(TAG, cl) { bridge ->
+        val scanned = DexKitCompat.withBridge(TAG, cl, resolverId = STORY_INIT_CACHE_ID) { bridge ->
                 bridge.setThreadNum(1)
                 bridge.findMethod(
                     FindMethod.create()
@@ -162,13 +162,14 @@ internal object IntlStoryDouyinInitBlockHook {
                         }.getOrDefault(emptySet()),
                     )
                 }
-        } ?: return resolveFallbackStoryInitMethod(cl)
+        } ?: return null
         val result = scanned
 
         if (result.isEmpty()) {
             XposedCompat.logD("[IntlStoryDouyinInitBlockHook] story init candidate not found")
+            DexKitCompat.markTargetScanMiss(TAG, STORY_INIT_CACHE_ID, "candidateCount=0")
             DexKitCompat.putCachedMethod(TAG, STORY_INIT_CACHE_ID, null)
-            return resolveFallbackStoryInitMethod(cl)
+            return null
         }
 
         val candidates = result.mapNotNull { methodData ->
@@ -192,14 +193,14 @@ internal object IntlStoryDouyinInitBlockHook {
         val bestScore = best?.let { storyInitScore(it.first) } ?: 0
         val ambiguousBest = rankedCandidates.drop(1).any { storyInitScore(it.first) == bestScore }
 
-        if (best == null || ambiguousBest) {
+        if (best == null || ambiguousBest || bestScore <= 0) {
             DexKitCompat.markTargetScanMiss(
                 TAG,
                 STORY_INIT_CACHE_ID,
-                "validatedCandidateCount=${candidates.size}, ambiguousBest=$ambiguousBest",
+                "validatedCandidateCount=${candidates.size}, ambiguousBest=$ambiguousBest, bestScore=$bestScore",
             )
             DexKitCompat.putCachedMethod(TAG, STORY_INIT_CACHE_ID, null)
-            return resolveFallbackStoryInitMethod(cl)
+            return null
         }
 
         val method = best.second
@@ -210,26 +211,6 @@ internal object IntlStoryDouyinInitBlockHook {
         cacheResolvedStoryInit(method, "dexkit")
         return method
     }
-
-    private fun resolveFallbackStoryInitMethod(cl: ClassLoader): Method? {
-        return resolveKnownStoryInitMethod(cl)?.also { method ->
-            cacheResolvedStoryInit(method, "fallback")
-        }
-    }
-
-    private fun resolveKnownStoryInitMethod(cl: ClassLoader): Method? =
-        resolveStoryInitRef(
-            cl,
-            DexKitCompat.MethodRef(
-                BaiduIntlStoryHookPoints.STORY_COMPONENT_CLASS,
-                BaiduIntlStoryHookPoints.STORY_INIT_13_11_METHOD,
-            ),
-        )?.also { method ->
-            XposedCompat.logD(
-                "[IntlStoryDouyinInitBlockHook] resolved known story init: " +
-                    "${method.declaringClass.name}.${method.name}",
-            )
-        }
 
     private fun cacheResolvedStoryInit(method: Method, source: String) {
         DexKitCompat.putCachedMethod(
@@ -246,9 +227,7 @@ internal object IntlStoryDouyinInitBlockHook {
 
     private fun resolveStoryInitRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
         val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
-        // @Metadata 存在时（早期弱混淆样本）保持严格 token 校验；intl 13.11.9 R8 全局
-        // 剥离 @Metadata 后降级放行，由明文类名 STORY_COMPONENT_CLASS + 方法名 `___`
-        // + static void(Application) 形状（fallback 路径）及 invoke 描述符打分兜底。
+        // @Metadata 存在时保持严格 token 校验；被 R8 剥离后由调用 owner/签名打分兜底。
         if (!metadataContainsAllOrAbsent(clazz, storySemanticTokens)) return null
         return clazz.declaredMethods.firstOrNull { method ->
             method.name == ref.methodName &&
@@ -261,10 +240,17 @@ internal object IntlStoryDouyinInitBlockHook {
 
     private fun storyInitScore(candidate: DexMethodCandidate): Int {
         var score = 0
-        if (BaiduIntlStoryHookPoints.STORY_VIDEO_PRELOADER_INIT_DESCRIPTOR in candidate.invokeDescriptors) {
+        if (candidate.invokeDescriptors.any { descriptor ->
+                descriptor.startsWith(BaiduIntlStoryHookPoints.STORY_VIDEO_PRELOADER_OWNER_PREFIX) &&
+                    descriptor.endsWith(BaiduIntlStoryHookPoints.STORY_VIDEO_PRELOADER_SIGNATURE)
+            }
+        ) {
             score += 40
         }
-        if (BaiduIntlStoryHookPoints.STORY_UI_SERVICE_INIT_DESCRIPTOR in candidate.invokeDescriptors) {
+        if (candidate.invokeDescriptors.any { descriptor ->
+                descriptor.endsWith(BaiduIntlStoryHookPoints.STORY_UI_SERVICE_INIT_SIGNATURE)
+            }
+        ) {
             score += 30
         }
         return score

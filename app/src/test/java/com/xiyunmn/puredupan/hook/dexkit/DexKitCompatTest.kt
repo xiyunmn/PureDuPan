@@ -51,4 +51,20 @@ class DexKitCompatTest {
 
         assertNull(DexKitCompat.consumeTargetScanMissDetail("target"))
     }
+
+    @Test
+    fun targetSuccessDetailAlwaysIdentifiesResolutionSource() {
+        assertEquals(
+            "dexkit:owner.method",
+            DexKitCompat.normalizeTargetSuccessDetail("owner.method"),
+        )
+        assertEquals(
+            "fallback:owner.method",
+            DexKitCompat.normalizeTargetSuccessDetail("fallback:owner.method"),
+        )
+        assertEquals(
+            "resolver success; source detail missing",
+            DexKitCompat.normalizeTargetSuccessDetail(null),
+        )
+    }
 }

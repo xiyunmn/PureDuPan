@@ -53,7 +53,9 @@ internal object DomesticColdStartSplashDexKitResolver {
             validateCachedResult(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return resolveKnownFallback(cl)?.also(::cacheResolved)
+            DexKitCompat.CachedResult.NotFound -> return resolveKnownFallback(cl)?.also {
+                cacheResolved(it, "fallback")
+            }
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
@@ -80,7 +82,7 @@ internal object DomesticColdStartSplashDexKitResolver {
             }
         }
 
-        val best = methods.orEmpty()
+        val rankedCandidates = methods.orEmpty()
             .asSequence()
             .filter { methodData -> methodData.isColdSplashShape() }
             .filter { methodData -> score(methodData) > 0 }
@@ -96,19 +98,31 @@ internal object DomesticColdStartSplashDexKitResolver {
                     .thenBy { it.first.className }
                     .thenBy { it.first.methodName },
             )
-            .firstOrNull()
+            .toList()
+        val best = rankedCandidates.firstOrNull()
+        val bestScore = best?.let { score(it.first) } ?: 0
+        val ambiguousBest = rankedCandidates.drop(1).any { score(it.first) == bestScore }
 
-        if (best != null) {
+        if (best != null && !ambiguousBest) {
             val result = best.second
-            cacheResolved(result)
+            cacheResolved(result, "dexkit")
             XposedCompat.log(
-                "[$TAG] resolved ${result.className}.${result.methodName} score=${score(best.first)}",
+                "[$TAG] resolved ${result.className}.${result.methodName} score=$bestScore",
             )
             return result
         }
 
+        if (methods != null) {
+            DexKitCompat.markTargetScanMiss(
+                TAG,
+                CACHE_ID,
+                "validatedCandidateCount=${rankedCandidates.size}, " +
+                    "ambiguousBest=$ambiguousBest, bestScore=$bestScore",
+            )
+        }
+
         resolveKnownFallback(cl)?.let { result ->
-            cacheResolved(result)
+            cacheResolved(result, "fallback")
             XposedCompat.logD("[$TAG] resolved known fallback: ${result.className}.${result.methodName}")
             return result
         }
@@ -128,11 +142,16 @@ internal object DomesticColdStartSplashDexKitResolver {
         return null
     }
 
-    private fun cacheResolved(result: ResolveResult) {
+    private fun cacheResolved(result: ResolveResult, source: String) {
         DexKitCompat.putCachedMethod(
             TAG,
             CACHE_ID,
             DexKitCompat.MethodRef(result.className, result.methodName),
+        )
+        DexKitCompat.markTargetSuccess(
+            TAG,
+            CACHE_ID,
+            "$source:${result.className}.${result.methodName}",
         )
     }
 

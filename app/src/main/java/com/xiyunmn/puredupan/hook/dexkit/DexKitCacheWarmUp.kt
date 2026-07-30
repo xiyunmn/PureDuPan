@@ -238,7 +238,7 @@ internal object DexKitCacheWarmUp {
         if (forceFullScan) {
             DexKitCompat.clearCachedMethods(
                 "DexKitCacheWarmUp",
-                descriptors.map { it.id },
+                (descriptors.map { it.id } + tasks.flatMap { it.cacheIds }).distinct(),
             )
         }
         XposedCompat.log(
@@ -266,7 +266,12 @@ internal object DexKitCacheWarmUp {
                 if (task.resolve()) {
                     foundCount++
                     if (DexKitCompat.readTargetStatus(task.id)?.success != true) {
-                        DexKitCompat.markTargetSuccess("DexKitCacheWarmUp", task.id, null)
+                        val scanMiss = DexKitCompat.consumeTargetScanMissDetail(task.id)
+                        val detail = scanMiss?.let { miss ->
+                            "fallback:" +
+                                miss.lineSequence().firstOrNull().orEmpty()
+                        }
+                        DexKitCompat.markTargetSuccess("DexKitCacheWarmUp", task.id, detail)
                     }
                 } else if (
                     DexKitCompat.readTargetStatus(task.id)?.state.let { it == null || it == "scanning" }

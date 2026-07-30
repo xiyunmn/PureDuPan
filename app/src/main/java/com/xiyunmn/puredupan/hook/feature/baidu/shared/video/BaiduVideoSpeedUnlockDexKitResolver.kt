@@ -34,21 +34,13 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
     private const val KOTLIN_METADATA = "kotlin.Metadata"
     private val BOOLEAN_INVOKE_PATTERN = Regex("""->.+\(Z\)Z""")
 
-    // intl 13.11.9 R8 剥离 @Metadata 且类名混淆为 sz0.a，仅此宿主追加混淆候选；
-    // cn/samsung 保留明文 VideoPrivilege + @Metadata d2 原路径，不受影响。
+    // intl 13.11.9 R8 剥离 @Metadata 后改用 SpeedPanelUIState 方法形状扫描 owner。
     // 经 facade 判宿主，避免 feature 层直接 import host 层（架构守卫要求）。
     private fun isIntlHost(): Boolean = BaiduFeatureRuntime.isCurrentIntlHost()
 
-    // 明文 VideoPrivilege 类（弱混淆/国内）优先；intl 追加混淆类 sz0.a 兜底。
+    // fallback 只允许跨版本明文类；混淆 owner 必须由 DexKit 动态发现。
     private fun videoPrivilegeClassCandidates(): List<String> =
-        if (isIntlHost()) {
-            listOf(
-                BaiduVideoSpeedHookPoints.VIDEO_PRIVILEGE,
-                BaiduVideoSpeedHookPoints.VIDEO_PRIVILEGE_OBFUSCATED,
-            )
-        } else {
-            listOf(BaiduVideoSpeedHookPoints.VIDEO_PRIVILEGE)
-        }
+        listOf(BaiduVideoSpeedHookPoints.VIDEO_PRIVILEGE)
 
     private data class DexMethodCandidate(
         val className: String,
@@ -169,10 +161,8 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
         paramCount: Int,
         firstParamBoolean: Boolean,
     ): Method? {
-        // Weak/domestic builds keep the plaintext VideoPrivilege class + method name;
-        // intl 13.11.9 obfuscates the class to sz0.a and the methods to c/g. On that
-        // build the boolean(boolean)/boolean(SpeedPanelUIState) shapes are unique within
-        // the class, so match by plaintext name first and fall back to the unique shape.
+        // Weak/domestic builds keep the plaintext VideoPrivilege class. Strongly
+        // obfuscated owners are deliberately excluded here and resolved by DexKit.
         for (className in videoPrivilegeClassCandidates()) {
             val clazz = XposedCompat.findClassOrNull(className, cl) ?: continue
             if (!isVideoPrivilegeOwner(clazz)) continue
@@ -268,6 +258,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
             cacheId,
             DexKitCompat.MethodRef(best.declaringClass.name, best.name),
         )
+        DexKitCompat.markTargetSuccess(TAG, cacheId, "dexkit:${best.declaringClass.name}.${best.name}")
         return best
     }
 
@@ -334,6 +325,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
             cacheId,
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
+        DexKitCompat.markTargetSuccess(TAG, cacheId, "dexkit:${method.declaringClass.name}.${method.name}")
         return method
     }
 
@@ -346,6 +338,11 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
                 TAG,
                 cacheId,
                 DexKitCompat.MethodRef(method.declaringClass.name, method.name),
+            )
+            DexKitCompat.markTargetSuccess(
+                TAG,
+                cacheId,
+                "fallback:${method.declaringClass.name}.${method.name}",
             )
             XposedCompat.log(
                 "[$TAG] fallback $cacheId: ${method.declaringClass.name}.${method.name}",

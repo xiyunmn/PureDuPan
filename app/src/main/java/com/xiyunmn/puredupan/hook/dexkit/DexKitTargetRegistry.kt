@@ -11,6 +11,7 @@ internal data class DexKitTargetDescriptor(
 
 internal data class DexKitWarmUpTask(
     val id: String,
+    val cacheIds: Collection<String> = listOf(id),
     val resolve: () -> Boolean,
 )
 

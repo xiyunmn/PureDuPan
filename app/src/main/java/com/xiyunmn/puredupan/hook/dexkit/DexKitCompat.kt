@@ -13,7 +13,7 @@ import org.luckypray.dexkit.DexKitBridge
 internal object DexKitCompat {
     private const val LIB_NAME = "dexkit"
     private const val LIB_FILE_NAME = "libdexkit.so"
-    private const val CACHE_SCHEMA = 8
+    private const val CACHE_SCHEMA = 9
     private const val CACHE_PREFIX = "dexkit_method_cache_v$CACHE_SCHEMA"
     private const val STATUS_PREFIX = "dexkit_target_status_v$CACHE_SCHEMA"
     private const val KEY_FORCE_FULL_SCAN = "dexkit_force_full_scan"
@@ -277,7 +277,7 @@ internal object DexKitCompat {
         memoryCache[resolverId] = entry
         val value = "${ref.className}.${ref.methodName}"
         XposedCompat.logD("[$tag] DexKit cache updated: $resolverId -> $value")
-        recordTargetStatus(tag, resolverId, TARGET_STATE_SUCCESS, value)
+        recordTargetStatus(tag, resolverId, TARGET_STATE_SUCCESS, "dexkit:$value")
     }
 
     fun shouldSkipScan(tag: String, resolverId: String, forceFullScan: Boolean = false): Boolean {
@@ -350,8 +350,22 @@ internal object DexKitCompat {
             tag,
             resolverId,
             TARGET_STATE_SUCCESS,
-            detail?.takeIf { it.isNotBlank() } ?: "resolved or fallback available",
+            normalizeTargetSuccessDetail(detail),
         )
+    }
+
+    internal fun normalizeTargetSuccessDetail(detail: String?): String {
+        val value = detail?.takeIf { it.isNotBlank() }
+            ?: return "resolver success; source detail missing"
+        return if (
+            value.startsWith("dexkit:") ||
+            value.startsWith("fallback:") ||
+            value.startsWith("cache:")
+        ) {
+            value
+        } else {
+            "dexkit:$value"
+        }
     }
 
     fun markTargetError(tag: String, resolverId: String, detail: String?) {

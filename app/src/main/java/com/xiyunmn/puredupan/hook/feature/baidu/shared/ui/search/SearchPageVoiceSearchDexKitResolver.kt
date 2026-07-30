@@ -31,7 +31,9 @@ internal object SearchPageVoiceSearchDexKitResolver {
             validateRef(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return resolveStableFallback(cl)?.also(::cacheResolved)
+            DexKitCompat.CachedResult.NotFound -> return resolveStableFallback(cl)?.also {
+                cacheResolved(it, "fallback")
+            }
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
@@ -61,7 +63,7 @@ internal object SearchPageVoiceSearchDexKitResolver {
                     modifiers = methodData.modifiers,
                 )
             }
-        } ?: return resolveStableFallback(cl)?.also(::cacheResolved)
+        } ?: return resolveStableFallback(cl)?.also { cacheResolved(it, "fallback") }
 
         val best = candidates
             .asSequence()
@@ -81,13 +83,13 @@ internal object SearchPageVoiceSearchDexKitResolver {
 
         if (best != null) {
             val clazz = best.second
-            cacheResolved(clazz)
+            cacheResolved(clazz, "dexkit")
             XposedCompat.log("[$TAG] resolved voice search screen: ${clazz.name}.${best.first.methodName}")
             return clazz
         }
 
         resolveStableFallback(cl)?.let { clazz ->
-            cacheResolved(clazz)
+            cacheResolved(clazz, "fallback")
             XposedCompat.logD("[$TAG] resolved stable fallback: ${clazz.name}")
             return clazz
         }
@@ -103,13 +105,14 @@ internal object SearchPageVoiceSearchDexKitResolver {
         return clazz.takeIf { validateVoiceSearchScreenClass(it) }
     }
 
-    private fun cacheResolved(clazz: Class<*>) {
+    private fun cacheResolved(clazz: Class<*>, source: String) {
         val method = findVoiceSearchMethod(clazz) ?: return
         DexKitCompat.putCachedMethod(
             TAG,
             CACHE_ID,
             DexKitCompat.MethodRef(clazz.name, method.name),
         )
+        DexKitCompat.markTargetSuccess(TAG, CACHE_ID, "$source:${clazz.name}.${method.name}")
     }
 
     private fun validateRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Class<*>? {

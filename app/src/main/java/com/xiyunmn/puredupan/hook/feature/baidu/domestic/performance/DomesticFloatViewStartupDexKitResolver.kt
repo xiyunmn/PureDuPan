@@ -45,7 +45,7 @@ internal object DomesticFloatViewStartupDexKitResolver {
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
-        val scan = DexKitCompat.withBridge(TAG, cl) { bridge ->
+        val scan = DexKitCompat.withBridge(TAG, cl, resolverId = CACHE_ID) { bridge ->
             bridge.setThreadNum(1)
             val audioShowBridgeDescriptors = bridge.findMethod(
                 FindMethod.create()

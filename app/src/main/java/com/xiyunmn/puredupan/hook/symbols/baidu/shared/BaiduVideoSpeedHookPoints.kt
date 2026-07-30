@@ -16,16 +16,6 @@ internal object BaiduVideoSpeedHookPoints {
     const val VIDEO_PRIVILEGE =
         "com.baidu.netdisk.video.business.VideoPrivilege"
 
-    /**
-     * 13.11.9（intl）R8 全局剥离 @Metadata 后，明文类 `VideoPrivilege` 消失，
-     * 真实类混淆为 `sz0.a`（ctor 取 FragmentActivity，入口 `sz0.b._(Context)`）。
-     * `onLineSpeedEnable(boolean)` → `c(boolean)`，`speedEnable(SpeedPanelUIState)` → `g(SpeedPanelUIState)`，
-     * 两者方法体均调 [PRIVILEGE_MEDIA_SPEED_ENABLE_METHOD]。owner 现改用
-     * `boolean X(SpeedPanelUIState)` 方法形状锚定（intl 全 APK 仅 sz0.a 声明此形状），
-     * 摆脱已被剥离的 @Metadata。旧明文类名保留兼容弱混淆样本。
-     */
-    const val VIDEO_PRIVILEGE_OBFUSCATED = "sz0.a"
-
     const val SPEED_PANEL_UI_STATE =
         "com.baidu.netdisk.video.logic.layer.area.speed.SpeedPanelUIState"
 

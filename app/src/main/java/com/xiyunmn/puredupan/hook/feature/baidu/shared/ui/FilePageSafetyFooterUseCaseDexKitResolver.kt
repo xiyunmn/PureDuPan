@@ -21,11 +21,6 @@ internal object FilePageSafetyFooterUseCaseDexKitResolver {
     private const val TAG = "FilePageSafetyFooterUseCaseDexKitResolver"
     private const val KOTLIN_METADATA = "kotlin.Metadata"
 
-    private val stableClassCandidates = listOf(
-        BaiduFilePageHookPoints.SHOW_SAFETY_FOOTER_USE_CASE,
-        BaiduFilePageHookPoints.SHOW_SAFETY_FOOTER_USE_CASE_STRONG_SAMPLE,
-    )
-
     private val metadataTokens = listOf(
         "ShowSafetyFooterUseCase",
         "BaseUseCase",
@@ -104,24 +99,29 @@ internal object FilePageSafetyFooterUseCaseDexKitResolver {
             CACHE_ID,
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
+        DexKitCompat.markTargetSuccess(
+            TAG,
+            CACHE_ID,
+            "dexkit:${method.declaringClass.name}.${method.name}",
+        )
         XposedCompat.log("[$TAG] resolved ShowSafetyFooterUseCase: ${method.declaringClass.name}")
         return method.declaringClass
     }
 
     private fun resolveStableFallback(cl: ClassLoader): Class<*>? {
-        for (className in stableClassCandidates) {
-            val clazz = XposedCompat.findClassOrNull(className, cl) ?: continue
-            if (!isUseCaseOwner(clazz)) continue
-            val method = findRealExecuteMethods(clazz).firstOrNull() ?: continue
-            DexKitCompat.putCachedMethod(
-                TAG,
-                CACHE_ID,
-                DexKitCompat.MethodRef(method.declaringClass.name, method.name),
-            )
-            DexKitCompat.markTargetSuccess(TAG, CACHE_ID, "fallback:${method.declaringClass.name}.${method.name}")
-            return clazz
-        }
-        return null
+        val clazz = XposedCompat.findClassOrNull(
+            BaiduFilePageHookPoints.SHOW_SAFETY_FOOTER_USE_CASE,
+            cl,
+        ) ?: return null
+        if (!isUseCaseOwner(clazz)) return null
+        val method = findRealExecuteMethods(clazz).firstOrNull() ?: return null
+        DexKitCompat.putCachedMethod(
+            TAG,
+            CACHE_ID,
+            DexKitCompat.MethodRef(method.declaringClass.name, method.name),
+        )
+        DexKitCompat.markTargetSuccess(TAG, CACHE_ID, "fallback:${method.declaringClass.name}.${method.name}")
+        return clazz
     }
 
     fun findRealExecuteMethods(clazz: Class<*>): List<Method> {

@@ -109,6 +109,11 @@ internal object AboutMeMiddleViewHolderDexKitResolver {
             CACHE_ID,
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
+        DexKitCompat.markTargetSuccess(
+            TAG,
+            CACHE_ID,
+            "dexkit:${method.declaringClass.name}.${method.name}",
+        )
         XposedCompat.log("[$TAG] resolved BaseMiddleViewHolder.bind: ${method.declaringClass.name}.${method.name}")
         return method
     }
@@ -169,8 +174,16 @@ internal object AboutMeMiddleViewHolderDexKitResolver {
     }
 
     private fun isMiddleNodeClass(clazz: Class<*>): Boolean {
-        if (clazz.name == BaiduAboutMeHookPoints.MIDDLE_NODE) return true
-        return KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, middleNodeMetadataTokens)
+        if (KotlinMetadataUtils.metadataContainsAll(clazz, middleNodeMetadataTokens)) return true
+        val stringFieldCount = clazz.declaredFields.count { field ->
+            !Modifier.isStatic(field.modifiers) && field.type == String::class.java
+        }
+        val stringGetterCount = clazz.declaredMethods.count { method ->
+            !Modifier.isStatic(method.modifiers) &&
+                method.parameterTypes.isEmpty() &&
+                method.returnType == String::class.java
+        }
+        return stringFieldCount >= 4 && stringGetterCount >= 4
     }
 
     private fun viewHolderOwnerMatcher(): ClassMatcher {

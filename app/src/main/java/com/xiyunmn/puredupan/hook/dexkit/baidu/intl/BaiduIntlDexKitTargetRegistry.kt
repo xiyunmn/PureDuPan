@@ -61,7 +61,7 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         ),
         DexKitTargetDescriptor(
             id = IntlBottomAiTabModeDexKitResolver.CACHE_ID,
-            target = "intl bottom AI tab mode getter",
+            target = "intl bottom AI tab config repository getter",
             featureKey = FeatureKeys.KEY_REPLACE_BOTTOM_AI,
             feature = "底栏 AI 替换为会员",
         ),
@@ -125,14 +125,14 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,
             feature = "解锁视频画质",
         ),
-    ) + HomeRecentItemLimitDexKitResolver.cacheIds.map { id ->
+    ) + listOf(
         DexKitTargetDescriptor(
-            id = id,
-            target = "home recent item limit method",
+            id = HomeRecentItemLimitDexKitResolver.STATUS_CACHE_ID,
+            target = "home recent item limit method group",
             featureKey = FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT,
             feature = "首页最近栏数量",
-        )
-    }
+        ),
+    )
 
     override fun buildTasks(
         host: DexKitHostContext,
@@ -191,10 +191,12 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         // FileListRecyclerView footer 参数边界覆盖实际 v2 页面，并保留旧 ListView 明文入口。
         // 故不注册该 UseCase warm-up（国内/三星 registry 保留）。
         if (available(FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT)) {
-            HomeRecentItemLimitDexKitResolver.cacheIds.forEach { id ->
-                tasks += DexKitWarmUpTask(id) {
-                    HomeRecentItemLimitDexKitResolver.warmUpDexKitCache(classLoader)
-                }
+            tasks += DexKitWarmUpTask(
+                id = HomeRecentItemLimitDexKitResolver.STATUS_CACHE_ID,
+                cacheIds = HomeRecentItemLimitDexKitResolver.cacheIds +
+                    HomeRecentItemLimitDexKitResolver.STATUS_CACHE_ID,
+            ) {
+                HomeRecentItemLimitDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         // 国际版通过 TransferListTabActivity.initYouaGuideView 明文入口阻止推广广告创建，

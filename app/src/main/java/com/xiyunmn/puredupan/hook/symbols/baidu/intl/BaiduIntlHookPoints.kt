@@ -17,19 +17,6 @@ internal object BaiduIntlHookPoints {
     const val NAVIGATE_ACTIVITY = "com.baidu.netdisk.ui.Navigate"
     const val SPLASH_AD_ACTIVITY = "com.baidu.netdisk.advertise.ui.SplashAdActivity"
     const val HOT_START_MANAGER_CLASS = "com.baidu.netdisk.advertise.AdvertiseHotStartManager"
-    const val HOT_START_ON_RESUME_METHOD = "q"
-
-    /**
-     * 13.11.9（intl）R8 全局剥离 @Metadata 后，热启动管理器明文类名
-     * `AdvertiseHotStartManager` 消失，真实类混淆为 `com.baidu.netdisk.advertise.e`
-     * （@Tag("AdvertiseHotStartManager") 仍保留，方法 `q(Activity)` 明文存活，
-     * 方法名恰与 [HOT_START_ON_RESUME_METHOD] 一致）。旧类名保留以兼容早期弱混淆样本。
-     */
-    const val HOT_START_MANAGER_CLASS_OBFUSCATED = "com.baidu.netdisk.advertise.e"
-    val HOT_START_MANAGER_CLASSES = listOf(
-        HOT_START_MANAGER_CLASS,
-        HOT_START_MANAGER_CLASS_OBFUSCATED,
-    )
     const val AUDIO_API = "com.baidu.netdisk.audio.main.provider.MAudioApi"
     const val AUDIO_PLAYER_ACTIVITY = "com.baidu.netdisk.audio.ui.AudioPlayerActivity"
     const val TASK_QUERY_API = "com.baidu.netdisk.component.filesystem.provider.TaskQueryApi"

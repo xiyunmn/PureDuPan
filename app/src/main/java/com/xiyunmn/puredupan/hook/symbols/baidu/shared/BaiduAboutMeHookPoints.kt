@@ -8,7 +8,6 @@ internal object BaiduAboutMeHookPoints {
     const val BASE_MIDDLE_VIEW_HOLDER = "com.baidu.netdisk.ui.aboutme.view.BaseMiddleViewHolder"
     const val BASE_MIDDLE_VIEW_HOLDER_METADATA_TOKEN =
         "Lcom/baidu/netdisk/ui/aboutme/view/BaseMiddleViewHolder;"
-    const val MIDDLE_NODE = "xq0.MiddleNode"
     const val MIDDLE_NODE_METADATA_TOKEN =
         "Lcom/baidu/netdisk/ui/aboutme/model/operation/MiddleNode;"
     const val POPUP_RESPONSE_HELPER = "com.baidu.netdisk.ui.aboutme.view.PopupResponseHelper"

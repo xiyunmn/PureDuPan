@@ -6,16 +6,10 @@ import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
-import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
-import org.luckypray.dexkit.query.matchers.AnnotationElementMatcher
-import org.luckypray.dexkit.query.matchers.AnnotationEncodeArrayMatcher
-import org.luckypray.dexkit.query.matchers.AnnotationMatcher
-import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object IntlBottomAiTabHideHook {
@@ -161,8 +155,15 @@ internal object IntlBottomAiTabReplaceHook {
                 hookState.reset()
                 return
             }
-            mod.hook(method).intercept {
-                if (isEnabled()) 0L else it.proceed()
+            mod.hook(method).intercept { chain ->
+                if (
+                    isEnabled() &&
+                    chain.args.firstOrNull() == IntlBottomAiTabModeDexKitResolver.AI_CLOUD_TAB_CONFIG_STRING
+                ) {
+                    0L
+                } else {
+                    chain.proceed()
+                }
             }
             XposedCompat.log(
                 "[IntlBottomAiTabReplaceHook] hook INSTALLED: ${method.declaringClass.name}.${method.name}",
@@ -179,30 +180,15 @@ internal object IntlBottomAiTabReplaceHook {
 }
 
 internal object IntlBottomAiTabModeDexKitResolver {
-    const val CACHE_ID = "intl_bottom_ai_tab_mode_v1"
+    const val CACHE_ID = "intl_bottom_ai_tab_config_getter_v2"
+    const val AI_CLOUD_TAB_CONFIG_STRING = "ai_cloud_tab_mode_config"
 
     private const val TAG = "IntlBottomAiTabModeDexKitResolver"
-    private const val KOTLIN_METADATA = "kotlin.Metadata"
 
-    // 13.11.9（intl）R8 全局剥离 @Metadata 后，旧混淆类 `pz._` 消失，AI 云 tab 模式
-    // getter 迁移到 `yy._`（jadx 重命名为 yy.C_），方法真实名仍为 `_`：static long()。
-    // 唯一稳定锚点是类内 static final 字段常量 "ai_cloud_tab_node"（<clinit> 内 const-string
-    // 存活），全 dex 仅 yy._ 与 uk.k 引用，配合 static long() 无参形状可唯一定位。
-    private const val STABLE_CLASS_NAME = "yy._"
-    private const val STABLE_METHOD_NAME = "_"
-
+    // 13.11.8/13.11.9 的专用 getter owner 已分别从 pz._ 迁移到 yy._，不能直接挂钩。
+    // 先以两个业务 key 找到 AMIS 处理器，再从它调用的 void(String,long) writer 动态确定
+    // 配置仓库 owner，最终解析同 owner 唯一的 long(String,long) getter。Hook 侧按 key 过滤。
     private const val AI_CLOUD_TAB_NODE_STRING = "ai_cloud_tab_node"
-
-    private val metadataTokens = listOf(
-        "AI_CLOUD_TAB_NODE",
-        "AMIS_AI_CLOUD_MODE_DEFAULT",
-        "AMIS_AI_CLOUD_MODE",
-        "AMIS_VIP_MODE",
-        "AMIS_YIKE_MODE",
-        "aiCloudTabMode",
-        "getAiCloudTabMode",
-        "()J",
-    )
 
     private data class DexMethodCandidate(
         val className: String,
@@ -224,21 +210,35 @@ internal object IntlBottomAiTabModeDexKitResolver {
             validateRef(cl, ref)
         }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return resolveStableFallback(cl)
+            DexKitCompat.CachedResult.NotFound -> return null
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
         val candidates = DexKitCompat.withBridge(TAG, cl, resolverId = CACHE_ID) { bridge ->
             bridge.setThreadNum(1)
-            bridge.findClass(
-                FindClass.create()
-                    .matcher(aiCloudTabOwnerMatcher()),
-            ).flatMap { classData ->
-                classData.findMethod(
-                    FindMethod.create()
-                        .matcher(tabModeGetterMatcher()),
+            val configHandlers = bridge.findMethod(
+                FindMethod.create().matcher(
+                    MethodMatcher.create().usingStrings(
+                        AI_CLOUD_TAB_NODE_STRING,
+                        AI_CLOUD_TAB_CONFIG_STRING,
+                    ),
+                ),
+            )
+            val repositoryClasses = configHandlers.flatMap { handler ->
+                handler.invokes.filter { invoked ->
+                    !invoked.isConstructor &&
+                        !Modifier.isStatic(invoked.modifiers) &&
+                        invoked.returnTypeName == "void" &&
+                        invoked.paramTypeNames == listOf("java.lang.String", "long")
+                }.map { invoked -> invoked.className }
+            }.distinct()
+            repositoryClasses.flatMap { repositoryClass ->
+                bridge.findMethod(
+                    FindMethod.create().matcher(
+                        configGetterMatcher(repositoryClass),
+                    ),
                 )
-            }.map { methodData ->
+            }.distinctBy { methodData -> methodData.descriptor }.map { methodData ->
                 DexMethodCandidate(
                     className = methodData.className,
                     methodName = methodData.name,
@@ -248,25 +248,21 @@ internal object IntlBottomAiTabModeDexKitResolver {
                     modifiers = methodData.modifiers,
                 )
             }
-        } ?: return resolveStableFallback(cl)
+        } ?: return null
 
         val rejected = mutableListOf<String>()
         val matches = candidates.mapNotNull { candidate ->
-            if (!candidate.isTabModeGetterShape()) return@mapNotNull null
+            if (!candidate.isConfigGetterShape()) return@mapNotNull null
             val method = validateCandidate(cl, candidate, rejected) ?: return@mapNotNull null
             candidate to method
-        }.sortedWith(
-            compareByDescending<Pair<DexMethodCandidate, Method>> {
-                if (it.first.className == STABLE_CLASS_NAME) 1 else 0
-            }.thenBy { it.first.className }.thenBy { it.first.methodName },
-        )
+        }.sortedWith(compareBy({ it.first.className }, { it.first.methodName }))
 
-        val best = matches.firstOrNull()
+        val best = matches.singleOrNull()
         if (best == null) {
             val diagnostic = buildDiagnostic(candidates, matches, rejected)
             DexKitCompat.markTargetScanMiss(TAG, CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, CACHE_ID, null)
-            return resolveStableFallback(cl)
+            return null
         }
 
         val method = best.second
@@ -275,21 +271,13 @@ internal object IntlBottomAiTabModeDexKitResolver {
             CACHE_ID,
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
-        XposedCompat.log("[$TAG] resolved getAiCloudTabMode: ${method.declaringClass.name}.${method.name}")
+        DexKitCompat.markTargetSuccess(
+            TAG,
+            CACHE_ID,
+            "dexkit:${method.declaringClass.name}.${method.name}",
+        )
+        XposedCompat.log("[$TAG] resolved AI tab config getter: ${method.declaringClass.name}.${method.name}")
         return method
-    }
-
-    private fun resolveStableFallback(cl: ClassLoader): Method? {
-        return validateRef(
-            cl,
-            DexKitCompat.MethodRef(STABLE_CLASS_NAME, STABLE_METHOD_NAME),
-        )?.also { method ->
-            DexKitCompat.markTargetSuccess(
-                TAG,
-                CACHE_ID,
-                "fallback:${method.declaringClass.name}.${method.name}",
-            )
-        }
     }
 
     private fun validateCandidate(
@@ -309,40 +297,30 @@ internal object IntlBottomAiTabModeDexKitResolver {
 
     private fun validateRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
         val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
-        // @Metadata 存在时（cn/samsung）保持严格 token 校验；intl 13.11.9 剥离后降级，
-        // 由 static long() 形状 + usingEqStrings("ai_cloud_tab_node") owner 锚点兜底。
-        if (!KotlinMetadataUtils.metadataContainsAllOrAbsent(clazz, metadataTokens)) return null
         return clazz.declaredMethods.firstOrNull { method ->
-            method.name == ref.methodName && isTabModeGetter(method)
+            method.name == ref.methodName && isConfigGetter(method)
         }?.apply { isAccessible = true }
     }
 
-    private fun aiCloudTabOwnerMatcher(): ClassMatcher {
-        // intl 13.11.9 R8 剥离 @Metadata 后，改用类内 static final 字段字符串常量
-        // "ai_cloud_tab_node"（intl 全 APK 仅 uk.k 与 yy._ 两处持有）锚定 owner，
-        // 再由 tabModeGetterMatcher 的 static long() 形状收窄到 getAiCloudTabMode 等价方法。
-        return ClassMatcher.create()
-            .usingEqStrings(AI_CLOUD_TAB_NODE_STRING)
-            .addMethod(tabModeGetterMatcher())
-    }
-
-    private fun tabModeGetterMatcher(): MethodMatcher {
+    private fun configGetterMatcher(repositoryClass: String): MethodMatcher {
         return MethodMatcher.create()
-            .modifiers(Modifier.STATIC)
+            .declaredClass(repositoryClass)
             .returnType(Long::class.javaPrimitiveType!!)
-            .paramTypes()
+            .paramTypes(String::class.java, Long::class.javaPrimitiveType!!)
     }
 
-    private fun DexMethodCandidate.isTabModeGetterShape(): Boolean =
+    private fun DexMethodCandidate.isConfigGetterShape(): Boolean =
         !isConstructor &&
-            Modifier.isStatic(modifiers) &&
+            !Modifier.isStatic(modifiers) &&
             returnTypeName == "long" &&
-            paramTypeNames.isEmpty()
+            paramTypeNames == listOf("java.lang.String", "long")
 
-    private fun isTabModeGetter(method: Method): Boolean =
-        Modifier.isStatic(method.modifiers) &&
+    private fun isConfigGetter(method: Method): Boolean =
+        !Modifier.isStatic(method.modifiers) &&
             method.returnType == Long::class.javaPrimitiveType &&
-            method.parameterTypes.isEmpty()
+            method.parameterTypes.contentEquals(
+                arrayOf(String::class.java, Long::class.javaPrimitiveType!!),
+            )
 
     private fun buildDiagnostic(
         candidates: List<DexMethodCandidate>,
