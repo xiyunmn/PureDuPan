@@ -48,6 +48,7 @@ data class SettingsSnapshot(
     val isIntlSearchPageSvipBannerHidden: Boolean = false,
     val isSearchPageVoiceSearchHidden: Boolean = false,
     val isSharePageCustomizeEnabled: Boolean = false,
+    val isTransferSvipCardBlocked: Boolean = false,
     val isMyPageCustomizeEnabled: Boolean = false,
     val isMyPageContentAutoFollowMemberCardEnabled: Boolean = false,
     val isMyPageContentManualOffsetEnabled: Boolean = false,

@@ -115,6 +115,7 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE,
         FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
         FeatureKeys.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP,
+        FeatureKeys.KEY_BLOCK_TRANSFER_SVIP_CARD,
     )
 
     private val baiduDomesticDownloadPageCustomize = listOf(

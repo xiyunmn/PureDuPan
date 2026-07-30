@@ -42,6 +42,7 @@ object FeatureKeys {
     const val KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER = "hide_intl_search_page_svip_banner"
     const val KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH = "hide_search_page_voice_search"
     const val KEY_SHARE_PAGE_CUSTOMIZE = "share_page_customize"
+    const val KEY_BLOCK_TRANSFER_SVIP_CARD = "block_transfer_svip_card"
     const val KEY_MY_PAGE_CUSTOMIZE = "my_page_customize"
     const val KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD =
         "my_page_content_auto_follow_member_card"

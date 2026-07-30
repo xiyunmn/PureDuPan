@@ -356,6 +356,10 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.REMOVE_HOME_FAB_LABEL,
                 UiText.Settings.REMOVE_HOME_FAB_DESC,
             ),
+            SettingsUserState.KEY_BLOCK_TRANSFER_SVIP_CARD to text(
+                UiText.Settings.BLOCK_TRANSFER_SVIP_CARD_LABEL,
+                UiText.Settings.BLOCK_TRANSFER_SVIP_CARD_DESC,
+            ),
             SettingsUserState.KEY_MY_PAGE_CUSTOMIZE to text(
                 UiText.Settings.MY_PAGE_CUSTOMIZE_LABEL,
                 UiText.Settings.MY_PAGE_CUSTOMIZE_DESC,

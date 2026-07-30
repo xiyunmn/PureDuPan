@@ -1,6 +1,9 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.shared
 
 internal object BaiduTransferHookPoints {
+    const val BUSINESS_GUIDE_CONTEXT =
+        "rubik.generate.context.bd_netdisk_com_baidu_netdisk_platform_business_guide.GuideContext"
+    const val BUSINESS_GUIDE_CONTEXT_COMPANION = "$BUSINESS_GUIDE_CONTEXT\$Companion"
     const val TRANSFER_CONTEXT_COMPANION =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_transfer.TransferContext\$Companion"
     const val TRANSFER_APIS =
@@ -39,11 +42,16 @@ internal object BaiduTransferHookPoints {
         "com.baidu.netdisk.cloudimage.ui.state.AlbumGuideResult\$Success"
     const val DOWNLOAD_PROBATIONARY_VIEW =
         "com.baidu.netdisk.ui.transfer.probationary.view.DownloadProbationaryView"
+    const val TRANSFER_LIST_TAB_ACTIVITY =
+        "com.baidu.netdisk.ui.transfer.TransferListTabActivity"
     const val ANDROIDX_FRAGMENT_ACTIVITY =
         "androidx.fragment.app.FragmentActivity"
+    const val KOTLIN_FUNCTION0 = "kotlin.jvm.functions.Function0"
     const val ANDROID_OS_BUNDLE =
         "android.os.Bundle"
     const val CHECK_SHOW_GAME_GUIDE_METHOD = "checkShowGameGuide"
+    const val CHECK_SHOW_SVIP_CARD_GUIDE_METHOD = "checkShowSvipCardGuide"
+    const val INIT_YOUA_GUIDE_VIEW_METHOD = "initYouaGuideView"
     const val PROBATIONARY_ON_BEGIN_METHOD = "onBegin"
     const val PROBATIONARY_ON_RUNNING_METHOD = "onRunning"
     const val PROBATIONARY_ON_END_METHOD = "onEnd"

@@ -141,6 +141,9 @@ internal object HookSettings {
     val isSharePageCustomizeEnabled: Boolean
         get() = ConfigManager.isSharePageCustomizeEnabled
 
+    val isTransferSvipCardBlocked: Boolean
+        get() = ConfigManager.isTransferSvipCardBlocked
+
     val isMyPageCustomizeEnabled: Boolean
         get() = ConfigManager.isMyPageCustomizeEnabled
 

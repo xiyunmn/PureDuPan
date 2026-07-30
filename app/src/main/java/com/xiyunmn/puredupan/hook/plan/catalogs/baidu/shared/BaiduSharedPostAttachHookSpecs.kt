@@ -2,6 +2,7 @@ package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.shared
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.host.HostIds
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.TransferSvipCardGuideBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.SplashBypassCore
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeBannerHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeBottomContentPositionHook
@@ -139,6 +140,13 @@ internal object BaiduSharedPostAttachHookSpecs {
                 settings.isSharePageCustomizeEnabled &&
                 settings.isHomeFabRemoved
         }, featureKey = FeatureKeys.KEY_REMOVE_HOME_FAB) { cl -> NewHomeFabRemoveHook.hook(cl) },
+        HookSpec("TransferSvipCardGuideBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isFilePageCustomizeEnabled &&
+                settings.isTransferSvipCardBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_TRANSFER_SVIP_CARD) { cl ->
+            TransferSvipCardGuideBlockHook.hook(cl)
+        },
     )
 
     val postMemberTail = emptyList<HookSpec>()

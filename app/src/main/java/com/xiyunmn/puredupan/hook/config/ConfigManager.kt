@@ -65,6 +65,7 @@ object ConfigManager {
     const val KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER = FeatureKeys.KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER
     const val KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH = FeatureKeys.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH
     const val KEY_SHARE_PAGE_CUSTOMIZE = FeatureKeys.KEY_SHARE_PAGE_CUSTOMIZE
+    const val KEY_BLOCK_TRANSFER_SVIP_CARD = FeatureKeys.KEY_BLOCK_TRANSFER_SVIP_CARD
     const val KEY_MY_PAGE_CUSTOMIZE = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE
     const val KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD =
         FeatureKeys.KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD
@@ -199,6 +200,7 @@ object ConfigManager {
     val isIntlSearchPageSvipBannerHidden: Boolean get() = settingsSnapshot.isIntlSearchPageSvipBannerHidden
     val isSearchPageVoiceSearchHidden: Boolean get() = settingsSnapshot.isSearchPageVoiceSearchHidden
     val isSharePageCustomizeEnabled: Boolean get() = settingsSnapshot.isSharePageCustomizeEnabled
+    val isTransferSvipCardBlocked: Boolean get() = settingsSnapshot.isTransferSvipCardBlocked
     val isMyPageCustomizeEnabled: Boolean get() = settingsSnapshot.isMyPageCustomizeEnabled
     val isGameCenterRemoved: Boolean get() = settingsSnapshot.isGameCenterRemoved
     val isAboutMeBannerRemoved: Boolean get() = settingsSnapshot.isAboutMeBannerRemoved
@@ -504,7 +506,8 @@ object ConfigManager {
                 featureBoolean(KEY_HOME_SAVE_VERTICAL_LAYOUT, false)
         val hasFilePageOptionEnabled =
             featureBoolean(KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP, false) ||
-                featureBoolean(KEY_BLOCK_ALBUM_BACKUP_BAR, false)
+                featureBoolean(KEY_BLOCK_ALBUM_BACKUP_BAR, false) ||
+                featureBoolean(KEY_BLOCK_TRANSFER_SVIP_CARD, false)
         val hasDownloadPageOptionEnabled =
             featureBoolean(KEY_HIDE_DOWNLOAD_PAGE_GAME_GUIDE, false) ||
                 featureBoolean(KEY_HIDE_DOWNLOAD_PAGE_PROMOTION_AD, false) ||
@@ -616,6 +619,7 @@ object ConfigManager {
             isIntlSearchPageSvipBannerHidden = featureBoolean(KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER, false),
             isSearchPageVoiceSearchHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH, false),
             isSharePageCustomizeEnabled = featureBoolean(KEY_SHARE_PAGE_CUSTOMIZE, hasSharePageOptionEnabled),
+            isTransferSvipCardBlocked = featureBoolean(KEY_BLOCK_TRANSFER_SVIP_CARD, false),
             isMyPageCustomizeEnabled = featureBoolean(KEY_MY_PAGE_CUSTOMIZE, hasMyPageOptionEnabled),
             isMyPageContentAutoFollowMemberCardEnabled = myPageContentAutoFollowMemberCard,
             isMyPageContentManualOffsetEnabled = myPageContentManualOffset,

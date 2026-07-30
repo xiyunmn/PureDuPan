@@ -197,8 +197,8 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
                 }
             }
         }
-        // 国际版无下载页 YouaGuide 推广广告，DownloadPageCustomizeHook 已宿主门控跳过，
-        // 故不注册该 DexKit warmup（国内/三星 registry 保留）。
+        // 国际版通过 TransferListTabActivity.initYouaGuideView 明文入口阻止推广广告创建，
+        // 无需注册 YouaGuide DexKit warmup；国内/三星 registry 继续使用原 Resolver。
         if (available(FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(IntlAboutMeTopFragmentDexKitResolver.CACHE_ID) {
                 IntlAboutMeTopFragmentDexKitResolver.warmUpDexKitCache(classLoader)

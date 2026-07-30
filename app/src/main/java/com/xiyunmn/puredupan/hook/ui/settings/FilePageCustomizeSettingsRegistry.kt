@@ -21,5 +21,10 @@ internal object FilePageCustomizeSettingsRegistry {
             UiText.Settings.BLOCK_ALBUM_BACKUP_BAR_LABEL,
             UiText.Settings.BLOCK_ALBUM_BACKUP_BAR_DESC,
         ),
+        FilePageCustomizeSwitchSpec(
+            SettingsUserState.KEY_BLOCK_TRANSFER_SVIP_CARD,
+            UiText.Settings.BLOCK_TRANSFER_SVIP_CARD_LABEL,
+            UiText.Settings.BLOCK_TRANSFER_SVIP_CARD_DESC,
+        ),
     )
 }
