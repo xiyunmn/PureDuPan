@@ -31,6 +31,8 @@ internal object HookSettings {
         ConfigManager.init(context)
     }
 
+    fun appContext(): Context? = ConfigManager.getAppContext()
+
     fun settingsSnapshot(): SettingsSnapshot {
         return ConfigManager.snapshot()
     }

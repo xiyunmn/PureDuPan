@@ -5,6 +5,8 @@ import android.app.Application
 import android.content.Context
 import android.content.ContextWrapper
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -55,7 +57,9 @@ object HomeCustomizeHook {
         Collections.synchronizedMap(WeakHashMap<ViewGroup, MutableList<View>>())
     private val verticalSaveRowHeights =
         Collections.synchronizedMap(WeakHashMap<ViewGroup, Int>())
-    private val saveHistoryRequests = Collections.synchronizedMap(WeakHashMap<Any, Boolean>())
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val saveHistoryRequests =
+        Collections.synchronizedMap(WeakHashMap<Any, SavedHistoryRetryState>())
     private val saveHistoryCache = Collections.synchronizedMap(WeakHashMap<Any, List<Any>>())
 
     internal fun hook(cl: ClassLoader) {
@@ -1082,7 +1086,7 @@ object HomeCustomizeHook {
             !Modifier.isStatic(field.modifiers) &&
                 List::class.java.isAssignableFrom(field.type)
         }
-        val field = fields.firstOrNull { it.genericType.typeName.contains(itemClassSuffix) }
+        val field = fields.firstOrNull { it.genericType.toString().contains(itemClassSuffix) }
             ?: fields.firstOrNull { candidate ->
                 candidate.isAccessible = true
                 val values = candidate.get(state) as? List<*>
@@ -1159,8 +1163,6 @@ object HomeCustomizeHook {
     }
 
     private fun expandSavedItems(viewModel: Any, cl: ClassLoader) {
-        // TODO(deferred): wait for account/application readiness and add bounded retry/backoff
-        // before re-enabling full saved-history expansion diagnostics.
         val stateFlow = findSaveCardStateFlow(viewModel) ?: run {
             XposedCompat.logD(
                 "[HomeCustomizeHook] save card state flow unavailable: ${viewModel.javaClass.name}",
@@ -1176,71 +1178,111 @@ object HomeCustomizeHook {
             updateSaveCardStateSaveList(stateFlow, cached.take(limit))
             return
         }
-        if (saveHistoryRequests.put(viewModel, true) == true) return
+        val requestState = synchronized(saveHistoryRequests) {
+            saveHistoryRequests.getOrPut(viewModel) { SavedHistoryRetryState() }
+        }
+        scheduleSavedHistoryAttempt(viewModel, cl, requestState)
+    }
 
-        var observing = false
+    private fun scheduleSavedHistoryAttempt(
+        viewModel: Any,
+        cl: ClassLoader,
+        requestState: SavedHistoryRetryState,
+    ) {
+        val delayMillis = synchronized(requestState) { requestState.scheduleNext() } ?: return
+        postSavedHistoryAttempt(viewModel, cl, requestState, delayMillis)
+    }
+
+    private fun postSavedHistoryAttempt(
+        viewModel: Any,
+        cl: ClassLoader,
+        requestState: SavedHistoryRetryState,
+        delayMillis: Long,
+    ) {
+        mainHandler.postDelayed(
+            {
+                if (!synchronized(requestState) { requestState.beginScheduledAttempt() }) return@postDelayed
+                requestSavedHistory(viewModel, cl, requestState)
+            },
+            delayMillis,
+        )
+    }
+
+    private fun requestSavedHistory(
+        viewModel: Any,
+        cl: ClassLoader,
+        requestState: SavedHistoryRetryState,
+    ) {
         runCatching {
+            val stateFlow = findSaveCardStateFlow(viewModel)
+                ?: throw SavedHistoryNotReadyException("save card state unavailable")
+            val current = invokeNoArg(stateFlow, "getValue")
+                ?: throw SavedHistoryNotReadyException("save card state value unavailable")
+            val currentSaveList = readSaveCardStateList(current, ".SavedDataInfo")
+            val limit = HookSettings.homeSaveItemLimit.coerceIn(1, 10)
+            if (currentSaveList.size >= limit) {
+                synchronized(requestState) { requestState.markComplete() }
+                return
+            }
             val targetItemClass = currentSaveList.firstNotNullOfOrNull { it?.javaClass }
-                ?: error("saved item target class unavailable")
-            val accountClass = XposedCompat.findClassOrNull(
-                BaiduHomeCardHookPoints.ACCOUNT_UTILS,
-                cl,
-            ) ?: error("AccountUtils unavailable")
-            val account = invokeStaticNoArg(accountClass, "getInstance")
-                ?: error("AccountUtils instance unavailable")
-            val uid = invokeNoArg(account, "getUid") as? String ?: error("uid unavailable")
-            val bduss = invokeNoArg(account, "getBduss") as? String ?: error("bduss unavailable")
-            if (uid.isEmpty() || bduss.isEmpty()) error("account credentials empty")
-
+                ?: throw SavedHistoryNotReadyException("saved item target class unavailable")
+            val credentials = resolveAccountCredentials(cl)
+            val context = HookSettings.appContext()?.applicationContext
+                ?: throw SavedHistoryNotReadyException("host application context unavailable")
             val evidenceClass = XposedCompat.findClassOrNull(
                 BaiduHomeCardHookPoints.EVIDENCE,
                 cl,
             ) ?: error("Evidence unavailable")
             val evidence = evidenceClass.getDeclaredConstructor(String::class.java, String::class.java)
-                .newInstance(uid, bduss)
-            val applicationClass = XposedCompat.findClassOrNull(
-                BaiduHomeCardHookPoints.BASE_APPLICATION,
-                cl,
-            ) ?: error("BaseApplication unavailable")
-            val application = invokeStaticNoArg(applicationClass, "getInstance")
-                ?: error("BaseApplication instance unavailable")
-            val serviceKtClass = XposedCompat.findClassOrNull(
-                BaiduHomeCardHookPoints.TRANSFER_SAVED_SERVICE_KT,
-                cl,
-            ) ?: error("transfer saved service factory unavailable")
-            val serviceFactory = serviceKtClass.declaredMethods.firstOrNull { method ->
-                Modifier.isStatic(method.modifiers) &&
-                    method.parameterTypes.size == 1 &&
-                    Context::class.java.isAssignableFrom(method.parameterTypes[0])
-            }?.apply { isAccessible = true } ?: error("transfer saved service method unavailable")
-            val service = serviceFactory.invoke(null, application)
-                ?: error("transfer saved service unavailable")
-            val fetchMethod = service.javaClass.methods.firstOrNull { method ->
-                method.name == "fetchSavedList" &&
-                    method.parameterTypes.size == 4 &&
+                .newInstance(credentials.uid, credentials.bduss)
+            val service = createTransferSavedService(context, cl)
+            val fetchMethod = (service.javaClass.methods.asSequence() +
+                service.javaClass.declaredMethods.asSequence()).firstOrNull { method ->
+                method.parameterTypes.size == 4 &&
+                    method.parameterTypes[0] == evidenceClass &&
                     method.parameterTypes.drop(1).all { it == Int::class.javaPrimitiveType }
-            } ?: error("fetchSavedList unavailable")
+            }?.apply { isAccessible = true } ?: error("fetchSavedList unavailable")
             val liveData = fetchMethod.invoke(service, evidence, 1, limit, 0)
                 ?: error("saved history LiveData unavailable")
-            observing = observeSavedHistory(
-                liveData = liveData,
-                cl = cl,
-                viewModel = viewModel,
-                stateFlow = stateFlow,
-                targetItemClass = targetItemClass,
-                limit = limit,
+            synchronized(requestState) { requestState.markObserving() }
+            if (!observeSavedHistory(
+                    liveData = liveData,
+                    cl = cl,
+                    viewModel = viewModel,
+                    stateFlow = stateFlow,
+                    targetItemClass = targetItemClass,
+                    limit = limit,
+                    requestState = requestState,
+                )
+            ) {
+                error("saved history observer unavailable")
+            }
+            XposedCompat.logD(
+                "[HomeCustomizeHook] full saved history requested: " +
+                    "limit=$limit, attempt=${requestState.attemptCount}",
             )
-            if (observing) {
-                XposedCompat.logD(
-                    "[HomeCustomizeHook] full saved history requested: limit=$limit",
+        }.onFailure { error ->
+            if (error is SavedHistoryNotReadyException) {
+                val retryDelay = synchronized(requestState) { requestState.markRetryableFailure() }
+                if (retryDelay != null) {
+                    XposedCompat.logD(
+                        "[HomeCustomizeHook] saved history not ready: ${error.message}; " +
+                            "retry=${requestState.attemptCount + 1}",
+                    )
+                    postSavedHistoryAttempt(viewModel, cl, requestState, retryDelay)
+                } else {
+                    synchronized(requestState) { requestState.markTerminal() }
+                    XposedCompat.logW(
+                        "[HomeCustomizeHook] saved history readiness retries exhausted: ${error.message}",
+                    )
+                }
+            } else {
+                synchronized(requestState) { requestState.markTerminal() }
+                XposedCompat.logW(
+                    "[HomeCustomizeHook] full saved history request failed: ${error.message}",
                 )
             }
-        }.onFailure { error ->
-            XposedCompat.logW(
-                "[HomeCustomizeHook] full saved history request failed: ${error.message}",
-            )
         }
-        if (!observing) saveHistoryRequests.remove(viewModel)
     }
 
     private fun observeSavedHistory(
@@ -1250,6 +1292,7 @@ object HomeCustomizeHook {
         stateFlow: Any,
         targetItemClass: Class<*>,
         limit: Int,
+        requestState: SavedHistoryRetryState,
     ): Boolean {
         val observerClass = XposedCompat.findClassOrNull(BaiduHomeCardHookPoints.ANDROIDX_OBSERVER, cl)
             ?: return false
@@ -1273,7 +1316,7 @@ object HomeCustomizeHook {
                         val resultName = result?.javaClass?.simpleName.orEmpty()
                         if (resultName != "Operating" && resultName.isNotEmpty()) {
                             removeObserver?.invoke(liveData, observer)
-                            saveHistoryRequests.remove(viewModel)
+                            synchronized(requestState) { requestState.markTerminal() }
                             XposedCompat.logW(
                                 "[HomeCustomizeHook] full saved history failed: state=$resultName",
                             )
@@ -1297,7 +1340,7 @@ object HomeCustomizeHook {
                                 "source=${history.size}",
                         )
                     }
-                    saveHistoryRequests.remove(viewModel)
+                    synchronized(requestState) { requestState.markComplete() }
                     null
                 }
                 "equals" -> proxy === args?.firstOrNull()
@@ -1333,35 +1376,175 @@ object HomeCustomizeHook {
             fromJson.invoke(gson, json, targetClass)
         }.getOrNull()?.let { return it }
 
-        val constructor = targetClass.declaredConstructors.firstOrNull { ctor ->
-            val types = ctor.parameterTypes
-            types.size == 17 &&
-                types[0] == Int::class.javaPrimitiveType &&
-                types[2] == Long::class.javaPrimitiveType &&
-                types[3] == Int::class.javaPrimitiveType
-        }?.apply { isAccessible = true } ?: return null
-        val fsId = (invokeNoArg(source, "getFsId") as? String)?.toLongOrNull() ?: 0L
-        val isDir = (invokeNoArg(source, "isDir") as? Number)?.toInt() ?: 0
-        val args = arrayOf(
-            (invokeNoArg(source, "getFileCategory") as? Number)?.toInt() ?: 0,
-            invokeNoArg(source, "getDlink"),
-            fsId,
-            isDir,
-            (invokeNoArg(source, "getLocalCtime") as? Number)?.toLong() ?: 0L,
-            (invokeNoArg(source, "getLocalMtime") as? Number)?.toLong() ?: 0L,
-            invokeNoArg(source, "getMd5") as? String ?: "",
-            invokeNoArg(source, "getParentPath"),
-            invokeNoArg(source, "getPath"),
-            invokeNoArg(source, "getServerCtime"),
-            invokeNoArg(source, "getServerFilename"),
-            invokeNoArg(source, "getServerMtime"),
-            invokeNoArg(source, "getSize"),
-            invokeNoArg(source, "getTransferTime"),
-            invokeNoArg(source, "isDelete"),
-            null,
-            (invokeNoArg(source, "getExtentLong") as? Number)?.toLong() ?: 0L,
+        return mapSavedHistoryBySerializedFields(source, targetClass)
+    }
+
+    private data class AccountCredentials(val uid: String, val bduss: String)
+
+    private class SavedHistoryNotReadyException(message: String) : IllegalStateException(message)
+
+    private fun resolveAccountCredentials(cl: ClassLoader): AccountCredentials {
+        val accountClass = XposedCompat.findClassOrNull(
+            BaiduHomeCardHookPoints.ACCOUNT_UTILS,
+            cl,
+        ) ?: error("AccountUtils unavailable")
+        val singletonMethods = (accountClass.methods.asSequence() +
+            accountClass.declaredMethods.asSequence()).filter { method ->
+            Modifier.isStatic(method.modifiers) &&
+                method.parameterTypes.isEmpty() &&
+                method.returnType == accountClass
+        }.distinctBy { it.name }.sortedBy { method ->
+            when (method.name) {
+                "getInstance" -> 0
+                "k" -> 1
+                else -> 2
+            }
+        }.toList()
+        if (singletonMethods.isEmpty()) error("AccountUtils singleton accessor unavailable")
+        val account = singletonMethods.firstNotNullOfOrNull { method ->
+            method.isAccessible = true
+            runCatching { method.invoke(null) }.getOrNull()
+        } ?: throw SavedHistoryNotReadyException("AccountUtils instance unavailable")
+        val stringGetters = (accountClass.methods.asSequence() +
+            accountClass.declaredMethods.asSequence()).filter { method ->
+            !Modifier.isStatic(method.modifiers) &&
+                method.parameterTypes.isEmpty() &&
+                method.returnType == String::class.java
+        }.distinctBy { it.name }.onEach { it.isAccessible = true }.toList()
+        fun namedValue(names: List<String>, predicate: (String) -> Boolean): String? {
+            return names.firstNotNullOfOrNull { name ->
+                stringGetters.firstOrNull { it.name == name }?.let { method ->
+                    runCatching { method.invoke(account) as? String }.getOrNull()?.takeIf(predicate)
+                }
+            }
+        }
+        val uidPredicate: (String) -> Boolean = { value ->
+            value.isNotEmpty() && value.all(Char::isDigit)
+        }
+        val bdussPredicate: (String) -> Boolean = { value -> value.length >= 32 }
+        val uid = namedValue(listOf("getUid", "x"), uidPredicate)
+            ?: stringGetters.firstNotNullOfOrNull { method ->
+                runCatching { method.invoke(account) as? String }.getOrNull()?.takeIf(uidPredicate)
+            }
+            ?: throw SavedHistoryNotReadyException("uid unavailable")
+        val bduss = namedValue(listOf("getBduss", "d"), bdussPredicate)
+            ?: stringGetters.firstNotNullOfOrNull { method ->
+                runCatching { method.invoke(account) as? String }.getOrNull()?.takeIf(bdussPredicate)
+            }
+            ?: throw SavedHistoryNotReadyException("bduss unavailable")
+        return AccountCredentials(uid, bduss)
+    }
+
+    private fun createTransferSavedService(context: Context, cl: ClassLoader): Any {
+        XposedCompat.findClassOrNull(BaiduHomeCardHookPoints.TRANSFER_SAVED_SERVICE_KT, cl)
+            ?.declaredMethods
+            ?.firstOrNull { method ->
+                Modifier.isStatic(method.modifiers) &&
+                    method.parameterTypes.size == 1 &&
+                    Context::class.java.isAssignableFrom(method.parameterTypes[0])
+            }
+            ?.let { factory ->
+                factory.isAccessible = true
+                factory.invoke(null, context)?.let { return it }
+            }
+        val managerClass = XposedCompat.findClassOrNull(
+            BaiduHomeCardHookPoints.TRANSFER_SAVED_MANAGER,
+            cl,
+        ) ?: error("TransferSavedManager unavailable")
+        val constructor = managerClass.declaredConstructors.firstOrNull { constructor ->
+            constructor.parameterTypes.size == 2 &&
+                Context::class.java.isAssignableFrom(constructor.parameterTypes[0])
+        }?.apply { isAccessible = true } ?: error("transfer saved constructor unavailable")
+        val executorType = constructor.parameterTypes[1]
+        val handlableClass = XposedCompat.findClassOrNull(
+            BaiduHomeCardHookPoints.HANDLABLE_MANAGER,
+            cl,
+        ) ?: error("HandlableManager unavailable")
+        val executor = handlableClass.declaredMethods.firstNotNullOfOrNull { method ->
+            if (!Modifier.isStatic(method.modifiers) || method.parameterTypes.isNotEmpty() ||
+                !executorType.isAssignableFrom(method.returnType)
+            ) {
+                return@firstNotNullOfOrNull null
+            }
+            method.isAccessible = true
+            runCatching { method.invoke(null) }.getOrNull()
+        } ?: error("transfer saved executor unavailable")
+        return constructor.newInstance(context, executor)
+            ?: error("transfer saved service unavailable")
+    }
+
+    private fun mapSavedHistoryBySerializedFields(source: Any, targetClass: Class<*>): Any? {
+        val names = listOf(
+            "category",
+            "dlink",
+            "fs_id",
+            "isdir",
+            "local_ctime",
+            "local_mtime",
+            "md5",
+            "parent_path",
+            "path",
+            "server_ctime",
+            "server_filename",
+            "server_mtime",
+            "size",
+            "transfer_time",
+            "isdelete",
+            "thumbs",
+            "extent_int8",
         )
-        return runCatching { constructor.newInstance(*args) }.getOrNull()
+        val constructor = targetClass.declaredConstructors.firstOrNull { constructor ->
+            constructor.parameterTypes.size == names.size ||
+                constructor.parameterTypes.size == names.size - 1
+        }?.apply { isAccessible = true } ?: return null
+        val argumentNames = if (constructor.parameterTypes.size == names.size) names else names.dropLast(1)
+        val sourceFields = generateSequence(source.javaClass) { it.superclass }
+            .flatMap { it.declaredFields.asSequence() }
+            .filter { !Modifier.isStatic(it.modifiers) }
+            .mapNotNull { field -> serializedFieldName(field)?.let { name -> name to field } }
+            .toMap()
+        val arguments = argumentNames.mapIndexed { index, name ->
+            val value = sourceFields[name]?.let { field ->
+                field.isAccessible = true
+                runCatching { field.get(source) }.getOrNull()
+            }
+            coerceSavedHistoryValue(value, constructor.parameterTypes[index])
+        }.toTypedArray()
+        return runCatching { constructor.newInstance(*arguments) }.getOrNull()
+    }
+
+    private fun serializedFieldName(field: Field): String? {
+        return field.declaredAnnotations.firstNotNullOfOrNull { annotation ->
+            if (!annotation.annotationClass.java.name.endsWith(".SerializedName")) {
+                return@firstNotNullOfOrNull null
+            }
+            runCatching {
+                annotation.annotationClass.java.getMethod("value").invoke(annotation) as? String
+            }.getOrNull()
+        }
+    }
+
+    private fun coerceSavedHistoryValue(value: Any?, targetType: Class<*>): Any? {
+        if (value != null && targetType.isInstance(value)) return value
+        if (targetType == String::class.java) return value?.toString() ?: ""
+        if (targetType == Int::class.javaPrimitiveType || targetType == Int::class.javaObjectType) {
+            return when (value) {
+                is Number -> value.toInt()
+                is String -> value.toIntOrNull()
+                else -> null
+            } ?: 0
+        }
+        if (targetType == Long::class.javaPrimitiveType || targetType == Long::class.javaObjectType) {
+            return when (value) {
+                is Number -> value.toLong()
+                is String -> value.toLongOrNull()
+                else -> null
+            } ?: 0L
+        }
+        if (targetType == Boolean::class.javaPrimitiveType || targetType == Boolean::class.javaObjectType) {
+            return value as? Boolean ?: false
+        }
+        return null
     }
 
     private fun updateSaveCardStateSaveList(stateFlow: Any, saveList: List<Any>) {
@@ -1428,16 +1611,6 @@ object HomeCustomizeHook {
             val current = invokeNoArg(value, "getValue") ?: return@firstNotNullOfOrNull null
             value.takeIf { isSaveCardUiStateClass(current.javaClass) }
         }
-    }
-
-    private fun invokeStaticNoArg(clazz: Class<*>, methodName: String): Any? {
-        val method = clazz.methods.firstOrNull { candidate ->
-            Modifier.isStatic(candidate.modifiers) &&
-                candidate.name == methodName &&
-                candidate.parameterTypes.isEmpty()
-        } ?: return null
-        method.isAccessible = true
-        return method.invoke(null)
     }
 
     private fun invokeNoArg(instance: Any, methodName: String): Any? {

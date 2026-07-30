@@ -3,6 +3,8 @@ package com.xiyunmn.puredupan.hook.feature.baidu.intl.ui
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -12,6 +14,7 @@ import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.SavedHistoryRetryState
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHomeSaveCardHookPoints
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
@@ -31,7 +34,9 @@ internal object IntlHomeSaveCardCustomizeHook {
     private val dynamicRows =
         Collections.synchronizedMap(WeakHashMap<ViewGroup, MutableList<View>>())
     private val rowHeights = Collections.synchronizedMap(WeakHashMap<ViewGroup, Int>())
-    private val saveHistoryRequests = Collections.synchronizedMap(WeakHashMap<Any, Boolean>())
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val saveHistoryRequests =
+        Collections.synchronizedMap(WeakHashMap<Any, SavedHistoryRetryState>())
     private val saveHistoryCache = Collections.synchronizedMap(WeakHashMap<Any, List<Any>>())
     private val subscriptionItemsForCall = ThreadLocal<List<*>?>()
     private const val SAVED_HISTORY_CACHE_KEY_PREFIX = "intl_saved_history_v1_"
@@ -535,12 +540,57 @@ internal object IntlHomeSaveCardCustomizeHook {
             updateStateList(stateFlow, cached.take(limit), StateListSlot.SAVED)
             return
         }
-        if (saveHistoryRequests.put(viewModel, true) == true) return
+        val requestState = synchronized(saveHistoryRequests) {
+            saveHistoryRequests.getOrPut(viewModel) { SavedHistoryRetryState() }
+        }
+        scheduleSavedHistoryAttempt(viewModel, context.applicationContext ?: context, cl, requestState)
+    }
 
-        var observing = false
+    private fun scheduleSavedHistoryAttempt(
+        viewModel: Any,
+        context: Context,
+        cl: ClassLoader,
+        requestState: SavedHistoryRetryState,
+    ) {
+        val delayMillis = synchronized(requestState) { requestState.scheduleNext() } ?: return
+        postSavedHistoryAttempt(viewModel, context, cl, requestState, delayMillis)
+    }
+
+    private fun postSavedHistoryAttempt(
+        viewModel: Any,
+        context: Context,
+        cl: ClassLoader,
+        requestState: SavedHistoryRetryState,
+        delayMillis: Long,
+    ) {
+        mainHandler.postDelayed(
+            {
+                if (!synchronized(requestState) { requestState.beginScheduledAttempt() }) return@postDelayed
+                requestSavedHistory(viewModel, context, cl, requestState)
+            },
+            delayMillis,
+        )
+    }
+
+    private fun requestSavedHistory(
+        viewModel: Any,
+        context: Context,
+        cl: ClassLoader,
+        requestState: SavedHistoryRetryState,
+    ) {
         runCatching {
+            val stateFlow = findStateFlow(viewModel)
+                ?: throw SavedHistoryNotReadyException("save card state unavailable")
+            val current = invokeNoArg(stateFlow, "getValue")
+                ?: throw SavedHistoryNotReadyException("save card state value unavailable")
+            val currentList = readStateList(current, StateListSlot.SAVED)
+            val limit = HookSettings.homeSaveItemLimit.coerceIn(1, 10)
+            if (currentList.size >= limit) {
+                synchronized(requestState) { requestState.markComplete() }
+                return
+            }
             val targetClass = currentList.firstNotNullOfOrNull { it?.javaClass }
-                ?: error("saved item class unavailable")
+                ?: throw SavedHistoryNotReadyException("saved item class unavailable")
             val credentials = resolveAccountCredentials(cl)
             readPersistentSavedCache(context, credentials.uid, targetClass)?.let { cached ->
                 val merged = mergeSavedItems(currentList, cached, limit)
@@ -589,7 +639,8 @@ internal object IntlHomeSaveCardCustomizeHook {
                 .newInstance(uid, bduss)
             val liveData = fetch.invoke(service, evidence, 1, limit, 0)
                 ?: error("saved history LiveData unavailable")
-            observing = observeSavedHistory(
+            synchronized(requestState) { requestState.markObserving() }
+            val observing = observeSavedHistory(
                 liveData = liveData,
                 cl = cl,
                 viewModel = viewModel,
@@ -598,16 +649,36 @@ internal object IntlHomeSaveCardCustomizeHook {
                 limit = limit,
                 context = context,
                 uid = uid,
+                requestState = requestState,
             )
-            if (observing) {
-                XposedCompat.logD(
-                    "[IntlHomeSaveCardCustomizeHook] saved history requested: limit=$limit",
+            if (!observing) error("saved history observer unavailable")
+            XposedCompat.logD(
+                "[IntlHomeSaveCardCustomizeHook] saved history requested: " +
+                    "limit=$limit, attempt=${requestState.attemptCount}",
+            )
+        }.onFailure { error ->
+            if (error is SavedHistoryNotReadyException) {
+                val retryDelay = synchronized(requestState) { requestState.markRetryableFailure() }
+                if (retryDelay != null) {
+                    XposedCompat.logD {
+                        "[IntlHomeSaveCardCustomizeHook] saved history not ready: ${error.message}; " +
+                            "retry=${requestState.attemptCount + 1}"
+                    }
+                    postSavedHistoryAttempt(viewModel, context, cl, requestState, retryDelay)
+                } else {
+                    synchronized(requestState) { requestState.markTerminal() }
+                    XposedCompat.logW(
+                        "[IntlHomeSaveCardCustomizeHook] saved history readiness retries exhausted: " +
+                            error.message,
+                    )
+                }
+            } else {
+                synchronized(requestState) { requestState.markTerminal() }
+                XposedCompat.logW(
+                    "[IntlHomeSaveCardCustomizeHook] saved history request failed: ${error.message}",
                 )
             }
-        }.onFailure { error ->
-            XposedCompat.logW("[IntlHomeSaveCardCustomizeHook] saved history request failed: ${error.message}")
         }
-        if (!observing) saveHistoryRequests.remove(viewModel)
     }
 
     private fun observeSavedHistory(
@@ -619,6 +690,7 @@ internal object IntlHomeSaveCardCustomizeHook {
         limit: Int,
         context: Context,
         uid: String,
+        requestState: SavedHistoryRetryState,
     ): Boolean {
         val observerClass = XposedCompat.findClassOrNull(
             BaiduIntlHomeSaveCardHookPoints.ANDROIDX_OBSERVER,
@@ -663,10 +735,10 @@ internal object IntlHomeSaveCardCustomizeHook {
                                         "source=${history.size}",
                                 )
                             }
-                            saveHistoryRequests.remove(viewModel)
+                            synchronized(requestState) { requestState.markComplete() }
                         } else if (resultName.isNotEmpty() && resultName != "Operating") {
                             removeObserver?.invoke(liveData, observer)
-                            saveHistoryRequests.remove(viewModel)
+                            synchronized(requestState) { requestState.markTerminal() }
                             val errorNumber = result?.let { invokeNoArg(it, "getErrorNumber") }
                             val errorMessage = result?.let { invokeNoArg(it, "getErrorMessage") }
                             XposedCompat.logW(
@@ -692,10 +764,66 @@ internal object IntlHomeSaveCardCustomizeHook {
     }
 
     private fun mapSavedItem(source: Any, targetClass: Class<*>): Any? {
-        return runCatching {
-            val (gson, toJson, fromJson) = gsonMethods(targetClass.classLoader) ?: return null
+        runCatching {
+            val (gson, toJson, fromJson) = gsonMethods(targetClass.classLoader)
+                ?: return@runCatching null
             fromJson.invoke(gson, toJson.invoke(gson, source), targetClass)
-        }.getOrNull()
+        }.getOrNull()?.let { return it }
+        return mapSavedItemBySerializedFields(source, targetClass)
+    }
+
+    private fun mapSavedItemBySerializedFields(source: Any, targetClass: Class<*>): Any? {
+        val names = listOf(
+            "category",
+            "dlink",
+            "fs_id",
+            "isdir",
+            "local_ctime",
+            "local_mtime",
+            "md5",
+            "parent_path",
+            "path",
+            "server_ctime",
+            "server_filename",
+            "server_mtime",
+            "size",
+            "transfer_time",
+            "isdelete",
+            "thumbs",
+            "extent_int8",
+        )
+        val constructor = targetClass.declaredConstructors.firstOrNull { constructor ->
+            constructor.parameterTypes.size == names.size ||
+                constructor.parameterTypes.size == names.size - 1
+        }?.apply { isAccessible = true } ?: return null
+        val argumentNames = if (constructor.parameterTypes.size == names.size) names else names.dropLast(1)
+        val arguments = argumentNames.mapIndexed { index, name ->
+            coerceSavedItemValue(readSerializedField(source, name), constructor.parameterTypes[index])
+        }.toTypedArray()
+        return runCatching { constructor.newInstance(*arguments) }.getOrNull()
+    }
+
+    private fun coerceSavedItemValue(value: Any?, targetType: Class<*>): Any? {
+        if (value != null && targetType.isInstance(value)) return value
+        if (targetType == String::class.java) return value?.toString() ?: ""
+        if (targetType == Int::class.javaPrimitiveType || targetType == Int::class.javaObjectType) {
+            return when (value) {
+                is Number -> value.toInt()
+                is String -> value.toIntOrNull()
+                else -> null
+            } ?: 0
+        }
+        if (targetType == Long::class.javaPrimitiveType || targetType == Long::class.javaObjectType) {
+            return when (value) {
+                is Number -> value.toLong()
+                is String -> value.toLongOrNull()
+                else -> null
+            } ?: 0L
+        }
+        if (targetType == Boolean::class.javaPrimitiveType || targetType == Boolean::class.javaObjectType) {
+            return value as? Boolean ?: false
+        }
+        return null
     }
 
     private fun mergeSavedItems(
@@ -836,6 +964,8 @@ internal object IntlHomeSaveCardCustomizeHook {
 
     private data class AccountCredentials(val uid: String, val bduss: String)
 
+    private class SavedHistoryNotReadyException(message: String) : IllegalStateException(message)
+
     private fun resolveAccountCredentials(cl: ClassLoader): AccountCredentials {
         val accountClass = XposedCompat.findClassOrNull(
             BaiduIntlHomeSaveCardHookPoints.ACCOUNT_UTILS,
@@ -846,7 +976,8 @@ internal object IntlHomeSaveCardCustomizeHook {
                 method.parameterTypes.isEmpty() && method.returnType == accountClass
         }?.apply { isAccessible = true }?.invoke(null) ?: accountClass.declaredMethods.firstOrNull { method ->
             Modifier.isStatic(method.modifiers) && method.parameterTypes.isEmpty() && method.returnType == accountClass
-        }?.apply { isAccessible = true }?.invoke(null) ?: error("AccountUtils instance unavailable")
+        }?.apply { isAccessible = true }?.invoke(null)
+            ?: throw SavedHistoryNotReadyException("AccountUtils instance unavailable")
         val stringGetters = accountClass.declaredMethods.filter { method ->
             !Modifier.isStatic(method.modifiers) && method.parameterTypes.isEmpty() &&
                 method.returnType == String::class.java
@@ -856,13 +987,13 @@ internal object IntlHomeSaveCardCustomizeHook {
             ?: stringGetters.firstNotNullOfOrNull { method ->
                 (method.invoke(account) as? String)?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }
             }
-            ?: error("uid unavailable")
+            ?: throw SavedHistoryNotReadyException("uid unavailable")
         val bduss = invokeNamedStringGetter(account, stringGetters, listOf("getBduss", "d"))
             ?.takeIf { it.length >= 64 }
             ?: stringGetters.firstNotNullOfOrNull { method ->
                 (method.invoke(account) as? String)?.takeIf { it.length >= 64 }
             }
-            ?: error("bduss unavailable")
+            ?: throw SavedHistoryNotReadyException("bduss unavailable")
         return AccountCredentials(uid, bduss)
     }
 
@@ -895,7 +1026,7 @@ internal object IntlHomeSaveCardCustomizeHook {
             !Modifier.isStatic(field.modifiers) && List::class.java.isAssignableFrom(field.type)
         }
         val field = fields.getOrNull(slot.ordinal)
-            ?: fields.firstOrNull { it.genericType.typeName.contains(slot.legacySuffix) }
+            ?: fields.firstOrNull { it.genericType.toString().contains(slot.legacySuffix) }
             ?: fields.firstOrNull { candidate ->
                 candidate.isAccessible = true
                 val values = candidate.get(state) as? List<*>
