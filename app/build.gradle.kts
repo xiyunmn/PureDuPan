@@ -4,7 +4,7 @@ plugins {
 
 val majorVersion = 1
 val minorVersion = 4
-val patchVersion = 1
+val patchVersion = 2
 
 val releaseVersionCode = majorVersion * 10000 + minorVersion * 100 + patchVersion
 val betaVersionCode = releaseVersionCode + 50
