@@ -271,10 +271,16 @@ internal object DexKitCacheWarmUp {
                 } else if (
                     DexKitCompat.readTargetStatus(task.id)?.state.let { it == null || it == "scanning" }
                 ) {
+                    val detail = DexKitCompat.consumeTargetScanMissDetail(task.id)
+                        ?: "no resolver result"
                     DexKitCompat.markTargetError(
                         "DexKitCacheWarmUp",
                         task.id,
-                        "no resolver result",
+                        detail,
+                    )
+                    XposedCompat.logW(
+                        "[DexKitCacheWarmUp] target unresolved: id=${task.id}, " +
+                            detail.lineSequence().firstOrNull().orEmpty(),
                     )
                 }
             }.onFailure { t ->

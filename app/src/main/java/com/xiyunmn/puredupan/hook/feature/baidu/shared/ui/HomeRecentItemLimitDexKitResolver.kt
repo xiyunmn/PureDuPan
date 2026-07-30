@@ -90,7 +90,7 @@ internal object HomeRecentItemLimitDexKitResolver {
                 .take(sourceCacheIds.size)
         }.orEmpty()
         if (refs.isEmpty()) {
-            XposedCompat.logW("[$TAG] recent item limit methods unresolved")
+            XposedCompat.logD("[$TAG] DexKit scan miss; checking stable fallback")
         }
         return refs
     }

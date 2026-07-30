@@ -155,6 +155,7 @@ object ConfigManager {
     @Volatile private var activePrefsName: String? = null
     @Volatile private var activeModuleStatePrefsName: String? = null
     @Volatile private var settingsSnapshot: SettingsSnapshot = SettingsSnapshot()
+    @Volatile private var lastLoggedSettingsSnapshotHash: Int? = null
     @Volatile private var prefsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     val isDetailedLoggingEnabled: Boolean get() = settingsSnapshot.isDetailedLoggingEnabled
@@ -455,7 +456,16 @@ object ConfigManager {
         val sanitizedSnapshot = snapshot.copy(
             memberCardBackgroundUri = snapshot.memberCardBackgroundUri?.let { "<set>" },
         )
-        XposedCompat.logD("[ConfigManager] settings snapshot($reason): $sanitizedSnapshot")
+        val snapshotHash = sanitizedSnapshot.hashCode()
+        val previousHash = lastLoggedSettingsSnapshotHash
+        if (previousHash == snapshotHash) return
+        lastLoggedSettingsSnapshotHash = snapshotHash
+        XposedCompat.logD(
+            "[ConfigManager] settings snapshot($reason): " +
+                "hash=${snapshotHash.toUInt().toString(16)}, " +
+                "previous=${previousHash?.toUInt()?.toString(16) ?: "none"}, " +
+                "dexkit=${snapshot.isDexKitSupported}, detailed=${snapshot.isDetailedLoggingEnabled}",
+        )
     }
 
     private fun buildSettingsSnapshot(p: SharedPreferences): SettingsSnapshot {

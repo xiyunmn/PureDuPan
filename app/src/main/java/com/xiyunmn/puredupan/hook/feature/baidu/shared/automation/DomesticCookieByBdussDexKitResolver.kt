@@ -135,8 +135,7 @@ internal object DomesticCookieByBdussDexKitResolver {
                 evidenceOwnerClasses = evidenceOwnerClasses,
                 rejected = rejected,
             )
-            XposedCompat.log("[$TAG] no cookie helper candidate matched: $diagnostic")
-            DexKitCompat.markTargetError(TAG, CACHE_ID, diagnostic)
+            DexKitCompat.markTargetScanMiss(TAG, CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, CACHE_ID, null)
             return null
         }

@@ -290,8 +290,8 @@ val validateHookArchitecture = tasks.register("validateHookArchitecture") {
             ?.get(1)
             ?.toIntOrNull()
             ?: throw GradleException("DexKit CACHE_SCHEMA is missing or invalid")
-        if (dexKitCacheSchema < 7) {
-            throw GradleException("DexKit CACHE_SCHEMA must be at least 7")
+        if (dexKitCacheSchema < 8) {
+            throw GradleException("DexKit CACHE_SCHEMA must be at least 8")
         }
         listOf("putCachedMethod", "recordTargetStatus").forEach { functionName ->
             val functionBody = Regex(
@@ -315,6 +315,14 @@ val validateHookArchitecture = tasks.register("validateHookArchitecture") {
         failIfNotEmpty(
             "DexKit warm-up must not test fallback before scan resolution",
             fallbackFirstWarmUpMatches,
+        )
+        val featureTerminalDexKitErrors = sourceTextByPath.filter { (path, text) ->
+            path.startsWith("com/xiyunmn/puredupan/hook/feature/") &&
+                "DexKitCompat.markTargetError" in text
+        }.keys
+        failIfNotEmpty(
+            "Feature resolvers must report scan misses and let warm-up decide terminal errors",
+            featureTerminalDexKitErrors,
         )
         val oldArchitecturePatterns = listOf(
             Regex("""\bHostFlavor\b"""),

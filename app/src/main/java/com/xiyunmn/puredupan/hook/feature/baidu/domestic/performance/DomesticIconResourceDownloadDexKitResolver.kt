@@ -95,8 +95,7 @@ internal object DomesticIconResourceDownloadDexKitResolver {
         val best = matches.singleOrNull()
         if (best == null) {
             val diagnostic = buildDiagnostic(candidates, matches, rejected)
-            XposedCompat.logW("[$TAG] startDownload unresolved: $diagnostic")
-            DexKitCompat.markTargetError(TAG, CACHE_ID, diagnostic)
+            DexKitCompat.markTargetScanMiss(TAG, CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, CACHE_ID, null)
             return resolveStableFallback(cl)
         }

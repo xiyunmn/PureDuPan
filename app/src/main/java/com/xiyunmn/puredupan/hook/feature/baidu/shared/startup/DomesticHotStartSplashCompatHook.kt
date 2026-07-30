@@ -21,16 +21,18 @@ internal object DomesticHotStartSplashCompatHook {
             if (lifecycleManagerClassName.isNullOrBlank() ||
                 backgroundResumeAdStartMethodName.isNullOrBlank()
             ) {
-                hookState.reset()
-                XposedCompat.log("[DomesticHotStartSplashCompatHook] hot start splash capability missing")
+                XposedCompat.logD(
+                    "[DomesticHotStartSplashCompatHook] legacy hot-start capability unavailable",
+                )
                 return
             }
             val lifecycleManagerClass = XposedCompat.findClassOrNull(
                 lifecycleManagerClassName,
                 cl,
             ) ?: run {
-                hookState.reset()
-                XposedCompat.log("[DomesticHotStartSplashCompatHook] SplashLifecycleManager class NOT FOUND")
+                XposedCompat.logD(
+                    "[DomesticHotStartSplashCompatHook] legacy lifecycle manager unavailable",
+                )
                 return
             }
             val method = XposedCompat.findMethodOrNull(
@@ -38,7 +40,6 @@ internal object DomesticHotStartSplashCompatHook {
                 backgroundResumeAdStartMethodName,
                 java.lang.Long.TYPE,
             ) ?: run {
-                hookState.reset()
                 XposedCompat.logD(
                     "[DomesticHotStartSplashCompatHook] legacy backgroundResumeAdStart method unavailable",
                 )

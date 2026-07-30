@@ -89,7 +89,7 @@ internal object DomesticSwanPreloadResolver {
         val best = matches.singleOrNull()
         if (best == null) {
             val diagnostic = buildDiagnostic(candidates, matches, rejected)
-            DexKitCompat.markTargetError(
+            DexKitCompat.markTargetScanMiss(
                 TAG,
                 PREFETCH_EVENT_CACHE_ID,
                 diagnostic,

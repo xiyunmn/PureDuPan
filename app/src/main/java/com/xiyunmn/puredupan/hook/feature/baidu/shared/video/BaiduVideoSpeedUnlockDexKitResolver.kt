@@ -257,8 +257,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
                 append("matchCount=").append(matches.size).append('\n')
                 append("rejected=\n").append(rejected.joinToString("\n").ifBlank { "-" })
             }
-            XposedCompat.logW("[$TAG] $label unresolved: $diagnostic")
-            DexKitCompat.markTargetError(TAG, cacheId, diagnostic)
+            DexKitCompat.markTargetScanMiss(TAG, cacheId, diagnostic)
             DexKitCompat.putCachedMethod(TAG, cacheId, null)
             return markStableFallback(cacheId, stableFallback)
         }
@@ -323,8 +322,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
         val best = top.singleOrNull()
         if (best == null) {
             val diagnostic = buildDiagnostic(candidates, matches, rejected)
-            XposedCompat.logW("[$TAG] $label unresolved: $diagnostic")
-            DexKitCompat.markTargetError(TAG, cacheId, diagnostic)
+            DexKitCompat.markTargetScanMiss(TAG, cacheId, diagnostic)
             DexKitCompat.putCachedMethod(TAG, cacheId, null)
             return markStableFallback(cacheId, stableFallback)
         }

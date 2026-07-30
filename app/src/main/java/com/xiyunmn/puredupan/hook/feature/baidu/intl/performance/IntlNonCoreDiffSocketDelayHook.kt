@@ -213,9 +213,10 @@ internal object IntlNonCoreDiffSocketDelayHook {
         }
 
         if (candidates.size != 1) {
-            XposedCompat.logW(
-                "[IntlNonCoreDiffSocketDelayHook] ambiguous DexKit socket register method: " +
-                    candidates.joinToString { "${it.declaringClass.name}.${it.name}" },
+            DexKitCompat.markTargetScanMiss(
+                TAG,
+                SOCKET_REGISTER_CACHE_ID,
+                "validatedCandidateCount=${candidates.size}",
             )
             DexKitCompat.putCachedMethod(TAG, SOCKET_REGISTER_CACHE_ID, null)
             return resolveFallbackSocketRegisterMethod(cl)

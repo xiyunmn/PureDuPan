@@ -114,8 +114,7 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
         val best = matched.singleOrNull()
         if (best == null) {
             val diagnostic = "ownerCandidates=${owners.joinToString().ifBlank { "-" }} matchCount=${matched.size}"
-            XposedCompat.logW("[$TAG] VideoPrivilege owner unresolved: $diagnostic")
-            DexKitCompat.markTargetError(TAG, VIDEO_PRIVILEGE_OWNER_CACHE_ID, diagnostic)
+            DexKitCompat.markTargetScanMiss(TAG, VIDEO_PRIVILEGE_OWNER_CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, VIDEO_PRIVILEGE_OWNER_CACHE_ID, null)
             return markStableOwnerFallback {
                 resolveDirectVideoPrivilegeOwner(cl)
@@ -217,8 +216,7 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
                 matches = emptyList(),
                 rejected = listOf("no quality gate methods resolved by DexKit"),
             )
-            XposedCompat.logW("[$TAG] VideoPrivilege quality methods unresolved: $diagnostic")
-            DexKitCompat.markTargetError(TAG, VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID, diagnostic)
+            DexKitCompat.markTargetScanMiss(TAG, VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID, null)
             return markStableQualityMethodsFallback(owner)
         }

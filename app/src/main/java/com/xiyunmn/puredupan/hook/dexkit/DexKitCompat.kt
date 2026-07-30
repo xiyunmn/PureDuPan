@@ -13,7 +13,7 @@ import org.luckypray.dexkit.DexKitBridge
 internal object DexKitCompat {
     private const val LIB_NAME = "dexkit"
     private const val LIB_FILE_NAME = "libdexkit.so"
-    private const val CACHE_SCHEMA = 7
+    private const val CACHE_SCHEMA = 8
     private const val CACHE_PREFIX = "dexkit_method_cache_v$CACHE_SCHEMA"
     private const val STATUS_PREFIX = "dexkit_target_status_v$CACHE_SCHEMA"
     private const val KEY_FORCE_FULL_SCAN = "dexkit_force_full_scan"
@@ -79,6 +79,7 @@ internal object DexKitCompat {
         )
 
         private val entries = mutableListOf<Entry>()
+        private val targetScanMissDetails = mutableMapOf<String, String>()
 
         fun find(classLoader: ClassLoader, useMemoryDexFile: Boolean): DexKitBridge? =
             entries.firstOrNull { entry ->
@@ -107,11 +108,19 @@ internal object DexKitCompat {
             }
         }
 
+        fun recordTargetScanMiss(resolverId: String, detail: String) {
+            targetScanMissDetails[resolverId] = detail
+        }
+
+        fun consumeTargetScanMiss(resolverId: String): String? =
+            targetScanMissDetails.remove(resolverId)
+
         fun close() {
             entries.asReversed().forEach { entry ->
                 runCatching { entry.bridge.close() }
             }
             entries.clear()
+            targetScanMissDetails.clear()
         }
     }
 
@@ -158,12 +167,12 @@ internal object DexKitCompat {
         } catch (t: UnsatisfiedLinkError) {
             session?.discard(cl, useMemoryDexFile)
             markUnavailable("${t.javaClass.simpleName}: ${t.message}")
-            resolverId?.let { markTargetError(tag, it, buildBridgeFailureDetail(t)) }
+            resolverId?.let { markTargetScanMiss(tag, it, buildBridgeFailureDetail(t)) }
             XposedCompat.logD("[$tag] DexKit unavailable: ${t.message}")
             null
         } catch (t: Throwable) {
             session?.discard(cl, useMemoryDexFile)
-            resolverId?.let { markTargetError(tag, it, buildBridgeFailureDetail(t)) }
+            resolverId?.let { markTargetScanMiss(tag, it, buildBridgeFailureDetail(t)) }
             XposedCompat.logW("[$tag] DexKit bridge failed: ${t.message}")
             null
         }
@@ -336,6 +345,7 @@ internal object DexKitCompat {
     }
 
     fun markTargetSuccess(tag: String, resolverId: String, detail: String?) {
+        scanSession.get()?.consumeTargetScanMiss(resolverId)
         recordTargetStatus(
             tag,
             resolverId,
@@ -345,6 +355,7 @@ internal object DexKitCompat {
     }
 
     fun markTargetError(tag: String, resolverId: String, detail: String?) {
+        scanSession.get()?.consumeTargetScanMiss(resolverId)
         recordTargetStatus(
             tag,
             resolverId,
@@ -352,6 +363,19 @@ internal object DexKitCompat {
             detail?.takeIf { it.isNotBlank() } ?: "scan failed",
         )
     }
+
+    fun markTargetScanMiss(tag: String, resolverId: String, detail: String?) {
+        val normalizedDetail = detail?.takeIf { it.isNotBlank() } ?: "scan produced no match"
+        recordTargetScanMissDetail(resolverId, normalizedDetail)
+        XposedCompat.logD("[$tag] DexKit scan miss recorded: $resolverId, $normalizedDetail")
+    }
+
+    internal fun recordTargetScanMissDetail(resolverId: String, detail: String) {
+        scanSession.get()?.recordTargetScanMiss(resolverId, detail)
+    }
+
+    internal fun consumeTargetScanMissDetail(resolverId: String): String? =
+        scanSession.get()?.consumeTargetScanMiss(resolverId)
 
     fun readTargetStatus(resolverId: String): TargetStatus? {
         val fingerprint = hostFingerprint() ?: return null

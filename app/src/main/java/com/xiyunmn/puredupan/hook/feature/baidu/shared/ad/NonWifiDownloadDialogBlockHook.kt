@@ -101,6 +101,12 @@ internal object NonWifiDownloadDialogBlockHook {
         className: String,
         tagPrefix: String,
     ): Int {
+        if (XposedCompat.findClassOrNull(className, cl) == null) {
+            XposedCompat.logD(
+                "[NonWifiDownloadDialogBlockHook] compatibility owner unavailable: $className",
+            )
+            return 0
+        }
         var installed = 0
         installed += hookDialogMethod(
             cl = cl,

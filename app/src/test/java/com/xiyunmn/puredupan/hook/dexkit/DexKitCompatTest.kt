@@ -1,6 +1,8 @@
 package com.xiyunmn.puredupan.hook.dexkit
 
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -32,5 +34,21 @@ class DexKitCompatTest {
         }
 
         assertFalse(DexKitCompat.isTargetResolutionPersistenceAllowed())
+    }
+
+    @Test
+    fun scanMissDiagnosticIsScopedAndConsumable() {
+        assertNull(DexKitCompat.consumeTargetScanMissDetail("target"))
+
+        DexKitCompat.runWithScanningAllowed {
+            DexKitCompat.recordTargetScanMissDetail("target", "candidateCount=0")
+            assertEquals(
+                "candidateCount=0",
+                DexKitCompat.consumeTargetScanMissDetail("target"),
+            )
+            assertNull(DexKitCompat.consumeTargetScanMissDetail("target"))
+        }
+
+        assertNull(DexKitCompat.consumeTargetScanMissDetail("target"))
     }
 }

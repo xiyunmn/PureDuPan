@@ -81,8 +81,7 @@ internal object DomesticUpdateDialogDexKitResolver {
         val best = matches.firstOrNull()
         if (best == null) {
             val diagnostic = buildDiagnostic(candidates, matches, rejected)
-            XposedCompat.logW("[$TAG] showLCVersionDialog unresolved: $diagnostic")
-            DexKitCompat.markTargetError(TAG, CACHE_ID, diagnostic)
+            DexKitCompat.markTargetScanMiss(TAG, CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, CACHE_ID, null)
             return resolveStableFallback(cl)
         }

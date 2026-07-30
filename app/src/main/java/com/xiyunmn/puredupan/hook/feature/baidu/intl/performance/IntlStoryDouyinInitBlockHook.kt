@@ -193,9 +193,10 @@ internal object IntlStoryDouyinInitBlockHook {
         val ambiguousBest = rankedCandidates.drop(1).any { storyInitScore(it.first) == bestScore }
 
         if (best == null || ambiguousBest) {
-            XposedCompat.logW(
-                "[IntlStoryDouyinInitBlockHook] ambiguous story init method: " +
-                    candidates.joinToString { "${it.second.declaringClass.name}.${it.second.name}" },
+            DexKitCompat.markTargetScanMiss(
+                TAG,
+                STORY_INIT_CACHE_ID,
+                "validatedCandidateCount=${candidates.size}, ambiguousBest=$ambiguousBest",
             )
             DexKitCompat.putCachedMethod(TAG, STORY_INIT_CACHE_ID, null)
             return resolveFallbackStoryInitMethod(cl)

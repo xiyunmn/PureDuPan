@@ -374,9 +374,10 @@ internal object IntlAlbumAiInitBlockHook {
         }
 
         if (candidates.size != 1) {
-            XposedCompat.logW(
-                "[IntlAlbumAiInitBlockHook] ambiguous direct album AI init method: " +
-                    candidates.joinToString { "${it.declaringClass.name}.${it.name}" },
+            DexKitCompat.markTargetScanMiss(
+                TAG,
+                DIRECT_ALBUM_AI_INIT_CACHE_ID,
+                "validatedCandidateCount=${candidates.size}",
             )
             DexKitCompat.putCachedMethod(TAG, DIRECT_ALBUM_AI_INIT_CACHE_ID, null)
             return null

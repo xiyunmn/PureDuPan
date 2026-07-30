@@ -220,8 +220,7 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
         val best = matches.singleOrNull()
         if (best == null) {
             val diagnostic = buildDiagnostic(label, candidates, matches)
-            XposedCompat.logW("[$TAG] $label unresolved: $diagnostic")
-            DexKitCompat.markTargetError(TAG, cacheId, diagnostic)
+            DexKitCompat.markTargetScanMiss(TAG, cacheId, diagnostic)
             DexKitCompat.putCachedMethod(TAG, cacheId, null)
             return null
         }
@@ -289,8 +288,7 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
         val best = matches.singleOrNull()
         if (best == null) {
             val diagnostic = buildDecisionDiagnostic(label, candidates, callSiteMatches, methodNames, matches)
-            XposedCompat.logW("[$TAG] $label unresolved: $diagnostic")
-            DexKitCompat.markTargetError(TAG, cacheId, diagnostic)
+            DexKitCompat.markTargetScanMiss(TAG, cacheId, diagnostic)
             DexKitCompat.putCachedMethod(TAG, cacheId, null)
             return null
         }

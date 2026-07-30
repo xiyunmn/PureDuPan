@@ -1159,6 +1159,8 @@ object HomeCustomizeHook {
     }
 
     private fun expandSavedItems(viewModel: Any, cl: ClassLoader) {
+        // TODO(deferred): wait for account/application readiness and add bounded retry/backoff
+        // before re-enabling full saved-history expansion diagnostics.
         val stateFlow = findSaveCardStateFlow(viewModel) ?: run {
             XposedCompat.logD(
                 "[HomeCustomizeHook] save card state flow unavailable: ${viewModel.javaClass.name}",

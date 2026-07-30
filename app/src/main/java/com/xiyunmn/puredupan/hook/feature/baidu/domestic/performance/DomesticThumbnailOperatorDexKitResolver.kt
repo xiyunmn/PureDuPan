@@ -76,8 +76,7 @@ internal object DomesticThumbnailOperatorDexKitResolver {
         val best = matches.singleOrNull()
         if (best == null) {
             val diagnostic = buildDiagnostic("clientComputeInit", candidates, matches, rejected)
-            XposedCompat.logW("[$TAG] client compute init unresolved: $diagnostic")
-            DexKitCompat.markTargetError(TAG, CLIENT_COMPUTE_INIT_CACHE_ID, diagnostic)
+            DexKitCompat.markTargetScanMiss(TAG, CLIENT_COMPUTE_INIT_CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, CLIENT_COMPUTE_INIT_CACHE_ID, null)
             return resolveFallbackClientComputeInit(cl)
         }
@@ -150,8 +149,7 @@ internal object DomesticThumbnailOperatorDexKitResolver {
 
         if (best == null || ambiguousBest) {
             val diagnostic = buildDiagnostic("thumbnailAddJob", candidates, matches, rejected)
-            XposedCompat.logW("[$TAG] thumbnail addJob unresolved: $diagnostic")
-            DexKitCompat.markTargetError(TAG, THUMBNAIL_ADD_JOB_CACHE_ID, diagnostic)
+            DexKitCompat.markTargetScanMiss(TAG, THUMBNAIL_ADD_JOB_CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, THUMBNAIL_ADD_JOB_CACHE_ID, null)
             return resolveFallbackThumbnailAddJob(cl)
         }
