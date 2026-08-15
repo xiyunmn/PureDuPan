@@ -245,6 +245,24 @@ internal object HookSettings {
     val isSearchPageVoiceSearchHidden: Boolean
         get() = ConfigManager.isSearchPageVoiceSearchHidden
 
+    val isStorageRedirectEnabled: Boolean
+        get() = ConfigManager.isStorageRedirectEnabled
+
+    val isStorageDownloadRedirectEnabled: Boolean
+        get() = ConfigManager.isStorageDownloadRedirectEnabled
+
+    val storageDownloadTreeUri: String?
+        get() = ConfigManager.storageDownloadTreeUri
+
+    val isStorageRootGuardEnabled: Boolean
+        get() = ConfigManager.isStorageRootGuardEnabled
+
+    val isStorageWechatBackupRedirectEnabled: Boolean
+        get() = ConfigManager.isStorageWechatBackupRedirectEnabled
+
+    val isStorageReaderSdkRedirectEnabled: Boolean
+        get() = ConfigManager.isStorageReaderSdkRedirectEnabled
+
     val isHomeTopPromotionHidden: Boolean
         get() = ConfigManager.isHomeTopPromotionHidden
 

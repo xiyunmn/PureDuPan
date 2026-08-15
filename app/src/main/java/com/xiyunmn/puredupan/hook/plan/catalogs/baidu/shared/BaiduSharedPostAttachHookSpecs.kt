@@ -16,6 +16,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.NewHomeFabRemoveHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.SettingsImagePickerResultHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.storage.StorageRedirectHook
 import com.xiyunmn.puredupan.hook.plan.HookSpec
 
 internal object BaiduSharedPostAttachHookSpecs {
@@ -23,6 +24,10 @@ internal object BaiduSharedPostAttachHookSpecs {
         HookSpec("SettingsImagePickerResultHook", { context, _, _ ->
             context.isMain
         }, featureKey = FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE) { cl -> SettingsImagePickerResultHook.hook(cl) },
+        HookSpec("StorageRedirectHook", { context, settings, _ ->
+            context.isMain &&
+                (settings.isStorageRedirectEnabled || settings.isStorageRootGuardEnabled)
+        }) { cl -> StorageRedirectHook.hook(cl) },
     )
 
     val splashBypass = listOf(

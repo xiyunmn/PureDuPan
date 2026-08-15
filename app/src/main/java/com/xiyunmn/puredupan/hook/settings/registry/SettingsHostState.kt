@@ -40,6 +40,10 @@ internal object SettingsHostState {
         return hostId(context)?.endsWith(HOST_ID_SUFFIX_INTL) == true
     }
 
+    fun isSamsungHost(context: Context): Boolean {
+        return HostRuntimeState.isSamsungPackage(context.packageName)
+    }
+
     fun isFeatureVisibleForContext(context: Context, featureKey: String): Boolean {
         return featureStatusMapFor(context)[featureKey]?.isSupported() == true
     }

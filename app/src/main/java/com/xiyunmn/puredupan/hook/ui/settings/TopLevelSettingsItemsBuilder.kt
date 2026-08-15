@@ -6,6 +6,7 @@ internal object TopLevelSettingsItemsBuilder {
     fun topLevelGroups(
         primarySplashAdFeatureKey: String?,
         isIntlHost: Boolean,
+        isSamsungHost: Boolean = false,
         restrictedUnlocked: Boolean,
         defaultValues: TopLevelSettingsDefaultValues,
         actionHandlers: TopLevelSettingsActionHandlers,
@@ -67,6 +68,15 @@ internal object TopLevelSettingsItemsBuilder {
                     texts,
                     isFeatureVisible,
                 )
+            )
+            addAll(
+                topLevelItems(
+                    TopLevelSettingsRegistry.storageSpecs(isSamsungHost),
+                    defaultValues,
+                    actionHandlers,
+                    texts,
+                    isFeatureVisible,
+                ),
             )
             if (restrictedUnlocked) {
                 addAll(
@@ -167,6 +177,7 @@ internal object TopLevelSettingsItemsBuilder {
             TopLevelSettingsAction.BOTTOM_BAR_CUSTOMIZE -> defaultValues.bottomBarCustomize
             TopLevelSettingsAction.PERFORMANCE_OPTIMIZE -> defaultValues.performanceOptimize
             TopLevelSettingsAction.AUTO_DAILY_SIGN_IN_NOW -> false
+            TopLevelSettingsAction.STORAGE_PATH_MANAGEMENT -> defaultValues.storageRedirect
             TopLevelSettingsAction.NONE -> false
         }
     }
@@ -186,6 +197,7 @@ internal object TopLevelSettingsItemsBuilder {
             TopLevelSettingsAction.BOTTOM_BAR_CUSTOMIZE -> actionHandlers.onBottomBarCustomizeClick
             TopLevelSettingsAction.PERFORMANCE_OPTIMIZE -> actionHandlers.onPerformanceOptimizeClick
             TopLevelSettingsAction.AUTO_DAILY_SIGN_IN_NOW -> actionHandlers.onAutoDailySignInNowClick
+            TopLevelSettingsAction.STORAGE_PATH_MANAGEMENT -> actionHandlers.onStoragePathManagementClick
             TopLevelSettingsAction.NONE -> null
         }
     }

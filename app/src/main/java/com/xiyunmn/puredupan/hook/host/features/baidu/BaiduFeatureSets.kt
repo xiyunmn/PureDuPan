@@ -16,6 +16,7 @@ internal object BaiduFeatureSets {
             baiduSharedMemberCardCustomize,
             baiduSharedBottomBarCustomize,
             baiduSharedPerformanceCustomize,
+            baiduSharedStorageCustomize,
             baiduDomesticStartup,
             baiduDomesticHomeCustomize,
             baiduDomesticSearchPageCustomize,
@@ -41,6 +42,7 @@ internal object BaiduFeatureSets {
             baiduSharedMemberCardCustomize,
             baiduSharedBottomBarCustomize,
             baiduSharedPerformanceCustomize,
+            baiduSharedStorageCustomize,
             baiduIntlStartup,
             baiduIntlHomeCustomize,
             baiduIntlSearchPageCustomize,
@@ -66,6 +68,7 @@ internal object BaiduFeatureSets {
             baiduSharedMemberCardCustomize,
             baiduSharedBottomBarCustomize,
             baiduSharedPerformanceCustomize,
+            baiduSharedStorageCustomize,
             baiduDomesticStartup,
             baiduDomesticHomeCustomize,
             baiduDomesticSearchPageCustomize,
@@ -175,6 +178,15 @@ internal object BaiduFeatureSets {
 
     private val baiduSharedPerformanceCustomize = listOf(
         FeatureKeys.KEY_PERFORMANCE_OPTIMIZE,
+    )
+
+    private val baiduSharedStorageCustomize = listOf(
+        FeatureKeys.KEY_STORAGE_REDIRECT_ENABLED,
+        FeatureKeys.KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED,
+        FeatureKeys.KEY_STORAGE_DOWNLOAD_TREE_URI,
+        FeatureKeys.KEY_STORAGE_ROOT_GUARD_ENABLED,
+        FeatureKeys.KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED,
+        FeatureKeys.KEY_STORAGE_READER_SDK_REDIRECT_ENABLED,
     )
 
     private val baiduDomesticStartup = listOf(

@@ -12,6 +12,7 @@ import com.xiyunmn.puredupan.hook.ui.settings.MemberCardBackgroundEditorDialog
 import com.xiyunmn.puredupan.hook.ui.settings.SettingsMainDialog
 
 internal const val REQUEST_MEMBER_CARD_BACKGROUND_IMAGE = 0x4D31
+internal const val REQUEST_STORAGE_DOWNLOAD_TREE = 0x4D32
 
 object SettingsMenuHook {
     internal fun launchMemberCardBackgroundPicker(context: Context) {
@@ -91,6 +92,49 @@ object SettingsMenuHook {
             UiText.Settings.withRestartHint(UiText.Settings.MEMBER_CARD_BACKGROUND_PICKED),
             Toast.LENGTH_SHORT,
         ).show()
+        return true
+    }
+
+    internal fun launchStorageTreePicker(context: Context) {
+        try {
+            val activity = context as? Activity ?: throw IllegalStateException("settings context is not Activity")
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION,
+                )
+            }
+            activity.startActivityForResult(intent, REQUEST_STORAGE_DOWNLOAD_TREE)
+        } catch (t: Throwable) {
+            XposedCompat.logW("[SettingsMenuHook] launch storage picker failed: ${t.message}")
+            Toast.makeText(context, UiText.Settings.STORAGE_DIRECTORY_PICK_FAILED, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    internal fun handleStorageTreeResult(
+        context: Context?,
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?,
+    ): Boolean {
+        if (requestCode != REQUEST_STORAGE_DOWNLOAD_TREE) return false
+        if (context == null || resultCode != Activity.RESULT_OK) return true
+        val uri = data?.data ?: return true
+        try {
+            val flags = data.flags and (
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            context.contentResolver.takePersistableUriPermission(uri, flags)
+            SettingsUserState.getPrefs(context).edit()
+                .putString(SettingsUserState.KEY_STORAGE_DOWNLOAD_TREE_URI, uri.toString())
+                .putBoolean(SettingsUserState.KEY_STORAGE_REDIRECT_ENABLED, true)
+                .apply()
+            Toast.makeText(context, UiText.Settings.STORAGE_DIRECTORY_SELECTED, Toast.LENGTH_SHORT).show()
+        } catch (t: Throwable) {
+            XposedCompat.logW("[SettingsMenuHook] persist storage tree permission failed: ${t.message}")
+            Toast.makeText(context, UiText.Settings.STORAGE_DIRECTORY_PERMISSION_INVALID, Toast.LENGTH_SHORT).show()
+        }
         return true
     }
 

@@ -15,6 +15,7 @@ internal enum class TopLevelSettingsAction {
     BOTTOM_BAR_CUSTOMIZE,
     PERFORMANCE_OPTIMIZE,
     AUTO_DAILY_SIGN_IN_NOW,
+    STORAGE_PATH_MANAGEMENT,
 }
 
 internal data class TopLevelSwitchSpec(
@@ -94,6 +95,47 @@ internal object TopLevelSettingsRegistry {
             UiText.Settings.BLOCK_SHARE_PUSH_GUIDE_DESC,
         ),
     )
+
+    fun storageSpecs(isSamsungHost: Boolean): List<TopLevelSwitchSpec> = buildList {
+        add(
+            TopLevelSwitchSpec(
+                SettingsUserState.KEY_STORAGE_REDIRECT_ENABLED,
+                UiText.Settings.STORAGE_PATH_MANAGEMENT_LABEL,
+                UiText.Settings.STORAGE_PATH_MANAGEMENT_DESC,
+                action = TopLevelSettingsAction.STORAGE_PATH_MANAGEMENT,
+            ),
+        )
+        add(
+            TopLevelSwitchSpec(
+                SettingsUserState.KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED,
+                UiText.Settings.STORAGE_DOWNLOAD_REDIRECT_LABEL,
+                UiText.Settings.STORAGE_DOWNLOAD_REDIRECT_DESC,
+            ),
+        )
+        add(
+            TopLevelSwitchSpec(
+                SettingsUserState.KEY_STORAGE_ROOT_GUARD_ENABLED,
+                UiText.Settings.STORAGE_ROOT_GUARD_LABEL,
+                UiText.Settings.STORAGE_ROOT_GUARD_DESC,
+            ),
+        )
+        if (isSamsungHost) {
+            add(
+                TopLevelSwitchSpec(
+                    SettingsUserState.KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED,
+                    UiText.Settings.STORAGE_WECHAT_BACKUP_LABEL,
+                    UiText.Settings.STORAGE_WECHAT_BACKUP_DESC,
+                ),
+            )
+        }
+        add(
+            TopLevelSwitchSpec(
+                SettingsUserState.KEY_STORAGE_READER_SDK_REDIRECT_ENABLED,
+                UiText.Settings.STORAGE_READER_SDK_LABEL,
+                UiText.Settings.STORAGE_READER_SDK_DESC,
+            ),
+        )
+    }
 
     val restrictedUiSpecs: List<TopLevelSwitchSpec> = listOf(
         TopLevelSwitchSpec(

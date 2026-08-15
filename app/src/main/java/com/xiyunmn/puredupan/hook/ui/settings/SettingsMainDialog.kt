@@ -54,6 +54,7 @@ internal object SettingsMainDialog {
             val topLevelGroups = TopLevelSettingsItemsBuilder.topLevelGroups(
                 primarySplashAdFeatureKey = settingsSession.primarySplashAdFeatureKey,
                 isIntlHost = settingsSession.isIntlHost,
+                isSamsungHost = settingsSession.isSamsungHost,
                 restrictedUnlocked = SettingsUserState.areRestrictedFeaturesUnlocked,
                 defaultValues = defaultValues,
                 actionHandlers = TopLevelSettingsActionHandlers(
@@ -99,6 +100,9 @@ internal object SettingsMainDialog {
                                 Toast.LENGTH_SHORT,
                             ).show()
                         }
+                    },
+                    onStoragePathManagementClick = {
+                        StoragePathSettingsDialog.show(context, prefs, settingsSession.isSamsungHost)
                     },
                 ),
                 texts = texts,
@@ -466,6 +470,7 @@ internal object SettingsMainDialog {
                 prefs = prefs,
                 isFeatureVisible = settingsSession::isFeatureVisible,
             ),
+            storageRedirect = prefs.getBoolean(SettingsUserState.KEY_STORAGE_REDIRECT_ENABLED, false),
         )
     }
 

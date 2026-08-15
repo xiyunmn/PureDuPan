@@ -34,6 +34,7 @@ internal data class TopLevelSettingsDefaultValues(
     val memberCardCustomize: Boolean,
     val bottomBarCustomize: Boolean,
     val performanceOptimize: Boolean,
+    val storageRedirect: Boolean,
 )
 
 internal data class TopLevelSettingsActionHandlers(
@@ -47,6 +48,7 @@ internal data class TopLevelSettingsActionHandlers(
     val onBottomBarCustomizeClick: () -> Unit,
     val onPerformanceOptimizeClick: () -> Unit,
     val onAutoDailySignInNowClick: () -> Unit,
+    val onStoragePathManagementClick: () -> Unit,
 )
 
 internal data class DebugSettingsActionHandlers(

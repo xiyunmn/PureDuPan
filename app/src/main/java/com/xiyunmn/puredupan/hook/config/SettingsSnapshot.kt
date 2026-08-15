@@ -47,6 +47,13 @@ data class SettingsSnapshot(
     val isSearchPageRecommendHidden: Boolean = false,
     val isIntlSearchPageSvipBannerHidden: Boolean = false,
     val isSearchPageVoiceSearchHidden: Boolean = false,
+    // Storage destination management (all opt-in)
+    val isStorageRedirectEnabled: Boolean = false,
+    val isStorageDownloadRedirectEnabled: Boolean = false,
+    val storageDownloadTreeUri: String? = null,
+    val isStorageRootGuardEnabled: Boolean = false,
+    val isStorageWechatBackupRedirectEnabled: Boolean = false,
+    val isStorageReaderSdkRedirectEnabled: Boolean = false,
     val isSharePageCustomizeEnabled: Boolean = false,
     val isTransferSvipCardBlocked: Boolean = false,
     val isMyPageCustomizeEnabled: Boolean = false,

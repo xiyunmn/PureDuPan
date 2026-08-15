@@ -64,6 +64,12 @@ object ConfigManager {
     const val KEY_HIDE_SEARCH_PAGE_RECOMMEND = FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND
     const val KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER = FeatureKeys.KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER
     const val KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH = FeatureKeys.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH
+    const val KEY_STORAGE_REDIRECT_ENABLED = FeatureKeys.KEY_STORAGE_REDIRECT_ENABLED
+    const val KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED = FeatureKeys.KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED
+    const val KEY_STORAGE_DOWNLOAD_TREE_URI = FeatureKeys.KEY_STORAGE_DOWNLOAD_TREE_URI
+    const val KEY_STORAGE_ROOT_GUARD_ENABLED = FeatureKeys.KEY_STORAGE_ROOT_GUARD_ENABLED
+    const val KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED = FeatureKeys.KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED
+    const val KEY_STORAGE_READER_SDK_REDIRECT_ENABLED = FeatureKeys.KEY_STORAGE_READER_SDK_REDIRECT_ENABLED
     const val KEY_SHARE_PAGE_CUSTOMIZE = FeatureKeys.KEY_SHARE_PAGE_CUSTOMIZE
     const val KEY_BLOCK_TRANSFER_SVIP_CARD = FeatureKeys.KEY_BLOCK_TRANSFER_SVIP_CARD
     const val KEY_MY_PAGE_CUSTOMIZE = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE
@@ -200,6 +206,12 @@ object ConfigManager {
     val isSearchPageRecommendHidden: Boolean get() = settingsSnapshot.isSearchPageRecommendHidden
     val isIntlSearchPageSvipBannerHidden: Boolean get() = settingsSnapshot.isIntlSearchPageSvipBannerHidden
     val isSearchPageVoiceSearchHidden: Boolean get() = settingsSnapshot.isSearchPageVoiceSearchHidden
+    val isStorageRedirectEnabled: Boolean get() = settingsSnapshot.isStorageRedirectEnabled
+    val isStorageDownloadRedirectEnabled: Boolean get() = settingsSnapshot.isStorageDownloadRedirectEnabled
+    val storageDownloadTreeUri: String? get() = settingsSnapshot.storageDownloadTreeUri
+    val isStorageRootGuardEnabled: Boolean get() = settingsSnapshot.isStorageRootGuardEnabled
+    val isStorageWechatBackupRedirectEnabled: Boolean get() = settingsSnapshot.isStorageWechatBackupRedirectEnabled
+    val isStorageReaderSdkRedirectEnabled: Boolean get() = settingsSnapshot.isStorageReaderSdkRedirectEnabled
     val isSharePageCustomizeEnabled: Boolean get() = settingsSnapshot.isSharePageCustomizeEnabled
     val isTransferSvipCardBlocked: Boolean get() = settingsSnapshot.isTransferSvipCardBlocked
     val isMyPageCustomizeEnabled: Boolean get() = settingsSnapshot.isMyPageCustomizeEnabled
@@ -455,6 +467,7 @@ object ConfigManager {
         if (!snapshot.isDetailedLoggingEnabled) return
         val sanitizedSnapshot = snapshot.copy(
             memberCardBackgroundUri = snapshot.memberCardBackgroundUri?.let { "<set>" },
+            storageDownloadTreeUri = snapshot.storageDownloadTreeUri?.let { "<set>" },
         )
         val snapshotHash = sanitizedSnapshot.hashCode()
         val previousHash = lastLoggedSettingsSnapshotHash
@@ -628,6 +641,12 @@ object ConfigManager {
             isSearchPageRecommendHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_RECOMMEND, false),
             isIntlSearchPageSvipBannerHidden = featureBoolean(KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER, false),
             isSearchPageVoiceSearchHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH, false),
+            isStorageRedirectEnabled = featureBoolean(KEY_STORAGE_REDIRECT_ENABLED, false),
+            isStorageDownloadRedirectEnabled = featureBoolean(KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED, false),
+            storageDownloadTreeUri = p.getString(KEY_STORAGE_DOWNLOAD_TREE_URI, null),
+            isStorageRootGuardEnabled = featureBoolean(KEY_STORAGE_ROOT_GUARD_ENABLED, false),
+            isStorageWechatBackupRedirectEnabled = featureBoolean(KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED, false),
+            isStorageReaderSdkRedirectEnabled = featureBoolean(KEY_STORAGE_READER_SDK_REDIRECT_ENABLED, false),
             isSharePageCustomizeEnabled = featureBoolean(KEY_SHARE_PAGE_CUSTOMIZE, hasSharePageOptionEnabled),
             isTransferSvipCardBlocked = featureBoolean(KEY_BLOCK_TRANSFER_SVIP_CARD, false),
             isMyPageCustomizeEnabled = featureBoolean(KEY_MY_PAGE_CUSTOMIZE, hasMyPageOptionEnabled),

@@ -41,6 +41,13 @@ object FeatureKeys {
     const val KEY_HIDE_SEARCH_PAGE_RECOMMEND = "hide_search_page_recommend"
     const val KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER = "hide_intl_search_page_svip_banner"
     const val KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH = "hide_search_page_voice_search"
+    // Storage destination management (disabled by default; host-scoped preferences)
+    const val KEY_STORAGE_REDIRECT_ENABLED = "storage_redirect_enabled"
+    const val KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED = "storage_download_redirect_enabled"
+    const val KEY_STORAGE_DOWNLOAD_TREE_URI = "storage_download_tree_uri"
+    const val KEY_STORAGE_ROOT_GUARD_ENABLED = "storage_root_guard_enabled"
+    const val KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED = "storage_wechat_backup_redirect_enabled"
+    const val KEY_STORAGE_READER_SDK_REDIRECT_ENABLED = "storage_reader_sdk_redirect_enabled"
     const val KEY_SHARE_PAGE_CUSTOMIZE = "share_page_customize"
     const val KEY_BLOCK_TRANSFER_SVIP_CARD = "block_transfer_svip_card"
     const val KEY_MY_PAGE_CUSTOMIZE = "my_page_customize"

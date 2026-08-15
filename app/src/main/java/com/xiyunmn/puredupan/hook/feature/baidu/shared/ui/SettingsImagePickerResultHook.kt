@@ -57,6 +57,12 @@ object SettingsImagePickerResultHook {
                             resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
                             data = chain.args.getOrNull(2) as? Intent,
                         )
+                        SettingsMenuHook.handleStorageTreeResult(
+                            context = chain.thisObject as? Activity,
+                            requestCode = chain.args.getOrNull(0) as? Int ?: -1,
+                            resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
+                            data = chain.args.getOrNull(2) as? Intent,
+                        )
                     } catch (e: Exception) {
                         XposedCompat.logD("[SettingsImagePickerResultHook] handle result failed: ${e.message}")
                     }

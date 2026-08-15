@@ -23,6 +23,10 @@ internal object HostRuntimeState {
         return profileForPackage(packageName) != null
     }
 
+    fun isSamsungPackage(packageName: String): Boolean {
+        return hostIdForPackage(packageName)?.endsWith("samsung") == true
+    }
+
     fun featureStatusMapFor(context: Context): Map<String, FeatureAvailabilityStatus> {
         return featureStatusMapForPackage(context.packageName)
     }
