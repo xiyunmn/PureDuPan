@@ -51,6 +51,7 @@ data class SettingsSnapshot(
     val isStorageRedirectEnabled: Boolean = false,
     val isStorageDownloadRedirectEnabled: Boolean = false,
     val storageDownloadTreeUri: String? = null,
+    val isStorageRemoveOuterPathEnabled: Boolean = false,
     val isStorageRootGuardEnabled: Boolean = false,
     val isStorageWechatBackupRedirectEnabled: Boolean = false,
     val isStorageReaderSdkRedirectEnabled: Boolean = false,

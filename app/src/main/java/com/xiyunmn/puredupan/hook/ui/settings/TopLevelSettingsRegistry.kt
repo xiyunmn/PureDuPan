@@ -96,43 +96,13 @@ internal object TopLevelSettingsRegistry {
         ),
     )
 
-    fun storageSpecs(isSamsungHost: Boolean): List<TopLevelSwitchSpec> = buildList {
+    val storageSpecs: List<TopLevelSwitchSpec> = buildList {
         add(
             TopLevelSwitchSpec(
                 SettingsUserState.KEY_STORAGE_REDIRECT_ENABLED,
                 UiText.Settings.STORAGE_PATH_MANAGEMENT_LABEL,
                 UiText.Settings.STORAGE_PATH_MANAGEMENT_DESC,
                 action = TopLevelSettingsAction.STORAGE_PATH_MANAGEMENT,
-            ),
-        )
-        add(
-            TopLevelSwitchSpec(
-                SettingsUserState.KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED,
-                UiText.Settings.STORAGE_DOWNLOAD_REDIRECT_LABEL,
-                UiText.Settings.STORAGE_DOWNLOAD_REDIRECT_DESC,
-            ),
-        )
-        add(
-            TopLevelSwitchSpec(
-                SettingsUserState.KEY_STORAGE_ROOT_GUARD_ENABLED,
-                UiText.Settings.STORAGE_ROOT_GUARD_LABEL,
-                UiText.Settings.STORAGE_ROOT_GUARD_DESC,
-            ),
-        )
-        if (isSamsungHost) {
-            add(
-                TopLevelSwitchSpec(
-                    SettingsUserState.KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED,
-                    UiText.Settings.STORAGE_WECHAT_BACKUP_LABEL,
-                    UiText.Settings.STORAGE_WECHAT_BACKUP_DESC,
-                ),
-            )
-        }
-        add(
-            TopLevelSwitchSpec(
-                SettingsUserState.KEY_STORAGE_READER_SDK_REDIRECT_ENABLED,
-                UiText.Settings.STORAGE_READER_SDK_LABEL,
-                UiText.Settings.STORAGE_READER_SDK_DESC,
             ),
         )
     }

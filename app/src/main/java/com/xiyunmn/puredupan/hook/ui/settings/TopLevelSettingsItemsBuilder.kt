@@ -6,7 +6,6 @@ internal object TopLevelSettingsItemsBuilder {
     fun topLevelGroups(
         primarySplashAdFeatureKey: String?,
         isIntlHost: Boolean,
-        isSamsungHost: Boolean = false,
         restrictedUnlocked: Boolean,
         defaultValues: TopLevelSettingsDefaultValues,
         actionHandlers: TopLevelSettingsActionHandlers,
@@ -71,7 +70,7 @@ internal object TopLevelSettingsItemsBuilder {
             )
             addAll(
                 topLevelItems(
-                    TopLevelSettingsRegistry.storageSpecs(isSamsungHost),
+                    TopLevelSettingsRegistry.storageSpecs,
                     defaultValues,
                     actionHandlers,
                     texts,

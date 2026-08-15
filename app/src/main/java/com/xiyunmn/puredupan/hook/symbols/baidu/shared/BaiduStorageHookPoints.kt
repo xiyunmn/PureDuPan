@@ -9,5 +9,10 @@ internal object BaiduStorageHookPoints {
     const val DEFAULT_SETTING_INTL = "com.baidu.netdisk.base.storage.config.r"
     const val URI_CREATOR = "createDownloadUriStr"
     const val INTL_URI_CREATOR = "m19027_"
+    const val QUERY_ABSOLUTE_PATH = "queryAbsolutePathByDownloadUri"
+    const val QUERY_PATH = "queryPathByDownloadUri"
+    const val INTL_GET_PARTITION_LOCAL_PATH = "a"
+    const val INTL_QUERY_ABSOLUTE_PATH = "i"
+    const val INTL_QUERY_PATH = "k"
     const val DEFAULT_SAVE_DIR = "getDefaultSaveDir"
 }

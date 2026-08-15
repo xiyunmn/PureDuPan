@@ -42,6 +42,22 @@ object StorageRedirectHook {
                 count += hookDownloadExtension(mod, cl, BaiduStorageHookPoints.INTL_DOWNLOAD_EXTENSION, setOf("___", "_____"))
                 count += hookLegacyDefaultSaveDir(mod, cl, BaiduStorageHookPoints.DEFAULT_SETTING)
                 count += hookLegacyDefaultSaveDir(mod, cl, BaiduStorageHookPoints.DEFAULT_SETTING_INTL)
+                count += hookStoragePathQueries(
+                    mod,
+                    cl,
+                    BaiduStorageHookPoints.DOMESTIC_TARGET30_STORAGE,
+                    emptySet(),
+                    setOf(BaiduStorageHookPoints.QUERY_ABSOLUTE_PATH),
+                    setOf(BaiduStorageHookPoints.QUERY_PATH),
+                )
+                count += hookStoragePathQueries(
+                    mod,
+                    cl,
+                    BaiduStorageHookPoints.INTL_TARGET30_STORAGE,
+                    setOf(BaiduStorageHookPoints.INTL_GET_PARTITION_LOCAL_PATH),
+                    setOf(BaiduStorageHookPoints.INTL_QUERY_ABSOLUTE_PATH),
+                    setOf(BaiduStorageHookPoints.INTL_QUERY_PATH),
+                )
             }
             if (HookSettings.isStorageRootGuardEnabled) count += hookRootGuard(mod)
             if (count == 0) {
@@ -65,6 +81,7 @@ object StorageRedirectHook {
                 enabled = HookSettings.isStorageRedirectEnabled,
                 downloadRedirectEnabled = HookSettings.isStorageDownloadRedirectEnabled,
                 downloadTreeUri = HookSettings.storageDownloadTreeUri,
+                removeOuterPathEnabled = HookSettings.isStorageRemoveOuterPathEnabled,
                 rootGuardEnabled = HookSettings.isStorageRootGuardEnabled,
                 wechatBackupRedirectEnabled = HookSettings.isStorageWechatBackupRedirectEnabled,
                 readerSdkRedirectEnabled = HookSettings.isStorageReaderSdkRedirectEnabled,
@@ -183,6 +200,50 @@ object StorageRedirectHook {
                 }
             }
             count++
+        }
+        return count
+    }
+
+    /** Makes SAF task locations readable to the host download list and its location jump action. */
+    private fun hookStoragePathQueries(
+        mod: XposedModule,
+        cl: ClassLoader,
+        className: String,
+        absoluteLocalMethodNames: Set<String>,
+        relativeFileMethodNames: Set<String>,
+        relativeDirectoryMethodNames: Set<String>,
+    ): Int {
+        val clazz = XposedCompat.findClassOrNull(className, cl) ?: return 0
+        var count = 0
+        clazz.declaredMethods.filter { method ->
+            method.name in (absoluteLocalMethodNames + relativeFileMethodNames + relativeDirectoryMethodNames) &&
+                method.parameterTypes.size == 2 &&
+                Context::class.java.isAssignableFrom(method.parameterTypes[0]) &&
+                method.parameterTypes[1] == String::class.java &&
+                method.returnType == String::class.java
+        }.forEach { method ->
+            method.isAccessible = true
+            mod.hook(method).intercept { chain ->
+                val context = chain.args.getOrNull(0) as? Context
+                val uri = chain.args.getOrNull(1) as? String
+                val relative = if (context != null && uri != null) {
+                    resolver(context).relativePathForDocumentUri(uri)
+                } else {
+                    null
+                }
+                if (relative == null) {
+                    chain.proceed()
+                } else if (method.name in absoluteLocalMethodNames) {
+                    if (relative.isEmpty()) "/storage/emulated/0" else "/storage/emulated/0/$relative"
+                } else if (method.name in relativeFileMethodNames) {
+                    relative
+                } else {
+                    val slash = relative.lastIndexOf('/')
+                    if (slash < 0) "" else relative.substring(0, slash + 1)
+                }
+            }
+            count++
+            XposedCompat.logD("[$TAG] path query hooked: ${clazz.name}.${method.name}")
         }
         return count
     }

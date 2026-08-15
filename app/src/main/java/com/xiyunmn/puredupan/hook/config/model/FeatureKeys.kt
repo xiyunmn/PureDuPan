@@ -45,6 +45,7 @@ object FeatureKeys {
     const val KEY_STORAGE_REDIRECT_ENABLED = "storage_redirect_enabled"
     const val KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED = "storage_download_redirect_enabled"
     const val KEY_STORAGE_DOWNLOAD_TREE_URI = "storage_download_tree_uri"
+    const val KEY_STORAGE_REMOVE_OUTER_PATH = "storage_remove_outer_path"
     const val KEY_STORAGE_ROOT_GUARD_ENABLED = "storage_root_guard_enabled"
     const val KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED = "storage_wechat_backup_redirect_enabled"
     const val KEY_STORAGE_READER_SDK_REDIRECT_ENABLED = "storage_reader_sdk_redirect_enabled"

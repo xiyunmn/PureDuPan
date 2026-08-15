@@ -1,8 +1,15 @@
 package com.xiyunmn.puredupan.hook.ui
 
 import android.app.Activity
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
+import android.net.Uri
+import android.os.Build
+import android.provider.DocumentsContract
 import android.widget.Toast
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsHostState
@@ -10,6 +17,7 @@ import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.ui.settings.MemberCardBackgroundSelectionState
 import com.xiyunmn.puredupan.hook.ui.settings.MemberCardBackgroundEditorDialog
 import com.xiyunmn.puredupan.hook.ui.settings.SettingsMainDialog
+import com.xiyunmn.puredupan.hook.ui.settings.StorageTreeSelectionState
 
 internal const val REQUEST_MEMBER_CARD_BACKGROUND_IMAGE = 0x4D31
 internal const val REQUEST_STORAGE_DOWNLOAD_TREE = 0x4D32
@@ -98,17 +106,130 @@ object SettingsMenuHook {
     internal fun launchStorageTreePicker(context: Context) {
         try {
             val activity = context as? Activity ?: throw IllegalStateException("settings context is not Activity")
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            val baseIntent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
                 addFlags(
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
                         Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION,
                 )
+                SettingsUserState.getPrefs(context)
+                    .getString(SettingsUserState.KEY_STORAGE_DOWNLOAD_TREE_URI, null)
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { stored ->
+                        runCatching { putExtra(DocumentsContract.EXTRA_INITIAL_URI, Uri.parse(stored)) }
+                    }
             }
-            activity.startActivityForResult(intent, REQUEST_STORAGE_DOWNLOAD_TREE)
+            val preferredComponent = resolvePreferredSystemTreePicker(context, baseIntent)
+            val preferredIntent = Intent(baseIntent).apply { component = preferredComponent }
+            try {
+                activity.startActivityForResult(preferredIntent, REQUEST_STORAGE_DOWNLOAD_TREE)
+                XposedCompat.logD(
+                    "[SettingsMenuHook] storage tree picker launched: " +
+                        (preferredComponent?.flattenToShortString() ?: "implicit-system"),
+                )
+            } catch (preferredFailure: Throwable) {
+                if (preferredComponent == null) throw preferredFailure
+                XposedCompat.logW(
+                    "[SettingsMenuHook] preferred storage picker failed, fallback implicit: " +
+                        "${preferredComponent.flattenToShortString()} ${preferredFailure.message}",
+                )
+                activity.startActivityForResult(Intent(baseIntent).apply { component = null }, REQUEST_STORAGE_DOWNLOAD_TREE)
+            }
         } catch (t: Throwable) {
             XposedCompat.logW("[SettingsMenuHook] launch storage picker failed: ${t.message}")
             Toast.makeText(context, UiText.Settings.STORAGE_DIRECTORY_PICK_FAILED, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun resolvePreferredSystemTreePicker(context: Context, intent: Intent): ComponentName? {
+        val packageManager = context.packageManager
+        val flags = PackageManager.MATCH_DEFAULT_ONLY or PackageManager.MATCH_SYSTEM_ONLY
+        val systemHandlers = runCatching { packageManager.queryIntentActivities(intent, flags) }
+            .getOrDefault(emptyList())
+            .filter(::isUsableSystemHandler)
+        if (systemHandlers.isEmpty()) return null
+
+        val resolved = runCatching {
+            packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        }.getOrNull()?.takeIf(::isUsableSystemHandler)
+        val vendorTokens = deviceVendorTokens()
+        val preferred = systemHandlers.maxWithOrNull(
+            compareBy<ResolveInfo> { treePickerVendorScore(it, packageManager, vendorTokens) }
+                .thenBy { it.priority }
+                .thenBy { it.preferredOrder },
+        ) ?: return null
+        if (resolved != null && !isFrameworkResolver(resolved)) {
+            val resolvedScore = treePickerVendorScore(resolved, packageManager, vendorTokens)
+            val preferredScore = treePickerVendorScore(preferred, packageManager, vendorTokens)
+            if (resolvedScore >= preferredScore) return resolved.toComponentName()
+        }
+        return preferred.toComponentName()
+    }
+
+    private fun isUsableSystemHandler(info: ResolveInfo): Boolean {
+        val activity = info.activityInfo ?: return false
+        val application = activity.applicationInfo ?: return false
+        val systemFlags = ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP
+        return activity.enabled && activity.exported && (application.flags and systemFlags) != 0
+    }
+
+    private fun isFrameworkResolver(info: ResolveInfo): Boolean {
+        val activity = info.activityInfo ?: return true
+        return activity.packageName == "android" ||
+            activity.name.contains("ResolverActivity", ignoreCase = true) ||
+            activity.name.contains("ChooserActivity", ignoreCase = true)
+    }
+
+    private fun ResolveInfo.toComponentName(): ComponentName? {
+        val activity = activityInfo ?: return null
+        return ComponentName(activity.packageName, activity.name)
+    }
+
+    private fun treePickerVendorScore(
+        info: ResolveInfo,
+        packageManager: PackageManager,
+        vendorTokens: Set<String>,
+    ): Int {
+        val activity = info.activityInfo ?: return Int.MIN_VALUE
+        val packageAndClass = "${activity.packageName}.${activity.name}".lowercase()
+        val label = runCatching { info.loadLabel(packageManager).toString().lowercase() }.getOrDefault("")
+        val vendorMatch = vendorTokens.any { token ->
+            token.length >= 3 && (token in packageAndClass || token in label)
+        }
+        val standardDocumentsUi = packageAndClass.contains("documentsui")
+        return (if (vendorMatch) 1_000 else 0) +
+            (if (!standardDocumentsUi) 100 else 0) +
+            (if (info.isDefault) 20 else 0)
+    }
+
+    private fun deviceVendorTokens(): Set<String> {
+        val raw = setOf(Build.MANUFACTURER, Build.BRAND).map { it.lowercase().trim() }.filter { it.isNotBlank() }
+        return buildSet {
+            addAll(raw)
+            raw.forEach { vendor ->
+                when {
+                    vendor.contains("samsung") -> addAll(setOf("samsung", "sec", "myfiles"))
+                    vendor.contains("xiaomi") || vendor.contains("redmi") || vendor.contains("poco") ->
+                        addAll(setOf("xiaomi", "miui", "redmi", "poco", "fileexplorer"))
+                    vendor.contains("huawei") || vendor.contains("honor") ->
+                        addAll(setOf("huawei", "honor", "hwfilemanager"))
+                    vendor.contains("oppo") || vendor.contains("realme") || vendor.contains("oneplus") ->
+                        addAll(setOf("oppo", "oplus", "coloros", "realme", "oneplus"))
+                    vendor.contains("vivo") || vendor.contains("iqoo") ->
+                        addAll(setOf("vivo", "iqoo", "bbk"))
+                    vendor.contains("motorola") || vendor.contains("lenovo") ->
+                        addAll(setOf("motorola", "moto", "lenovo"))
+                    vendor.contains("zte") || vendor.contains("nubia") -> addAll(setOf("zte", "nubia"))
+                    vendor.contains("meizu") -> addAll(setOf("meizu", "flyme"))
+                    vendor.contains("asus") -> addAll(setOf("asus", "zenui"))
+                    vendor.contains("sony") -> addAll(setOf("sony", "xperia"))
+                    vendor.contains("lg") -> addAll(setOf("lge", "lg"))
+                    vendor.contains("tcl") -> addAll(setOf("tcl", "alcatel"))
+                    vendor.contains("nothing") -> addAll(setOf("nothing", "nothingos"))
+                    vendor.contains("google") -> addAll(setOf("google", "pixel", "documentsui"))
+                }
+            }
         }
     }
 
@@ -128,8 +249,8 @@ object SettingsMenuHook {
             context.contentResolver.takePersistableUriPermission(uri, flags)
             SettingsUserState.getPrefs(context).edit()
                 .putString(SettingsUserState.KEY_STORAGE_DOWNLOAD_TREE_URI, uri.toString())
-                .putBoolean(SettingsUserState.KEY_STORAGE_REDIRECT_ENABLED, true)
                 .apply()
+            StorageTreeSelectionState.notifySelected()
             Toast.makeText(context, UiText.Settings.STORAGE_DIRECTORY_SELECTED, Toast.LENGTH_SHORT).show()
         } catch (t: Throwable) {
             XposedCompat.logW("[SettingsMenuHook] persist storage tree permission failed: ${t.message}")

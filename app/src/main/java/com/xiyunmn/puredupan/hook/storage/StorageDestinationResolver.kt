@@ -17,6 +17,32 @@ class StorageDestinationResolver(
 ) {
     private val resolver = context.contentResolver
 
+    /** Returns a primary-storage-relative path for a SAF document URI when the provider exposes one. */
+    fun relativePathForDocumentUri(uriString: String?): String? {
+        val uri = uriString?.takeIf { it.isNotBlank() }?.let { runCatching { Uri.parse(it) }.getOrNull() }
+            ?: return null
+        val documentId = runCatching { DocumentsContract.getDocumentId(uri) }.getOrNull()
+            ?: runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull()
+            ?: return null
+        return documentIdToPrimaryRelativePath(documentId)
+    }
+
+    fun displayPathForDocumentUri(uriString: String?): String? {
+        return relativePathForDocumentUri(uriString)?.let { relative ->
+            if (relative.isEmpty()) "/storage/emulated/0" else "/storage/emulated/0/$relative"
+        }
+    }
+
+    private fun documentIdToPrimaryRelativePath(documentId: String): String? {
+        val lower = documentId.lowercase(Locale.ROOT)
+        return when {
+            lower.startsWith("primary:") -> documentId.substringAfter(':').trim('/')
+            lower.startsWith("raw:/storage/emulated/0") ->
+                documentId.substringAfter("/storage/emulated/0").trim('/')
+            else -> null
+        }
+    }
+
     fun resolve(relativePath: String?, fileName: String? = null): StorageDestination {
         if (!snapshot.enabled || !snapshot.downloadRedirectEnabled) return StorageDestination.Disabled
         val tree = snapshot.downloadTreeUri?.takeIf { it.isNotBlank() }
@@ -28,7 +54,8 @@ class StorageDestinationResolver(
             return StorageDestination.Invalid("下载目录授权已失效，请重新选择")
         }
         val relative = try {
-            StoragePathRules.stripDefaultPublicPrefix(relativePath)
+            val normalized = StoragePathRules.stripDefaultPublicPrefix(relativePath)
+            if (snapshot.removeOuterPathEnabled) "" else normalized
         } catch (e: IllegalArgumentException) {
             return StorageDestination.Invalid(e.message ?: "路径不合法")
         }
@@ -74,7 +101,8 @@ class StorageDestinationResolver(
             "当前 SAF provider 无法转换为主存储真实路径",
         )
         val relative = try {
-            StoragePathRules.stripDefaultPublicPrefix(relativePath)
+            val normalized = StoragePathRules.stripDefaultPublicPrefix(relativePath)
+            if (snapshot.removeOuterPathEnabled) "" else normalized
         } catch (e: IllegalArgumentException) {
             return StorageDestination.Invalid(e.message ?: "路径不合法")
         }
@@ -162,6 +190,10 @@ class StorageDestinationResolver(
                         false,
                     ),
                     downloadTreeUri = prefs.getString(FeatureKeys.KEY_STORAGE_DOWNLOAD_TREE_URI, null),
+                    removeOuterPathEnabled = prefs.getBoolean(
+                        FeatureKeys.KEY_STORAGE_REMOVE_OUTER_PATH,
+                        false,
+                    ),
                     rootGuardEnabled = prefs.getBoolean(FeatureKeys.KEY_STORAGE_ROOT_GUARD_ENABLED, false),
                     wechatBackupRedirectEnabled = prefs.getBoolean(
                         FeatureKeys.KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED,
@@ -181,6 +213,14 @@ class StorageDestinationResolver(
                 Context.MODE_PRIVATE,
             )
             return StorageDestinationResolver(context, snapshotFor(context.packageName, prefs))
+        }
+
+        /** Human-readable path for a tree selected from the primary shared storage. */
+        fun displayPathForTreeUri(context: Context, uriString: String?): String? {
+            return StorageDestinationResolver(
+                context,
+                StorageRedirectSnapshot(context.packageName, StorageRedirectConfig()),
+            ).displayPathForDocumentUri(uriString)
         }
     }
 }

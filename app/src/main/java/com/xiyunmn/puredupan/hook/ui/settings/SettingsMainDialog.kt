@@ -54,7 +54,6 @@ internal object SettingsMainDialog {
             val topLevelGroups = TopLevelSettingsItemsBuilder.topLevelGroups(
                 primarySplashAdFeatureKey = settingsSession.primarySplashAdFeatureKey,
                 isIntlHost = settingsSession.isIntlHost,
-                isSamsungHost = settingsSession.isSamsungHost,
                 restrictedUnlocked = SettingsUserState.areRestrictedFeaturesUnlocked,
                 defaultValues = defaultValues,
                 actionHandlers = TopLevelSettingsActionHandlers(

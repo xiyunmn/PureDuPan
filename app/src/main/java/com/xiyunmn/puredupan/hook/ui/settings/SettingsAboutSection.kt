@@ -145,9 +145,14 @@ internal object SettingsAboutSection {
                 versionClickListener,
             ),
             AboutInfoManager.AboutItem(
+                UiText.Settings.REPOSITORY,
+                UiText.Settings.SOURCE_REPOSITORY_URL,
+                UiText.Settings.SOURCE_REPOSITORY_URL,
+            ),
+            AboutInfoManager.AboutItem(
                 UiText.Settings.AUTHOR,
                 UiText.Settings.AUTHOR_NAME,
-                "https://github.com/xiyunmn/PureDuPan",
+                UiText.Settings.SOURCE_REPOSITORY_URL,
             ),
         ) + AboutInfoManager.loadCachedItemsForSettings()
     }

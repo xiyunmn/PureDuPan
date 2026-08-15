@@ -254,6 +254,9 @@ internal object HookSettings {
     val storageDownloadTreeUri: String?
         get() = ConfigManager.storageDownloadTreeUri
 
+    val isStorageRemoveOuterPathEnabled: Boolean
+        get() = ConfigManager.isStorageRemoveOuterPathEnabled
+
     val isStorageRootGuardEnabled: Boolean
         get() = ConfigManager.isStorageRootGuardEnabled
 

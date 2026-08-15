@@ -67,6 +67,7 @@ object ConfigManager {
     const val KEY_STORAGE_REDIRECT_ENABLED = FeatureKeys.KEY_STORAGE_REDIRECT_ENABLED
     const val KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED = FeatureKeys.KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED
     const val KEY_STORAGE_DOWNLOAD_TREE_URI = FeatureKeys.KEY_STORAGE_DOWNLOAD_TREE_URI
+    const val KEY_STORAGE_REMOVE_OUTER_PATH = FeatureKeys.KEY_STORAGE_REMOVE_OUTER_PATH
     const val KEY_STORAGE_ROOT_GUARD_ENABLED = FeatureKeys.KEY_STORAGE_ROOT_GUARD_ENABLED
     const val KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED = FeatureKeys.KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED
     const val KEY_STORAGE_READER_SDK_REDIRECT_ENABLED = FeatureKeys.KEY_STORAGE_READER_SDK_REDIRECT_ENABLED
@@ -209,6 +210,7 @@ object ConfigManager {
     val isStorageRedirectEnabled: Boolean get() = settingsSnapshot.isStorageRedirectEnabled
     val isStorageDownloadRedirectEnabled: Boolean get() = settingsSnapshot.isStorageDownloadRedirectEnabled
     val storageDownloadTreeUri: String? get() = settingsSnapshot.storageDownloadTreeUri
+    val isStorageRemoveOuterPathEnabled: Boolean get() = settingsSnapshot.isStorageRemoveOuterPathEnabled
     val isStorageRootGuardEnabled: Boolean get() = settingsSnapshot.isStorageRootGuardEnabled
     val isStorageWechatBackupRedirectEnabled: Boolean get() = settingsSnapshot.isStorageWechatBackupRedirectEnabled
     val isStorageReaderSdkRedirectEnabled: Boolean get() = settingsSnapshot.isStorageReaderSdkRedirectEnabled
@@ -644,6 +646,7 @@ object ConfigManager {
             isStorageRedirectEnabled = featureBoolean(KEY_STORAGE_REDIRECT_ENABLED, false),
             isStorageDownloadRedirectEnabled = featureBoolean(KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED, false),
             storageDownloadTreeUri = p.getString(KEY_STORAGE_DOWNLOAD_TREE_URI, null),
+            isStorageRemoveOuterPathEnabled = featureBoolean(KEY_STORAGE_REMOVE_OUTER_PATH, false),
             isStorageRootGuardEnabled = featureBoolean(KEY_STORAGE_ROOT_GUARD_ENABLED, false),
             isStorageWechatBackupRedirectEnabled = featureBoolean(KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED, false),
             isStorageReaderSdkRedirectEnabled = featureBoolean(KEY_STORAGE_READER_SDK_REDIRECT_ENABLED, false),
