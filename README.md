@@ -3,9 +3,9 @@
 <a href="https://github.com/Xposed-Modules-Repo/com.xiyunmn.puredupan.hook/releases/latest"><img alt="GitHub all releases" src="https://img.shields.io/github/downloads/Xposed-Modules-Repo/com.xiyunmn.puredupan.hook/total?label=Downloads"></a>
 <a href="https://github.com/Xposed-Modules-Repo/com.xiyunmn.puredupan.hook/releases/latest"><img alt="GitHub latest release" src="https://img.shields.io/github/v/release/Xposed-Modules-Repo/com.xiyunmn.puredupan.hook"></a>
 
-PureDuPan 是一个百度网盘 Xposed 净化模块，提供广告屏蔽、页面精简、会员卡片定制、夜间模式、下载页定制、自动签到、视频选项解锁和部分性能优化。
+PureDuPan 是一个百度网盘 Xposed 净化模块，提供广告屏蔽、页面精简、会员卡片定制、夜间模式、下载页定制、存储路径重定向、自动签到、视频选项解锁和部分性能优化。
 
-当前版本：`1.4.2`
+当前版本：`1.4.3`
 
 项目源码：https://github.com/xiyunmn/PureDuPan
 
@@ -21,9 +21,9 @@ PureDuPan 是一个百度网盘 Xposed 净化模块，提供广告屏蔽、页�
 
 当前主要适配：
 
-- 百度网盘：`13.25.2` ~ `13.30.4`
-- 百度网盘国际版：`13.11.9`
-- 百度网盘三星版：`13.25.2` ~ `13.28.9`
+- 百度网盘：`13.25.2` ~ `13.31.3`
+- 百度网盘国际版：`13.11.10`
+- 百度网盘三星版：`13.25.2` ~ `13.31.6`
 
 ## 安装与入口
 
@@ -81,6 +81,7 @@ PureDuPan 是一个百度网盘 Xposed 净化模块，提供广告屏蔽、页�
 - 移除首页右滑事件：国际版阻止首页右滑进入负一屏。
 - 解锁视频倍速：解除非会员在线视频倍速入口限制，不伪造会员身份。
 - 解锁视频画质：放开客户端画质入口，普通 1080P 仍可能受服务端限制。
+- 存储路径重定向：可为不同宿主选择 SAF 公共下载目录，并按需启用公共根目录保护；默认关闭。
 
 ### 性能优化
 
