@@ -165,13 +165,15 @@ internal object SearchPageCustomizeHook {
     private fun findVoiceSearchMethod(clazz: Class<*>): Method? {
         return clazz.declaredMethods.firstOrNull { method ->
             isStaticVoidMethod(method) &&
-                method.parameterTypes.size == 5 &&
-                method.parameterTypes[0].name == BaiduSearchPageHookPoints.MAIN_SEARCH_VM &&
-                method.parameterTypes[1].name == BaiduSearchPageHookPoints.SEARCH_OPERATION_SERVICE_PLATFORM &&
-                method.parameterTypes[2].name == BaiduSearchPageHookPoints.COMPOSER &&
-                method.parameterTypes[3] == Int::class.javaPrimitiveType &&
-                method.parameterTypes[4] == Int::class.javaPrimitiveType
+                isVoiceSearchParameterShape(method.parameterTypes)
         }?.apply { isAccessible = true }
+    }
+
+    private fun isVoiceSearchParameterShape(parameterTypes: Array<Class<*>>): Boolean {
+        val names = parameterTypes.map { type ->
+            if (type == Int::class.javaPrimitiveType) "int" else type.name
+        }
+        return names in BaiduSearchPageHookPoints.voiceSearchMethodParamTypeNames
     }
 
     private fun findVoiceToTextMethod(clazz: Class<*>): Method? {

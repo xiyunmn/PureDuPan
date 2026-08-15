@@ -37,6 +37,29 @@ internal object BaiduSearchPageHookPoints {
         "isVisiable",
     )
 
+    /**
+     * VoiceSearch's Compose root signature before and after SearchResultVM was
+     * added. Keep these definitions shared by DexKit discovery and reflection
+     * validation so both paths always accept the same host variants.
+     */
+    val voiceSearchMethodParamTypeNames = listOf(
+        listOf(
+            MAIN_SEARCH_VM,
+            SEARCH_OPERATION_SERVICE_PLATFORM,
+            COMPOSER,
+            "int",
+            "int",
+        ),
+        listOf(
+            MAIN_SEARCH_VM,
+            SEARCH_RESULT_VM,
+            SEARCH_OPERATION_SERVICE_PLATFORM,
+            COMPOSER,
+            "int",
+            "int",
+        ),
+    )
+
     val composeServicePlatformClasses = listOf(
         COMPOSE_SERVICE_PLATFORM_IMPL,
         KMP_COMPOSE_SERVICE_PLATFORM_IMPL,

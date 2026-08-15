@@ -39,21 +39,20 @@ internal object SearchPageVoiceSearchDexKitResolver {
 
         val candidates = DexKitCompat.withBridge(TAG, cl, resolverId = CACHE_ID) { bridge ->
             bridge.setThreadNum(1)
-            bridge.findMethod(
-                FindMethod.create()
-                    .matcher(
-                        MethodMatcher.create()
-                            .modifiers(Modifier.STATIC)
-                            .returnType("void")
-                            .paramTypes(
-                                BaiduSearchPageHookPoints.MAIN_SEARCH_VM,
-                                BaiduSearchPageHookPoints.SEARCH_OPERATION_SERVICE_PLATFORM,
-                                BaiduSearchPageHookPoints.COMPOSER,
-                                "int",
-                                "int",
-                            ),
-                    ),
-            ).map { methodData ->
+            // VoiceSearch gained a SearchResultVM parameter in newer releases. Keep
+            // both narrow signatures so the resolver remains compatible with old
+            // and new domestic/Samsung hosts without falling back to broad scans.
+            BaiduSearchPageHookPoints.voiceSearchMethodParamTypeNames.flatMap { parameterTypes ->
+                bridge.findMethod(
+                    FindMethod.create()
+                        .matcher(
+                            MethodMatcher.create()
+                                .modifiers(Modifier.STATIC)
+                                .returnType("void")
+                                .paramTypes(*parameterTypes.toTypedArray()),
+                        ),
+                )
+            }.map { methodData ->
                 DexMethodCandidate(
                     className = methodData.className,
                     methodName = methodData.name,
@@ -133,26 +132,19 @@ internal object SearchPageVoiceSearchDexKitResolver {
         return !isConstructor &&
             Modifier.isStatic(modifiers) &&
             returnTypeName == "void" &&
-            paramTypeNames == listOf(
-                BaiduSearchPageHookPoints.MAIN_SEARCH_VM,
-                BaiduSearchPageHookPoints.SEARCH_OPERATION_SERVICE_PLATFORM,
-                BaiduSearchPageHookPoints.COMPOSER,
-                "int",
-                "int",
-            )
+            paramTypeNames in BaiduSearchPageHookPoints.voiceSearchMethodParamTypeNames
     }
 
     private fun findVoiceSearchMethod(clazz: Class<*>): Method? {
         return clazz.declaredMethods.firstOrNull { method ->
             isStaticVoidMethod(method) &&
-                method.parameterTypes.size == 5 &&
-                method.parameterTypes[0].name == BaiduSearchPageHookPoints.MAIN_SEARCH_VM &&
-                method.parameterTypes[1].name == BaiduSearchPageHookPoints.SEARCH_OPERATION_SERVICE_PLATFORM &&
-                method.parameterTypes[2].name == BaiduSearchPageHookPoints.COMPOSER &&
-                method.parameterTypes[3] == Int::class.javaPrimitiveType &&
-                method.parameterTypes[4] == Int::class.javaPrimitiveType
+                method.parameterTypes.toList().matchesVoiceSearchParams()
         }?.apply { isAccessible = true }
     }
+
+    private fun List<Class<*>>.matchesVoiceSearchParams(): Boolean =
+        map { type -> if (type == Int::class.javaPrimitiveType) "int" else type.name } in
+            BaiduSearchPageHookPoints.voiceSearchMethodParamTypeNames
 
     private fun findVoiceToTextMethod(clazz: Class<*>): Method? {
         return clazz.declaredMethods.firstOrNull { method ->
