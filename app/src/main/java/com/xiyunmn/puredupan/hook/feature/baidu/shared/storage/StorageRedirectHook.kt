@@ -1,12 +1,16 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.storage
 
+import android.content.ContentResolver
+import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
 import android.widget.Toast
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.storage.StorageDestination
 import com.xiyunmn.puredupan.hook.storage.StorageDestinationResolver
+import com.xiyunmn.puredupan.hook.storage.StoragePathRules
 import com.xiyunmn.puredupan.hook.storage.StorageRedirectConfig
 import com.xiyunmn.puredupan.hook.storage.StorageRedirectSnapshot
 import com.xiyunmn.puredupan.hook.storage.StorageRootGuard
@@ -17,7 +21,6 @@ import java.lang.reflect.Method
 import java.nio.file.AccessDeniedException
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** Shared storage hook. Domestic and international variants differ only in symbol resolution. */
@@ -25,6 +28,7 @@ object StorageRedirectHook {
     private const val TAG = "StorageRedirectHook"
     private val installState = HookState()
     private val rootGuardInstalled = AtomicBoolean(false)
+    private val downloadItemContext = ThreadLocal<DownloadItemContext?>()
 
     fun hook(cl: ClassLoader) {
         if (!HookSettings.isStorageRedirectEnabled && !HookSettings.isStorageRootGuardEnabled) {
@@ -41,6 +45,7 @@ object StorageRedirectHook {
                 count += hookUriCreator(mod, cl, BaiduStorageHookPoints.INTL_TARGET30_STORAGE, BaiduStorageHookPoints.INTL_URI_CREATOR)
                 count += hookDownloadExtension(mod, cl, BaiduStorageHookPoints.DOMESTIC_DOWNLOAD_EXTENSION, setOf("getDownloadPath", "getLinkDownloadPath"))
                 count += hookDownloadExtension(mod, cl, BaiduStorageHookPoints.INTL_DOWNLOAD_EXTENSION, setOf("___", "_____"))
+                count += hookFolderTaskState(mod, cl)
                 count += hookLegacyDefaultSaveDir(mod, cl, BaiduStorageHookPoints.DEFAULT_SETTING)
                 count += hookLegacyDefaultSaveDir(mod, cl, BaiduStorageHookPoints.DEFAULT_SETTING_INTL)
                 count += hookStoragePathQueries(
@@ -108,8 +113,21 @@ object StorageRedirectHook {
                 val context = chain.args.getOrNull(0) as? Context ?: return@intercept chain.proceed()
                 val fileName = chain.args.getOrNull(1) as? String ?: return@intercept chain.proceed()
                 val parent = chain.args.getOrNull(2) as? String
-                val outerPath = downloadOuterPath(parent, fileName)
-                val result = resolver(context).resolve(parent, fileName, outerPath)
+                val itemContext = downloadItemContext.get()
+                val effectiveParent = if (itemContext != null) {
+                    StoragePathRules.selectDownloadParent(
+                        parent,
+                        itemContext.sourceDirPath,
+                        HookSettings.isStorageRemoveOuterPathEnabled,
+                    )
+                } else {
+                    parent
+                }
+                val isDirectory = itemContext?.isDirectory == true
+                XposedCompat.logD(
+                    "[$TAG] create name=$fileName dir=$isDirectory parent=$parent effectiveParent=$effectiveParent",
+                )
+                val result = resolver(context).resolve(effectiveParent, fileName, isDirectory)
                 when (result) {
                     is StorageDestination.ReadyDocumentUri -> result.uri
                     StorageDestination.Disabled -> chain.proceed()
@@ -174,11 +192,17 @@ object StorageRedirectHook {
                 val context = chain.args.firstOrNull { it is Context } as? Context
                 val fileName = findDownloadName(chain.args)
                 val parent = findDownloadParent(chain.args)
-                val outerPath = downloadOuterPath(parent, fileName)
+                val sourceDirPath = findDownloadSourceDir(chain.args)
+                val isDirectory = findDownloadIsDirectory(chain.args)
+                val effectiveParent = StoragePathRules.selectDownloadParent(
+                    parent,
+                    sourceDirPath,
+                    HookSettings.isStorageRemoveOuterPathEnabled,
+                )
                 // Smooth-video/old branches bypass createDownloadUriStr. Preflight those branches
                 // before the original method can materialize a public default path.
                 if (context != null && fileName != null && chain.args.any { it is Boolean && it }) {
-                    when (val destination = resolver(context).resolve(parent, fileName, outerPath)) {
+                    when (val destination = resolver(context).resolve(effectiveParent, fileName, isDirectory)) {
                         is StorageDestination.ReadyDocumentUri -> return@intercept destination.uri
                         StorageDestination.Disabled -> Unit
                         else -> {
@@ -187,13 +211,19 @@ object StorageRedirectHook {
                         }
                     }
                 }
-                val originalResult = chain.proceed()
+                val previousContext = downloadItemContext.get()
+                downloadItemContext.set(DownloadItemContext(sourceDirPath, isDirectory))
+                val originalResult = try {
+                    chain.proceed()
+                } finally {
+                    if (previousContext == null) downloadItemContext.remove() else downloadItemContext.set(previousContext)
+                }
                 val original = originalResult as? String ?: return@intercept originalResult
                 if (original.startsWith("content://") || original.isBlank()) return@intercept original
                 val actualContext = context ?: return@intercept original
                 val actualFileName = fileName ?: original.substringAfterLast('/').takeIf { it.isNotBlank() }
                     ?: return@intercept original
-                when (val destination = resolver(actualContext).resolve(parent, actualFileName, outerPath)) {
+                when (val destination = resolver(actualContext).resolve(effectiveParent, actualFileName, isDirectory)) {
                     is StorageDestination.ReadyDocumentUri -> destination.uri
                     StorageDestination.Disabled -> original
                     else -> {
@@ -263,19 +293,113 @@ object StorageRedirectHook {
 
     private fun findDownloadParent(args: List<Any?>): String {
         args.filterNotNull().forEach { value ->
-            val parent = runCatching {
+            val parentObject = runCatching {
                 value.javaClass.methods.firstOrNull {
-                    (it.name == "getFilePath" || it.name == "getSourceDirPath") && it.parameterTypes.isEmpty()
-                }?.invoke(value) as? String
+                    it.name == "getParent" && it.parameterTypes.isEmpty()
+                }?.invoke(value)
             }.getOrNull()
-            if (!parent.isNullOrBlank()) return parent
+            val parentPath = parentObject?.let { parent ->
+                runCatching {
+                    parent.javaClass.methods.firstOrNull {
+                        it.name == "getFilePath" && it.parameterTypes.isEmpty()
+                    }?.invoke(parent) as? String
+                }.getOrNull()
+            }
+            if (!parentPath.isNullOrBlank()) return parentPath
         }
         return ""
     }
 
-    private fun downloadOuterPath(parent: String?, fileName: String?): String? {
-        if (!HookSettings.isStorageRemoveOuterPathEnabled) return null
-        return DownloadPathSessionTracker.outerPath(parent, fileName)
+    private fun findDownloadSourceDir(args: List<Any?>): String? {
+        args.filterNotNull().forEach { value ->
+            val source = runCatching {
+                value.javaClass.methods.firstOrNull {
+                    it.name == "getSourceDirPath" && it.parameterTypes.isEmpty()
+                }?.invoke(value) as? String
+            }.getOrNull()
+            if (source != null) return source
+        }
+        return null
+    }
+
+    private fun findDownloadIsDirectory(args: List<Any?>): Boolean {
+        args.filterNotNull().forEach { value ->
+            val method = value.javaClass.methods.firstOrNull {
+                (it.name == "isDir" || it.name == "isDirectory") && it.parameterTypes.isEmpty()
+            } ?: return@forEach
+            runCatching { method.invoke(value) }.getOrNull()?.let { result ->
+                val directory = when (result) {
+                    is Boolean -> result
+                    is Number -> result.toInt() != 0
+                    else -> false
+                }
+                if (directory) return true
+            }
+        }
+        return false
+    }
+
+    private fun hookFolderTaskState(mod: XposedModule, cl: ClassLoader): Int {
+        val clazz = XposedCompat.findClassOrNull(BaiduStorageHookPoints.FOLDER_TASK_STATE_UTIL, cl) ?: return 0
+        var count = 0
+        clazz.declaredMethods.filter { method ->
+            method.name == BaiduStorageHookPoints.ADD_DOWNLOAD_FOLDER_TASK &&
+                method.parameterTypes.size == 6 &&
+                ContentResolver::class.java.isAssignableFrom(method.parameterTypes[0]) &&
+                Uri::class.java.isAssignableFrom(method.parameterTypes[1]) &&
+                method.returnType == Uri::class.java
+        }.forEach { method ->
+            method.isAccessible = true
+            mod.hook(method).intercept { chain ->
+                if (!HookSettings.isStorageRedirectEnabled || !HookSettings.isStorageDownloadRedirectEnabled ||
+                    !HookSettings.isStorageRemoveOuterPathEnabled
+                ) {
+                    return@intercept chain.proceed()
+                }
+                val contentResolver = chain.args.getOrNull(0) as? ContentResolver
+                    ?: return@intercept chain.proceed()
+                val folderInfo = chain.args.getOrNull(2) ?: return@intercept chain.proceed()
+                val transferParent = invokeString(folderInfo, "getTransferParentPath").orEmpty()
+                val name = invokeString(folderInfo, "getName")
+                    ?: return@intercept chain.proceed()
+                val context = HookSettings.appContext() ?: return@intercept chain.proceed()
+                val relative = StoragePathRules.join(transferParent, name)
+                val preflight = resolver(context).resolveLegacyAbsolutePath(relative)
+                if (preflight !is StorageDestination.ReadyLegacyAbsolutePath) {
+                    failWithoutFallback(context, "folder", preflight.toString())
+                    throw IllegalStateException("storage redirect failed: $preflight")
+                }
+                val originalResult = chain.proceed()
+                val result = originalResult as? Uri ?: return@intercept originalResult
+                val update = ContentValues(1).apply {
+                    put("local_url", preflight.absolutePath)
+                }
+                runCatching {
+                    check(contentResolver.update(result, update, null, null) > 0) {
+                        "宿主未接受目录任务路径更新"
+                    }
+                }
+                    .onFailure { error ->
+                        failWithoutFallback(context, "folder", "无法更新目录任务路径：${error.message}")
+                        throw IllegalStateException("storage redirect failed: ${error.message}", error)
+                    }
+                XposedCompat.logD(
+                    "[$TAG] folder task redirected name=$name transferParent=$transferParent local=${preflight.absolutePath}",
+                )
+                result
+            }
+            count++
+            XposedCompat.logD("[$TAG] folder task hooked: ${clazz.name}.${method.name}")
+        }
+        return count
+    }
+
+    private fun invokeString(target: Any, methodName: String): String? {
+        return runCatching {
+            target.javaClass.methods.firstOrNull {
+                it.name == methodName && it.parameterTypes.isEmpty()
+            }?.invoke(target) as? String
+        }.getOrNull()
     }
 
     private fun hookRootGuard(mod: XposedModule): Int {
@@ -320,52 +444,8 @@ object StorageRedirectHook {
         }
     }
 
-    /** Tracks the parent of the selected item so child entries retain its hierarchy. */
-    private object DownloadPathSessionTracker {
-        private const val SESSION_TTL_MILLIS = 30_000L
-        private data class Session(
-            var outerPath: String,
-            val rootNames: MutableSet<String> = linkedSetOf(),
-            var touchedAt: Long,
-        )
-
-        private val sessions = ConcurrentHashMap<String, Session>()
-        private val lock = Any()
-
-        fun outerPath(parent: String?, fileName: String?): String {
-            val normalized = runCatching {
-                com.xiyunmn.puredupan.hook.storage.StoragePathRules.stripDefaultPublicPrefix(parent)
-            }.getOrDefault("")
-            val key = "${XposedCompat.currentPackageName().orEmpty()}:${System.identityHashCode(Thread.currentThread())}"
-            synchronized(lock) {
-                val now = System.currentTimeMillis()
-                val existing = sessions[key]
-                val session = if (existing == null || now - existing.touchedAt > SESSION_TTL_MILLIS) {
-                    Session(normalized, touchedAt = now).also { sessions[key] = it }
-                } else {
-                    existing
-                }
-                if (shouldStartNewSession(session, normalized)) {
-                    session.outerPath = normalized
-                    session.rootNames.clear()
-                }
-                if (normalized == session.outerPath) {
-                    fileName?.trim()?.takeIf { it.isNotEmpty() }?.let { session.rootNames += it }
-                }
-                session.touchedAt = now
-                return session.outerPath
-            }
-        }
-
-        private fun shouldStartNewSession(session: Session, normalized: String): Boolean {
-            if (normalized == session.outerPath) return false
-            if (session.outerPath.isEmpty()) {
-                val first = normalized.substringBefore('/')
-                return first.isNotEmpty() && first !in session.rootNames
-            }
-            if (!normalized.startsWith("${session.outerPath}/")) return true
-            val first = normalized.removePrefix("${session.outerPath}/").substringBefore('/')
-            return session.rootNames.isNotEmpty() && first !in session.rootNames
-        }
-    }
+    private data class DownloadItemContext(
+        val sourceDirPath: String?,
+        val isDirectory: Boolean,
+    )
 }

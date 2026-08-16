@@ -15,4 +15,6 @@ internal object BaiduStorageHookPoints {
     const val INTL_QUERY_ABSOLUTE_PATH = "i"
     const val INTL_QUERY_PATH = "k"
     const val DEFAULT_SAVE_DIR = "getDefaultSaveDir"
+    const val FOLDER_TASK_STATE_UTIL = "com.baidu.netdisk.transfer.util.DownloadFolderTaskStateUtilKt"
+    const val ADD_DOWNLOAD_FOLDER_TASK = "addDownloadFolderTask"
 }

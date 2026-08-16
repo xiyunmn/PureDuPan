@@ -25,26 +25,37 @@ class StoragePathRulesTest {
     }
 
     @Test
-    fun removesOnlyPathOutsideSelectedTarget() {
+    fun selectsHostOrTaskRelativeDownloadParent() {
         assertEquals(
-            "Target",
-            StoragePathRules.removeOuterPath(
-                "Download/BaiduNetdisk/Outer/Target",
+            "",
+            StoragePathRules.selectDownloadParent(
                 "Download/BaiduNetdisk/Outer",
+                "/",
+                true,
             ),
         )
         assertEquals(
             "Target/Nested",
-            StoragePathRules.removeOuterPath(
+            StoragePathRules.selectDownloadParent(
                 "Download/BaiduNetdisk/Outer/Target/Nested",
-                "Download/BaiduNetdisk/Outer",
+                "/Target/Nested",
+                true,
             ),
         )
         assertEquals(
-            "",
-            StoragePathRules.removeOuterPath(
-                "Download/BaiduNetdisk/Outer",
-                "Download/BaiduNetdisk/Outer",
+            "Outer/Target",
+            StoragePathRules.selectDownloadParent(
+                "Download/BaiduNetdisk/Outer/Target",
+                null,
+                false,
+            ),
+        )
+        assertEquals(
+            "Outer/Target/Nested",
+            StoragePathRules.selectDownloadParent(
+                "Download/BaiduNetdisk/Outer/Target/Nested",
+                null,
+                true,
             ),
         )
     }

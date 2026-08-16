@@ -54,16 +54,18 @@ object StoragePathRules {
             ?: normalized
     }
 
-    /** Removes the parent path outside the selected download target. */
-    fun removeOuterPath(raw: String?, outerPath: String?): String {
-        val normalized = stripDefaultPublicPrefix(raw)
-        val outer = stripDefaultPublicPrefix(outerPath)
-        if (outer.isEmpty()) return normalized
-        return when {
-            normalized == outer -> ""
-            normalized.startsWith("$outer/") -> normalized.removePrefix("$outer/")
-            else -> normalized
+    /** Uses the host-provided task-relative parent when outer folders are removed. */
+    fun selectDownloadParent(
+        hostParent: String?,
+        taskRelativeParent: String?,
+        removeOuterPath: Boolean,
+    ): String {
+        val candidate = if (removeOuterPath && taskRelativeParent != null) {
+            taskRelativeParent
+        } else {
+            hostParent
         }
+        return stripDefaultPublicPrefix(candidate)
     }
 
     fun join(parent: String?, child: String?): String {

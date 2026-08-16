@@ -46,7 +46,7 @@ class StorageDestinationResolver(
     fun resolve(
         relativePath: String?,
         fileName: String? = null,
-        outerPath: String? = null,
+        isDirectory: Boolean = false,
     ): StorageDestination {
         if (!snapshot.enabled || !snapshot.downloadRedirectEnabled) return StorageDestination.Disabled
         val tree = snapshot.downloadTreeUri?.takeIf { it.isNotBlank() }
@@ -58,11 +58,7 @@ class StorageDestinationResolver(
             return StorageDestination.Invalid("下载目录授权已失效，请重新选择")
         }
         val relative = try {
-            if (snapshot.removeOuterPathEnabled) {
-                StoragePathRules.removeOuterPath(relativePath, outerPath)
-            } else {
-                StoragePathRules.stripDefaultPublicPrefix(relativePath)
-            }
+            StoragePathRules.stripDefaultPublicPrefix(relativePath)
         } catch (e: IllegalArgumentException) {
             return StorageDestination.Invalid(e.message ?: "路径不合法")
         }
@@ -72,11 +68,11 @@ class StorageDestinationResolver(
                 StorageDestination.ReadyDocumentUri(parent.toString())
             } else {
                 val name = StoragePathRules.validateName(fileName)
-                val existing = findChild(parent, name)
+                val existing = findChild(parent, name, isDirectory)
                 val fileUri = existing ?: DocumentsContract.createDocument(
                     resolver,
                     parent,
-                    "application/octet-stream",
+                    if (isDirectory) DocumentsContract.Document.MIME_TYPE_DIR else "application/octet-stream",
                     name,
                 ) ?: throw IllegalStateException("provider refused file creation")
                 StorageDestination.ReadyDocumentUri(fileUri.toString())
@@ -93,7 +89,7 @@ class StorageDestinationResolver(
     fun resolveDirectory(relativePath: String?): StorageDestination = resolve(relativePath, null)
 
     /** Native BT/P2P code needs a real path; only primary external storage is safe to expose. */
-    fun resolveLegacyAbsolutePath(relativePath: String?, outerPath: String? = null): StorageDestination {
+    fun resolveLegacyAbsolutePath(relativePath: String?): StorageDestination {
         if (!snapshot.enabled || !snapshot.downloadRedirectEnabled) return StorageDestination.Disabled
         val tree = snapshot.downloadTreeUri?.takeIf { it.isNotBlank() }
             ?: return StorageDestination.Unsupported("SAF 下载目录未配置")
@@ -108,11 +104,7 @@ class StorageDestinationResolver(
             "当前 SAF provider 无法转换为主存储真实路径",
         )
         val relative = try {
-            if (snapshot.removeOuterPathEnabled) {
-                StoragePathRules.removeOuterPath(relativePath, outerPath)
-            } else {
-                StoragePathRules.stripDefaultPublicPrefix(relativePath)
-            }
+            StoragePathRules.stripDefaultPublicPrefix(relativePath)
         } catch (e: IllegalArgumentException) {
             return StorageDestination.Invalid(e.message ?: "路径不合法")
         }
@@ -139,7 +131,7 @@ class StorageDestinationResolver(
         )
         if (relative.isEmpty()) return parent
         relative.split('/').forEach { segment ->
-            parent = findChild(parent, segment)
+            parent = findChild(parent, segment, true)
                 ?: DocumentsContract.createDocument(
                     resolver,
                     parent,
@@ -150,23 +142,39 @@ class StorageDestinationResolver(
         return parent
     }
 
-    private fun findChild(parent: Uri, name: String): Uri? {
+    private fun findChild(parent: Uri, name: String, directory: Boolean? = null): Uri? {
         val children = DocumentsContract.buildChildDocumentsUriUsingTree(
             parent,
             DocumentsContract.getDocumentId(parent),
         )
         return resolver.query(
             children,
-            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, OpenableColumns.DISPLAY_NAME),
+            arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                OpenableColumns.DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_MIME_TYPE,
+            ),
             null,
             null,
             null,
         )?.use { cursor ->
             val idIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
             val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            val mimeIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
             while (cursor.moveToNext()) {
                 if (nameIndex >= 0 && cursor.getString(nameIndex) == name && idIndex >= 0) {
-                    return@use DocumentsContract.buildDocumentUriUsingTree(parent, cursor.getString(idIndex))
+                    val mime = if (mimeIndex >= 0) cursor.getString(mimeIndex) else null
+                    val isDirectory = mime == DocumentsContract.Document.MIME_TYPE_DIR
+                    if (directory == null || directory == isDirectory) {
+                        return@use DocumentsContract.buildDocumentUriUsingTree(parent, cursor.getString(idIndex))
+                    }
+                    throw IllegalStateException(
+                        if (directory) {
+                            "目标位置已存在同名文件，无法创建目录：$name"
+                        } else {
+                            "目标位置已存在同名目录，无法创建文件：$name"
+                        },
+                    )
                 }
             }
             null
