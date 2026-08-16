@@ -17,6 +17,7 @@ import java.lang.reflect.Method
 import java.nio.file.AccessDeniedException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** Shared storage hook. Domestic and international variants differ only in symbol resolution. */
@@ -107,7 +108,8 @@ object StorageRedirectHook {
                 val context = chain.args.getOrNull(0) as? Context ?: return@intercept chain.proceed()
                 val fileName = chain.args.getOrNull(1) as? String ?: return@intercept chain.proceed()
                 val parent = chain.args.getOrNull(2) as? String
-                val result = resolver(context).resolve(parent, fileName)
+                val outerPath = downloadOuterPath(parent, fileName)
+                val result = resolver(context).resolve(parent, fileName, outerPath)
                 when (result) {
                     is StorageDestination.ReadyDocumentUri -> result.uri
                     StorageDestination.Disabled -> chain.proceed()
@@ -172,10 +174,11 @@ object StorageRedirectHook {
                 val context = chain.args.firstOrNull { it is Context } as? Context
                 val fileName = findDownloadName(chain.args)
                 val parent = findDownloadParent(chain.args)
+                val outerPath = downloadOuterPath(parent, fileName)
                 // Smooth-video/old branches bypass createDownloadUriStr. Preflight those branches
                 // before the original method can materialize a public default path.
                 if (context != null && fileName != null && chain.args.any { it is Boolean && it }) {
-                    when (val destination = resolver(context).resolve(parent, fileName)) {
+                    when (val destination = resolver(context).resolve(parent, fileName, outerPath)) {
                         is StorageDestination.ReadyDocumentUri -> return@intercept destination.uri
                         StorageDestination.Disabled -> Unit
                         else -> {
@@ -190,7 +193,7 @@ object StorageRedirectHook {
                 val actualContext = context ?: return@intercept original
                 val actualFileName = fileName ?: original.substringAfterLast('/').takeIf { it.isNotBlank() }
                     ?: return@intercept original
-                when (val destination = resolver(actualContext).resolve(parent, actualFileName)) {
+                when (val destination = resolver(actualContext).resolve(parent, actualFileName, outerPath)) {
                     is StorageDestination.ReadyDocumentUri -> destination.uri
                     StorageDestination.Disabled -> original
                     else -> {
@@ -270,6 +273,11 @@ object StorageRedirectHook {
         return ""
     }
 
+    private fun downloadOuterPath(parent: String?, fileName: String?): String? {
+        if (!HookSettings.isStorageRemoveOuterPathEnabled) return null
+        return DownloadPathSessionTracker.outerPath(parent, fileName)
+    }
+
     private fun hookRootGuard(mod: XposedModule): Int {
         if (!rootGuardInstalled.compareAndSet(false, true)) return 0
         var count = 0
@@ -309,6 +317,55 @@ object StorageRedirectHook {
             android.os.Handler(android.os.Looper.getMainLooper()).post {
                 Toast.makeText(context, "下载目录不可用，任务已阻止：$reason", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    /** Tracks the parent of the selected item so child entries retain its hierarchy. */
+    private object DownloadPathSessionTracker {
+        private const val SESSION_TTL_MILLIS = 30_000L
+        private data class Session(
+            var outerPath: String,
+            val rootNames: MutableSet<String> = linkedSetOf(),
+            var touchedAt: Long,
+        )
+
+        private val sessions = ConcurrentHashMap<String, Session>()
+        private val lock = Any()
+
+        fun outerPath(parent: String?, fileName: String?): String {
+            val normalized = runCatching {
+                com.xiyunmn.puredupan.hook.storage.StoragePathRules.stripDefaultPublicPrefix(parent)
+            }.getOrDefault("")
+            val key = "${XposedCompat.currentPackageName().orEmpty()}:${System.identityHashCode(Thread.currentThread())}"
+            synchronized(lock) {
+                val now = System.currentTimeMillis()
+                val existing = sessions[key]
+                val session = if (existing == null || now - existing.touchedAt > SESSION_TTL_MILLIS) {
+                    Session(normalized, touchedAt = now).also { sessions[key] = it }
+                } else {
+                    existing
+                }
+                if (shouldStartNewSession(session, normalized)) {
+                    session.outerPath = normalized
+                    session.rootNames.clear()
+                }
+                if (normalized == session.outerPath) {
+                    fileName?.trim()?.takeIf { it.isNotEmpty() }?.let { session.rootNames += it }
+                }
+                session.touchedAt = now
+                return session.outerPath
+            }
+        }
+
+        private fun shouldStartNewSession(session: Session, normalized: String): Boolean {
+            if (normalized == session.outerPath) return false
+            if (session.outerPath.isEmpty()) {
+                val first = normalized.substringBefore('/')
+                return first.isNotEmpty() && first !in session.rootNames
+            }
+            if (!normalized.startsWith("${session.outerPath}/")) return true
+            val first = normalized.removePrefix("${session.outerPath}/").substringBefore('/')
+            return session.rootNames.isNotEmpty() && first !in session.rootNames
         }
     }
 }

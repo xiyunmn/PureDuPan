@@ -43,7 +43,11 @@ class StorageDestinationResolver(
         }
     }
 
-    fun resolve(relativePath: String?, fileName: String? = null): StorageDestination {
+    fun resolve(
+        relativePath: String?,
+        fileName: String? = null,
+        outerPath: String? = null,
+    ): StorageDestination {
         if (!snapshot.enabled || !snapshot.downloadRedirectEnabled) return StorageDestination.Disabled
         val tree = snapshot.downloadTreeUri?.takeIf { it.isNotBlank() }
             ?: return StorageDestination.Invalid("未选择公共下载目录")
@@ -54,8 +58,11 @@ class StorageDestinationResolver(
             return StorageDestination.Invalid("下载目录授权已失效，请重新选择")
         }
         val relative = try {
-            val normalized = StoragePathRules.stripDefaultPublicPrefix(relativePath)
-            if (snapshot.removeOuterPathEnabled) "" else normalized
+            if (snapshot.removeOuterPathEnabled) {
+                StoragePathRules.removeOuterPath(relativePath, outerPath)
+            } else {
+                StoragePathRules.stripDefaultPublicPrefix(relativePath)
+            }
         } catch (e: IllegalArgumentException) {
             return StorageDestination.Invalid(e.message ?: "路径不合法")
         }
@@ -86,7 +93,7 @@ class StorageDestinationResolver(
     fun resolveDirectory(relativePath: String?): StorageDestination = resolve(relativePath, null)
 
     /** Native BT/P2P code needs a real path; only primary external storage is safe to expose. */
-    fun resolveLegacyAbsolutePath(relativePath: String?): StorageDestination {
+    fun resolveLegacyAbsolutePath(relativePath: String?, outerPath: String? = null): StorageDestination {
         if (!snapshot.enabled || !snapshot.downloadRedirectEnabled) return StorageDestination.Disabled
         val tree = snapshot.downloadTreeUri?.takeIf { it.isNotBlank() }
             ?: return StorageDestination.Unsupported("SAF 下载目录未配置")
@@ -101,8 +108,11 @@ class StorageDestinationResolver(
             "当前 SAF provider 无法转换为主存储真实路径",
         )
         val relative = try {
-            val normalized = StoragePathRules.stripDefaultPublicPrefix(relativePath)
-            if (snapshot.removeOuterPathEnabled) "" else normalized
+            if (snapshot.removeOuterPathEnabled) {
+                StoragePathRules.removeOuterPath(relativePath, outerPath)
+            } else {
+                StoragePathRules.stripDefaultPublicPrefix(relativePath)
+            }
         } catch (e: IllegalArgumentException) {
             return StorageDestination.Invalid(e.message ?: "路径不合法")
         }
