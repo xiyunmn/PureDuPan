@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme
 import android.os.Bundle
 import android.os.Build
 import android.view.View
+import android.view.ViewGroup
 import android.view.ViewParent
 import com.xiyunmn.puredupan.hook.BuildConfig
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
@@ -13,18 +14,23 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAboutMeHookPoints
 import java.util.Collections
 import java.util.WeakHashMap
 
-/** Moves the content below the member card without remeasuring the host scroll layout. */
+/** Keeps the host content and native collapsing scroll range aligned with the member card. */
 internal object AboutMeBottomContentPositionHook {
     private const val TAG = "AboutMeBottomContentPositionHook"
     private const val SCROLL_VIEW_ID = "scroll_view"
+    private const val COLLAPSIBLE_HEADER_ID = "collapsible_layout_title_root_view"
     private const val APPLY_DELAY_MS = 1500L
-    private const val CACHE_SCHEMA_VERSION = 2
+    private const val CACHE_SCHEMA_VERSION = 3
     private const val MIN_OFFSET_DP = -160
     private const val MAX_OFFSET_DP = 160
 
     private val hookState = HookState()
     private data class PositionCache(
         val baseTranslationY: Float,
+    )
+
+    private data class HeaderLayoutCache(
+        val baseHeight: Int,
     )
 
     private data class ResolvedOffset(
@@ -34,6 +40,8 @@ internal object AboutMeBottomContentPositionHook {
     )
 
     private val positionCache: MutableMap<View, PositionCache> =
+        Collections.synchronizedMap(WeakHashMap())
+    private val headerLayoutCache: MutableMap<View, HeaderLayoutCache> =
         Collections.synchronizedMap(WeakHashMap())
     private val appliedRoots: MutableSet<View> =
         Collections.synchronizedSet(Collections.newSetFromMap(WeakHashMap()))
@@ -95,10 +103,18 @@ internal object AboutMeBottomContentPositionHook {
             PositionCache(scrollView.translationY)
         }
         scrollView.translationY = cached.baseTranslationY
-        val targetTranslationY = cached.baseTranslationY + resolved.offsetPx
-        if (scrollView.translationY != targetTranslationY) {
-            scrollView.translationY = targetTranslationY
+        val appliedNatively = if (snapshot.isMyPageContentAutoFollowMemberCardEnabled) {
+            applyNativeCollapsingHeight(root, scrollView, resolved.offsetPx)
+        } else {
+            restoreNativeCollapsingHeight(root, scrollView)
+            false
         }
+        val targetTranslationY = if (appliedNatively) {
+            cached.baseTranslationY
+        } else {
+            cached.baseTranslationY + resolved.offsetPx
+        }
+        scrollView.translationY = targetTranslationY
 
         if (!resolved.fromPersistentCache) {
             HookSettings.recordContentPositionCache(
@@ -109,7 +125,57 @@ internal object AboutMeBottomContentPositionHook {
 
         XposedCompat.logD(
             "[$TAG] content position applied via $source: offsetPx=${resolved.offsetPx}, " +
+                "mode=${if (appliedNatively) "native-collapse" else "translation"}, " +
                 "translationY=${cached.baseTranslationY}->$targetTranslationY",
+        )
+    }
+
+    /**
+     * The host keeps the member card beside a fixed-height CollapsingToolbarLayout and places
+     * scroll_view below its AppBar. Growing that header by the card delta lets CoordinatorLayout
+     * recalculate both the content position and the AppBar's native nested-scroll range.
+     */
+    private fun applyNativeCollapsingHeight(root: View, scrollView: View, offsetPx: Int): Boolean {
+        val header = findCollapsingHeader(root, scrollView) ?: run {
+            XposedCompat.logD("[$TAG] native collapsing header not found; using translation fallback")
+            return false
+        }
+        val params = header.layoutParams ?: return false
+        val cached = headerLayoutCache.getOrPut(header) {
+            val baseHeight = params.height.takeIf { it > 0 }
+                ?: header.height.takeIf { it > 0 }
+                ?: header.measuredHeight.takeIf { it > 0 }
+                ?: return false
+            HeaderLayoutCache(baseHeight)
+        }
+        val targetHeight = (cached.baseHeight + offsetPx).coerceAtLeast(1)
+        if (params.height != targetHeight) {
+            params.height = targetHeight
+            header.layoutParams = params
+            header.requestLayout()
+            (header.parent as? View)?.requestLayout()
+            scrollView.requestLayout()
+            (root.rootView ?: root).requestLayout()
+        }
+        XposedCompat.logD(
+            "[$TAG] native collapsing height applied: ${cached.baseHeight}->$targetHeight",
+        )
+        return true
+    }
+
+    private fun restoreNativeCollapsingHeight(root: View, scrollView: View) {
+        val header = findCollapsingHeader(root, scrollView) ?: return
+        val cached = headerLayoutCache[header] ?: return
+        val params = header.layoutParams ?: return
+        if (params.height == cached.baseHeight) return
+        params.height = cached.baseHeight
+        header.layoutParams = params
+        header.requestLayout()
+        (header.parent as? View)?.requestLayout()
+        scrollView.requestLayout()
+        (root.rootView ?: root).requestLayout()
+        XposedCompat.logD(
+            "[$TAG] native collapsing height restored: ${cached.baseHeight}",
         )
     }
 
@@ -218,6 +284,34 @@ internal object AboutMeBottomContentPositionHook {
             current = current.parent
         }
         return if (id != 0) (root.rootView ?: root).findViewById(id) else null
+    }
+
+    private fun findCollapsingHeader(root: View, scrollView: View): View? {
+        var coordinatorRoot: View = scrollView
+        var parent = coordinatorRoot.parent
+        while (parent is View) {
+            coordinatorRoot = parent
+            if (coordinatorRoot.javaClass.name.endsWith("CoordinatorLayout")) break
+            parent = coordinatorRoot.parent
+        }
+        findHostView(coordinatorRoot, COLLAPSIBLE_HEADER_ID)?.let { return it }
+        return findDescendantByClassName(coordinatorRoot, "CollapsingToolbarLayout")
+            ?: findDescendantByClassName(root.rootView ?: root, "CollapsingToolbarLayout")
+    }
+
+    private fun findHostView(root: View, idName: String): View? {
+        val context = root.context ?: return null
+        val id = root.resources?.getIdentifier(idName, "id", context.packageName) ?: 0
+        return if (id != 0) root.findViewById(id) else null
+    }
+
+    private fun findDescendantByClassName(root: View, simpleName: String): View? {
+        if (root.javaClass.name.endsWith(simpleName) && root.visibility == View.VISIBLE) return root
+        if (root !is ViewGroup) return null
+        for (index in 0 until root.childCount) {
+            findDescendantByClassName(root.getChildAt(index), simpleName)?.let { return it }
+        }
+        return null
     }
 
     private fun isEnabled(snapshot: SettingsSnapshot): Boolean {
