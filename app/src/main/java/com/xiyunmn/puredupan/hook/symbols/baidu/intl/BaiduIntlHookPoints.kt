@@ -24,6 +24,12 @@ internal object BaiduIntlHookPoints {
     const val EXTERNAL_ACCOUNT_UTILS = "com.baidu.netdisk.account.external.AccountUtils"
     const val VIP_CHANNEL_ACTIVITY = "com.baidu.netdisk.ui.vipchannel.VipChannelActivity"
     const val RETURN_THIRD_APP_VIEW = "com.baidu.netdisk.module.sharelink.ReturnThirdAppView"
+    const val CHAIN_INFO_ADAPTER = "com.baidu.netdisk.module.sharelink.ChainInfoAdapter"
+    const val CHAIN_INFO_CREATE_VIEW_HOLDER_METHOD = "onCreateViewHolder"
+    const val CHAIN_INFO_FILE_ROW_ID_NAME = "checkable_layout"
+    const val CHAIN_INFO_FILE_ROW_NORMAL_COLOR_NAME = "ui_color_gc7"
+    const val CHAIN_INFO_FILE_ROW_CHECKED_COLOR_NAME = "ui_color_gc14"
+    const val CHAIN_INFO_FILE_ROW_PRESSED_COLOR_NAME = "bg_dn_file_list_pressed"
 
     const val AIGC_CLOUD_CONTEXT =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_aigc_cloud.AigcCloudContext"

@@ -28,6 +28,7 @@ object SystemNightModeSyncHook {
     )
 
     internal fun hook(cl: ClassLoader) {
+        IntlChainInfoThemeCompat.hook(cl)
         IntlHomeThemeRefreshCompat.hook(
             cl,
             BaiduIntlHookPoints.NEW_FEED_HOME_FRAGMENT,
