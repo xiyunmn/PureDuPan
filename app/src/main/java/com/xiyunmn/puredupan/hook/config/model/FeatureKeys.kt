@@ -88,6 +88,7 @@ object FeatureKeys {
     const val KEY_MEMBER_CARD_SIZE_HEIGHT_DP = "member_card_size_height_dp"
     const val KEY_MEMBER_CARD_DEFAULT_WIDTH_PX = "member_card_default_width_px"
     const val KEY_MEMBER_CARD_DEFAULT_HEIGHT_PX = "member_card_default_height_px"
+    const val KEY_MEMBER_CARD_DEFAULT_SIZE_SIGNATURE = "member_card_default_size_signature"
     const val KEY_HIDE_MEMBER_CARD_OPERATION = "hide_member_card_operation"
     const val KEY_HIDE_MEMBER_CARD_BENEFIT = "hide_member_card_benefit"
     const val KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT = "hide_member_card_first_benefit"

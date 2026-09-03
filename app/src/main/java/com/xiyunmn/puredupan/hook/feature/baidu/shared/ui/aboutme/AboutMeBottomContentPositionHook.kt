@@ -1,15 +1,17 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme
 
-import android.os.Bundle
 import android.os.Build
+import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewParent
+import android.view.ViewTreeObserver
 import com.xiyunmn.puredupan.hook.BuildConfig
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAboutMeHookPoints
 import java.util.Collections
 import java.util.WeakHashMap
@@ -43,8 +45,6 @@ internal object AboutMeBottomContentPositionHook {
         Collections.synchronizedMap(WeakHashMap())
     private val headerLayoutCache: MutableMap<View, HeaderLayoutCache> =
         Collections.synchronizedMap(WeakHashMap())
-    private val appliedRoots: MutableSet<View> =
-        Collections.synchronizedSet(Collections.newSetFromMap(WeakHashMap()))
     fun hook(cl: ClassLoader) {
         val snapshot = HookSettings.settingsSnapshot()
         if (!isEnabled(snapshot)) {
@@ -76,14 +76,72 @@ internal object AboutMeBottomContentPositionHook {
         mod.hook(method).intercept { chain ->
             val result = chain.proceed()
             val root = chain.args.firstOrNull() as? View
-            root?.post { applyPosition(root, "cache", allowCalibration = false) }
-            root?.postDelayed(
-                { applyPosition(root, "calibration", allowCalibration = true) },
-                APPLY_DELAY_MS,
-            )
+            root?.let(::schedulePositionApply)
             result
         }
         XposedCompat.logD("[$TAG] hook installed: ${fragmentClass.name}.${method.name}")
+    }
+
+    private fun schedulePositionApply(root: View) {
+        val snapshot = HookSettings.settingsSnapshot()
+        if (
+            BaiduFeatureRuntime.isDomesticFamilyHost(root.context) &&
+            snapshot.isMyPageContentAutoFollowMemberCardEnabled
+        ) {
+            scheduleDomesticCachedPositionApply(root)
+            return
+        }
+        root.post { applyPosition(root, "cache", allowCalibration = false) }
+        root.postDelayed(
+            { applyPosition(root, "settled", allowCalibration = true) },
+            APPLY_DELAY_MS,
+        )
+    }
+
+    /**
+     * Domestic hosts asynchronously restore the collapsing header after the cached position has
+     * been applied. Keep the cached target stable before drawing until host initialization ends,
+     * so the intermediate host height never becomes a visible frame. Samsung uses the same layout.
+     */
+    private fun scheduleDomesticCachedPositionApply(root: View) {
+        lateinit var listener: ViewTreeObserver.OnPreDrawListener
+        listener = ViewTreeObserver.OnPreDrawListener {
+            maintainDomesticCachedPositionBeforeDraw(root)
+        }
+        root.viewTreeObserver.addOnPreDrawListener(listener)
+        root.postDelayed(
+            {
+                applyPosition(root, "settled", allowCalibration = true)
+                root.post {
+                    root.viewTreeObserver
+                        .takeIf { it.isAlive }
+                        ?.removeOnPreDrawListener(listener)
+                }
+            },
+            APPLY_DELAY_MS,
+        )
+    }
+
+    private fun maintainDomesticCachedPositionBeforeDraw(root: View): Boolean {
+        val snapshot = HookSettings.settingsSnapshot()
+        if (!isEnabled(snapshot) || !snapshot.isMyPageContentAutoFollowMemberCardEnabled) return true
+        val scrollView = findScrollView(root) ?: return true
+        val density = root.resources?.displayMetrics?.density ?: return true
+        val signature = cacheSignature(root, snapshot, density)
+        val persisted = HookSettings.contentPositionCache(root.context, signature) ?: return true
+        val header = findCollapsingHeader(root, scrollView) ?: return true
+        val params = header.layoutParams ?: return true
+        val cached = headerLayoutCache.getOrPut(header) {
+            val baseHeight = params.height.takeIf { it > 0 }
+                ?: header.height.takeIf { it > 0 }
+                ?: header.measuredHeight.takeIf { it > 0 }
+                ?: return true
+            HeaderLayoutCache(baseHeight)
+        }
+        val targetHeight = (cached.baseHeight + persisted.offsetPx).coerceAtLeast(1)
+        if (params.height == targetHeight && header.height == targetHeight) return true
+        applyPosition(root, "pre-draw-cache", allowCalibration = false)
+        return false
     }
 
     private fun applyPosition(root: View?, source: String, allowCalibration: Boolean) {
@@ -98,7 +156,7 @@ internal object AboutMeBottomContentPositionHook {
             )
             return
         }
-        if (!appliedRoots.add(root)) return
+        // Repeated application is safe because both paths derive from cached host baselines.
         val cached = positionCache.getOrPut(scrollView) {
             PositionCache(scrollView.translationY)
         }

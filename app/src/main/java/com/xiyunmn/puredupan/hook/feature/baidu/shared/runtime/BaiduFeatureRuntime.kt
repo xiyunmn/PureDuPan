@@ -52,6 +52,15 @@ internal object BaiduFeatureRuntime {
     fun isIntlHost(context: Context): Boolean =
         HostRuntimeState.canonicalPackageNameOrSelf(context.packageName) == HostPackages.BAIDU_INTL
 
+    fun isDomesticFamilyHost(context: Context): Boolean {
+        return when (HostRuntimeState.canonicalPackageNameOrSelf(context.packageName)) {
+            HostPackages.BAIDU_CN,
+            HostPackages.BAIDU_SAMSUNG,
+            -> true
+            else -> false
+        }
+    }
+
     // 无 context 的当前宿主判定（DexKit resolver 层用）：基于当前进程包名规范化。
     // 供 shared resolver 隔离 intl 专属锚点，避免 feature 层直接 import host 层。
     fun isCurrentIntlHost(): Boolean =

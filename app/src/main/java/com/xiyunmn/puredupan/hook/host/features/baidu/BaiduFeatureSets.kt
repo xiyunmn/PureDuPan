@@ -162,6 +162,7 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_MEMBER_CARD_SIZE_HEIGHT_DP,
         FeatureKeys.KEY_MEMBER_CARD_DEFAULT_WIDTH_PX,
         FeatureKeys.KEY_MEMBER_CARD_DEFAULT_HEIGHT_PX,
+        FeatureKeys.KEY_MEMBER_CARD_DEFAULT_SIZE_SIGNATURE,
         FeatureKeys.KEY_REMOVE_MEMBER_CARD_CLICK,
         FeatureKeys.KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK,
     )

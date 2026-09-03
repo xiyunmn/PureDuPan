@@ -2,6 +2,7 @@ package com.xiyunmn.puredupan.hook.config.runtime
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 
@@ -65,7 +66,9 @@ internal object HookSettings {
     fun hasRecordedMemberCardDefaultSize(context: Context): Boolean {
         val prefs = ConfigManager.getModuleStatePrefs(context)
         return prefs.getInt(ConfigManager.KEY_MEMBER_CARD_DEFAULT_WIDTH_PX, 0) > 0 &&
-            prefs.getInt(ConfigManager.KEY_MEMBER_CARD_DEFAULT_HEIGHT_PX, 0) > 0
+            prefs.getInt(ConfigManager.KEY_MEMBER_CARD_DEFAULT_HEIGHT_PX, 0) > 0 &&
+            prefs.getString(ConfigManager.KEY_MEMBER_CARD_DEFAULT_SIZE_SIGNATURE, null) ==
+            memberCardDefaultSizeSignature(context)
     }
 
     fun recordMemberCardDefaultSize(context: Context, width: Int, height: Int) {
@@ -73,6 +76,10 @@ internal object HookSettings {
             .edit()
             .putInt(ConfigManager.KEY_MEMBER_CARD_DEFAULT_WIDTH_PX, width)
             .putInt(ConfigManager.KEY_MEMBER_CARD_DEFAULT_HEIGHT_PX, height)
+            .putString(
+                ConfigManager.KEY_MEMBER_CARD_DEFAULT_SIZE_SIGNATURE,
+                memberCardDefaultSizeSignature(context),
+            )
             .apply()
     }
 
@@ -80,6 +87,25 @@ internal object HookSettings {
         return ConfigManager.getModuleStatePrefs(context)
             .getInt(ConfigManager.KEY_MEMBER_CARD_DEFAULT_HEIGHT_PX, 0)
             .coerceAtLeast(0)
+    }
+
+    private fun memberCardDefaultSizeSignature(context: Context): String {
+        val metrics = context.resources.displayMetrics
+        val hostVersionCode = runCatching {
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                info.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                info.versionCode.toLong()
+            }
+        }.getOrDefault(0L)
+        return listOf(
+            context.packageName,
+            hostVersionCode,
+            metrics.density.toBits(),
+            metrics.widthPixels,
+        ).joinToString(":")
     }
 
     fun contentPositionCache(context: Context, signature: String): ContentPositionCache? {
