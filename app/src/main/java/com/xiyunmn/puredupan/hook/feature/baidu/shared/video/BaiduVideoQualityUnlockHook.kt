@@ -26,7 +26,8 @@ import java.lang.reflect.Method
  */
 object BaiduVideoQualityUnlockHook {
     private const val TAG = "BaiduVideoQualityUnlockHook"
-    private val hookState = HookState()
+    private val memberPrivilegeHookState = HookState()
+    private val videoPrivilegeHookState = HookState()
 
     private val PRIVILEGE_METHODS = listOf(
         BaiduVideoQualityHookPoints.PRIVILEGE_VIDEO_PLAY_HD_METHOD,
@@ -40,23 +41,58 @@ object BaiduVideoQualityUnlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!hookState.markInstalled()) return
 
-        var installed = 0
-        try {
-            installed += hookMemberPrivilegeQualityFlags(mod, cl)
-            installed += hookVideoPrivilegeQualityMethods(mod, cl)
+        val installed = installMemberPrivilegePath(mod, cl) +
+            installVideoPrivilegePath(mod, cl)
+        if (installed > 0) {
+            XposedCompat.log("[$TAG] hook INSTALLED newTargets=$installed")
+        } else if (!memberPrivilegeHookState.isInstalled() && !videoPrivilegeHookState.isInstalled()) {
+            XposedCompat.logW("[$TAG] no quality unlock targets found")
+        }
+    }
 
-            if (installed == 0) {
-                XposedCompat.logW("[$TAG] no quality unlock targets found")
-                hookState.reset()
-                return
+    private fun installMemberPrivilegePath(mod: XposedModule, cl: ClassLoader): Int {
+        if (!memberPrivilegeHookState.markInstalled()) return 0
+        return try {
+            hookMemberPrivilegeQualityFlags(mod, cl).also { count ->
+                if (count == 0) memberPrivilegeHookState.reset()
             }
-            XposedCompat.log("[$TAG] hook INSTALLED targets=$installed")
         } catch (e: Exception) {
-            hookState.reset()
-            XposedCompat.log("[$TAG] FAILED: ${e.message}")
+            memberPrivilegeHookState.reset()
+            XposedCompat.logW("[$TAG] MemberPrivilege path failed: ${e.message}")
             XposedCompat.log(e)
+            0
+        }
+    }
+
+    private fun installVideoPrivilegePath(mod: XposedModule, cl: ClassLoader): Int {
+        if (videoPrivilegeHookState.isInstalled()) return 0
+
+        val methods = try {
+            BaiduVideoQualityUnlockDexKitResolver.resolveVideoPrivilegeQualityMethods(cl)
+        } catch (e: Exception) {
+            XposedCompat.logW("[$TAG] VideoPrivilege path resolution failed: ${e.message}")
+            XposedCompat.log(e)
+            return 0
+        }
+        if (methods.isEmpty()) {
+            XposedCompat.logD(
+                "[$TAG] VideoPrivilege quality methods pending or unavailable " +
+                    "(MemberPrivilege quality flags cover the primary path)",
+            )
+            return 0
+        }
+        if (!videoPrivilegeHookState.markInstalled()) return 0
+
+        return try {
+            hookVideoPrivilegeQualityMethods(mod, methods).also { count ->
+                if (count == 0) videoPrivilegeHookState.reset()
+            }
+        } catch (e: Exception) {
+            videoPrivilegeHookState.reset()
+            XposedCompat.logW("[$TAG] VideoPrivilege path installation failed: ${e.message}")
+            XposedCompat.log(e)
+            0
         }
     }
 
@@ -92,15 +128,10 @@ object BaiduVideoQualityUnlockHook {
         return count
     }
 
-    private fun hookVideoPrivilegeQualityMethods(mod: XposedModule, cl: ClassLoader): Int {
-        val methods = BaiduVideoQualityUnlockDexKitResolver.resolveVideoPrivilegeQualityMethods(cl)
-        if (methods.isEmpty()) {
-            XposedCompat.logW(
-                "[$TAG] VideoPrivilege quality methods unresolved " +
-                    "(MemberPrivilege quality flags may still cover personal path)",
-            )
-            return 0
-        }
+    private fun hookVideoPrivilegeQualityMethods(
+        mod: XposedModule,
+        methods: List<Method>,
+    ): Int {
         var count = 0
         methods.forEach { method ->
             val label = when (method.name) {
