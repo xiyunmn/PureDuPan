@@ -37,7 +37,8 @@ internal class BaiduBottomBarThemeRefreshCompat(
         val tabContainer: Field,
         val skinData: Field,
         val homeFolded: Field?,
-        val getTabImageView: Method,
+        val getTabImageView: Method?,
+        val tabImageView: Field?,
         val pauseImageAnimation: Method,
         val setImageProgress: Method,
     )
@@ -328,7 +329,9 @@ internal class BaiduBottomBarThemeRefreshCompat(
     }
 
     private fun finishSelectedAnimation(selectedTab: View, resolved: Handles) {
-        val imageView = resolved.getTabImageView.invoke(selectedTab) ?: return
+        val imageView = resolved.getTabImageView?.invoke(selectedTab)
+            ?: resolved.tabImageView?.get(selectedTab)
+            ?: return
         resolved.pauseImageAnimation.invoke(imageView)
         resolved.setImageProgress.invoke(imageView, 1f)
     }
@@ -346,8 +349,17 @@ internal class BaiduBottomBarThemeRefreshCompat(
             BaiduBottomBarHookPoints.LOTTIE_RADIO_BUTTON,
             clazz.classLoader ?: error("MainActivity class loader unavailable"),
         ) ?: error("LottieRadioButton class not found")
-        val getTabImageView = requireNoArgMethod(lottieRadioButtonClass, "getImageView")
-        val imageViewClass = getTabImageView.returnType
+        val getTabImageView = findNoArgMethod(lottieRadioButtonClass, "getImageView")
+        val tabImageView = if (getTabImageView == null) {
+            requireUniqueFieldByTypeName(
+                lottieRadioButtonClass,
+                "com.airbnb.lottie.LottieAnimationView",
+                "LottieRadioButton image view",
+            )
+        } else {
+            null
+        }
+        val imageViewClass = getTabImageView?.returnType ?: requireNotNull(tabImageView).type
 
         return Handles(
             mainActivityClass = clazz,
@@ -364,6 +376,7 @@ internal class BaiduBottomBarThemeRefreshCompat(
             skinData = requireField(clazz, BaiduBottomBarHookPoints.SKIN_DATA_FIELD),
             homeFolded = homeFoldedFieldNames.firstNotNullOfOrNull { findField(clazz, it) },
             getTabImageView = getTabImageView,
+            tabImageView = tabImageView,
             pauseImageAnimation = requireNoArgMethod(imageViewClass, "pauseAnimation"),
             setImageProgress = findMethod(imageViewClass) { method ->
                 method.name == "setProgress" &&
@@ -397,6 +410,24 @@ internal class BaiduBottomBarThemeRefreshCompat(
 
     private fun requireField(clazz: Class<*>, name: String): Field =
         findField(clazz, name) ?: error("field $name not found")
+
+    private fun requireUniqueFieldByTypeName(
+        clazz: Class<*>,
+        typeName: String,
+        label: String,
+    ): Field {
+        val candidates = mutableListOf<Field>()
+        var current: Class<*>? = clazz
+        while (current != null) {
+            current.declaredFields
+                .filterTo(candidates) { field -> field.type.name == typeName }
+            current = current.superclass
+        }
+        if (candidates.size != 1) {
+            error("$label field count=${candidates.size}, expected=1")
+        }
+        return candidates.single().apply { isAccessible = true }
+    }
 
     private fun findField(clazz: Class<*>, name: String): Field? {
         var current: Class<*>? = clazz
