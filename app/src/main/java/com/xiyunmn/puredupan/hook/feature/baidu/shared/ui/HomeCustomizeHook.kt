@@ -12,7 +12,6 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
@@ -25,6 +24,7 @@ import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.lang.reflect.Proxy
+import java.lang.ref.WeakReference
 import java.util.ArrayList
 import java.util.Collections
 import java.util.WeakHashMap
@@ -1630,11 +1630,8 @@ object HomeCustomizeHook {
         if (group == null || verticalSaveGroups.containsKey(group)) return
         val rows = rowIdNames.mapNotNull { idName -> findHostView<View>(group, idName) }
         if (rows.isEmpty()) return
-        val rowHeightPx = group.layoutParams?.height?.takeIf { it > 0 }
-            ?: rows.firstNotNullOfOrNull { row ->
-                row.layoutParams?.height?.takeIf { it > 0 }
-            }
-            ?: return
+        // 新布局的行和容器均可为 WRAP_CONTENT。只给旧 MATCH_PARENT 行补原容器高度。
+        val originalGroupHeight = group.layoutParams?.height ?: ViewGroup.LayoutParams.WRAP_CONTENT
         val wrapper = LinearLayout(group.context).apply {
             orientation = LinearLayout.VERTICAL
             clipChildren = false
@@ -1642,16 +1639,20 @@ object HomeCustomizeHook {
         }
 
         rows.forEach { row ->
+            val height = HomeCardLayoutRules.rowHeight(
+                row.layoutParams?.height ?: ViewGroup.LayoutParams.WRAP_CONTENT,
+                originalGroupHeight,
+            )
             (row.parent as? ViewGroup)?.removeView(row)
-            row.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, rowHeightPx)
-            wrapper.addView(row)
-        }
-        innerIdNames.forEach { idName ->
-            findHostView<View>(wrapper, idName)?.let { inner ->
-                inner.layoutParams = inner.layoutParams.apply {
-                    width = ViewGroup.LayoutParams.MATCH_PARENT
+            row.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height)
+            innerIdNames.forEach { idName ->
+                findHostView<View>(row, idName)?.let { inner ->
+                    inner.layoutParams = inner.layoutParams.apply {
+                        width = ViewGroup.LayoutParams.MATCH_PARENT
+                    }
                 }
             }
+            wrapper.addView(row)
         }
         group.removeAllViews()
         group.addView(
@@ -1660,7 +1661,7 @@ object HomeCustomizeHook {
         )
         enforceWrapContentHeight(group)
         verticalSaveGroups[group] = true
-        verticalSaveRowHeights[group] = rowHeightPx
+        verticalSaveRowHeights[group] = rows.first().layoutParams.height
         group.scrollTo(0, 0)
         group.requestLayout()
     }
@@ -1672,27 +1673,23 @@ object HomeCustomizeHook {
         subscribeGroup: ViewGroup?,
     ) {
         if (contentArea == null || verticalSaveHeightGuards.containsKey(contentArea)) return
-        val observer = contentArea.viewTreeObserver
-        if (!observer.isAlive) {
-            contentArea.post { installSaveCardHeightGuard(contentArea, saveGroup, subscribeGroup) }
-            return
-        }
         verticalSaveHeightGuards[contentArea] = true
-        observer.addOnPreDrawListener(
-            ViewTreeObserver.OnPreDrawListener {
+        val saveReference = WeakReference(saveGroup)
+        val subscribeReference = WeakReference(subscribeGroup)
+        // 旧宿主切换 Tab 会改写此固定容器的高度；只在其布局变化时恢复自然测量。
+        contentArea.addOnLayoutChangeListener(
+            View.OnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
                 if (!isSaveCardVerticalLayoutEnabled() || HookSettings.isHomeSaveSectionHidden) {
-                    return@OnPreDrawListener true
+                    return@OnLayoutChangeListener
                 }
-                val changed = enforceWrapContentHeight(contentArea) or
-                    enforceWrapContentHeight(saveGroup) or
-                    enforceWrapContentHeight(subscribeGroup)
+                val changed = enforceWrapContentHeight(view) or
+                    enforceWrapContentHeight(saveReference.get()) or
+                    enforceWrapContentHeight(subscribeReference.get())
                 if (changed) {
-                    contentArea.requestLayout()
                     XposedCompat.logD(
-                        "[HomeCustomizeHook] save card height restored before draw",
+                        "[HomeCustomizeHook] save card natural height restored after host layout change",
                     )
                 }
-                !changed
             },
         )
     }
