@@ -1,5 +1,8 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -13,6 +16,8 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAboutMeHookPoints
+import java.lang.ref.WeakReference
+import java.lang.reflect.Method
 import java.util.Collections
 import java.util.WeakHashMap
 
@@ -45,6 +50,12 @@ internal object AboutMeBottomContentPositionHook {
         Collections.synchronizedMap(WeakHashMap())
     private val headerLayoutCache: MutableMap<View, HeaderLayoutCache> =
         Collections.synchronizedMap(WeakHashMap())
+    // The tab's views are reparented out of its Activity window. Keep the calibrated root,
+    // using a weak value as well as a weak key because the view's context holds the Activity.
+    private val domesticRoots: MutableMap<Activity, WeakReference<View>> =
+        Collections.synchronizedMap(WeakHashMap())
+    private val installedHeightRefreshMethods = mutableSetOf<Method>()
+
     fun hook(cl: ClassLoader) {
         val snapshot = HookSettings.settingsSnapshot()
         if (!isEnabled(snapshot)) {
@@ -88,6 +99,7 @@ internal object AboutMeBottomContentPositionHook {
             BaiduFeatureRuntime.isDomesticFamilyHost(root.context) &&
             snapshot.isMyPageContentAutoFollowMemberCardEnabled
         ) {
+            hookDomesticHeightRefresh(root.context.classLoader)
             scheduleDomesticCachedPositionApply(root)
             return
         }
@@ -96,6 +108,46 @@ internal object AboutMeBottomContentPositionHook {
             { applyPosition(root, "settled", allowCalibration = true) },
             APPLY_DELAY_MS,
         )
+    }
+
+    private fun hookDomesticHeightRefresh(cl: ClassLoader) {
+        val mod = XposedCompat.module ?: return
+        val centerConfig = XposedCompat.findClassOrNull(BaiduAboutMeHookPoints.CENTER_CONFIG, cl)
+        val targets = listOf(
+            Triple(BaiduAboutMeHookPoints.ABOUT_ME_ACTIVITY, "initTopUi", centerConfig),
+            Triple(
+                BaiduAboutMeHookPoints.NEW_ABOUT_ME_ACTIVITY,
+                "setPersonalCenterHeight",
+                Int::class.javaObjectType,
+            ),
+        )
+        for ((className, methodName, parameterType) in targets) {
+            val clazz = XposedCompat.findClassOrNull(className, cl) ?: continue
+            val method = parameterType?.let {
+                XposedCompat.findMethodOrNull(clazz, methodName, it)
+            }
+            if (method == null || method.returnType != Void.TYPE) {
+                XposedCompat.logW("[$TAG] native height refresh not found: $className.$methodName")
+                continue
+            }
+            if (method in installedHeightRefreshMethods) continue
+            mod.hook(method).intercept { chain ->
+                val result = chain.proceed()
+                val activity = chain.thisObject as? Activity
+                val root = activity?.let { domesticRoots[it]?.get() }
+                val snapshot = HookSettings.settingsSnapshot()
+                if (
+                    root?.isAttachedToWindow == true && isEnabled(snapshot) &&
+                    snapshot.isMyPageContentAutoFollowMemberCardEnabled
+                ) {
+                    // The host has requested layout but has not measured/drawn the reset height.
+                    // Reuse the original baseline, including when the same response is replayed.
+                    applyPosition(root, "native-height-refresh", allowCalibration = true)
+                }
+                result
+            }
+            installedHeightRefreshMethods += method
+        }
     }
 
     /**
@@ -207,6 +259,9 @@ internal object AboutMeBottomContentPositionHook {
             HeaderLayoutCache(baseHeight)
         }
         val targetHeight = (cached.baseHeight + offsetPx).coerceAtLeast(1)
+        if (BaiduFeatureRuntime.isDomesticFamilyHost(root.context)) {
+            findActivity(root.context)?.let { domesticRoots[it] = WeakReference(root) }
+        }
         if (params.height != targetHeight) {
             params.height = targetHeight
             header.layoutParams = params
@@ -363,6 +418,17 @@ internal object AboutMeBottomContentPositionHook {
         return if (id != 0) root.findViewById(id) else null
     }
 
+    private fun findActivity(context: Context): Activity? {
+        var current = context
+        while (current is ContextWrapper) {
+            if (current is Activity) return current
+            val base = current.baseContext
+            if (base === current) return null
+            current = base
+        }
+        return null
+    }
+
     private fun findDescendantByClassName(root: View, simpleName: String): View? {
         if (root.javaClass.name.endsWith(simpleName) && root.visibility == View.VISIBLE) return root
         if (root !is ViewGroup) return null
@@ -381,4 +447,5 @@ internal object AboutMeBottomContentPositionHook {
     }
 
     private fun dpToPx(dp: Int, density: Float): Int = (dp * density).toInt()
+
 }

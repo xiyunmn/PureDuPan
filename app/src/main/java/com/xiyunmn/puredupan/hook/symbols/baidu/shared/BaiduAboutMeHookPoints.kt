@@ -1,6 +1,9 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.shared
 
 internal object BaiduAboutMeHookPoints {
+    const val ABOUT_ME_ACTIVITY = "com.baidu.netdisk.ui.aboutme.AboutMeActivity"
+    const val NEW_ABOUT_ME_ACTIVITY = "com.baidu.netdisk.ui.aboutme.NewAboutMeActivity"
+    const val CENTER_CONFIG = "com.baidu.netdisk.ui.businessplatform.home.io.model.CenterConfig"
     const val NEW_MIDDLE_FRAGMENT = "com.baidu.netdisk.ui.aboutme.NewMiddleFragment"
     const val USER_TOP_FRAGMENT = "com.baidu.netdisk.ui.aboutme.view.UserTopFragment"
     const val ABOUT_ME_MIDDLE_FRAGMENT = "com.baidu.netdisk.ui.aboutme.view.AboutMeMiddleFragment"
