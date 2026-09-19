@@ -1,8 +1,8 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
-/** Keeps saved-history retries bounded and prevents duplicate work during home-card redraws. */
+/** Starts with no artificial delay; bounds readiness retries and coalesces native loading callbacks. */
 internal class SavedHistoryRetryState(
-    private val delaysMillis: LongArray = longArrayOf(500L, 1_500L, 4_000L),
+    private val delaysMillis: LongArray = longArrayOf(0L, 1_500L, 4_000L),
 ) {
     internal enum class Phase {
         IDLE,

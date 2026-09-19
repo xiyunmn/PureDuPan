@@ -11,7 +11,7 @@ class SavedHistoryRetryStateTest {
     fun retriesUseBoundedBackoff() {
         val state = SavedHistoryRetryState()
 
-        assertEquals(500L, state.scheduleNext())
+        assertEquals(0L, state.scheduleNext())
         assertTrue(state.beginScheduledAttempt())
         assertEquals(1_500L, state.markRetryableFailure())
         assertTrue(state.beginScheduledAttempt())
@@ -26,7 +26,7 @@ class SavedHistoryRetryStateTest {
     fun scheduledOrObservingRequestCannotBeDuplicated() {
         val state = SavedHistoryRetryState()
 
-        assertEquals(500L, state.scheduleNext())
+        assertEquals(0L, state.scheduleNext())
         assertNull(state.scheduleNext())
         assertTrue(state.beginScheduledAttempt())
         assertFalse(state.beginScheduledAttempt())

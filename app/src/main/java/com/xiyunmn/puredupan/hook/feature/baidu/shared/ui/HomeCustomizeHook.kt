@@ -28,6 +28,7 @@ import java.lang.ref.WeakReference
 import java.util.ArrayList
 import java.util.Collections
 import java.util.WeakHashMap
+import org.xmlpull.v1.XmlPullParser
 
 /**
  * 顶部 AI 控件移除 Hook。
@@ -53,14 +54,21 @@ object HomeCustomizeHook {
     private val recentLimitForCall = ThreadLocal<List<*>?>()
     private val verticalSaveGroups = Collections.synchronizedMap(WeakHashMap<ViewGroup, Boolean>())
     private val verticalSaveHeightGuards = Collections.synchronizedMap(WeakHashMap<View, Boolean>())
-    private val verticalSaveDynamicRows =
-        Collections.synchronizedMap(WeakHashMap<ViewGroup, MutableList<View>>())
-    private val verticalSaveRowHeights =
-        Collections.synchronizedMap(WeakHashMap<ViewGroup, Int>())
+    private val subscriptionItemsForCall = ThreadLocal<Pair<Class<*>, List<*>>?>()
+    private val publishingSavedHistory = ThreadLocal<Any?>()
+    private val savedRowBinders = mutableMapOf<Class<*>, Method?>()
+    private val subscriptionRowBinders = mutableMapOf<Class<*>, Pair<Method, Method>?>()
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val saveHistoryRequests =
-        Collections.synchronizedMap(WeakHashMap<Any, SavedHistoryRetryState>())
-    private val saveHistoryCache = Collections.synchronizedMap(WeakHashMap<Any, List<Any>>())
+    private val saveHistorySessions =
+        Collections.synchronizedMap(WeakHashMap<Any, SavedHistorySession>())
+
+    private class SavedHistorySession(val uid: String, val itemClass: Class<*>) {
+        var request = SavedHistoryRetryState()
+        var items: List<Any>? = HomeSavedHistoryCache.read(uid, itemClass)
+        var nativeItems: List<Any> = emptyList()
+        var nativeRevision = 0
+        var needsSnapshot = false
+    }
 
     internal fun hook(cl: ClassLoader) {
         if (!hasEnabledOption()) {
@@ -83,7 +91,7 @@ object HomeCustomizeHook {
             if (!usesIntlSaveCardImplementation()) {
                 installedCount += hookSaveCardVerticalLayout(cl)
             }
-            installedCount += hookHiddenFeedScrollContainer(cl)
+            installedCount += hookNativeFeedScrollRange(cl)
             installedCount += hookHomeStoryCardRenderEntry(cl)
             installedCount += hookHomeHeaderCardRenderEntries(cl)
             installedCount += hookFeedSettingTipRenderEntry(cl)
@@ -714,24 +722,13 @@ object HomeCustomizeHook {
             mod.hook(initView).intercept { chain ->
                 val result = chain.proceed()
                 if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
-                    applySaveCardVerticalLayout(chain.thisObject as? View)
+                    val card = chain.thisObject as? ViewGroup
+                    applySaveCardVerticalLayout(card)
+                    if (card != null) prepareVerticalSaveRows(card)
                 }
                 result
             }
-            clazz.declaredMethods.filter(::isSaveCardStateRenderMethod).forEach { method ->
-                method.isAccessible = true
-                mod.hook(method).intercept { chain ->
-                    val result = chain.proceed()
-                    if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
-                        applySaveCardVerticalLayout(
-                            cardView = chain.thisObject as? View,
-                            state = chain.args.firstOrNull(),
-                        )
-                    }
-                    result
-                }
-                count++
-            }
+            count += hookSaveCardStateRendering(mod, cl, clazz)
             groupClasses += className.replace(
                 ".ui.view.fragment.NewHomeSaveCardView",
                 ".ui.view.view.HorizontalScrollViewGroup",
@@ -744,6 +741,7 @@ object HomeCustomizeHook {
             cl = cl,
             viewModelClassNames = points.saveCardViewModelClassNames,
         )
+        count += hookSavedHistoryLoading(mod, cl, points.saveCardViewModelClassNames)
 
         groupClasses.forEach { className ->
             val clazz = XposedCompat.findClassOrNull(className, cl) ?: return@forEach
@@ -767,41 +765,72 @@ object HomeCustomizeHook {
         return count
     }
 
-    private fun hookHiddenFeedScrollContainer(cl: ClassLoader): Int {
+    private fun hookSaveCardStateRendering(
+        mod: io.github.libxposed.api.XposedModule,
+        cl: ClassLoader,
+        cardClass: Class<*>,
+    ): Int {
+        // 同一个 emit 内完成原生前三行与扩展行的绑定，不再 post 到下一轮消息。
+        // 已有强/弱混淆样本分别使用 $4$_ / $4$1，仍须验证持有者及 typed emit 签名。
+        for (suffix in BaiduHomeCardHookPoints.SAVE_STATE_COLLECTOR_SUFFIXES) {
+            val collector = XposedCompat.findClassOrNull(cardClass.name + suffix, cl) ?: continue
+            val owner = collector.declaredFields.singleOrNull {
+                !Modifier.isStatic(it.modifiers) && it.type == cardClass
+            }?.apply { isAccessible = true } ?: continue
+            val emit = collector.declaredMethods.singleOrNull {
+                !it.isBridge && it.name == "emit" && it.parameterTypes.size == 2 &&
+                    isSaveCardUiStateClass(it.parameterTypes[0]) &&
+                    it.parameterTypes[1].name == "kotlin.coroutines.Continuation"
+            }?.apply { isAccessible = true } ?: continue
+            mod.hook(emit).intercept { chain ->
+                val result = chain.proceed()
+                if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
+                    applySaveCardVerticalLayout(owner.get(chain.thisObject) as? View, chain.args[0])
+                }
+                result
+            }
+            return 1
+        }
+        // 未匹配到 collector 的旧版仍同步处理已验证的 State 渲染入口。
+        val methods = cardClass.declaredMethods.filter(::isSaveCardStateRenderMethod)
+        methods.forEach { method ->
+            method.isAccessible = true
+            mod.hook(method).intercept { chain ->
+                val result = chain.proceed()
+                if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
+                    applySaveCardVerticalLayout(chain.thisObject as? View, chain.args[0])
+                }
+                result
+            }
+        }
+        return methods.size
+    }
+
+    private fun hookNativeFeedScrollRange(cl: ClassLoader): Int {
         val saveEnabled = isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden
         if (!isRecentScrollRangeAdjustmentEnabled() && !saveEnabled) return 0
         if (!homeCustomizeHookPoints().supportsRecentScrollRangeAdjustment) return 0
         val mod = XposedCompat.module ?: return 0
-        var count = 0
+        val compat = HomeFeedScrollCompat.install(cl) ?: return 0
+        var count = 1
         homeCustomizeHookPoints().feedFragmentClassNames.distinct().forEach { className ->
             val clazz = XposedCompat.findClassOrNull(className, cl) ?: return@forEach
             val methods = clazz.declaredMethods.filter { method ->
-                method.name == BaiduHomeCardHookPoints.HIDE_FEED_LIST_METHOD &&
-                    method.returnType == Void.TYPE &&
-                    method.parameterTypes.size == 2 &&
-                    method.parameterTypes[0] == Boolean::class.javaPrimitiveType
+                method.returnType == Void.TYPE && (
+                    method.name == BaiduHomeCardHookPoints.HIDE_FEED_LIST_METHOD &&
+                        method.parameterTypes.size == 2 &&
+                        method.parameterTypes[0] == Boolean::class.javaPrimitiveType ||
+                    method.name == "onViewCreated" &&
+                        method.parameterTypes.contentEquals(arrayOf(View::class.java, Bundle::class.java))
+                    )
             }
             methods.forEach { method ->
                 method.isAccessible = true
                 mod.hook(method).intercept { chain ->
                     val result = chain.proceed()
-                    val feedVisible = chain.args.firstOrNull() as? Boolean ?: return@intercept result
                     val fragmentView = invokeNoArg(chain.thisObject, "getView") as? View
                         ?: return@intercept result
-                    val content = findHostView<View>(fragmentView, "stickyContentView")
-                        ?: return@intercept result
-                    val targetAlpha = if (feedVisible) 1f else 0f
-                    val stateChanged =
-                        content.alpha != targetAlpha || content.isEnabled != feedVisible
-                    content.visibility = View.VISIBLE
-                    if (content.alpha != targetAlpha) content.alpha = targetAlpha
-                    if (content.isEnabled != feedVisible) content.isEnabled = feedVisible
-                    if (stateChanged) {
-                        XposedCompat.logD(
-                            "[HomeCustomizeHook] hidden feed scroll container preserved: " +
-                                "feedVisible=$feedVisible, host=${clazz.name}",
-                        )
-                    }
+                    compat.attach(fragmentView)
                     result
                 }
                 count++
@@ -809,7 +838,7 @@ object HomeCustomizeHook {
         }
         if (count > 0) {
             XposedCompat.log(
-                "[HomeCustomizeHook] hidden feed scroll container hooks installed: count=$count",
+                "[HomeCustomizeHook] native feed scroll range hooks installed: count=$count",
             )
         }
         return count
@@ -844,6 +873,29 @@ object HomeCustomizeHook {
     ): Int {
         var count = 0
         viewModelClassNames.distinct().forEach { viewModelClassName ->
+            val stateClass = XposedCompat.findClassOrNull(
+                viewModelClassName.replace(".NewHomeSaveCardViewModel", ".SaveCardUiState"), cl,
+            )?.takeIf(::isSaveCardUiStateClass) ?: return@forEach
+            val copy = stateClass.declaredMethods.singleOrNull { method ->
+                !Modifier.isStatic(method.modifiers) && method.returnType == stateClass &&
+                    method.parameterTypes.size == 5 && method.parameterTypes[0].isEnum &&
+                    List::class.java.isAssignableFrom(method.parameterTypes[1]) &&
+                    List::class.java.isAssignableFrom(method.parameterTypes[2]) &&
+                    method.parameterTypes[3] == Boolean::class.javaPrimitiveType
+            }?.apply { isAccessible = true } ?: return@forEach
+            mod.hook(copy).intercept { chain ->
+                val batch = subscriptionItemsForCall.get()
+                val state = chain.args[0] as? Enum<*>
+                // 只扩展本次订阅响应创建的 LINK_UPDATE_DATA，保留推荐/错误状态及其他副作用。
+                if (batch?.first == stateClass && state?.name == "LINK_UPDATE_DATA") {
+                    val args = chain.args.toTypedArray()
+                    args[2] = batch.second
+                    chain.proceed(args)
+                } else {
+                    chain.proceed()
+                }
+            }
+            count++
             val observerClassName =
                 "$viewModelClassName\$updateCardInfo\$\$inlined\$observerOnlyOnce\$1"
             val observerClass = XposedCompat.findClassOrNull(observerClassName, cl) ?: run {
@@ -854,22 +906,23 @@ object HomeCustomizeHook {
             }
             observerClass.declaredMethods.filter { method ->
                 method.name == "onChanged" &&
+                    !method.isBridge &&
                     method.returnType == Void.TYPE &&
                     method.parameterTypes.size == 1
             }.forEach { method ->
                 method.isAccessible = true
                 mod.hook(method).intercept { chain ->
-                    val result = chain.proceed()
-                    if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
-                        expandSaveCardUpdateState(
-                            observer = chain.thisObject,
-                            result = chain.args.firstOrNull(),
-                        )
-                        findSaveCardViewModel(chain.thisObject)?.let { viewModel ->
-                            expandSavedItems(viewModel, cl)
-                        }
+                    val previous = subscriptionItemsForCall.get()
+                    val items = if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
+                        readSubscriptionResponse(chain.args.firstOrNull())
+                    } else null
+                    subscriptionItemsForCall.set(items?.let { stateClass to it })
+                    try {
+                        chain.proceed()
+                    } finally {
+                        if (previous == null) subscriptionItemsForCall.remove()
+                        else subscriptionItemsForCall.set(previous)
                     }
-                    result
                 }
                 count++
             }
@@ -907,23 +960,55 @@ object HomeCustomizeHook {
                 items = subscriptionItems,
                 isSubscription = true,
             )
-            findSaveCardViewModel(cardView)?.let { viewModel ->
-                val classLoader = cardView.javaClass.classLoader
-                if (classLoader != null) expandSavedItems(viewModel, classLoader)
-            } ?: XposedCompat.logD(
-                "[HomeCustomizeHook] save card view model unavailable: ${cardView.javaClass.name}",
-            )
         }
         enforceWrapContentHeight(contentArea)
         installSaveCardHeightGuard(contentArea, saveGroup, subscribeGroup)
-        if (
-            saveGroup != null && verticalSaveGroups.containsKey(saveGroup) ||
-            subscribeGroup != null && verticalSaveGroups.containsKey(subscribeGroup)
-        ) {
-            XposedCompat.logD(
-                "[HomeCustomizeHook] save card vertical layout applied: ${cardView.javaClass.name}",
-            )
+    }
+
+    private fun prepareVerticalSaveRows(card: ViewGroup) {
+        val limit = HookSettings.homeSaveItemLimit.coerceIn(1, 10)
+        for (subscription in listOf(false, true)) {
+            val group = findHostView<ViewGroup>(
+                card, if (subscription) "linkHorizontalScrollView" else "horizontalScrollView",
+            ) ?: continue
+            val wrapper = group.getChildAt(0) as? VerticalSaveRows ?: continue
+            // 构造函数的 initView 返回后、initObserver 首次收集前预建，隐藏行不占高度。
+            for (index in 3 until limit) {
+                if (obtainExtraSaveRow(card, wrapper, index, subscription) == null) break
+            }
         }
+    }
+
+    private fun obtainExtraSaveRow(
+        card: ViewGroup, wrapper: VerticalSaveRows, index: Int, subscription: Boolean,
+    ): SaveRow? {
+        wrapper.extraRows.getOrNull(index - 3)?.let { return it }
+        if (wrapper.extraRows.size != index - 3) return null
+        val row = inflateSaveCardRow(card, wrapper, subscription) ?: return null
+        row.tag = index.toString()
+        row.visibility = View.GONE
+        row.layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            HomeCardLayoutRules.rowHeight(row.layoutParams.height, wrapper.rowHeight),
+        )
+        return SaveRow(row).also {
+            wrapper.addView(row)
+            wrapper.extraRows.add(it)
+        }
+    }
+
+    private class VerticalSaveRows(context: Context, val rowHeight: Int) : LinearLayout(context) {
+        val extraRows = mutableListOf<SaveRow>()
+
+        init {
+            orientation = VERTICAL
+        }
+    }
+
+    private class SaveRow(val view: View) {
+        var item: Any? = null
+        var itemHash: Int = 0
+        var subscriptionBinding: Any? = null
     }
 
     private fun updateVerticalSaveRows(
@@ -933,10 +1018,7 @@ object HomeCustomizeHook {
         isSubscription: Boolean,
     ) {
         if (group == null || !verticalSaveGroups.containsKey(group)) return
-        val wrapper = group.getChildAt(0) as? LinearLayout ?: return
-        verticalSaveDynamicRows.remove(group)?.forEach { row ->
-            (row.parent as? ViewGroup)?.removeView(row)
-        }
+        val wrapper = group.getChildAt(0) as? VerticalSaveRows ?: return
 
         val limit = HookSettings.homeSaveItemLimit.coerceIn(1, 10)
         val visibleCount = minOf(limit, items.size)
@@ -944,36 +1026,38 @@ object HomeCustomizeHook {
             wrapper.getChildAt(index).visibility = if (index < visibleCount) View.VISIBLE else View.GONE
         }
 
-        val dynamicRows = mutableListOf<View>()
+        // 行由 wrapper 持有，随宿主 View 树释放；缩短列表只隐藏，恢复时复用。
+        // 不在 WeakHashMap 的 value 内持有子 View，以免经 parent 反向强引用 key。
         for (index in 3 until visibleCount) {
             val item = items[index] ?: continue
-            val row = inflateSaveCardRow(cardView, isSubscription) ?: break
-            row.tag = index.toString()
-            row.layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                verticalSaveRowHeights[group]
-                    ?: wrapper.getChildAt(0).layoutParams.height,
-            )
-            val bound = if (isSubscription) {
-                bindSubscriptionRow(cardView, row, item)
-            } else {
-                bindSavedRow(cardView, row, item)
+            val holder = obtainExtraSaveRow(cardView, wrapper, index, isSubscription) ?: return
+            val hash = item.hashCode()
+            if (holder.item !== item || holder.itemHash != hash) {
+                val bound = if (isSubscription) {
+                    bindSubscriptionRow(cardView, holder, item)
+                } else {
+                    bindSavedRow(cardView, holder.view, item)
+                }
+                if (!bound) {
+                    holder.view.visibility = View.GONE
+                    continue
+                }
+                holder.item = item
+                holder.itemHash = hash
             }
-            if (!bound) break
-            wrapper.addView(row)
-            dynamicRows += row
+            holder.view.visibility = View.VISIBLE
         }
-        if (dynamicRows.isNotEmpty()) {
-            verticalSaveDynamicRows[group] = dynamicRows
-        }
-        group.requestLayout()
-        XposedCompat.logD {
-            "[HomeCustomizeHook] save card rows updated: " +
-                "subscription=$isSubscription, source=${items.size}, visible=$visibleCount"
+        wrapper.extraRows.drop((visibleCount - 3).coerceAtLeast(0)).forEach { holder ->
+            holder.view.visibility = View.GONE
+            holder.item = null
         }
     }
 
-    private fun inflateSaveCardRow(cardView: ViewGroup, isSubscription: Boolean): View? {
+    private fun inflateSaveCardRow(
+        cardView: ViewGroup,
+        wrapper: ViewGroup,
+        isSubscription: Boolean,
+    ): View? {
         val layoutName = when {
             cardView.javaClass.name.contains(".guest25ai.") -> "guest_home25ai_fragment_feed_save"
             cardView.javaClass.name.contains(".home25ai.") -> "home25ai_fragment_feed_save"
@@ -985,21 +1069,39 @@ object HomeCustomizeHook {
             cardView.context.packageName,
         )
         if (layoutId == 0) return null
-        val template = LayoutInflater.from(cardView.context).inflate(layoutId, null, false)
-        val rowId = if (isSubscription) "link_root_one_layout" else "root_one_layout"
-        val row = findHostView<View>(template, rowId) ?: return null
-        (row.parent as? ViewGroup)?.removeView(row)
-        row.visibility = View.VISIBLE
-        return row
+        val groupName = if (isSubscription) "linkHorizontalScrollView" else "horizontalScrollView"
+        val rowName = if (isSubscription) "link_root_one_layout" else "root_one_layout"
+        val groupId = cardView.resources.getIdentifier(groupName, "id", cardView.context.packageName)
+        val rowId = cardView.resources.getIdentifier(rowName, "id", cardView.context.packageName)
+        if (groupId == 0 || rowId == 0) return null
+        return runCatching {
+            cardView.resources.getLayout(layoutId).use { parser ->
+                while (parser.next() != XmlPullParser.END_DOCUMENT) {
+                    if (parser.eventType != XmlPullParser.START_TAG ||
+                        parser.getAttributeResourceValue("http://schemas.android.com/apk/res/android", "id", 0) != groupId
+                    ) continue
+                    // LayoutInflater 从 next START_TAG 开始：停在横向容器起始标签，
+                    // 只 inflate 其第一个原生行（包括订阅的 include），不创建整张卡片。
+                    val row = LayoutInflater.from(cardView.context).inflate(parser, wrapper, false)
+                    return@use row.takeIf { it.id == rowId }
+                }
+                null
+            }
+        }.getOrElse {
+            XposedCompat.logW("[HomeCustomizeHook] inflate native save row failed: ${it.message}")
+            null
+        }
     }
 
     private fun bindSavedRow(cardView: ViewGroup, row: View, item: Any): Boolean {
-        val method = cardView.javaClass.declaredMethods.firstOrNull { candidate ->
-            candidate.returnType == Void.TYPE &&
-                candidate.parameterTypes.size == 7 &&
-                candidate.parameterTypes[0].name.endsWith(".UIConstraintLayout") &&
-                candidate.parameterTypes[6].isInstance(item)
-        }?.apply { isAccessible = true } ?: return false
+        val method = savedRowBinders.getOrPut(cardView.javaClass) {
+            cardView.javaClass.declaredMethods.firstOrNull { candidate ->
+                candidate.returnType == Void.TYPE &&
+                    candidate.parameterTypes.size == 7 &&
+                    candidate.parameterTypes[0].name.endsWith(".UIConstraintLayout") &&
+                    candidate.parameterTypes[6].isInstance(item)
+            }?.apply { isAccessible = true }
+        } ?: return false
         val constraint = findHostView<View>(row, "fh_cl_one") ?: return false
         val args = arrayOf(
             constraint,
@@ -1013,8 +1115,10 @@ object HomeCustomizeHook {
         return runCatching {
             method.invoke(cardView, *args)
             constraint.setOnClickListener { openSavedItem(cardView, item) }
-            constraint.layoutParams = constraint.layoutParams.apply {
-                width = ViewGroup.LayoutParams.MATCH_PARENT
+            if (constraint.layoutParams.width != ViewGroup.LayoutParams.MATCH_PARENT) {
+                constraint.layoutParams = constraint.layoutParams.apply {
+                    width = ViewGroup.LayoutParams.MATCH_PARENT
+                }
             }
             true
         }.getOrElse { error ->
@@ -1023,26 +1127,33 @@ object HomeCustomizeHook {
         }
     }
 
-    private fun bindSubscriptionRow(cardView: ViewGroup, row: View, item: Any): Boolean {
-        val method = cardView.javaClass.declaredMethods.firstOrNull { candidate ->
-            candidate.returnType == Void.TYPE &&
-                candidate.parameterTypes.size == 2 &&
-                candidate.parameterTypes[0].name.endsWith(".SubscribeToUpdatesLayoutBinding") &&
-                candidate.parameterTypes[1].isInstance(item)
-        }?.apply { isAccessible = true } ?: return false
+    private fun bindSubscriptionRow(cardView: ViewGroup, holder: SaveRow, item: Any): Boolean {
+        val methods = subscriptionRowBinders.getOrPut(cardView.javaClass) {
+            val method = cardView.javaClass.declaredMethods.firstOrNull { candidate ->
+                candidate.returnType == Void.TYPE &&
+                    candidate.parameterTypes.size == 2 &&
+                    candidate.parameterTypes[0].name.endsWith(".SubscribeToUpdatesLayoutBinding") &&
+                    candidate.parameterTypes[1].isInstance(item)
+            }?.apply { isAccessible = true } ?: return@getOrPut null
+            val bindingType = method.parameterTypes[0]
+            val bind = bindingType.declaredMethods.firstOrNull { candidate ->
+                Modifier.isStatic(candidate.modifiers) && candidate.returnType == bindingType &&
+                    candidate.parameterTypes.contentEquals(arrayOf(View::class.java))
+            }?.apply { isAccessible = true } ?: return@getOrPut null
+            method to bind
+        } ?: return false
+        val row = holder.view
         val updateRoot = findHostView<View>(row, "update_root") ?: return false
-        val bindingType = method.parameterTypes[0]
-        val bindMethod = bindingType.declaredMethods.firstOrNull { candidate ->
-            Modifier.isStatic(candidate.modifiers) &&
-                candidate.returnType == bindingType &&
-                candidate.parameterTypes.contentEquals(arrayOf(View::class.java))
-        }?.apply { isAccessible = true } ?: return false
         return runCatching {
-            val binding = bindMethod.invoke(null, updateRoot)
-            method.invoke(cardView, binding, item)
+            val binding = holder.subscriptionBinding ?: methods.second.invoke(null, updateRoot).also {
+                holder.subscriptionBinding = it
+            }
+            methods.first.invoke(cardView, binding, item)
             (cardView as? View.OnClickListener)?.let(row::setOnClickListener)
-            updateRoot.layoutParams = updateRoot.layoutParams.apply {
-                width = ViewGroup.LayoutParams.MATCH_PARENT
+            if (updateRoot.layoutParams.width != ViewGroup.LayoutParams.MATCH_PARENT) {
+                updateRoot.layoutParams = updateRoot.layoutParams.apply {
+                    width = ViewGroup.LayoutParams.MATCH_PARENT
+                }
             }
             true
         }.getOrElse { error ->
@@ -1097,112 +1208,135 @@ object HomeCustomizeHook {
         return field.get(state) as? List<*> ?: emptyList<Any>()
     }
 
-    private fun expandSaveCardUpdateState(observer: Any?, result: Any?) {
-        if (observer == null || result == null) return
-        runCatching {
-            val response = invokeNoArg(result, "getData") ?: return
-            val info = invokeNoArg(response, "getData") ?: return
-            val source = invokeNoArg(info, "getData") as? List<*> ?: return
-            val limited = source.filter { item ->
+    private fun readSubscriptionResponse(result: Any?): List<*>? {
+        if (result == null) return null
+        return runCatching {
+            val response = invokeNoArg(result, "getData") ?: return null
+            val info = invokeNoArg(response, "getData") ?: return null
+            val source = invokeNoArg(info, "getData") as? List<*> ?: return null
+            source.filter { item ->
                 val status = item?.let { invokeNoArg(it, "getStatus") } as? Number
                 status?.toInt() == 0
             }.take(HookSettings.homeSaveItemLimit.coerceIn(1, 10))
-
-            val viewModel = observer.javaClass.declaredFields.firstNotNullOfOrNull { field ->
-                field.isAccessible = true
-                field.get(observer)?.takeIf { value ->
-                    value.javaClass.name.endsWith(".NewHomeSaveCardViewModel")
-                }
-            } ?: return
-            val stateFlow = viewModel.javaClass.declaredFields.firstNotNullOfOrNull { field ->
-                field.isAccessible = true
-                val value = field.get(viewModel) ?: return@firstNotNullOfOrNull null
-                val current = invokeNoArg(value, "getValue") ?: return@firstNotNullOfOrNull null
-                value.takeIf { current.javaClass.name.endsWith(".SaveCardUiState") }
-            } ?: return
-            val current = invokeNoArg(stateFlow, "getValue") ?: return
-            val currentUpdates = readSaveCardStateList(current, ".UpdatedDataInfo")
-            if (currentUpdates == limited) return
-            val copy = current.javaClass.declaredMethods.firstOrNull { method ->
-                !Modifier.isStatic(method.modifiers) &&
-                    method.returnType == current.javaClass &&
-                    method.parameterTypes.size == 5 &&
-                    List::class.java.isAssignableFrom(method.parameterTypes[1]) &&
-                    List::class.java.isAssignableFrom(method.parameterTypes[2]) &&
-                    method.parameterTypes[3] == Boolean::class.javaPrimitiveType
-            }?.apply { isAccessible = true } ?: return
-            val fields = current.javaClass.declaredFields.onEach { it.isAccessible = true }
-            val stateValue = fields.first { copy.parameterTypes[0].isAssignableFrom(it.type) }.get(current)
-            val saveList = readSaveCardStateList(current, ".SavedDataInfo")
-            val hasMore = fields.first { it.type == Boolean::class.javaPrimitiveType }.getBoolean(current)
-            val extraInfo = fields.firstOrNull { field ->
-                !Modifier.isStatic(field.modifiers) &&
-                    copy.parameterTypes[4].isAssignableFrom(field.type)
-            }?.get(current)
-            val expandedState = copy.invoke(
-                current,
-                stateValue,
-                saveList,
-                limited,
-                hasMore,
-                extraInfo,
-            )
-            val setValue = stateFlow.javaClass.methods.firstOrNull { method ->
-                method.name == "setValue" && method.parameterTypes.size == 1
-            } ?: return
-            setValue.invoke(stateFlow, expandedState)
-            XposedCompat.logD {
-                "[HomeCustomizeHook] subscription state expanded: " +
-                    "source=${source.size}, visible=${limited.size}"
-            }
-        }.onFailure { error ->
-            XposedCompat.logW(
-                "[HomeCustomizeHook] expand subscription state failed: ${error.message}",
-            )
-        }
+        }.getOrNull()
     }
 
-    private fun expandSavedItems(viewModel: Any, cl: ClassLoader) {
-        val stateFlow = findSaveCardStateFlow(viewModel) ?: run {
-            XposedCompat.logD(
-                "[HomeCustomizeHook] save card state flow unavailable: ${viewModel.javaClass.name}",
-            )
-            return
-        }
-        val current = invokeNoArg(stateFlow, "getValue") ?: return
-        val currentSaveList = readSaveCardStateList(current, ".SavedDataInfo")
-        val limit = HookSettings.homeSaveItemLimit.coerceIn(1, 10)
-        if (currentSaveList.size >= limit) return
-
-        saveHistoryCache[viewModel]?.let { cached ->
-            updateSaveCardStateSaveList(stateFlow, cached.take(limit))
-            return
-        }
-        val requestState = synchronized(saveHistoryRequests) {
-            saveHistoryRequests.getOrPut(viewModel) { SavedHistoryRetryState() }
-        }
-        scheduleSavedHistoryAttempt(viewModel, cl, requestState)
-    }
-
-    private fun scheduleSavedHistoryAttempt(
-        viewModel: Any,
+    private fun hookSavedHistoryLoading(
+        mod: io.github.libxposed.api.XposedModule,
         cl: ClassLoader,
-        requestState: SavedHistoryRetryState,
-    ) {
-        val delayMillis = synchronized(requestState) { requestState.scheduleNext() } ?: return
-        postSavedHistoryAttempt(viewModel, cl, requestState, delayMillis)
+        viewModelClassNames: List<String>,
+    ): Int {
+        var count = 0
+        viewModelClassNames.distinct().forEach { name ->
+            val clazz = XposedCompat.findClassOrNull(name, cl) ?: return@forEach
+            val setList = XposedCompat.findMethodOrNull(
+                clazz, "setListData", Boolean::class.javaPrimitiveType!!, List::class.java,
+            ) ?: return@forEach
+            mod.hook(setList).intercept { chain ->
+                val viewModel = chain.thisObject ?: return@intercept chain.proceed()
+                if (publishingSavedHistory.get() === viewModel) return@intercept chain.proceed()
+                val nativeItems = chain.args[1] as? List<*> ?: return@intercept chain.proceed()
+                val expanded = if (isSavedHistoryExpansionEnabled()) {
+                    runCatching { prepareSavedList(viewModel, cl, nativeItems) }.getOrNull()
+                } else null
+                val result = if (expanded != null) {
+                    chain.proceed(chain.args.toTypedArray().apply { this[1] = expanded })
+                } else chain.proceed()
+                startSavedHistory(viewModel, cl)
+                result
+            }
+            count++
+            // cacheHomeSaveCard 在 initView 内、首个 collector 启动前执行。
+            // homeSaveCardInfo 是账号/首页稍后才就绪时的数据层兜底，不依赖任何渲染回调。
+            listOf("cacheHomeSaveCard", "homeSaveCardInfo").forEach { methodName ->
+                val method = XposedCompat.findMethodOrNull(clazz, methodName) ?: return@forEach
+                mod.hook(method).intercept { chain ->
+                    val result = chain.proceed()
+                    chain.thisObject?.let { startSavedHistory(it, cl, methodName == "homeSaveCardInfo") }
+                    result
+                }
+                count++
+            }
+        }
+        return count
+    }
+
+    private fun isSavedHistoryExpansionEnabled(): Boolean =
+        isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden &&
+            HookSettings.homeSaveItemLimit > 3
+
+    private fun savedHistorySession(viewModel: Any, cl: ClassLoader): SavedHistorySession {
+        val uid = resolveAccountCredentials(cl).uid
+        return synchronized(saveHistorySessions) {
+            saveHistorySessions[viewModel]?.takeIf { it.uid == uid } ?: run {
+                val itemClass = XposedCompat.findClassOrNull(
+                    viewModel.javaClass.name.replace(
+                        ".ui.viewmodels.NewHomeSaveCardViewModel", ".logic.model.SavedDataInfo",
+                    ), cl,
+                ) ?: throw SavedHistoryNotReadyException("saved item class unavailable")
+                SavedHistorySession(uid, itemClass).also { saveHistorySessions[viewModel] = it }
+            }
+        }
+    }
+
+    private fun prepareSavedList(viewModel: Any, cl: ClassLoader, source: List<*>): List<Any>? {
+        val session = savedHistorySession(viewModel, cl)
+        if (source.any { !session.itemClass.isInstance(it) }) return null
+        val native = source.filterNotNull().take(10)
+        if (session.nativeItems != native) session.nativeRevision++
+        session.nativeItems = native
+        val expanded = session.items?.let {
+            HomeSavedHistoryCache.extend(session.nativeItems, it, HookSettings.homeSaveItemLimit)
+        }
+        if (expanded != null) {
+            saveHistorySnapshot(session, expanded)
+        } else if (session.request.phase == SavedHistoryRetryState.Phase.COMPLETE) {
+            // 原生新记录与已完成请求的前缀不同，下一次原生刷新可重新取完整列表。
+            session.request = SavedHistoryRetryState()
+        }
+        return expanded
+    }
+
+    private fun saveHistorySnapshot(session: SavedHistorySession, items: List<Any>) {
+        if (!session.needsSnapshot) return
+        session.needsSnapshot = false
+        HomeSavedHistoryCache.write(session.uid, session.itemClass, items)
+    }
+
+    private fun startSavedHistory(viewModel: Any, cl: ClassLoader, refresh: Boolean = false) {
+        if (!isSavedHistoryExpansionEnabled()) return
+        runCatching {
+            val session = savedHistorySession(viewModel, cl)
+            if (refresh && (session.request.phase == SavedHistoryRetryState.Phase.COMPLETE ||
+                    session.request.phase == SavedHistoryRetryState.Phase.TERMINAL)
+            ) session.request = SavedHistoryRetryState()
+            val requestState = session.request
+            val delayMillis = synchronized(requestState) { requestState.scheduleNext() } ?: return
+            postSavedHistoryAttempt(viewModel, cl, session, requestState, delayMillis)
+        }.onFailure {
+            // 账号未就绪时交由后续原生加载入口重试；不从 render 路径轮询。
+            XposedCompat.logD(
+                "[HomeCustomizeHook] early saved history unavailable: ${it.javaClass.simpleName}",
+            )
+        }
     }
 
     private fun postSavedHistoryAttempt(
         viewModel: Any,
         cl: ClassLoader,
+        session: SavedHistorySession,
         requestState: SavedHistoryRetryState,
         delayMillis: Long,
     ) {
+        val reference = WeakReference(viewModel)
         mainHandler.postDelayed(
             {
+                val model = reference.get() ?: return@postDelayed
+                if (!isSavedHistoryExpansionEnabled() || saveHistorySessions[model] !== session ||
+                    session.request !== requestState
+                ) return@postDelayed
                 if (!synchronized(requestState) { requestState.beginScheduledAttempt() }) return@postDelayed
-                requestSavedHistory(viewModel, cl, requestState)
+                requestSavedHistory(model, cl, session, requestState)
             },
             delayMillis,
         )
@@ -1211,22 +1345,16 @@ object HomeCustomizeHook {
     private fun requestSavedHistory(
         viewModel: Any,
         cl: ClassLoader,
+        session: SavedHistorySession,
         requestState: SavedHistoryRetryState,
     ) {
         runCatching {
-            val stateFlow = findSaveCardStateFlow(viewModel)
-                ?: throw SavedHistoryNotReadyException("save card state unavailable")
-            val current = invokeNoArg(stateFlow, "getValue")
-                ?: throw SavedHistoryNotReadyException("save card state value unavailable")
-            val currentSaveList = readSaveCardStateList(current, ".SavedDataInfo")
             val limit = HookSettings.homeSaveItemLimit.coerceIn(1, 10)
-            if (currentSaveList.size >= limit) {
-                synchronized(requestState) { requestState.markComplete() }
+            val credentials = resolveAccountCredentials(cl)
+            if (credentials.uid != session.uid) {
+                synchronized(requestState) { requestState.markTerminal() }
                 return
             }
-            val targetItemClass = currentSaveList.firstNotNullOfOrNull { it?.javaClass }
-                ?: throw SavedHistoryNotReadyException("saved item target class unavailable")
-            val credentials = resolveAccountCredentials(cl)
             val context = HookSettings.appContext()?.applicationContext
                 ?: throw SavedHistoryNotReadyException("host application context unavailable")
             val evidenceClass = XposedCompat.findClassOrNull(
@@ -1249,8 +1377,8 @@ object HomeCustomizeHook {
                     liveData = liveData,
                     cl = cl,
                     viewModel = viewModel,
-                    stateFlow = stateFlow,
-                    targetItemClass = targetItemClass,
+                    session = session,
+                    nativeRevision = session.nativeRevision,
                     limit = limit,
                     requestState = requestState,
                 )
@@ -1269,7 +1397,7 @@ object HomeCustomizeHook {
                         "[HomeCustomizeHook] saved history not ready: ${error.message}; " +
                             "retry=${requestState.attemptCount + 1}",
                     )
-                    postSavedHistoryAttempt(viewModel, cl, requestState, retryDelay)
+                    postSavedHistoryAttempt(viewModel, cl, session, requestState, retryDelay)
                 } else {
                     synchronized(requestState) { requestState.markTerminal() }
                     XposedCompat.logW(
@@ -1289,8 +1417,8 @@ object HomeCustomizeHook {
         liveData: Any,
         cl: ClassLoader,
         viewModel: Any,
-        stateFlow: Any,
-        targetItemClass: Class<*>,
+        session: SavedHistorySession,
+        nativeRevision: Int,
         limit: Int,
         requestState: SavedHistoryRetryState,
     ): Boolean {
@@ -1303,11 +1431,30 @@ object HomeCustomizeHook {
         val removeObserver = liveData.javaClass.methods.firstOrNull { method ->
             method.name == "removeObserver" &&
                 method.parameterTypes.contentEquals(arrayOf(observerClass))
-        }
+        } ?: return false
+        val reference = WeakReference(viewModel)
         lateinit var observer: Any
+        val timeout = Runnable {
+            runCatching { removeObserver.invoke(liveData, observer) }
+            synchronized(requestState) { requestState.markTerminal() }
+        }
+        fun detach() {
+            mainHandler.removeCallbacks(timeout)
+            removeObserver.invoke(liveData, observer)
+        }
         val handler = InvocationHandler { proxy, method, args ->
             when (method.name) {
                 "onChanged" -> {
+                    val model = reference.get()
+                    val currentAccount = runCatching { resolveAccountCredentials(cl).uid }.getOrNull()
+                    if (!isSavedHistoryExpansionEnabled() || model == null ||
+                        saveHistorySessions[model] !== session || session.request !== requestState ||
+                        currentAccount != session.uid
+                    ) {
+                        detach()
+                        synchronized(requestState) { requestState.markTerminal() }
+                        return@InvocationHandler null
+                    }
                     val result = args?.firstOrNull()
                     val response = result?.let { invokeNoArg(it, "getData") }
                     val info = response?.let { invokeNoArg(it, "getData") }
@@ -1315,7 +1462,7 @@ object HomeCustomizeHook {
                     if (history == null) {
                         val resultName = result?.javaClass?.simpleName.orEmpty()
                         if (resultName != "Operating" && resultName.isNotEmpty()) {
-                            removeObserver?.invoke(liveData, observer)
+                            detach()
                             synchronized(requestState) { requestState.markTerminal() }
                             XposedCompat.logW(
                                 "[HomeCustomizeHook] full saved history failed: state=$resultName",
@@ -1323,21 +1470,26 @@ object HomeCustomizeHook {
                         }
                         return@InvocationHandler null
                     }
-                    removeObserver?.invoke(liveData, observer)
-                    val mapped = history.orEmpty().mapNotNull { source ->
-                        source?.let { mapSavedHistoryItem(it, targetItemClass) }
-                    }.take(limit)
-                    if (mapped.isNotEmpty()) {
-                        saveHistoryCache[viewModel] = mapped
-                        updateSaveCardStateSaveList(stateFlow, mapped)
-                        XposedCompat.logD(
-                            "[HomeCustomizeHook] full saved history applied: " +
-                                "source=${history.size}, visible=${mapped.size}",
+                    detach()
+                    runCatching {
+                        val source = history.take(limit)
+                        val mapped = source.mapNotNull { item ->
+                            item?.let { mapSavedHistoryItem(it, session.itemClass) }
+                        }
+                        // 不能把部分映射成功误当成完整列表，也不让旧账号回调写入当前状态。
+                        if (mapped.size != source.size) return@runCatching
+                        session.items = mapped
+                        session.needsSnapshot = true
+                        val expanded = HomeSavedHistoryCache.refreshed(
+                            session.nativeItems, mapped, limit, session.nativeRevision == nativeRevision,
                         )
-                    } else {
+                        if (expanded != null) {
+                            saveHistorySnapshot(session, expanded)
+                            publishSavedHistory(model, expanded)
+                        }
+                    }.onFailure {
                         XposedCompat.logW(
-                            "[HomeCustomizeHook] full saved history mapping produced no items: " +
-                                "source=${history.size}",
+                            "[HomeCustomizeHook] saved history apply failed: ${it.javaClass.simpleName}",
                         )
                     }
                     synchronized(requestState) { requestState.markComplete() }
@@ -1354,28 +1506,18 @@ object HomeCustomizeHook {
             arrayOf(observerClass),
             handler,
         )
-        observeForever.invoke(liveData, observer)
+        mainHandler.postDelayed(timeout, 15_000L)
+        try {
+            observeForever.invoke(liveData, observer)
+        } catch (error: Throwable) {
+            detach()
+            throw error
+        }
         return true
     }
 
     private fun mapSavedHistoryItem(source: Any, targetClass: Class<*>): Any? {
-        runCatching {
-            val classLoader = targetClass.classLoader ?: return@runCatching null
-            val gsonClass = XposedCompat.findClassOrNull(BaiduHomeCardHookPoints.GSON, classLoader)
-                ?: return@runCatching null
-            val gson = gsonClass.getDeclaredConstructor().newInstance()
-            val toJson = gsonClass.methods.first { method ->
-                method.name == "toJson" &&
-                    method.parameterTypes.contentEquals(arrayOf(Any::class.java))
-            }
-            val fromJson = gsonClass.methods.first { method ->
-                method.name == "fromJson" &&
-                    method.parameterTypes.contentEquals(arrayOf(String::class.java, Class::class.java))
-            }
-            val json = toJson.invoke(gson, source) as? String ?: return@runCatching null
-            fromJson.invoke(gson, json, targetClass)
-        }.getOrNull()?.let { return it }
-
+        HomeSavedHistoryCache.convert(source, targetClass)?.let { return it }
         return mapSavedHistoryBySerializedFields(source, targetClass)
     }
 
@@ -1423,14 +1565,8 @@ object HomeCustomizeHook {
         }
         val bdussPredicate: (String) -> Boolean = { value -> value.length >= 32 }
         val uid = namedValue(listOf("getUid", "x"), uidPredicate)
-            ?: stringGetters.firstNotNullOfOrNull { method ->
-                runCatching { method.invoke(account) as? String }.getOrNull()?.takeIf(uidPredicate)
-            }
             ?: throw SavedHistoryNotReadyException("uid unavailable")
         val bduss = namedValue(listOf("getBduss", "d"), bdussPredicate)
-            ?: stringGetters.firstNotNullOfOrNull { method ->
-                runCatching { method.invoke(account) as? String }.getOrNull()?.takeIf(bdussPredicate)
-            }
             ?: throw SavedHistoryNotReadyException("bduss unavailable")
         return AccountCredentials(uid, bduss)
     }
@@ -1547,60 +1683,32 @@ object HomeCustomizeHook {
         return null
     }
 
-    private fun updateSaveCardStateSaveList(stateFlow: Any, saveList: List<Any>) {
+    private fun publishSavedHistory(viewModel: Any, saveList: List<Any>) {
         runCatching {
+            val stateFlow = findSaveCardStateFlow(viewModel) ?: return
             val current = invokeNoArg(stateFlow, "getValue") ?: return
             if (!isSaveCardUiStateClass(current.javaClass)) return
             val currentSaveList = readSaveCardStateList(current, ".SavedDataInfo")
             if (currentSaveList == saveList) return
-            val copy = current.javaClass.declaredMethods.firstOrNull { method ->
-                !Modifier.isStatic(method.modifiers) &&
-                    method.returnType == current.javaClass &&
-                    method.parameterTypes.size == 5 &&
-                    List::class.java.isAssignableFrom(method.parameterTypes[1]) &&
-                    List::class.java.isAssignableFrom(method.parameterTypes[2]) &&
-                    method.parameterTypes[3] == Boolean::class.javaPrimitiveType
-            }?.apply { isAccessible = true } ?: return
-            val fields = current.javaClass.declaredFields.onEach { it.isAccessible = true }
-            val stateValue = fields.first { copy.parameterTypes[0].isAssignableFrom(it.type) }.get(current)
-            val updateList = readSaveCardStateList(current, ".UpdatedDataInfo")
-            val hasMore = fields.first { it.type == Boolean::class.javaPrimitiveType }.getBoolean(current)
-            val extraInfo = fields.firstOrNull { field ->
-                !Modifier.isStatic(field.modifiers) &&
-                    copy.parameterTypes[4].isAssignableFrom(field.type)
-            }?.get(current)
-            val expandedState = copy.invoke(
-                current,
-                stateValue,
-                saveList,
-                updateList,
-                hasMore,
-                extraInfo,
-            )
-            val setValue = stateFlow.javaClass.methods.firstOrNull { method ->
-                method.name == "setValue" && method.parameterTypes.size == 1
-            } ?: return
-            setValue.invoke(stateFlow, expandedState)
+            val hasMore = current.javaClass.declaredFields.singleOrNull {
+                !Modifier.isStatic(it.modifiers) && it.type == Boolean::class.javaPrimitiveType
+            }?.apply { isAccessible = true }?.getBoolean(current) ?: return
+            val setList = XposedCompat.findMethodOrNull(
+                viewModel.javaClass, "setListData", Boolean::class.javaPrimitiveType!!, List::class.java,
+            ) ?: return
+            // 走宿主 DATA 状态及去重逻辑，确保首三行也绑定新数据；不把上一种状态直接复制发布。
+            val previous = publishingSavedHistory.get()
+            publishingSavedHistory.set(viewModel)
+            try {
+                setList.invoke(viewModel, hasMore, saveList)
+            } finally {
+                if (previous == null) publishingSavedHistory.remove()
+                else publishingSavedHistory.set(previous)
+            }
         }.onFailure { error ->
             XposedCompat.logW(
                 "[HomeCustomizeHook] update full saved history state failed: ${error.message}",
             )
-        }
-    }
-
-    private fun findSaveCardViewModel(owner: Any): Any? {
-        owner.javaClass.declaredMethods.firstOrNull { method ->
-            method.parameterTypes.isEmpty() &&
-                method.returnType.name.endsWith(".NewHomeSaveCardViewModel")
-        }?.let { getter ->
-            getter.isAccessible = true
-            return getter.invoke(owner)
-        }
-        return owner.javaClass.declaredFields.firstNotNullOfOrNull { field ->
-            field.isAccessible = true
-            field.get(owner)?.takeIf { value ->
-                value.javaClass.name.endsWith(".NewHomeSaveCardViewModel")
-            }
         }
     }
 
@@ -1632,11 +1740,7 @@ object HomeCustomizeHook {
         if (rows.isEmpty()) return
         // 新布局的行和容器均可为 WRAP_CONTENT。只给旧 MATCH_PARENT 行补原容器高度。
         val originalGroupHeight = group.layoutParams?.height ?: ViewGroup.LayoutParams.WRAP_CONTENT
-        val wrapper = LinearLayout(group.context).apply {
-            orientation = LinearLayout.VERTICAL
-            clipChildren = false
-            clipToPadding = false
-        }
+        val wrapper = VerticalSaveRows(group.context, originalGroupHeight)
 
         rows.forEach { row ->
             val height = HomeCardLayoutRules.rowHeight(
@@ -1661,7 +1765,6 @@ object HomeCustomizeHook {
         )
         enforceWrapContentHeight(group)
         verticalSaveGroups[group] = true
-        verticalSaveRowHeights[group] = rows.first().layoutParams.height
         group.scrollTo(0, 0)
         group.requestLayout()
     }

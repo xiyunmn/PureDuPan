@@ -11,4 +11,7 @@ internal object HomeCardLayoutRules {
         else -> WRAP_CONTENT
     }
 
+    fun hiddenFeedStickyOffset(headHeight: Int, visibleHeight: Int, navHeight: Int): Int =
+        (visibleHeight - navHeight).coerceIn(0, headHeight.coerceAtLeast(0))
+
 }
