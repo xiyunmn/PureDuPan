@@ -9,7 +9,8 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduDialogHookPoints
 import java.lang.reflect.Modifier
 
 /**
- * Closes Baidu Netdisk's full-screen backup guide Activity after the host lifecycle is registered.
+ * Declines the backup-guide launch before the caller starts waiting for an Activity result.
+ * Activity closing remains a fallback for independent entry points.
  */
 internal object FullScreenBackupBlockHook {
     private const val TAG = "FullScreenBackupBlockHook"
@@ -25,6 +26,7 @@ internal object FullScreenBackupBlockHook {
 
         try {
             var installed = 0
+            installed += hookNewQuickSettingsStart(cl)
             installed += hookActivityOnCreate(cl, BaiduDialogHookPoints.NEW_QUICK_SETTINGS_ACTIVITY)
             installed += hookActivityOnCreate(cl, BaiduDialogHookPoints.REPEATED_NEW_QUICK_SETTINGS_ACTIVITY)
             installed += hookNewQuickSettingsCanShow(cl)
@@ -100,6 +102,27 @@ internal object FullScreenBackupBlockHook {
         return 1
     }
 
+    private fun hookNewQuickSettingsStart(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val clazz = XposedCompat.findClassOrNull(BaiduDialogHookPoints.NEW_QUICK_SETTINGS_ACTIVITY, cl)
+            ?: return 0
+        val method = clazz.declaredMethods.singleOrNull {
+            it.name == BaiduDialogHookPoints.NEW_QUICK_SETTINGS_START_METHOD &&
+                Modifier.isStatic(it.modifiers) && it.returnType == java.lang.Boolean.TYPE &&
+                it.parameterTypes.map(Class<*>::getName) == listOf(
+                    Activity::class.java.name, BaiduDialogHookPoints.QUICK_SETTING_EXTRA,
+                )
+        } ?: return 0
+        method.isAccessible = true
+        mod.hook(method).intercept { chain ->
+            // can-show=false alone is insufficient: the host's cover-install/backup
+            // condition can override it. Returning false here also preserves routing.
+            if (HookSettings.isFullScreenBackupBlocked) false else chain.proceed()
+        }
+        XposedCompat.log("[$TAG] hook INSTALLED: NewQuickSettingsActivity.startNewQuickSettingsActivity")
+        return 1
+    }
+
     private fun hookRepeatedQuickSettingsCanShow(cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
         val clazz = XposedCompat.findClassOrNull(
@@ -123,7 +146,7 @@ internal object FullScreenBackupBlockHook {
     }
 
     private fun closeActivity(activity: Activity?, source: String) {
-        if (activity == null) return
+        if (activity == null || activity.isFinishing || activity.isDestroyed) return
         hideBeforeNextFrame(activity)
         activity.finish()
         suppressTransition(activity)

@@ -19,7 +19,6 @@ import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticOem
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticSwanPreloadBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticThumbnailOperatorServiceBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticVideoAdPreloadBlockHook
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.startup.DomesticLaunchHandoffOptimizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.startup.DomesticSplashAdBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticBottomAiTabReplaceHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticGameCenterRemoveHook
@@ -176,12 +175,6 @@ internal object BaiduDomesticPostAttachHookSpecs {
                 settings.isSplashInterstitialBlockEnabled
         }, featureKey = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL) { cl ->
             DomesticSplashAdBlockHook.hook(cl)
-        },
-        HookSpec("DomesticLaunchHandoffOptimizeHook", { context, settings, _ ->
-            context.isMain &&
-                settings.isSplashInterstitialBlockEnabled
-        }, featureKey = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL) { cl ->
-            DomesticLaunchHandoffOptimizeHook.hook(cl)
         },
     )
 

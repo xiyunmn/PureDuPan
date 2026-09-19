@@ -5,6 +5,10 @@ package com.xiyunmn.puredupan.hook.symbols.baidu.domestic
  */
 internal object BaiduDomesticHookPoints {
     const val NAVIGATE_ACTIVITY = "com.baidu.netdisk.ui.Navigate"
+    const val NAVIGATE_SHOW_FLASH_SCREEN = "showFlashScreen"
+    const val IS_PARALLEL_LOAD_AD = "isParallelLoadAd"
+    const val MAIN_PROCESS_INIT_KT = "com.baidu.netdisk.ui.MainProcessDoSomeInitKt"
+    const val MAIN_AD_PARALLEL_IS_OPEN = "mainAdParallelIsOpen"
 
     const val BASE_ACTIVITY = "com.baidu.netdisk.BaseActivity"
     const val SETTINGS_ACTIVITY = "com.baidu.netdisk.ui.SettingsActivity"

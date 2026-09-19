@@ -10,46 +10,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 internal object DomesticHotStartSplashBlocker {
     private val hotStartHookStates = ConcurrentHashMap<String, HookState>()
-    private val coldStartHookStates = ConcurrentHashMap<String, HookState>()
     private val splashFallbackHookStates = ConcurrentHashMap<String, HookState>()
-
-    internal fun hookColdStartSplashManager(cl: ClassLoader, ownerTag: String): Int {
-        val mod = XposedCompat.module ?: return 0
-        val hookState = coldStartHookStates.getOrPut(ownerTag) { HookState() }
-        if (!hookState.markInstalled()) return 1
-
-        val resolved = DomesticColdStartSplashDexKitResolver.resolve(cl) ?: run {
-            hookState.reset()
-            XposedCompat.logD("[$ownerTag] domestic cold start splash manager NOT FOUND")
-            return 0
-        }
-        val method = resolveColdStartMethod(cl, resolved) ?: run {
-            hookState.reset()
-            XposedCompat.logD(
-                "[$ownerTag] domestic cold start method invalid: " +
-                    "${resolved.className}.${resolved.methodName}",
-            )
-            return 0
-        }
-
-        try {
-            mod.hook(method).intercept { chain ->
-                if (HookSettings.isSplashInterstitialBlockEnabled) {
-                    XposedCompat.logD("[$ownerTag] cold start splash blocked")
-                    false
-                } else {
-                    chain.proceed()
-                }
-            }
-        } catch (t: Throwable) {
-            hookState.reset()
-            throw t
-        }
-        XposedCompat.log(
-            "[$ownerTag] cold start splash manager hooked: ${method.declaringClass.name}.${method.name}",
-        )
-        return 1
-    }
 
     internal fun hookHotStartManager(cl: ClassLoader, ownerTag: String): Int {
         val mod = XposedCompat.module ?: return 0
@@ -156,6 +117,7 @@ internal object DomesticHotStartSplashBlocker {
 
     private fun finishSplashActivity(target: Any?, ownerTag: String, source: String) {
         val activity = target as? Activity ?: return
+        if (activity.isFinishing || activity.isDestroyed) return
         XposedCompat.logD("[$ownerTag] finishing SplashAdActivity fallback from $source")
         activity.finish()
         runCatching { activity.overridePendingTransition(0, 0) }
@@ -176,18 +138,4 @@ internal object DomesticHotStartSplashBlocker {
         return method
     }
 
-    private fun resolveColdStartMethod(
-        cl: ClassLoader,
-        result: DomesticColdStartSplashDexKitResolver.ResolveResult,
-    ): java.lang.reflect.Method? {
-        val clazz = XposedCompat.findClassOrNull(result.className, cl) ?: return null
-        val method = XposedCompat.findMethodOrNull(
-            clazz,
-            result.methodName,
-            Activity::class.java,
-        ) ?: return null
-        if (java.lang.reflect.Modifier.isStatic(method.modifiers)) return null
-        if (method.returnType != java.lang.Boolean.TYPE) return null
-        return method
-    }
 }

@@ -6,6 +6,8 @@ internal object BaiduDialogHookPoints {
         "com.baidu.netdisk.ui.RepeatedNewQuickSettingsActivity"
     const val NEW_QUICK_SETTINGS_ACTIVITY_ON_CREATE_METHOD = "onCreate"
     const val NEW_QUICK_SETTINGS_CAN_SHOW_METHOD = "canNewQuickSettingsActivityShow"
+    const val NEW_QUICK_SETTINGS_START_METHOD = "startNewQuickSettingsActivity"
+    const val QUICK_SETTING_EXTRA = "com.baidu.netdisk.base.storage.config.QuickSettingExtra"
     const val REPEATED_NEW_QUICK_SETTINGS_CAN_SHOW_METHOD =
         "checkIsShowRepeateNewQuickSettingsActivity"
 

@@ -19,7 +19,8 @@ import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticSwa
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticThumbnailOperatorDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticVideoAdPreloadDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.DomesticCookieByBdussDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticColdStartSplashDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.startup.DomesticColdStartSplashDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.startup.DomesticColdStartModeDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticHotStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageSafetyFooterUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeRecentItemLimitDexKitResolver
@@ -32,6 +33,12 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoSpeedUnlo
 
 internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
     override val descriptors = listOf(
+        DexKitTargetDescriptor(
+            id = DomesticColdStartModeDexKitResolver.CACHE_ID,
+            target = "domestic cold-start advertising mode",
+            feature = "splash interstitial block",
+            featureKey = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL,
+        ),
         DexKitTargetDescriptor(
             id = DomesticColdStartSplashDexKitResolver.CACHE_ID,
             target = "domestic cold-start splash resolver",
@@ -231,8 +238,11 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
         fun available(featureKey: String): Boolean = host.isFeatureAvailable(featureKey)
 
         if (available(FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL)) {
+            tasks += DexKitWarmUpTask(DomesticColdStartModeDexKitResolver.CACHE_ID) {
+                DomesticColdStartModeDexKitResolver.resolve(classLoader) != null
+            }
             tasks += DexKitWarmUpTask(DomesticColdStartSplashDexKitResolver.CACHE_ID) {
-                DomesticColdStartSplashDexKitResolver.warmUpDexKitCache(classLoader)
+                DomesticColdStartSplashDexKitResolver.resolve(classLoader) != null
             }
             tasks += DexKitWarmUpTask(DomesticHotStartSplashDexKitResolver.CACHE_ID) {
                 DomesticHotStartSplashDexKitResolver.resolve(classLoader) != null

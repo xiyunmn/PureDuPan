@@ -9,7 +9,6 @@ internal object BaiduDomesticHookCatalog {
             BaiduSharedPostAttachHookSpecs.preAd +
             BaiduDomesticPostAttachHookSpecs.preAd +
             BaiduDomesticPostAttachHookSpecs.startup +
-            BaiduSharedPostAttachHookSpecs.splashBypass +
             BaiduDomesticPostAttachHookSpecs.ad +
             BaiduDomesticPostAttachHookSpecs.middleLead +
             BaiduSharedPostAttachHookSpecs.middle +
