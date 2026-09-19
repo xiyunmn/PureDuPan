@@ -240,7 +240,7 @@ object UiText {
         const val PERFORMANCE_OPTIMIZE_SAVED = "性能优化配置已保存"
         const val SIGN_IN_RISK_WARNING = "可能影响签到链路或触发风控，谨慎启用"
         const val ACCELERATE_INTL_SPLASH_STARTUP_LABEL = "加速开屏启动"
-        const val ACCELERATE_INTL_SPLASH_STARTUP_DESC = "减少启动图停留时间，移除过渡动画"
+        const val ACCELERATE_INTL_SPLASH_STARTUP_DESC = "跳过冷启动广告等待，减少开屏转场闪烁"
         const val DETAILED_LOGGING_LABEL = "输出详细日志"
         fun detailedLoggingDesc(hostPackageName: String): String =
             "输出更详细的 Hook调试日志，日志通常位于宿主应用缓存目录下：" +

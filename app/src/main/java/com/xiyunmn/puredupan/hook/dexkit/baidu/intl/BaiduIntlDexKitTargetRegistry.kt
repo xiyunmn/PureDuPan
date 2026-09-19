@@ -11,6 +11,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAlbumAiInit
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlNonCoreDiffSocketDelayHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlStoryDouyinInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.IntlColdStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabModeDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlChangeSkinDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlAlbumBackupBarFactoryDexKitResolver
@@ -23,6 +24,12 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoSpeedUnlo
 
 internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
     override val descriptors = listOf(
+        DexKitTargetDescriptor(
+            id = IntlColdStartSplashDexKitResolver.CACHE_ID,
+            target = "intl Navigate cold splash decision",
+            featureKey = FeatureKeys.KEY_ACCELERATE_INTL_SPLASH_STARTUP,
+            feature = "加速开屏启动",
+        ),
         DexKitTargetDescriptor(
             id = IntlHotStartSplashDexKitResolver.CACHE_ID,
             target = "intl hot-start splash resolver",
@@ -142,6 +149,11 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         val tasks = mutableListOf<DexKitWarmUpTask>()
         fun available(featureKey: String): Boolean = host.isFeatureAvailable(featureKey)
 
+        if (available(FeatureKeys.KEY_ACCELERATE_INTL_SPLASH_STARTUP)) {
+            tasks += DexKitWarmUpTask(IntlColdStartSplashDexKitResolver.CACHE_ID) {
+                IntlColdStartSplashDexKitResolver.resolve(classLoader) != null
+            }
+        }
         if (available(FeatureKeys.KEY_REMOVE_HOT_START_SPLASH)) {
             tasks += DexKitWarmUpTask(IntlHotStartSplashDexKitResolver.CACHE_ID) {
                 IntlHotStartSplashDexKitResolver.resolve(classLoader) != null

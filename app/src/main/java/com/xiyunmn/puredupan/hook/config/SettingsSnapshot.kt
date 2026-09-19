@@ -150,6 +150,7 @@ data class SettingsSnapshot(
             null -> true
             FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL -> isSplashInterstitialBlockEnabled
             FeatureKeys.KEY_REMOVE_HOT_START_SPLASH -> isHotStartSplashRemoveEnabled
+            FeatureKeys.KEY_ACCELERATE_INTL_SPLASH_STARTUP -> isIntlSplashStartupAccelerateEnabled
             FeatureKeys.KEY_BLOCK_UPDATE_DIALOG -> isUpdateDialogBlocked
             FeatureKeys.KEY_REPLACE_BOTTOM_AI -> isBottomAiReplaced
             FeatureKeys.KEY_HIDE_TAB_AIGC -> isBottomBarTabAigcHidden
@@ -185,6 +186,7 @@ data class SettingsSnapshot(
         val DEXKIT_TARGET_FEATURE_KEYS = setOf(
             FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL,
             FeatureKeys.KEY_REMOVE_HOT_START_SPLASH,
+            FeatureKeys.KEY_ACCELERATE_INTL_SPLASH_STARTUP,
             FeatureKeys.KEY_BLOCK_UPDATE_DIALOG,
             FeatureKeys.KEY_REPLACE_BOTTOM_AI,
             FeatureKeys.KEY_HIDE_TAB_AIGC,

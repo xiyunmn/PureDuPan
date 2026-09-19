@@ -1,12 +1,12 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.startup
 
 import android.app.Activity
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.os.SystemClock
 import android.view.View
 import android.view.Window
 import android.view.WindowInsets
@@ -17,402 +17,237 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
-import java.lang.ref.WeakReference
-import java.lang.reflect.Modifier
 
+/** Cold-ad bypass and window continuity for the two international launcher shells. */
 internal object IntlLaunchHandoffOptimizeHook {
-    private const val DEFAULT_MAIN_ACTIVITY_CLASS_NAME = BaiduIntlHookPoints.DEFAULT_MAIN_ACTIVITY
-    private const val NAVIGATE_CLASS_NAME = BaiduIntlHookPoints.NAVIGATE_ACTIVITY
-    private const val WINDOW_INSETS_CONTROLLER_COMPAT_CLASS_NAME = "androidx.core.view.WindowInsetsControllerCompat"
-    private const val STARTUP_STATUS_BAR_STABILIZE_MS = 2500L
+    private const val TAG = "IntlLaunchHandoffOptimizeHook"
+    private val windowState = HookState()
+    private val coldGateState = HookState()
+    private val shellInit = ThreadLocal<Activity?>()
+    private val coldDecision = ThreadLocal<Activity?>()
+    private val shellNames = setOf(BaiduIntlHookPoints.DEFAULT_MAIN_ACTIVITY, BaiduIntlHookPoints.NAVIGATE_ACTIVITY)
 
-    private val hookState = HookState()
-    private val shellInitViewDepth = ThreadLocal<Int>()
-    @Volatile private var pendingNavigateRef: WeakReference<Activity>? = null
-    @Volatile private var stabilizeMainWindowUntilMs: Long = 0L
+    fun hook(cl: ClassLoader) {
+        if (!HookSettings.isIntlSplashStartupAccelerateEnabled) return
+        // Independent installation: a cold cache miss must not prevent the window repair.
+        runCatching { hookColdGate(cl) }.onFailure {
+            XposedCompat.logW("[$TAG] cold gate unavailable: ${it.message}")
+        }
+        runCatching { hookWindows(cl) }.onFailure {
+            XposedCompat.logW("[$TAG] window repair unavailable: ${it.message}")
+        }
+    }
 
-    @Suppress("DEPRECATION")
-    internal fun hook(cl: ClassLoader) {
-        if (!HookSettings.isIntlSplashStartupAccelerateEnabled) {
-            XposedCompat.log("[IntlLaunchHandoffOptimizeHook] skipped: config disabled")
+    private fun hookColdGate(cl: ClassLoader) {
+        val mod = XposedCompat.module ?: return
+        val gate = IntlColdStartSplashDexKitResolver.resolve(cl) ?: run {
+            XposedCompat.logD("[$TAG] cold gate pending DexKit warm-up; native ad routing retained")
             return
         }
+        val entry = XposedCompat.findMethodOrNull(
+            BaiduIntlHookPoints.NAVIGATE_ACTIVITY, cl, BaiduIntlHookPoints.NAVIGATE_SHOW_FLASH_SCREEN,
+        ) ?: return
+        if (!coldGateState.markInstalled()) return
+        mod.hook(entry).intercept { chain ->
+            val previous = coldDecision.get()
+            coldDecision.set(chain.thisObject as? Activity)
+            try {
+                chain.proceed()
+            } finally {
+                if (previous == null) coldDecision.remove() else coldDecision.set(previous)
+            }
+        }
+        mod.hook(gate).intercept { chain ->
+            val activity = coldDecision.get()
+            if (HookSettings.isIntlSplashStartupAccelerateEnabled && activity != null &&
+                activity.javaClass.name == BaiduIntlHookPoints.NAVIGATE_ACTIVITY &&
+                chain.args.firstOrNull() === activity
+            ) {
+                // Native no-ad dispatch still owns login, guides and external/teen/enterprise
+                // routes. A synchronous fake ad callback would race the caller's setSplash(true).
+                false
+            } else {
+                chain.proceed()
+            }
+        }
+        XposedCompat.logD("[$TAG] cold splash gate installed")
+    }
+
+    private fun hookWindows(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
-        if (!hookState.markInstalled()) return
+        val shells = shellNames.map { XposedCompat.findClassOrNull(it, cl) ?: return }
+        val creates = shells.map { XposedCompat.findMethodOrNull(it, "onCreate", Bundle::class.java) ?: return }
+        val inits = shells.map { XposedCompat.findMethodOrNull(it, "initView") ?: return }
+        val finishes = shells.map { XposedCompat.findMethodOrNull(it, "finish") ?: return }.distinct()
+        val start = Activity::class.java.getDeclaredMethod(
+            "startActivityForResult", Intent::class.java, Int::class.javaPrimitiveType, Bundle::class.java,
+        )
+        if (!windowState.markInstalled()) return
 
-        try {
-            val startActivityMethod = Activity::class.java.getDeclaredMethod(
-                "startActivity",
-                Intent::class.java,
-            ).apply { isAccessible = true }
-            val windowAddFlagsMethod = Window::class.java.getDeclaredMethod(
-                "addFlags",
-                Int::class.javaPrimitiveType!!,
-            ).apply { isAccessible = true }
-            val setSystemUiVisibilityMethod = View::class.java.getDeclaredMethod(
-                "setSystemUiVisibility",
-                Int::class.javaPrimitiveType!!,
-            ).apply { isAccessible = true }
-            val defaultMainActivityClass = XposedCompat.findClassOrNull(DEFAULT_MAIN_ACTIVITY_CLASS_NAME, cl)
-                ?: throw ClassNotFoundException(DEFAULT_MAIN_ACTIVITY_CLASS_NAME)
-            val navigateClass = XposedCompat.findClassOrNull(NAVIGATE_CLASS_NAME, cl)
-                ?: throw ClassNotFoundException(NAVIGATE_CLASS_NAME)
-            val mainActivityClassName = currentMainActivityClassName()
-                ?: throw IllegalStateException("MainActivity host capability missing")
-            val mainActivityClass = XposedCompat.findClassOrNull(mainActivityClassName, cl)
-                ?: throw ClassNotFoundException(mainActivityClassName)
-            val defaultOnCreateMethod = XposedCompat.findMethodOrNull(
-                defaultMainActivityClass,
-                "onCreate",
-                Bundle::class.java,
-            ) ?: throw NoSuchMethodException("$DEFAULT_MAIN_ACTIVITY_CLASS_NAME.onCreate")
-            val navigateOnCreateMethod = XposedCompat.findMethodOrNull(
-                navigateClass,
-                "onCreate",
-                Bundle::class.java,
-            ) ?: throw NoSuchMethodException("$NAVIGATE_CLASS_NAME.onCreate")
-            val defaultInitViewMethod = XposedCompat.findMethodOrNull(
-                defaultMainActivityClass,
-                "initView",
-            ) ?: throw NoSuchMethodException("$DEFAULT_MAIN_ACTIVITY_CLASS_NAME.initView")
-            val navigateInitViewMethod = XposedCompat.findMethodOrNull(
-                navigateClass,
-                "initView",
-            ) ?: throw NoSuchMethodException("$NAVIGATE_CLASS_NAME.initView")
-            val mainOnCreateMethod = XposedCompat.findMethodOrNull(
-                mainActivityClass,
-                "onCreate",
-                Bundle::class.java,
-            ) ?: throw NoSuchMethodException("$mainActivityClassName.onCreate")
-            val mainOnResumeMethod = XposedCompat.findMethodOrNull(
-                mainActivityClass,
-                "onResume",
-            ) ?: throw NoSuchMethodException("$mainActivityClassName.onResume")
-            val onWindowFocusChangedMethod = XposedCompat.findMethodOrNull(
-                mainActivityClass,
-                "onWindowFocusChanged",
-                Boolean::class.javaPrimitiveType!!,
-            ) ?: throw NoSuchMethodException("$mainActivityClassName.onWindowFocusChanged")
-
-            listOf(defaultOnCreateMethod, navigateOnCreateMethod).forEach { method ->
-                mod.hook(method).intercept { chain ->
-                    val activity = chain.thisObject as? Activity
-                    stabilizeShellWindow(activity, "${activity.shortClassName()}.onCreate/before")
-                    val result = chain.proceed()
-                    stabilizeShellWindow(activity, "${activity.shortClassName()}.onCreate/after")
-                    result
-                }
-            }
-            listOf(defaultInitViewMethod, navigateInitViewMethod).forEach { method ->
-                mod.hook(method).intercept { chain ->
-                    val activity = chain.thisObject as? Activity
-                    enterShellInitView()
-                    try {
-                        stabilizeShellWindow(activity, "${activity.shortClassName()}.initView/before")
-                        val result = chain.proceed()
-                        stabilizeShellWindow(activity, "${activity.shortClassName()}.initView/after")
-                        result
-                    } finally {
-                        exitShellInitView()
-                    }
-                }
-            }
-            mod.hook(setSystemUiVisibilityMethod).intercept { chain ->
-                val visibility = chain.args.firstOrNull() as? Int ?: return@intercept chain.proceed()
-                if (!isShellInitViewActive()) return@intercept chain.proceed()
-
-                val sanitizedVisibility = sanitizeShellSystemUiVisibility(visibility)
-                if (sanitizedVisibility != visibility) {
-                    XposedCompat.logD(
-                        "[IntlLaunchHandoffOptimizeHook] sanitized shell View.setSystemUiVisibility: " +
-                            "0x${visibility.toString(16)} -> 0x${sanitizedVisibility.toString(16)}",
-                    )
-                }
-                chain.proceed(arrayOf(sanitizedVisibility))
-            }
-            mod.hook(windowAddFlagsMethod).intercept { chain ->
-                val flags = chain.args.firstOrNull() as? Int ?: return@intercept chain.proceed()
-                if (!isShellInitViewActive()) return@intercept chain.proceed()
-
-                val sanitizedFlags = flags and
-                    (WindowManager.LayoutParams.FLAG_FULLSCREEN or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS).inv()
-                if (sanitizedFlags != flags) {
-                    XposedCompat.logD(
-                        "[IntlLaunchHandoffOptimizeHook] sanitized shell Window.addFlags: " +
-                            "0x${flags.toString(16)} -> 0x${sanitizedFlags.toString(16)}",
-                    )
-                }
-                if (sanitizedFlags == 0) null else chain.proceed(arrayOf(sanitizedFlags))
-            }
-            hookOptionalInsetsHideMethods(cl)
-            mod.hook(startActivityMethod).intercept { chain ->
+        creates.forEach { method ->
+            mod.hook(method).intercept { chain ->
                 val activity = chain.thisObject as? Activity
-                val intent = chain.args.firstOrNull() as? Intent
-                val shouldAccelerate = shouldAccelerate(activity, intent)
-                val result = chain.proceed()
-
-                if (shouldAccelerate && activity != null) {
-                    pendingNavigateRef = WeakReference(activity)
-                    markMainWindowStabilization()
-                    suppressTransition(activity)
-                    XposedCompat.logD(
-                        "[IntlLaunchHandoffOptimizeHook] captured Navigate handoff, waiting for MainActivity focus",
-                    )
-                }
-                result
-            }
-            mod.hook(mainOnCreateMethod).intercept { chain ->
-                val result = chain.proceed()
-                stabilizeMainWindow(chain.thisObject as? Activity, "onCreate")
-                result
-            }
-            mod.hook(mainOnResumeMethod).intercept { chain ->
-                val result = chain.proceed()
-                stabilizeMainWindow(chain.thisObject as? Activity, "onResume")
-                result
-            }
-            mod.hook(onWindowFocusChangedMethod).intercept { chain ->
-                val result = chain.proceed()
-                val hasFocus = chain.args.firstOrNull() as? Boolean ?: false
-                if (hasFocus && HookSettings.isIntlSplashStartupAccelerateEnabled) {
-                    stabilizeMainWindow(chain.thisObject as? Activity, "onWindowFocusChanged")
-                    finishPendingNavigate()
-                }
-                result
-            }
-
-            XposedCompat.log(
-                "[IntlLaunchHandoffOptimizeHook] hooks INSTALLED: " +
-                    "startup shell system-bar guard + Activity.startActivity(Intent) + " +
-                    "MainActivity.onCreate/onResume/onWindowFocusChanged",
-            )
-        } catch (t: Throwable) {
-            hookState.reset()
-            XposedCompat.log("[IntlLaunchHandoffOptimizeHook] install FAILED: ${t.message}")
-            XposedCompat.log(t)
-        }
-    }
-
-    private fun enterShellInitView() {
-        shellInitViewDepth.set(shellInitViewDepth.getDepth() + 1)
-    }
-
-    private fun exitShellInitView() {
-        val depth = shellInitViewDepth.getDepth() - 1
-        if (depth <= 0) {
-            shellInitViewDepth.remove()
-        } else {
-            shellInitViewDepth.set(depth)
-        }
-    }
-
-    private fun isShellInitViewActive(): Boolean {
-        return shellInitViewDepth.getDepth() > 0
-    }
-
-    private fun ThreadLocal<Int>.getDepth(): Int = get() ?: 0
-
-    @Suppress("DEPRECATION")
-    private fun sanitizeShellSystemUiVisibility(visibility: Int): Int {
-        val hiddenBarFlags = View.SYSTEM_UI_FLAG_FULLSCREEN or
-            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-            View.SYSTEM_UI_FLAG_IMMERSIVE or
-            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-            View.SYSTEM_UI_FLAG_LOW_PROFILE
-        return visibility and hiddenBarFlags.inv()
-    }
-
-    private fun hookOptionalInsetsHideMethods(cl: ClassLoader) {
-        val mod = XposedCompat.module ?: return
-        runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                WindowInsetsController::class.java.getDeclaredMethod(
-                    "hide",
-                    Int::class.javaPrimitiveType!!,
-                ).apply { isAccessible = true }.also { method ->
-                    if (Modifier.isAbstract(method.modifiers)) {
-                        XposedCompat.logD("[IntlLaunchHandoffOptimizeHook] platform insets hide hook skipped: abstract method")
-                        return@runCatching
-                    }
-                    mod.hook(method).intercept { chain ->
-                        val types = chain.args.firstOrNull() as? Int ?: return@intercept chain.proceed()
-                        if (isShellInitViewActive() && shouldBlockShellInsetsHide(types)) {
-                            XposedCompat.logD(
-                                "[IntlLaunchHandoffOptimizeHook] skipped shell WindowInsetsController.hide: " +
-                                    "0x${types.toString(16)}",
-                            )
-                            null
-                        } else {
-                            chain.proceed()
-                        }
+                if (isEnabledShell(activity)) {
+                    val shell = activity!!
+                    safely {
+                        // Before decor creation: painting an opaque View does not change the
+                        // system's translucent-window occlusion state.
+                        if (shell.javaClass.name == BaiduIntlHookPoints.NAVIGATE_ACTIVITY) makeOpaque(shell)
+                        prepareShellWindow(shell)
+                        suppressTransition(shell)
                     }
                 }
+                chain.proceed()
             }
-        }.onFailure {
-            XposedCompat.logD("[IntlLaunchHandoffOptimizeHook] platform insets hide hook skipped: ${it.message}")
         }
-
-        runCatching {
-            val compatClass = XposedCompat.findClassOrNull(WINDOW_INSETS_CONTROLLER_COMPAT_CLASS_NAME, cl)
-                ?: return@runCatching
-            val hideMethod = XposedCompat.findMethodOrNull(
-                compatClass,
-                "hide",
-                Int::class.javaPrimitiveType!!,
-            ) ?: return@runCatching
-            mod.hook(hideMethod).intercept { chain ->
-                val types = chain.args.firstOrNull() as? Int ?: return@intercept chain.proceed()
-                if (isShellInitViewActive() && shouldBlockShellInsetsHide(types)) {
-                    XposedCompat.logD(
-                        "[IntlLaunchHandoffOptimizeHook] skipped shell WindowInsetsControllerCompat.hide: " +
-                            "0x${types.toString(16)}",
-                    )
-                    null
-                } else {
+        inits.forEach { method ->
+            mod.hook(method).intercept { chain ->
+                val activity = chain.thisObject as? Activity
+                if (!isEnabledShell(activity)) return@intercept chain.proceed()
+                val previous = shellInit.get()
+                shellInit.set(activity)
+                try {
                     chain.proceed()
+                } finally {
+                    if (previous == null) shellInit.remove() else shellInit.set(previous)
+                    safely { prepareShellWindow(activity!!) }
                 }
             }
-        }.onFailure {
-            XposedCompat.logD("[IntlLaunchHandoffOptimizeHook] compat insets hide hook skipped: ${it.message}")
         }
-    }
-
-    private fun shouldBlockShellInsetsHide(types: Int): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
-        val statusOrSystemBars = WindowInsets.Type.statusBars() or WindowInsets.Type.systemBars()
-        return types and statusOrSystemBars != 0
-    }
-
-    private fun shouldAccelerate(activity: Activity?, intent: Intent?): Boolean {
-        if (!HookSettings.isIntlSplashStartupAccelerateEnabled) return false
-        if (activity == null || intent == null) return false
-        if (activity.javaClass.name != NAVIGATE_CLASS_NAME) return false
-        val mainActivityClassName = currentMainActivityClassName() ?: return false
-        return intent.component?.className == mainActivityClassName
-    }
-
-    private fun markMainWindowStabilization() {
-        stabilizeMainWindowUntilMs = SystemClock.uptimeMillis() + STARTUP_STATUS_BAR_STABILIZE_MS
-    }
-
-    private fun finishPendingNavigate() {
-        val activity = pendingNavigateRef?.get() ?: return
-        pendingNavigateRef = null
-        if (activity.isFinishing || activity.isDestroyed) return
-        runCatching {
-            suppressTransition(activity)
-            activity.finish()
-            suppressTransition(activity)
-            XposedCompat.logD("[IntlLaunchHandoffOptimizeHook] Navigate finished after MainActivity gained focus")
-        }.onFailure {
-            XposedCompat.logD("[IntlLaunchHandoffOptimizeHook] delayed finish failed: ${it.message}")
+        finishes.forEach { method ->
+            mod.hook(method).intercept { chain ->
+                val activity = chain.thisObject as? Activity
+                if (isEnabledShell(activity)) safely { suppressTransition(activity!!) }
+                val result = chain.proceed()
+                if (isEnabledShell(activity)) safely { suppressTransition(activity!!) }
+                result
+            }
         }
-    }
-
-    private fun stabilizeShellWindow(activity: Activity?, reason: String) {
-        if (!shouldStabilizeShellWindow(activity)) return
-        val shellActivity = activity ?: return
-        applyStartupStatusBar(shellActivity, reason)
-        shellActivity.window?.decorView?.let { decorView ->
-            decorView.post { applyStartupStatusBar(shellActivity, "$reason/post") }
-            decorView.postDelayed({ applyStartupStatusBar(shellActivity, "$reason/post24") }, 24L)
-            decorView.postDelayed({ applyStartupStatusBar(shellActivity, "$reason/post80") }, 80L)
+        // Both startActivity overloads delegate here. Keep the native lifetime of each shell;
+        // no global pending activity, focus-based finish or delayed main-window rewrites.
+        mod.hook(start).intercept { chain ->
+            val activity = chain.thisObject as? Activity
+            val intent = chain.args.firstOrNull() as? Intent
+            val ordinaryHandoff = isEnabledShell(activity) && chain.args.getOrNull(1) == -1 &&
+                isShellHandoff(activity!!, intent)
+            val result = chain.proceed()
+            if (ordinaryHandoff) safely { suppressTransition(activity!!) }
+            result
         }
-    }
-
-    private fun shouldStabilizeShellWindow(activity: Activity?): Boolean {
-        if (!HookSettings.isIntlSplashStartupAccelerateEnabled) return false
-        val className = activity?.javaClass?.name ?: return false
-        return className == DEFAULT_MAIN_ACTIVITY_CLASS_NAME || className == NAVIGATE_CLASS_NAME
-    }
-
-    private fun stabilizeMainWindow(activity: Activity?, reason: String) {
-        if (!shouldStabilizeMainWindow(activity)) return
-        val mainActivity = activity ?: return
-        applyStartupStatusBar(mainActivity, reason)
-        mainActivity.window?.decorView?.let { decorView ->
-            decorView.post { applyStartupStatusBar(mainActivity, "$reason/post") }
-            decorView.postDelayed({ applyStartupStatusBar(mainActivity, "$reason/post48") }, 48L)
-            decorView.postDelayed({ applyStartupStatusBar(mainActivity, "$reason/post160") }, 160L)
-        }
-    }
-
-    private fun shouldStabilizeMainWindow(activity: Activity?): Boolean {
-        if (!HookSettings.isIntlSplashStartupAccelerateEnabled) return false
-        val mainActivityClassName = currentMainActivityClassName() ?: return false
-        if (activity?.javaClass?.name != mainActivityClassName) return false
-        return pendingNavigateRef?.get() != null ||
-            SystemClock.uptimeMillis() <= stabilizeMainWindowUntilMs
+        hookShellBarRequests(cl)
+        XposedCompat.logD("[$TAG] opaque startup shells and transition boundaries installed")
     }
 
     @Suppress("DEPRECATION")
-    private fun applyStartupStatusBar(activity: Activity, reason: String) {
-        if (activity.isFinishing || activity.isDestroyed) return
-        runCatching {
-            val window = activity.window ?: return
-            val oldFlags = window.attributes.flags
-            val oldVisibility = window.decorView.systemUiVisibility
-            window.clearFlags(
-                WindowManager.LayoutParams.FLAG_FULLSCREEN or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            )
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
-            window.statusBarColor = Color.TRANSPARENT
-            showSystemBars(window)
-            val newVisibility = startupStatusBarVisibility(activity)
-            window.decorView.systemUiVisibility = newVisibility
-            XposedCompat.logD(
-                "[IntlLaunchHandoffOptimizeHook] startup status bar stabilized: " +
-                    "$reason flags=0x${oldFlags.toString(16)}->0x${window.attributes.flags.toString(16)} " +
-                    "ui=0x${oldVisibility.toString(16)}->0x${newVisibility.toString(16)}",
-            )
-        }.onFailure {
-            XposedCompat.logD("[IntlLaunchHandoffOptimizeHook] status bar stabilize failed: ${it.message}")
-        }
+    private fun makeOpaque(activity: Activity) {
+        // Reuse the host's locale-aware welcome theme, without numeric resource IDs.
+        val themeId = activity.packageManager.getActivityInfo(
+            ComponentName(activity.packageName, BaiduIntlHookPoints.DEFAULT_MAIN_ACTIVITY), 0,
+        ).theme
+        if (themeId == 0) return
+        val theme = activity.resources.newTheme().apply { applyStyle(themeId, true) }
+        val attrs = theme.obtainStyledAttributes(intArrayOf(android.R.attr.windowIsTranslucent, android.R.attr.windowIsFloating))
+        val opaque = try { !attrs.getBoolean(0, false) && !attrs.getBoolean(1, false) } finally { attrs.recycle() }
+        if (!opaque) return
+        activity.setTheme(themeId)
+        // setTheme applies an overlay and may retain windowIsTranslucent from Navigate.
+        // Replace the theme contents as well, so PhoneWindow sees the opaque base theme.
+        activity.theme.setTo(theme)
+        // Manifest translucency is also held by system_server. Update it through the public
+        // API; on older releases keep the host's conservative delayed cleanup.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) activity.setTranslucent(false)
     }
 
-    private fun showSystemBars(window: Window) {
+    @Suppress("DEPRECATION")
+    private fun prepareShellWindow(activity: Activity) {
+        val window = activity.window
+        window.setWindowAnimations(0)
+        window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+        window.statusBarColor = Color.TRANSPARENT
+        val decor = window.decorView
+        val lightBackground = isDefaultSkin(activity)
+        var visibility = visibleBars(decor.systemUiVisibility)
+        visibility = if (lightBackground) visibility or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            else visibility and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+        decor.systemUiVisibility = visibility
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.show(WindowInsets.Type.systemBars())
+            window.insetsController?.apply {
+                show(WindowInsets.Type.systemBars())
+                setSystemBarsAppearance(
+                    if (lightBackground) WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS else 0,
+                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+                )
+            }
         }
     }
 
     @Suppress("DEPRECATION")
-    private fun startupStatusBarVisibility(activity: Activity): Int {
-        var visibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && isDefaultSkin(activity)) {
-            visibility = visibility or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+    private fun hookShellBarRequests(cl: ClassLoader) {
+        val mod = XposedCompat.module ?: return
+        mod.hook(View::class.java.getDeclaredMethod("setSystemUiVisibility", Int::class.javaPrimitiveType)).intercept { chain ->
+            val shell = shellInit.get()
+            if (isEnabledShell(shell) && chain.thisObject === shell!!.window.peekDecorView()) {
+                chain.proceed(arrayOf(visibleBars(chain.args[0] as Int)))
+            } else chain.proceed()
         }
-        return visibility
+        mod.hook(Window::class.java.getDeclaredMethod("addFlags", Int::class.javaPrimitiveType)).intercept { chain ->
+            val shell = shellInit.get()
+            if (isEnabledShell(shell) && chain.thisObject === shell!!.window) {
+                val flags = (chain.args[0] as Int) and
+                    (WindowManager.LayoutParams.FLAG_FULLSCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS).inv()
+                chain.proceed(arrayOf(flags))
+            } else chain.proceed()
+        }
+        val hide = XposedCompat.findMethodOrNull(
+            "androidx.core.view.WindowInsetsControllerCompat", cl, "hide", Int::class.javaPrimitiveType!!,
+        ) ?: return
+        mod.hook(hide).intercept { chain ->
+            if (isEnabledShell(shellInit.get())) {
+                // Compat systemBars mask is status/navigation/caption on supported releases.
+                val types = (chain.args[0] as Int) and 7.inv()
+                if (types == 0) null else chain.proceed(arrayOf(types))
+            } else chain.proceed()
+        }
     }
 
-    private fun isDefaultSkin(context: Context): Boolean {
-        return runCatching {
-            val skinConfigClassName = BaiduFeatureRuntime.skinConfigClassNameFor(context)
-                ?: return@runCatching true
-            val skinConfigClass = XposedCompat.findClassOrNull(skinConfigClassName, context.classLoader)
-                ?: return@runCatching true
-            val method = skinConfigClass.getDeclaredMethod("isDefaultSkin", Context::class.java)
-                .apply { isAccessible = true }
-            method.invoke(null, context) as? Boolean ?: true
-        }.getOrDefault(true)
+    private fun isEnabledShell(activity: Activity?): Boolean =
+        HookSettings.isIntlSplashStartupAccelerateEnabled && activity?.javaClass?.name in shellNames
+
+    private fun isDefaultSkin(context: Context): Boolean = runCatching {
+        val name = BaiduFeatureRuntime.skinConfigClassNameFor(context) ?: return@runCatching true
+        val method = XposedCompat.findMethodOrNull(name, context.classLoader, "isDefaultSkin", Context::class.java)
+        method?.invoke(null, context) as? Boolean ?: true
+    }.getOrDefault(true)
+
+    private fun isShellHandoff(activity: Activity, intent: Intent?): Boolean {
+        val component = intent?.component ?: return false
+        if (component.packageName != activity.packageName || intent.flags and
+            (Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK) != 0
+        ) return false
+        return when (activity.javaClass.name) {
+            BaiduIntlHookPoints.DEFAULT_MAIN_ACTIVITY -> component.className == BaiduIntlHookPoints.NAVIGATE_ACTIVITY
+            BaiduIntlHookPoints.NAVIGATE_ACTIVITY -> component.className == BaiduFeatureRuntime.currentMainActivityClassName()
+            else -> false
+        }
     }
 
-    private fun currentMainActivityClassName(): String? =
-        BaiduFeatureRuntime.currentMainActivityClassName()
+    @Suppress("DEPRECATION")
+    private fun visibleBars(flags: Int): Int = flags and (View.SYSTEM_UI_FLAG_FULLSCREEN or
+        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE or
+        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LOW_PROFILE).inv()
 
+    @Suppress("DEPRECATION")
     private fun suppressTransition(activity: Activity) {
-        runCatching {
-            @Suppress("DEPRECATION")
-            activity.overridePendingTransition(0, 0)
-        }.onFailure {
-            XposedCompat.logD("[IntlLaunchHandoffOptimizeHook] overridePendingTransition failed: ${it.message}")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, 0, 0)
+            activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, 0, 0)
         }
+        activity.overridePendingTransition(0, 0)
     }
 
-    private fun Activity?.shortClassName(): String {
-        return this?.javaClass?.simpleName ?: "Activity"
+    private inline fun safely(block: () -> Unit) {
+        runCatching(block).onFailure { XposedCompat.logD("[$TAG] window operation skipped: ${it.message}") }
     }
 }
