@@ -20,15 +20,19 @@ internal object BaiduFilePageHookPoints {
      * `MyNetdiskFragment.initSafetyBottomView(Context)`，方法体一致：
      * 无条件 `inflate(safety_ability_layout) + mListView.addFooterView(...)`。这是旧
      * ListView 文件页兼容入口；国际版实际主文件页已切换到下方 RecyclerView v2 路径。
+     * 分类页依赖初始化后的 mBottomSafety，隐藏时必须保留对象，仅移除所属列表的 footer。
      */
     const val MY_NETDISK_FRAGMENT =
         "com.baidu.netdisk.ui.cloudfile.MyNetdiskFragment"
 
     const val INIT_SAFETY_BOTTOM_VIEW_METHOD = "initSafetyBottomView"
+    const val BOTTOM_SAFETY_FIELD = "mBottomSafety"
+    const val LIST_VIEW_FIELD = "mListView"
 
     /** RecyclerView v2 文件页直接添加安全提示 footer，不经过旧 MyNetdiskFragment 入口。 */
     const val FILE_LIST_RECYCLER_VIEW =
         "com.baidu.netdisk.filelist.view.FileListRecyclerView"
+    const val RECYCLER_VIEW_ADAPTER = "androidx.recyclerview.widget.RecyclerView\$Adapter"
 
     const val ADD_FOOTER_VIEW_METHOD = "addFooterView"
     const val SAFETY_INSTRUCTIONS_VIEW = "com.baidu.netdisk.ui.SafetyInstructionsView"

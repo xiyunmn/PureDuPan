@@ -1,7 +1,9 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
+import android.content.Context
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ListView
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -11,21 +13,24 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduFilePageHookPoints
 /**
  * 文件页定制 Hook。
  *
- * 底部安全提示走两条互补路径：
+ * 底部安全提示走三条互补路径：
  * 1. 数据层：hook ShowSafetyFooterUseCase.realExecute(...) 返回 false，阻止新
  *    文件页把 showSafetyBottomView 置为 true。国内版新路径有效；国际版无此 UseCase。
- * 2. 渲染入口：hook 明文 MyNetdiskFragment.initSafetyBottomView(Context)，enabled
- *    时跳过方法体（不 inflate safety_ability_layout / 不 addFooterView）。该方法在
- *    国内/三星/国际三版均保留，作为旧 ListView 文件页兼容入口。
+ * 2. 旧 ListView：保留 MyNetdiskFragment.initSafetyBottomView(Context) 的原生初始化，
+ *    返回前仅从所属列表移除 mBottomSafety footer。分类页仍会访问该对象，不能跳过创建
+ *    或清空字段；原生后续修改其可见性也不会使已移除的 footer 重新进入列表。
  * 3. RecyclerView v2：国际版主文件页实际使用 FileListFragment / FileListChildFragment，
  *    两者直接向 FileListRecyclerView 添加 safety_ability_layout footer，完全绕过旧入口。
  *    在 addFooterView(View) 参数边界识别 SafetyInstructionsView 后跳过添加。
+ * 移除提示后，旧列表初始化及 RecyclerView 绑定 adapter 时保留底部滚动留白，避免末项贴住导航栏。
  *
  * 已删除旧 View 树路径：FileListChildFragment 根节点的 OnGlobalLayoutListener /
  * OnPreDrawListener / postDelayed 循环，以及 safe_ability_layout 资源 ID 全树递归。
  */
 internal object FilePageCustomizeHook {
 
+    // 原生 safety_ability_layout 的提示外留白为上方 18dp + 下方 14dp。
+    private const val BOTTOM_SCROLL_SPACE_DP = 32
     private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
@@ -39,8 +44,8 @@ internal object FilePageCustomizeHook {
         try {
             var installed = 0
             installed += hookSafetyFooterUseCase(cl)
-            installed += hookSafetyBottomViewRenderEntry(cl)
-            installed += hookSafetyRecyclerFooterEntry(cl)
+            installed += hookLegacySafetyFooter(cl)
+            installed += hookSafetyRecyclerView(cl)
             if (installed == 0) {
                 hookState.reset()
                 XposedCompat.log("[FilePageCustomizeHook] hooks NOT INSTALLED")
@@ -94,35 +99,55 @@ internal object FilePageCustomizeHook {
         return methods.size
     }
 
-    private fun hookSafetyBottomViewRenderEntry(cl: ClassLoader): Int {
+    private fun hookLegacySafetyFooter(cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
-        val context = XposedCompat.findClassOrNull("android.content.Context", cl) ?: return 0
         val method = XposedCompat.findMethodOrNull(
             BaiduFilePageHookPoints.MY_NETDISK_FRAGMENT,
             cl,
             BaiduFilePageHookPoints.INIT_SAFETY_BOTTOM_VIEW_METHOD,
-            context,
+            Context::class.java,
         ) ?: run {
             XposedCompat.log("[FilePageCustomizeHook] initSafetyBottomView NOT FOUND")
             return 0
         }
+        val fields = runCatching {
+            XposedCompat.findField(method.declaringClass, BaiduFilePageHookPoints.BOTTOM_SAFETY_FIELD) to
+                XposedCompat.findField(method.declaringClass, BaiduFilePageHookPoints.LIST_VIEW_FIELD)
+        }.getOrNull()
+        if (fields == null || method.returnType != Void.TYPE ||
+            !View::class.java.isAssignableFrom(fields.first.type) ||
+            !ListView::class.java.isAssignableFrom(fields.second.type)
+        ) {
+            XposedCompat.log("[FilePageCustomizeHook] legacy safety footer fields incompatible")
+            return 0
+        }
+        val (safetyField, listField) = fields
 
         mod.hook(method).intercept { chain ->
+            // VideoAllFragment 在 super 返回后直接访问 mBottomSafety；音频/文档页也会
+            // 在空列表和筛选状态更新时访问它。只移除列表条目，保留原生对象及初始化副作用。
+            val result = chain.proceed()
             if (isEnabled()) {
-                XposedCompat.logD("[FilePageCustomizeHook] initSafetyBottomView skipped (footer not inflated)")
-                null
-            } else {
-                chain.proceed()
+                runCatching {
+                    val fragment = chain.thisObject ?: return@runCatching
+                    val footer = safetyField.get(fragment) as? View ?: return@runCatching
+                    val list = listField.get(fragment) as? ListView ?: return@runCatching
+                    list.removeFooterView(footer)
+                    ensureBottomScrollSpace(list)
+                }.onFailure {
+                    XposedCompat.logW("[FilePageCustomizeHook] legacy safety footer removal failed: ${it.javaClass.name}")
+                }
             }
+            result
         }
         XposedCompat.logD(
-            "[FilePageCustomizeHook] safety bottom view render-entry hook installed: " +
+            "[FilePageCustomizeHook] legacy safety footer hook installed: " +
                 "${method.declaringClass.name}.${method.name}",
         )
         return 1
     }
 
-    private fun hookSafetyRecyclerFooterEntry(cl: ClassLoader): Int {
+    private fun hookSafetyRecyclerView(cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
         val recyclerClass = XposedCompat.findClassOrNull(
             BaiduFilePageHookPoints.FILE_LIST_RECYCLER_VIEW,
@@ -155,7 +180,39 @@ internal object FilePageCustomizeHook {
                     "${method.declaringClass.name}.${method.name}",
             )
         }
-        return methods.size
+        // 国内新文件页的数据层已阻止 footer 创建，不能只在 addFooterView 里补间距。
+        // 三个宿主均在此专用列表类中声明 setAdapter，避开全局 RecyclerView/View Hook。
+        val adapterMethods = recyclerClass.declaredMethods.filter { method ->
+            method.name == "setAdapter" &&
+                method.parameterTypes.size == 1 &&
+                method.parameterTypes[0].name == BaiduFilePageHookPoints.RECYCLER_VIEW_ADAPTER &&
+                method.returnType == Void.TYPE
+        }
+        adapterMethods.forEach { method ->
+            method.isAccessible = true
+            mod.hook(method).intercept { chain ->
+                val result = chain.proceed()
+                if (isEnabled()) {
+                    (chain.thisObject as? ViewGroup)?.let(::ensureBottomScrollSpace)
+                }
+                result
+            }
+        }
+        return methods.size + adapterMethods.size
+    }
+
+    private fun ensureBottomScrollSpace(list: ViewGroup) {
+        val minimum = (BOTTOM_SCROLL_SPACE_DP * list.resources.displayMetrics.density + 0.5f).toInt()
+        // 取下限而非累加：目录/adapter 重绑不会不断扩大间距，也不会缩小宿主已有的留白。
+        if (list.paddingBottom < minimum) {
+            if (list.isPaddingRelative) {
+                list.setPaddingRelative(list.paddingStart, list.paddingTop, list.paddingEnd, minimum)
+            } else {
+                list.setPadding(list.paddingLeft, list.paddingTop, list.paddingRight, minimum)
+            }
+        }
+        // 留白计入原生滚动范围，滚动时内容仍可经过该区域，末项可以完整滚到导航栏上方。
+        list.clipToPadding = false
     }
 
     private fun isSafetyFooter(root: View): Boolean {
