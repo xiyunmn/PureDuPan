@@ -29,8 +29,8 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduFilePageHookPoints
  */
 internal object FilePageCustomizeHook {
 
-    // 原生 safety_ability_layout 的提示外留白为上方 18dp + 下方 14dp。
-    private const val BOTTOM_SCROLL_SPACE_DP = 32
+    // 超出原提示外的 32dp 留白，便于将末项滚动至底部导航栏上方操作。
+    private const val BOTTOM_SCROLL_SPACE_DP = 64
     private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {

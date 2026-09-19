@@ -23,9 +23,17 @@ internal object IntlLaunchHandoffOptimizeHook {
     private const val TAG = "IntlLaunchHandoffOptimizeHook"
     private val windowState = HookState()
     private val coldGateState = HookState()
+    private val coldEntryState = HookState()
+    private val coldDispatchState = HookState()
     private val shellInit = ThreadLocal<Activity?>()
-    private val coldDecision = ThreadLocal<Activity?>()
+    private val coldDecision = ThreadLocal<ColdDecision?>()
     private val shellNames = setOf(BaiduIntlHookPoints.DEFAULT_MAIN_ACTIVITY, BaiduIntlHookPoints.NAVIGATE_ACTIVITY)
+
+    private class ColdDecision(val activity: Activity, val original: Intent?, val filtered: Intent?) {
+        fun restoreIntent() {
+            if (filtered != null && activity.intent === filtered) activity.intent = original
+        }
+    }
 
     fun hook(cl: ClassLoader) {
         if (!HookSettings.isIntlSplashStartupAccelerateEnabled) return
@@ -38,27 +46,54 @@ internal object IntlLaunchHandoffOptimizeHook {
         }
     }
 
+    @Synchronized
     private fun hookColdGate(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
-        val gate = IntlColdStartSplashDexKitResolver.resolve(cl) ?: run {
-            XposedCompat.logD("[$TAG] cold gate pending DexKit warm-up; native ad routing retained")
-            return
-        }
         val entry = XposedCompat.findMethodOrNull(
             BaiduIntlHookPoints.NAVIGATE_ACTIVITY, cl, BaiduIntlHookPoints.NAVIGATE_SHOW_FLASH_SCREEN,
         ) ?: return
-        if (!coldGateState.markInstalled()) return
-        mod.hook(entry).intercept { chain ->
-            val previous = coldDecision.get()
-            coldDecision.set(chain.thisObject as? Activity)
-            try {
+        val dispatch = XposedCompat.findMethodOrNull(
+            BaiduIntlHookPoints.NAVIGATE_ACTIVITY, cl, BaiduIntlHookPoints.NAVIGATE_DISPATCH,
+        ) ?: return
+        if (!coldDispatchState.isInstalled()) {
+            mod.hook(dispatch).intercept { chain ->
+                coldDecision.get()?.takeIf { it.activity === chain.thisObject }?.restoreIntent()
                 chain.proceed()
-            } finally {
-                if (previous == null) coldDecision.remove() else coldDecision.set(previous)
             }
+            coldDispatchState.markInstalled()
+        }
+        if (!coldEntryState.isInstalled()) {
+            mod.hook(entry).intercept { chain ->
+                val activity = chain.thisObject as? Activity
+                if (!HookSettings.isIntlSplashStartupAccelerateEnabled ||
+                    activity?.javaClass?.name != BaiduIntlHookPoints.NAVIGATE_ACTIVITY
+                ) return@intercept chain.proceed()
+                val original = activity.intent
+                // The native push-entry protocol skips cold ads even before DexKit warm-up.
+                // Never mutate the caller's Intent or carry this flag into native routing.
+                val filtered = if (!coldGateState.isInstalled() && original != null) {
+                    Intent(original).putExtra(BaiduIntlHookPoints.COLD_SPLASH_FILTER_AD_EXTRA, "1")
+                } else null
+                val decision = ColdDecision(activity, original, filtered)
+                val previous = coldDecision.get()
+                coldDecision.set(decision)
+                try {
+                    if (filtered != null) activity.intent = filtered
+                    chain.proceed()
+                } finally {
+                    decision.restoreIntent()
+                    if (previous == null) coldDecision.remove() else coldDecision.set(previous)
+                }
+            }
+            coldEntryState.markInstalled()
+        }
+        if (coldGateState.isInstalled()) return
+        val gate = IntlColdStartSplashDexKitResolver.resolve(cl) ?: run {
+            XposedCompat.logD("[$TAG] cold gate pending DexKit warm-up; native filterad bypass ready")
+            return
         }
         mod.hook(gate).intercept { chain ->
-            val activity = coldDecision.get()
+            val activity = coldDecision.get()?.activity
             if (HookSettings.isIntlSplashStartupAccelerateEnabled && activity != null &&
                 activity.javaClass.name == BaiduIntlHookPoints.NAVIGATE_ACTIVITY &&
                 chain.args.firstOrNull() === activity
@@ -70,6 +105,7 @@ internal object IntlLaunchHandoffOptimizeHook {
                 chain.proceed()
             }
         }
+        coldGateState.markInstalled()
         XposedCompat.logD("[$TAG] cold splash gate installed")
     }
 

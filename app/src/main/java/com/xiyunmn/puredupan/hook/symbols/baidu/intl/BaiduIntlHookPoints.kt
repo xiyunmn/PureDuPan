@@ -16,6 +16,8 @@ internal object BaiduIntlHookPoints {
     const val DEFAULT_MAIN_ACTIVITY = "com.baidu.netdisk.ui.DefaultMainActivity"
     const val NAVIGATE_ACTIVITY = "com.baidu.netdisk.ui.Navigate"
     const val NAVIGATE_SHOW_FLASH_SCREEN = "showFlashScreen"
+    const val NAVIGATE_DISPATCH = "dispatch"
+    const val COLD_SPLASH_FILTER_AD_EXTRA = "filterad"
     const val SPLASH_ADS_LOAD_STRATEGY = "com.baidu.netdisk.advertise.splash.SplashAdsLoadStrategy"
     const val AD_FINISH_LISTENER = "com.baidu.netdisk.advertise.splash.IAdFinishListener"
     const val COLD_AD_CLOSE_TYPE = "com.baidu.netdisk.advertise.splash.ColdAdCloseType"
