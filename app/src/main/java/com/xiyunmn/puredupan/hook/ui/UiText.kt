@@ -7,7 +7,7 @@ object UiText {
 
         const val GROUP_CONTENT_BLOCK = "内容屏蔽"
         const val POPUP_BLOCK_LABEL = "弹窗屏蔽"
-        const val POPUP_BLOCK_DESC = "管理弹窗、引导提示和广告悬浮窗；关闭总开关保留子项配置"
+        const val POPUP_BLOCK_DESC = "管理弹窗、引导提示和广告悬浮窗"
         const val POPUP_BLOCK_SAVED = "弹窗屏蔽配置已保存"
         const val GROUP_UI_OPTIMIZE = "UI净化"
         const val GROUP_THEME = "拓展功能"

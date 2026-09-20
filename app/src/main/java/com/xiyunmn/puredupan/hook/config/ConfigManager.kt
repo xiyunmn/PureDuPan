@@ -485,7 +485,6 @@ object ConfigManager {
         fun featureInt(key: String, defaultValue: Int): Int {
             return if (isFeatureAvailable(key)) p.getInt(key, defaultValue) else defaultValue
         }
-        // 未保存新总开关时沿用当前宿主已有子项；关闭总开关不清除子项选择。
         val hasPopupOptionEnabled = featureBoolean(KEY_BLOCK_IN_APP_DIALOG) ||
             featureBoolean(KEY_BLOCK_UPDATE_DIALOG) || featureBoolean(KEY_BLOCK_FULL_SCREEN_BACKUP) ||
             featureBoolean(KEY_BLOCK_SHARE_PUSH_GUIDE) || featureBoolean(KEY_BLOCK_APP_STORE_REVIEW) ||
