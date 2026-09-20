@@ -6,6 +6,9 @@ object UiText {
         const val BRAND_TAG = "PureDuPan"
 
         const val GROUP_CONTENT_BLOCK = "内容屏蔽"
+        const val POPUP_BLOCK_LABEL = "弹窗屏蔽"
+        const val POPUP_BLOCK_DESC = "管理弹窗、引导提示和广告悬浮窗；关闭总开关保留子项配置"
+        const val POPUP_BLOCK_SAVED = "弹窗屏蔽配置已保存"
         const val GROUP_UI_OPTIMIZE = "UI净化"
         const val GROUP_THEME = "拓展功能"
         const val GROUP_DEBUG = "调试"
@@ -32,17 +35,15 @@ object UiText {
         const val HIDE_HOME_TOP_PROMOTION_LABEL = "顶部动态推广"
         const val HIDE_HOME_TOP_PROMOTION_DESC = "隐藏搜索框上方的动态推广控件"
         const val HOME_CUSTOMIZE_LABEL = "首页定制"
-        const val HOME_CUSTOMIZE_DESC = "管理「首页」顶部搜索框、工具栏、动态推广和推荐提示"
+        const val HOME_CUSTOMIZE_DESC = "管理「首页」顶部控件和内容板块"
         const val HIDE_HOME_SEARCH_PLACEHOLDER_LABEL = "搜索框提示词"
         const val HIDE_HOME_SEARCH_PLACEHOLDER_DESC = "隐藏首页搜索框内滚动提示词（title_bar_search_place_holder_text）"
         const val HIDE_HOME_SEARCH_AIGC_ICON_LABEL = "搜索框 AIGC 图标"
         const val HIDE_HOME_SEARCH_AIGC_ICON_DESC = "隐藏首页搜索框右侧 AIGC 图标（searchbox_aigc_icon）"
         const val HIDE_HOME_TOOLBAR_LABEL = "工具栏"
         const val HIDE_HOME_TOOLBAR_DESC = "隐藏首页顶部工具栏区域"
-        const val HIDE_HOME_FEED_TIP_LABEL = "开启推荐提示"
-        const val HIDE_HOME_FEED_TIP_DESC = "隐藏首页信息流上方「开启推荐」提示条（cl_feed_tip）"
-        const val HIDE_HOME_BANNER_LABEL = "轮播图广告"
-        const val HIDE_HOME_BANNER_DESC = "隐藏首页信息流头部轮播图广告区域（headerBanner / newhome_header_type_banner）"
+        const val HIDE_HOME_RECOMMEND_SECTION_LABEL = "推荐"
+        const val HIDE_HOME_RECOMMEND_SECTION_DESC = "隐藏首页推荐板块及其开启提示"
         const val HIDE_HOME_MEMORIES_SECTION_LABEL = "回忆"
         const val HIDE_HOME_MEMORIES_SECTION_DESC = "隐藏首页信息流头部「回忆」板块（HomeStoryCardView）"
         const val HIDE_HOME_SAVE_SECTION_LABEL = "转存"
@@ -60,7 +61,7 @@ object UiText {
         const val FILE_PAGE_CUSTOMIZE_LABEL = "文件页定制"
         const val FILE_PAGE_CUSTOMIZE_DESC = "管理「文件」页提示控件和转存成功弹窗广告"
         const val HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_LABEL = "底部数据安全提示"
-        const val HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_DESC = "隐藏「文件」页底部的数据安全提示"
+        const val HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_DESC = "隐藏「文件」页底部的数据安全提示，保留原有底部留白"
         const val DOWNLOAD_PAGE_CUSTOMIZE_LABEL = "下载页定制"
         const val DOWNLOAD_PAGE_CUSTOMIZE_DESC = "管理「下载」页面中的推广广告和提示控件"
         const val HIDE_DOWNLOAD_PAGE_GAME_GUIDE_LABEL = "游戏推荐浮窗动画"
@@ -129,10 +130,8 @@ object UiText {
         const val MY_PAGE_CONTENT_OFFSET_Y_LABEL = "垂直偏移"
         const val MY_PAGE_CONTENT_OFFSET_Y_DESC = "负值上移，正值下移"
         const val MY_PAGE_CONTENT_OFFSET_NONE = "不偏移"
-        const val SHARE_PAGE_CUSTOMIZE_LABEL = "共享页定制"
-        const val SHARE_PAGE_CUSTOMIZE_DESC = "管理「共享」页面右下角广告悬浮窗"
-        const val REMOVE_HOME_FAB_LABEL = "广告悬浮窗"
-        const val REMOVE_HOME_FAB_DESC = "移除「共享」页面右下角广告悬浮球"
+        const val REMOVE_HOME_FAB_LABEL = "移除广告悬浮窗"
+        const val REMOVE_HOME_FAB_DESC = "移除「首页」「共享」页面的广告悬浮窗"
         const val BLOCK_TRANSFER_SVIP_CARD_LABEL = "SVIP 优惠广告卡片"
         const val BLOCK_TRANSFER_SVIP_CARD_DESC = "移除转存成功弹窗下方的 SVIP 优惠广告卡片"
         const val HIDE_RENEW_BUTTON_LABEL = "续费提示"
@@ -205,9 +204,6 @@ object UiText {
         const val CUSTOM_BOTTOM_BAR_LABEL = "底栏Tab定制"
         const val CUSTOM_BOTTOM_BAR_DESC = "自定义隐藏底部导航栏中的指定 Tab"
 
-        const val DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE_LABEL = "移除首页右滑事件"
-        const val DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE_DESC =
-            "DexKit 解析成功后生效\n阻止首页右滑进入负一屏"
         const val ENABLE_NIGHT_MODE_SUPPORT_LABEL = "启用夜间模式支持"
         const val ENABLE_NIGHT_MODE_SUPPORT_DESC = "内置夜间皮肤资源，并恢复宿主设置页中被隐藏的夜间模式开关"
         const val FOLLOW_SYSTEM_NIGHT_MODE_LABEL = "夜间模式跟随系统"
@@ -349,8 +345,6 @@ object UiText {
         const val HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT_DESC = "隐藏该槽位下的“账号、退出”文案"
         const val HIDE_ABOUT_ME_STAR_SKIN_TEXT_LABEL = "个性设置"
         const val HIDE_ABOUT_ME_STAR_SKIN_TEXT_DESC = "隐藏该槽位下的“明星皮肤上线啦”文案"
-        const val HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT_LABEL = "更多服务"
-        const val HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT_DESC = "隐藏该槽位下以“免流量卡”开头的说明文案"
         const val BOTTOM_BAR_TAB_SECTION_TITLE = "自定义隐藏底栏Tab"
         const val BOTTOM_BAR_HIDE_TAB_HOME_LABEL = "「首页」"
         const val BOTTOM_BAR_HIDE_TAB_FILE_LABEL = "「文件」"
@@ -360,8 +354,6 @@ object UiText {
         const val BOTTOM_BAR_HIDE_TAB_MINE_LABEL = "「我的」"
         const val BOTTOM_BAR_AT_LEAST_ONE = "至少保留一个底部 Tab"
         const val BOTTOM_BAR_SAVED = "底栏Tab定制配置已保存"
-        const val SHARE_PAGE_CUSTOMIZE_DIALOG_TITLE = "共享页定制"
-        const val SHARE_PAGE_CUSTOMIZE_SAVED = "共享页定制配置已保存"
         const val FILE_PAGE_CUSTOMIZE_DIALOG_TITLE = "文件页定制"
         const val FILE_PAGE_CUSTOMIZE_SAVED = "文件页定制配置已保存"
         const val DOWNLOAD_PAGE_CUSTOMIZE_DIALOG_TITLE = "下载页定制"
@@ -436,7 +428,6 @@ object UiText {
 • 首页定制
 • 文件页定制
 • 搜索页定制
-• 共享页定制
 • 我的页定制
 • 会员卡片定制
 • 底栏Tab定制

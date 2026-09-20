@@ -3,170 +3,140 @@ package com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.search
 import android.content.Intent
 import android.os.Bundle
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
-import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlSearchHookPoints
 import org.json.JSONObject
 import java.util.ArrayList
 import java.util.HashMap
+import java.lang.reflect.Method
 
 internal object IntlSearchPageCustomizeHook {
     private const val TAG = "IntlSearchPageCustomizeHook"
 
-    private val hookState = HookState()
+    private val installedMethods = mutableSetOf<Method>()
 
     @Volatile
     private var isSearchRouteActive = false
 
+    @Synchronized
     fun hook(cl: ClassLoader) {
-        if (!isEnabled()) {
-            XposedCompat.log("[$TAG] skipped: config disabled")
-            return
-        }
-        if (!hookState.markInstalled()) return
-
-        try {
-            val activityClass = XposedCompat.findClassOrNull(
-                BaiduIntlSearchHookPoints.FLUTTER_BUSINESS_ACTIVITY,
-                cl,
-            ) ?: run {
-                hookState.reset()
-                XposedCompat.log("[$TAG] FlutterBusinessActivity NOT FOUND")
-                return
-            }
-            val mod = XposedCompat.module ?: run {
-                hookState.reset()
-                return
-            }
-            var installed = 0
-
-            XposedCompat.findMethodOrNull(
-                activityClass,
-                BaiduIntlSearchHookPoints.ON_CREATE_METHOD,
-                Bundle::class.java,
-            )?.let { method ->
+        if (!isEnabled()) return
+        val mod = XposedCompat.module ?: return
+        // Pigeon hydrates Flutter preferences when the engine starts, before the search route opens.
+        var installed = hookSearchStorage(cl) + hookSearchPlaceholder(cl) + hookAdvancedSearchBannerExperiment(cl)
+        val activityClass = XposedCompat.findClassOrNull(BaiduIntlSearchHookPoints.FLUTTER_BUSINESS_ACTIVITY, cl)
+        if (activityClass != null && HookSettings.isSearchPageRecommendHidden) {
+            installed += installOnce(XposedCompat.findMethodOrNull(activityClass, "onCreate", Bundle::class.java)) { method ->
                 mod.hook(method).intercept { chain ->
                     isSearchRouteActive = isSearchActivity(chain.thisObject)
                     chain.proceed()
                 }
-                installed++
-            } ?: XposedCompat.log("[$TAG] FlutterBusinessActivity.onCreate(Bundle) NOT FOUND")
-
-            XposedCompat.findMethodOrNull(activityClass, BaiduIntlSearchHookPoints.ON_RESUME_METHOD)?.let { method ->
+            }
+            installed += installOnce(XposedCompat.findMethodOrNull(activityClass, "onResume")) { method ->
                 mod.hook(method).intercept { chain ->
                     val result = chain.proceed()
                     isSearchRouteActive = isSearchActivity(chain.thisObject)
                     result
                 }
-                installed++
-            } ?: XposedCompat.log("[$TAG] FlutterBusinessActivity.onResume() NOT FOUND")
-
-            XposedCompat.findMethodOrNull(activityClass, BaiduIntlSearchHookPoints.ON_PAUSE_METHOD)?.let { method ->
+            }
+            installed += installOnce(XposedCompat.findMethodOrNull(activityClass, "onPause")) { method ->
                 mod.hook(method).intercept { chain ->
                     val result = chain.proceed()
-                    if (isSearchActivity(chain.thisObject)) {
-                        isSearchRouteActive = false
-                    }
+                    if (isSearchActivity(chain.thisObject)) isSearchRouteActive = false
                     result
                 }
-                installed++
-            } ?: XposedCompat.log("[$TAG] FlutterBusinessActivity.onPause() NOT FOUND")
-
-            val resultHandlerClass = XposedCompat.findClassOrNull(
-                BaiduIntlSearchHookPoints.FLUTTER_RESULT_HANDLER,
-                cl,
-            )
-            if (resultHandlerClass == null) {
-                XposedCompat.log("[$TAG] Flutter result handler NOT FOUND")
-            } else {
-                XposedCompat.findMethodOrNull(
-                    resultHandlerClass,
-                    BaiduIntlSearchHookPoints.RESULT_SUCCESS_METHOD,
-                    Any::class.java,
-                )?.let { method ->
-                    mod.hook(method).intercept { chain ->
-                        val original = chain.args.firstOrNull()
-                        val replacement = sanitizeFlutterResult(original)
-                        if (replacement !== original) {
-                            chain.proceed(arrayOf(replacement))
-                        } else {
-                            chain.proceed()
-                        }
-                    }
-                    installed++
-                } ?: XposedCompat.log("[$TAG] MethodChannel.Result.success(Object) NOT FOUND")
             }
-
-            installed += hookAdvancedSearchBannerExperiment(cl)
-
-            if (installed == 0) {
-                hookState.reset()
-                XposedCompat.log("[$TAG] no hooks installed")
-                return
+            val resultClass = XposedCompat.findClassOrNull(BaiduIntlSearchHookPoints.FLUTTER_RESULT_HANDLER, cl)
+            val resultMethod = resultClass?.let {
+                XposedCompat.findMethodOrNull(it, BaiduIntlSearchHookPoints.RESULT_SUCCESS_METHOD, Any::class.java)
             }
-            XposedCompat.log("[$TAG] hooks INSTALLED: count=$installed")
-        } catch (e: Exception) {
-            hookState.reset()
-            XposedCompat.log("[$TAG] FAILED: ${e.message}")
-            XposedCompat.log(e)
+            installed += installOnce(resultMethod) { method ->
+                mod.hook(method).intercept { chain ->
+                    val original = chain.args.firstOrNull()
+                    val replacement = sanitizeFlutterResult(original)
+                    if (replacement !== original) chain.proceed(arrayOf(replacement)) else chain.proceed()
+                }
+            }
+        }
+        XposedCompat.log("[$TAG] hooks installed: count=$installed total=${installedMethods.size}")
+    }
+
+    private fun hookSearchPlaceholder(cl: ClassLoader): Int {
+        if (!HookSettings.isSearchPagePlaceholderHidden) return 0
+        val mod = XposedCompat.module ?: return 0
+        val fragmentClass = XposedCompat.findClassOrNull(BaiduIntlSearchHookPoints.FLUTTER_BUSINESS_FRAGMENT, cl)
+            ?: return 0
+        // The public getters are inherited from FlutterBoostFragment in 13.11.13.
+        // Filter the final route arguments, after both Bundle and JSON parameters have merged.
+        val routeGetter = runCatching {
+            fragmentClass.getMethod(BaiduIntlSearchHookPoints.FLUTTER_ROUTE_METHOD)
+        }.getOrNull() ?: return 0
+        val paramsGetter = runCatching {
+            fragmentClass.getMethod(BaiduIntlSearchHookPoints.FLUTTER_ROUTE_PARAMS_METHOD)
+        }.getOrNull()?.takeIf { Map::class.java.isAssignableFrom(it.returnType) }
+        return installOnce(paramsGetter) { method ->
+            mod.hook(method).intercept { chain ->
+                val result = chain.proceed()
+                if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPagePlaceholderHidden &&
+                    fragmentClass.isInstance(chain.thisObject) && result is Map<*, *>
+                ) {
+                    val route = runCatching { routeGetter.invoke(chain.thisObject) }.getOrNull()
+                    IntlSearchPlaceholderRules.sanitize(route, result)
+                } else result
+            }
+        }
+    }
+
+    private fun hookSearchStorage(cl: ClassLoader): Int {
+        if (!HookSettings.isSearchPageHistoryHidden && !HookSettings.isSearchPageRecommendHidden) return 0
+        val mod = XposedCompat.module ?: return 0
+        val clazz = XposedCompat.findClassOrNull(BaiduIntlSearchHookPoints.FLUTTER_PREFERENCES_PLUGIN, cl)
+            ?: return 0
+        val getter = XposedCompat.findMethodOrNull(clazz, "getAll", String::class.java, List::class.java)
+            ?.takeIf { Map::class.java.isAssignableFrom(it.returnType) }
+        return installOnce(getter) { method ->
+            mod.hook(method).intercept { chain ->
+                val result = chain.proceed()
+                if (HookSettings.isSearchPageCustomizeEnabled && result is Map<*, *>) {
+                    IntlSearchStorageRules.sanitize(
+                        result,
+                        hideHistory = HookSettings.isSearchPageHistoryHidden,
+                        hideRecommend = HookSettings.isSearchPageRecommendHidden,
+                    )
+                } else result
+            }
         }
     }
 
     private fun hookAdvancedSearchBannerExperiment(cl: ClassLoader): Int {
         if (!HookSettings.isIntlSearchPageSvipBannerHidden) return 0
         val mod = XposedCompat.module ?: return 0
-        var installed = 0
-
-        val experimentConfigClass = XposedCompat.findClassOrNull(BaiduIntlSearchHookPoints.EXPERIMENT_CONFIG, cl)
-        if (experimentConfigClass == null) {
-            XposedCompat.log("[$TAG] ExperimentConfig NOT FOUND")
-        } else {
-            listOf(
-                BaiduIntlSearchHookPoints.GET_ADVANCED_SEARCH_BEFORE_BANNER_METHOD,
-                BaiduIntlSearchHookPoints.GET_ADVANCED_SEARCH_AFTER_BANNER_METHOD,
-            ).forEach { methodName ->
-                XposedCompat.findMethodOrNull(experimentConfigClass, methodName)?.let { method ->
-                    mod.hook(method).intercept { chain ->
-                        if (
-                            HookSettings.isSearchPageCustomizeEnabled &&
-                            HookSettings.isIntlSearchPageSvipBannerHidden
-                        ) {
-                            BaiduIntlSearchHookPoints.DISABLED_EXPERIMENT_VALUE
-                        } else {
-                            chain.proceed()
-                        }
-                    }
-                    installed++
-                } ?: XposedCompat.log("[$TAG] ExperimentConfig.$methodName() NOT FOUND")
+        val companion = XposedCompat.findClassOrNull(
+            BaiduIntlSearchHookPoints.EXPERIMENT_CONTEXT_COMPANION, cl,
+        ) ?: return 0
+        return BaiduIntlSearchHookPoints.advancedSearchBannerMethods.sumOf { name ->
+            val target = XposedCompat.findMethodOrNull(companion, name)
+                ?.takeIf { it.returnType == Boolean::class.javaObjectType }
+            installOnce(target) { method ->
+                mod.hook(method).intercept { chain ->
+                    if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isIntlSearchPageSvipBannerHidden) {
+                        false
+                    } else chain.proceed()
+                }
             }
         }
+    }
 
-        val experimentStoreClass = XposedCompat.findClassOrNull(BaiduIntlSearchHookPoints.EXPERIMENT_CONFIG_STORE, cl)
-        if (experimentStoreClass == null) {
-            XposedCompat.log("[$TAG] ExperimentConfig store NOT FOUND")
-        } else {
-            XposedCompat.findMethodOrNull(
-                experimentStoreClass,
-                BaiduIntlSearchHookPoints.GET_SCENE_EXPERIMENT_INT_METHOD,
-                String::class.java,
-            )?.let { method ->
-                mod.hook(method).intercept { chain ->
-                    val key = chain.args.firstOrNull() as? String
-                    if (
-                        HookSettings.isSearchPageCustomizeEnabled &&
-                        HookSettings.isIntlSearchPageSvipBannerHidden &&
-                        key in BaiduIntlSearchHookPoints.advancedSearchBannerExperimentKeys
-                    ) {
-                        BaiduIntlSearchHookPoints.DISABLED_EXPERIMENT_VALUE
-                    } else {
-                        chain.proceed()
-                    }
-                }
-                installed++
-            } ?: XposedCompat.log("[$TAG] ExperimentConfigStore.getSceneExperimentInt(String) NOT FOUND")
+    private fun installOnce(method: Method?, install: (Method) -> Unit): Int {
+        if (method == null || method in installedMethods) return 0
+        return runCatching {
+            install(method)
+            installedMethods += method
+            1
+        }.getOrElse {
+            XposedCompat.logW("[$TAG] ${method.name} install failed: ${it.message}")
+            0
         }
-
-        return installed
     }
 
     private fun sanitizeFlutterResult(value: Any?): Any? {
@@ -175,15 +145,6 @@ internal object IntlSearchPageCustomizeHook {
         }
         val text = runCatching { value.toString() }.getOrDefault("")
         val className = runCatching { value.javaClass.name }.getOrDefault("")
-        sanitizeFlutterStorageMap(value)?.let { return it }
-        if (HookSettings.isSearchPageHistoryHidden) {
-            when {
-                className == "java.lang.String" && isHistoryUrl(text) -> {
-                    XposedCompat.logD("[$TAG] blocked search history url")
-                    return BaiduIntlSearchHookPoints.BLOCKED_URL
-                }
-            }
-        }
         if (HookSettings.isSearchPageRecommendHidden) {
             when {
                 className == "java.lang.String" && isRecommendUrl(text) -> {
@@ -227,10 +188,6 @@ internal object IntlSearchPageCustomizeHook {
         }.getOrNull()) == BaiduIntlSearchHookPoints.SEARCH_ROUTE
     }
 
-    private fun isHistoryUrl(text: String): Boolean {
-        return containsAny(text, BaiduIntlSearchHookPoints.historyNetworkPaths)
-    }
-
     private fun isRecommendUrl(text: String): Boolean {
         return containsAny(text, BaiduIntlSearchHookPoints.recommendNetworkPaths)
     }
@@ -239,49 +196,10 @@ internal object IntlSearchPageCustomizeHook {
         return markers.any { marker -> text.contains(marker) }
     }
 
-    private fun removeSearchPageStorageEntries(value: Map<*, *>): HashMap<Any?, Any?> {
-        val sanitized = HashMap<Any?, Any?>()
-        value.forEach { (entryKey, entryValue) ->
-            if (!shouldRemoveStorageEntry(entryKey)) {
-                sanitized[entryKey] = entryValue
-            }
-        }
-        return sanitized
-    }
-
-    private fun sanitizeFlutterStorageMap(value: Any?): HashMap<Any?, Any?>? {
-        if (value !is Map<*, *>) return null
-        val sanitized = removeSearchPageStorageEntries(value)
-        if (sanitized.size == value.size) return null
-        XposedCompat.logD("[$TAG] cleared search page storage entries")
-        return sanitized
-    }
-
-    private fun shouldRemoveStorageEntry(entryKey: Any?): Boolean {
-        return when {
-            HookSettings.isSearchPageHistoryHidden && isHistoryStorageKey(entryKey) -> true
-            HookSettings.isSearchPageRecommendHidden && isRecommendStorageKey(entryKey) -> true
-            else -> false
-        }
-    }
-
-    private fun isHistoryStorageKey(entryKey: Any?): Boolean {
-        val key = entryKey as? String ?: return false
-        return (
-            key == BaiduIntlSearchHookPoints.SEARCH_HISTORY_STORAGE_KEY ||
-                key.startsWith(BaiduIntlSearchHookPoints.SEARCH_HISTORY_STORAGE_KEY_PREFIX)
-            ) && !key.startsWith(BaiduIntlSearchHookPoints.SEARCH_HISTORY_RECOMMEND_ITEM_STORAGE_KEY_PREFIX)
-    }
-
-    private fun isRecommendStorageKey(entryKey: Any?): Boolean {
-        val key = entryKey as? String ?: return false
-        return key == BaiduIntlSearchHookPoints.LAST_PERSON_RECOMMEND_STORAGE_KEY ||
-            key.startsWith(BaiduIntlSearchHookPoints.SEARCH_HISTORY_RECOMMEND_ITEM_STORAGE_KEY_PREFIX)
-    }
-
     private fun isEnabled(): Boolean {
         return HookSettings.isSearchPageCustomizeEnabled &&
             (HookSettings.isSearchPageHistoryHidden ||
+                HookSettings.isSearchPagePlaceholderHidden ||
                 HookSettings.isSearchPageRecommendHidden ||
                 HookSettings.isIntlSearchPageSvipBannerHidden)
     }

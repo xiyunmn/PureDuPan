@@ -28,9 +28,6 @@ internal object BaiduBottomBarHookPoints {
     const val FIND_TAB_ID_NAME = "rb_findresoure"
     const val ABOUT_ME_TAB_ID_NAME = "rb_about_me"
 
-    val DOMESTIC_HOME_FOLDED_FIELDS = listOf("lastNewFHomeTopFolded", "lastFHomeTopFolded")
-    val INTL_HOME_FOLDED_FIELDS = listOf("lastFHomeTopFolded", "lastNewFHomeTopFolded")
+    val HOME25_FOLDED_FIELDS = listOf("lastNewFHomeTopFolded", "lastFHomeTopFolded")
 
-    val DOMESTIC_THEME_REFRESH_METHODS = listOf(INIT_TABS_SKIN_METHOD)
-    val INTL_THEME_REFRESH_METHODS = listOf(THEME_UPDATE_METHOD)
 }

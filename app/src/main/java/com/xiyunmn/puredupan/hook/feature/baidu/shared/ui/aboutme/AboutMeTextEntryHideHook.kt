@@ -19,8 +19,6 @@ object AboutMeTextEntryHideHook {
 
     private const val KEY_SETTINGS = "settings"
     private const val KEY_PERSONAL_THEME_SETTING = "personal_theme_setting"
-    // The misspelling is part of the host's persisted node-key contract.
-    private const val KEY_MORE_SERVICE = "more_servce"
 
     private const val MIDDLE_HINT_ID = "item_hint"
     private const val MIDDLE_MANAGE_SPACE_ID = "manage_space"
@@ -42,7 +40,7 @@ object AboutMeTextEntryHideHook {
 
         try {
             var installed = 0
-            if (isAccountExitEnabled() || isStarSkinEnabled() || isFreeDataCardEnabled()) {
+            if (isAccountExitEnabled() || isStarSkinEnabled()) {
                 installed += hookMiddleRows(cl)
             }
             if (isManageSpaceEnabled()) {
@@ -77,16 +75,12 @@ object AboutMeTextEntryHideHook {
             val node = chain.args.firstOrNull()
             val accountExitNode = isAccountExitEnabled() && hasStringValue(node, KEY_SETTINGS)
             val starNode = isStarSkinEnabled() && hasStringValue(node, KEY_PERSONAL_THEME_SETTING)
-            val freeDataCardNode = isFreeDataCardEnabled() && hasStringValue(node, KEY_MORE_SERVICE)
             val result = chain.proceed()
             if (accountExitNode) {
                 clearHolderHintById(chain.thisObject, "account/exit")
             }
             if (starNode) {
                 clearHolderHintById(chain.thisObject, "star-skin")
-            }
-            if (freeDataCardNode) {
-                clearHolderHintById(chain.thisObject, "free-data card")
             }
             result
         }
@@ -247,7 +241,6 @@ object AboutMeTextEntryHideHook {
     private fun isAnyEnabled(): Boolean =
         isAccountExitEnabled() ||
             isStarSkinEnabled() ||
-            isFreeDataCardEnabled() ||
             isManageSpaceEnabled() ||
             isRewardEnabled()
 
@@ -259,11 +252,6 @@ object AboutMeTextEntryHideHook {
     private fun isStarSkinEnabled(): Boolean {
         val options = HookSettings.aboutMeOptions()
         return options.isMyPageCustomizeEnabled && options.isAboutMeStarSkinTextHidden
-    }
-
-    private fun isFreeDataCardEnabled(): Boolean {
-        val options = HookSettings.aboutMeOptions()
-        return options.isMyPageCustomizeEnabled && options.isAboutMeFreeDataCardTextHidden
     }
 
     private fun isManageSpaceEnabled(): Boolean {

@@ -57,6 +57,9 @@ internal object SettingsMainDialog {
                 restrictedUnlocked = SettingsUserState.areRestrictedFeaturesUnlocked,
                 defaultValues = defaultValues,
                 actionHandlers = TopLevelSettingsActionHandlers(
+                    onPopupBlockClick = {
+                        PageCustomizeSettingsDialogs.showPopupBlock(context, prefs, settingsSession, texts)
+                    },
                     onHomeCustomizeClick = { PageCustomizeSettingsDialogs.showHome(context, prefs, settingsSession, texts) },
                     onFilePageCustomizeClick = {
                         PageCustomizeSettingsDialogs.showFilePage(context, prefs, settingsSession, texts)
@@ -66,9 +69,6 @@ internal object SettingsMainDialog {
                     },
                     onSearchPageCustomizeClick = {
                         PageCustomizeSettingsDialogs.showSearchPage(context, prefs, settingsSession, texts)
-                    },
-                    onSharePageCustomizeClick = {
-                        PageCustomizeSettingsDialogs.showSharePage(context, prefs, settingsSession, texts)
                     },
                     onMyPageCustomizeClick = {
                         PageCustomizeSettingsDialogs.showMyPage(context, prefs, settingsSession, texts)
@@ -432,6 +432,10 @@ internal object SettingsMainDialog {
     private fun topLevelDefaultValues(settingsSession: SettingsRuntimeSession): TopLevelSettingsDefaultValues {
         val prefs = settingsSession.prefs
         return TopLevelSettingsDefaultValues(
+            popupBlock = PageCustomizeSettingsItemsBuilder.hasEnabledPopupBlockOption(
+                isFeatureVisible = settingsSession::isFeatureVisible,
+                isChecked = { key -> prefs.getBoolean(key, false) },
+            ),
             homeCustomize = PageCustomizeSettingsItemsBuilder.hasEnabledHomeCustomizeOption(
                 prefs = prefs,
                 isFeatureVisible = settingsSession::isFeatureVisible,
@@ -445,10 +449,6 @@ internal object SettingsMainDialog {
                 isChecked = { key -> prefs.getBoolean(key, false) },
             ),
             searchPageCustomize = PageCustomizeSettingsItemsBuilder.hasEnabledSearchPageCustomizeOption(
-                isFeatureVisible = settingsSession::isFeatureVisible,
-                isChecked = { key -> prefs.getBoolean(key, false) },
-            ),
-            sharePageCustomize = PageCustomizeSettingsItemsBuilder.hasEnabledSharePageCustomizeOption(
                 isFeatureVisible = settingsSession::isFeatureVisible,
                 isChecked = { key -> prefs.getBoolean(key, false) },
             ),

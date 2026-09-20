@@ -12,10 +12,8 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlNonCoreDiff
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlStoryDouyinInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.IntlColdStartSplashDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabModeDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlChangeSkinDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BaiduChangeSkinDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlAlbumBackupBarFactoryDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlHomeLeftScreenDrawerDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlAboutMeTopFragmentDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeRecentItemLimitDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeMiddleViewHolderDexKitResolver
@@ -55,22 +53,10 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             feature = "阻止相册 AI 初始化",
         ),
         DexKitTargetDescriptor(
-            id = IntlChangeSkinDexKitResolver.CACHE_ID,
+            id = BaiduChangeSkinDexKitResolver.CACHE_ID,
             target = "intl changeSkin method",
             featureKey = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
             feature = "夜间模式跟随系统",
-        ),
-        DexKitTargetDescriptor(
-            id = IntlHomeLeftScreenDrawerDexKitResolver.CACHE_ID,
-            target = "intl FHHomeDrawerLayout setLeftDrawerEnable method",
-            featureKey = FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE,
-            feature = "移除首页右滑事件",
-        ),
-        DexKitTargetDescriptor(
-            id = IntlBottomAiTabModeDexKitResolver.CACHE_ID,
-            target = "intl bottom AI tab config repository getter",
-            featureKey = FeatureKeys.KEY_REPLACE_BOTTOM_AI,
-            feature = "底栏 AI 替换为会员",
         ),
         DexKitTargetDescriptor(
             id = IntlCookieByBdussDexKitResolver.CACHE_ID,
@@ -175,18 +161,8 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             }
         }
         if (available(FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE)) {
-            tasks += DexKitWarmUpTask(IntlChangeSkinDexKitResolver.CACHE_ID) {
-                IntlChangeSkinDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
-        if (available(FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE)) {
-            tasks += DexKitWarmUpTask(IntlHomeLeftScreenDrawerDexKitResolver.CACHE_ID) {
-                IntlHomeLeftScreenDrawerDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
-        if (available(FeatureKeys.KEY_REPLACE_BOTTOM_AI)) {
-            tasks += DexKitWarmUpTask(IntlBottomAiTabModeDexKitResolver.CACHE_ID) {
-                IntlBottomAiTabModeDexKitResolver.warmUpDexKitCache(classLoader)
+            tasks += DexKitWarmUpTask(BaiduChangeSkinDexKitResolver.CACHE_ID) {
+                BaiduChangeSkinDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         if (available(FeatureKeys.KEY_AUTO_DAILY_SIGN_IN)) {

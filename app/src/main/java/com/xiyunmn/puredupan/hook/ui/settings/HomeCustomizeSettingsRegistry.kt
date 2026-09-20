@@ -50,18 +50,6 @@ internal object HomeCustomizeSettingsRegistry {
             HomeCustomizeSettingsSection.TOP_WIDGET,
         ),
         booleanSpec(
-            SettingsUserState.KEY_HIDE_HOME_FEED_TIP,
-            UiText.Settings.HIDE_HOME_FEED_TIP_LABEL,
-            UiText.Settings.HIDE_HOME_FEED_TIP_DESC,
-            HomeCustomizeSettingsSection.TOP_WIDGET,
-        ),
-        booleanSpec(
-            SettingsUserState.KEY_HIDE_HOME_BANNER,
-            UiText.Settings.HIDE_HOME_BANNER_LABEL,
-            UiText.Settings.HIDE_HOME_BANNER_DESC,
-            HomeCustomizeSettingsSection.TOP_WIDGET,
-        ),
-        booleanSpec(
             SettingsUserState.KEY_HIDE_HOME_RECENT_SECTION,
             UiText.Settings.HIDE_HOME_RECENT_SECTION_LABEL,
             UiText.Settings.HIDE_HOME_RECENT_SECTION_DESC,
@@ -77,6 +65,12 @@ internal object HomeCustomizeSettingsRegistry {
             SettingsUserState.KEY_HIDE_HOME_MEMORIES_SECTION,
             UiText.Settings.HIDE_HOME_MEMORIES_SECTION_LABEL,
             UiText.Settings.HIDE_HOME_MEMORIES_SECTION_DESC,
+            HomeCustomizeSettingsSection.CONTENT_SECTION,
+        ),
+        booleanSpec(
+            SettingsUserState.KEY_HIDE_HOME_RECOMMEND_SECTION,
+            UiText.Settings.HIDE_HOME_RECOMMEND_SECTION_LABEL,
+            UiText.Settings.HIDE_HOME_RECOMMEND_SECTION_DESC,
             HomeCustomizeSettingsSection.CONTENT_SECTION,
         ),
         booleanSpec(

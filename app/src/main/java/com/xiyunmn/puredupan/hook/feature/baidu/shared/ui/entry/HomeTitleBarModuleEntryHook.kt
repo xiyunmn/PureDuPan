@@ -1,11 +1,10 @@
-package com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.entry
+package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.entry
 
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.entry.SharedHomeTitleBarModuleEntryInstaller
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 
-internal object DomesticHomeTitleBarModuleEntryHook {
-    private const val TAG = "DomesticHomeTitleBarModuleEntryHook"
+internal object HomeTitleBarModuleEntryHook {
+    private const val TAG = "HomeTitleBarModuleEntryHook"
 
     fun hook(cl: ClassLoader) {
         val fragmentClassName = BaiduFeatureRuntime

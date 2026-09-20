@@ -11,7 +11,6 @@ internal object BaiduFeatureSets {
             baiduSharedHomeCustomize,
             baiduSharedFilePageCustomize,
             baiduDomesticDownloadPageCustomize,
-            baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
             baiduSharedMemberCardCustomize,
             baiduSharedBottomBarCustomize,
@@ -37,18 +36,14 @@ internal object BaiduFeatureSets {
             baiduSharedHomeCustomize,
             baiduSharedFilePageCustomize,
             baiduIntlDownloadPageCustomize,
-            baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
             baiduSharedMemberCardCustomize,
             baiduSharedBottomBarCustomize,
             baiduSharedPerformanceCustomize,
             baiduSharedStorageCustomize,
             baiduIntlStartup,
-            baiduIntlHomeCustomize,
             baiduIntlSearchPageCustomize,
-            baiduIntlMyPageCustomize,
             baiduIntlMemberCardCustomize,
-            baiduIntlBottomBarCustomize,
             baiduIntlThemeCustomize,
             baiduIntlPerformanceCustomize,
             baiduIntlAutomation,
@@ -63,7 +58,6 @@ internal object BaiduFeatureSets {
             baiduSharedHomeCustomize,
             baiduSharedFilePageCustomize,
             baiduDomesticDownloadPageCustomize,
-            baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
             baiduSharedMemberCardCustomize,
             baiduSharedBottomBarCustomize,
@@ -91,14 +85,17 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduSharedContentBlock = listOf(
+        FeatureKeys.KEY_POPUP_BLOCK,
         FeatureKeys.KEY_BLOCK_APP_STORE_REVIEW,
         FeatureKeys.KEY_BLOCK_FULL_SCREEN_BACKUP,
         FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG,
+        FeatureKeys.KEY_REMOVE_HOME_FAB,
     )
 
     private val baiduSharedHomeCustomize = listOf(
         FeatureKeys.KEY_HOME_CUSTOMIZE,
-        FeatureKeys.KEY_HIDE_HOME_FEED_TIP,
+        FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER,
+        FeatureKeys.KEY_HIDE_HOME_RECOMMEND_SECTION,
         FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION,
         FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION,
         FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION,
@@ -107,11 +104,6 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_HOME_SAVE_VERTICAL_LAYOUT,
         FeatureKeys.KEY_HOME_SAVE_ITEM_LIMIT,
         FeatureKeys.KEY_HIDE_HOME_TOOLBAR,
-        FeatureKeys.KEY_REMOVE_HOME_FAB,
-    )
-
-    private val baiduSharedShareCustomize = listOf(
-        FeatureKeys.KEY_SHARE_PAGE_CUSTOMIZE,
     )
 
     private val baiduSharedFilePageCustomize = listOf(
@@ -145,7 +137,6 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_HIDE_ABOUT_ME_REWARD_TEXT,
         FeatureKeys.KEY_HIDE_ABOUT_ME_SIGN_IN_DOT,
         FeatureKeys.KEY_REMOVE_ABOUT_ME_BANNER,
-        FeatureKeys.KEY_REMOVE_MY_SERVICE,
     )
 
     private val baiduSharedMemberCardCustomize = listOf(
@@ -173,7 +164,6 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_HIDE_TAB_HOME,
         FeatureKeys.KEY_HIDE_TAB_FILE,
         FeatureKeys.KEY_HIDE_TAB_SHARE,
-        FeatureKeys.KEY_HIDE_TAB_VIP,
         FeatureKeys.KEY_HIDE_TAB_MINE,
     )
 
@@ -198,12 +188,6 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_BLOCK_UPDATE_DIALOG,
     )
 
-    private val baiduDomesticHomeCustomize = listOf(
-        FeatureKeys.KEY_HIDE_HOME_SEARCH_AIGC_ICON,
-        FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER,
-        FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION,
-    )
-
     private val baiduDomesticSearchPageCustomize = listOf(
         FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE,
         FeatureKeys.KEY_HIDE_SEARCH_PAGE_AI_ENTRY,
@@ -213,6 +197,7 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduDomesticMyPageCustomize = listOf(
+        FeatureKeys.KEY_REMOVE_MY_SERVICE,
         FeatureKeys.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET,
         FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT,
         FeatureKeys.KEY_HIDE_RENEW_BUTTON,
@@ -229,6 +214,7 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduDomesticBottomBarCustomize = listOf(
+        FeatureKeys.KEY_HIDE_TAB_VIP,
         FeatureKeys.KEY_HIDE_TAB_AIGC,
         FeatureKeys.KEY_REPLACE_BOTTOM_AI,
     )
@@ -268,20 +254,17 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_REMOVE_HOT_START_SPLASH,
     )
 
-    private val baiduIntlHomeCustomize = listOf(
-        FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER,
-        FeatureKeys.KEY_HIDE_HOME_BANNER,
+    private val baiduDomesticHomeCustomize = listOf(
+        FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION,
+        FeatureKeys.KEY_HIDE_HOME_SEARCH_AIGC_ICON,
     )
 
     private val baiduIntlSearchPageCustomize = listOf(
         FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE,
+        FeatureKeys.KEY_HIDE_SEARCH_PAGE_PLACEHOLDER,
         FeatureKeys.KEY_HIDE_SEARCH_PAGE_HISTORY,
         FeatureKeys.KEY_HIDE_SEARCH_PAGE_RECOMMEND,
         FeatureKeys.KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER,
-    )
-
-    private val baiduIntlMyPageCustomize = listOf(
-        FeatureKeys.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT,
     )
 
     private val baiduIntlMemberCardCustomize = listOf(
@@ -292,13 +275,7 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT,
     )
 
-    private val baiduIntlBottomBarCustomize = listOf(
-        FeatureKeys.KEY_HIDE_TAB_AIGC,
-        FeatureKeys.KEY_REPLACE_BOTTOM_AI,
-    )
-
     private val baiduIntlThemeCustomize = listOf(
-        FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE,
         FeatureKeys.KEY_ENABLE_NIGHT_MODE_SUPPORT,
         FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
         FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,

@@ -8,6 +8,7 @@ app/release/
 # IDE and local assistant state
 .idea/
 .claude/
+/AGENTS.md
 *.iml
 
 # Local machine config and secrets

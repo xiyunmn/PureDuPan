@@ -2,8 +2,6 @@ package com.xiyunmn.puredupan.hook.host.profiles.baidu
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.config.model.MemberCardLayoutMode
-import com.xiyunmn.puredupan.hook.host.HomeCustomizeHookPoints
-import com.xiyunmn.puredupan.hook.host.HomeSaveCardImplementation
 import com.xiyunmn.puredupan.hook.host.HostCapabilities
 import com.xiyunmn.puredupan.hook.host.HostDexKitCapabilities
 import com.xiyunmn.puredupan.hook.host.HostDiagnosticsCapabilities
@@ -16,8 +14,8 @@ import com.xiyunmn.puredupan.hook.host.HostSettingsCapabilities
 import com.xiyunmn.puredupan.hook.host.HostUiHookPoints
 import com.xiyunmn.puredupan.hook.host.features.baidu.BaiduFeatureSets
 import com.xiyunmn.puredupan.hook.host.runtime.baidu.BaiduIntlDeviceFingerprintRuntime
+import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduHomeUiHookPoints
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduSharedHookPoints
-import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduHomeCardHookPoints
 
 internal val BaiduIntlHostProfile = HostProfile(
     id = HostIds.BAIDU_INTL,
@@ -50,35 +48,7 @@ internal val BaiduIntlHostProfile = HostProfile(
                 BaiduSharedHookPoints.MAIN_ACTIVITY,
             ),
             skinConfigClassName = BaiduSharedHookPoints.SKIN_CONFIG_CLASS,
-            homeCustomize = HomeCustomizeHookPoints(
-                searchTextFragmentClassNames = listOf(BaiduSharedHookPoints.INTL_FH_TITLE_BAR_FRAGMENT),
-                homeRootFragmentClassNames = listOf(BaiduSharedHookPoints.NEW_FH_HOME_FRAGMENT),
-                feedFragmentClassNames = BaiduSharedHookPoints.FEED_FRAGMENT_CLASSES,
-                toolbarFragmentClassNames = listOf(BaiduSharedHookPoints.INTL_FH_VAJRA_BAR_FRAGMENT),
-                toolbarViewIdNames = listOf(BaiduSharedHookPoints.INTL_VAJRA_AREA_ID),
-                storyCardRenderContextClassName = BaiduSharedHookPoints.STORY_CONTEXT,
-                storyCardRenderMethodName =
-                    BaiduSharedHookPoints.STORY_CONTEXT_GET_NEW_HOME_STORY_CARD_VIEW_METHOD,
-                feedRecentCardRenderMethodName = BaiduSharedHookPoints.HOME_FEED_INIT_RECENT_CARD_VIEW_METHOD,
-                feedSaveCardRenderMethodName = BaiduSharedHookPoints.HOME_FEED_INIT_SAVE_CARD_VIEW_METHOD,
-                feedStoryCardRenderMethodName = BaiduSharedHookPoints.HOME_FEED_INIT_STORY_CARD_VIEW_METHOD,
-                saveCardViewModelClassNames = BaiduSharedHookPoints.HOME_SAVE_CARD_INTL_VIEW_MODELS,
-                saveCardViewClassNames = BaiduHomeCardHookPoints.INTL_SAVE_CARD_VIEWS,
-                saveCardNoArgBlockedMethodNames =
-                    BaiduSharedHookPoints.HOME_SAVE_CARD_INTL_NO_ARG_BLOCKED_METHODS,
-                saveCardSetListMethodNames = BaiduSharedHookPoints.HOME_SAVE_CARD_INTL_SET_LIST_METHODS,
-                saveCardSetRecommendMethodNames =
-                    BaiduSharedHookPoints.HOME_SAVE_CARD_INTL_SET_RECOMMEND_METHODS,
-                saveCardRedPotMethodNames = BaiduSharedHookPoints.HOME_SAVE_CARD_INTL_RED_POT_METHODS,
-                saveCardImplementation = HomeSaveCardImplementation.INTL,
-                recentCardDataUseCaseClassNames = BaiduSharedHookPoints.HOME_RECENT_CARD_INTL_DATA_USE_CASES,
-                recentCardViewModelClassNames = BaiduHomeCardHookPoints.INTL_RECENT_CARD_VIEW_MODELS,
-                netdiskContextCompanionClassName = BaiduSharedHookPoints.NETDISK_CONTEXT_COMPANION,
-                newHomeBannerCardViewMethodName =
-                    BaiduSharedHookPoints.NETDISK_GET_NEW_HOME_BANNER_CARD_VIEW_METHOD,
-                home25aiContextCompanionClassName = BaiduSharedHookPoints.HOME25AI_CONTEXT_COMPANION,
-                loadHomeBannerMethodName = BaiduSharedHookPoints.HOME25AI_LOAD_HOME_BANNER_METHOD,
-            ),
+            homeCustomize = BaiduHomeUiHookPoints.home25,
         ),
         dexKit = HostDexKitCapabilities(
             targetRegistryId = HostIds.BAIDU_INTL,

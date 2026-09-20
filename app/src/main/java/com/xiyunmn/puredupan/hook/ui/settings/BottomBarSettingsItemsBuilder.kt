@@ -37,7 +37,10 @@ internal object BottomBarSettingsItemsBuilder {
         val rawSelection = BottomBarCustomizeSettingsRegistry.tabSelectionFor { key ->
             isFeatureVisible(key) && isChecked(key)
         }
-        if (!rawSelection.hasVisibleTab()) {
+        val hasVisibleTab = BottomBarCustomizeSettingsRegistry
+            .specsIn(BottomBarCustomizeSettingsSection.TAB)
+            .any { spec -> isFeatureVisible(spec.key) && !isChecked(spec.key) }
+        if (!hasVisibleTab) {
             return BottomBarCustomizeSaveValues(
                 hasVisibleTab = false,
                 hasEnabledOption = false,

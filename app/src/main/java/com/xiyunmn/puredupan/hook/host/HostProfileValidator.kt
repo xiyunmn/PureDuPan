@@ -158,24 +158,8 @@ internal object HostProfileValidator {
         }
         requireOptionalClassNames(profile, points.saveCardViewModelClassNames, "home save card view model")
         requireOptionalNames(profile, points.saveCardNoArgBlockedMethodNames, "home save no-arg block method")
-        requireOptionalNames(profile, points.saveCardSetListMethodNames, "home save set list method")
-        requireOptionalNames(profile, points.saveCardSetRecommendMethodNames, "home save set recommend method")
         requireOptionalNames(profile, points.saveCardRedPotMethodNames, "home save red pot method")
         requireOptionalClassNames(profile, points.recentCardDataUseCaseClassNames, "home recent card data use case")
-        requireOptionalClassName(
-            profile,
-            points.netdiskContextCompanionClassName,
-            "netdisk context companion",
-        )
-        require(points.newHomeBannerCardViewMethodName == null || points.newHomeBannerCardViewMethodName.isNotBlank()) {
-            "Host ${profile.id} new home banner card view method name must not be blank"
-        }
-        require(
-            points.netdiskContextCompanionClassName.isNullOrBlank() ==
-                points.newHomeBannerCardViewMethodName.isNullOrBlank(),
-        ) {
-            "Host ${profile.id} new home banner render hook point must declare class and method together"
-        }
         requireOptionalClassName(
             profile,
             points.home25aiContextCompanionClassName,
@@ -266,7 +250,7 @@ internal object HostProfileValidator {
             requireRequiredClassNames(profile, points.searchTextFragmentClassNames, "home search text fragment")
         }
 
-        if (FeatureKeys.KEY_HIDE_HOME_FEED_TIP in featureKeys) {
+        if (FeatureKeys.KEY_HIDE_HOME_RECOMMEND_SECTION in featureKeys) {
             requireRequiredClassNames(profile, points.feedFragmentClassNames, "home feed fragment")
         }
         if (FeatureKeys.KEY_HIDE_HOME_TOOLBAR in featureKeys) {
@@ -291,12 +275,6 @@ internal object HostProfileValidator {
             }
             requireRequiredClassNames(profile, points.saveCardViewModelClassNames, "home save card view model")
             requireRequiredNames(profile, points.saveCardNoArgBlockedMethodNames, "home save no-arg block method")
-            requireRequiredNames(profile, points.saveCardSetListMethodNames, "home save set list method")
-            requireRequiredNames(
-                profile,
-                points.saveCardSetRecommendMethodNames,
-                "home save set recommend method",
-            )
             requireRequiredNames(profile, points.saveCardRedPotMethodNames, "home save red pot method")
         }
         if (FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION in featureKeys) {
@@ -315,12 +293,6 @@ internal object HostProfileValidator {
         }
         if (FeatureKeys.KEY_HOME_SAVE_VERTICAL_LAYOUT in featureKeys) {
             requireRequiredClassNames(profile, points.saveCardViewClassNames, "home save card view")
-        }
-        if (FeatureKeys.KEY_HIDE_HOME_BANNER in featureKeys) {
-            requireRequiredClassName(profile, points.netdiskContextCompanionClassName, "netdisk context companion")
-            require(!points.newHomeBannerCardViewMethodName.isNullOrBlank()) {
-                "Host ${profile.id} requires new home banner card view method name"
-            }
         }
         if (FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION in featureKeys) {
             requireRequiredClassName(profile, points.home25aiContextCompanionClassName, "home25ai context companion")

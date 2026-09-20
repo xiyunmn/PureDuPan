@@ -16,20 +16,14 @@ internal object BaiduHomeCardHookPoints {
 
     val SAVE_STATE_COLLECTOR_SUFFIXES = listOf("\$initObserver\$4\$1", "\$initObserver\$4\$_")
 
-    val DOMESTIC_SAVE_CARD_VIEWS = listOf(
+    val SAVE_CARD_VIEWS = listOf(
         "com.baidu.netdisk.home25ai.feedhome.ui.view.fragment.NewHomeSaveCardView",
         "com.baidu.netdisk.guest25ai.feedhome.ui.view.fragment.NewHomeSaveCardView",
         "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.NewHomeSaveCardView",
     )
-    val INTL_SAVE_CARD_VIEWS = listOf(
-        "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.NewHomeSaveCardView",
-    )
-    val DOMESTIC_RECENT_CARD_VIEW_MODELS = listOf(
+    val RECENT_CARD_VIEW_MODELS = listOf(
         "com.baidu.netdisk.home25ai.feedhome.ui.viewmodels.NewHomeRecentCardViewModel",
         "com.baidu.netdisk.guest25ai.feedhome.ui.viewmodels.NewHomeRecentCardViewModel",
-        "com.baidu.netdisk.newfeedhome.feedhome.ui.viewmodels.NewHomeRecentCardViewModel",
-    )
-    val INTL_RECENT_CARD_VIEW_MODELS = listOf(
         "com.baidu.netdisk.newfeedhome.feedhome.ui.viewmodels.NewHomeRecentCardViewModel",
     )
 }

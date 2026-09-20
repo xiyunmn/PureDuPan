@@ -1,40 +1,18 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.ui
 
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BaiduSystemNightModeHookPoints
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BaiduSystemNightModeSyncHook
-import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
-import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduBottomBarHookPoints
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.Home25ThemeHookPoints
 
-object SystemNightModeSyncHook {
+internal object SystemNightModeSyncHook {
     private val delegate = BaiduSystemNightModeSyncHook(
         logTag = "IntlSystemNightModeSyncHook",
-        hookPoints = BaiduSystemNightModeHookPoints(
-            baseActivityClassName = BaiduIntlHookPoints.BASE_ACTIVITY,
-            settingsActivityClassName = BaiduIntlHookPoints.SETTINGS_ACTIVITY,
-            skinLoaderListenerClassName = BaiduIntlHookPoints.SKIN_LOADER_LISTENER,
-            settingsItemViewClassName = BaiduIntlHookPoints.SETTINGS_ITEM_VIEW,
-            skinManagerClassName = BaiduIntlHookPoints.SKIN_MANAGER,
-            skinConfigClassName = BaiduIntlHookPoints.SKIN_CONFIG,
-            darkSkinTheme = BaiduIntlHookPoints.DARK_SKIN_THEME,
-            changeSkinMethodResolver = IntlChangeSkinDexKitResolver::resolve,
-            settingsSwitchViewIdName = BaiduIntlHookPoints.DARK_SETTINGS_ID_NAME,
+        hookPoints = Home25ThemeHookPoints.create(
             beforeApplyDarkSkin = IntlNightModeSkinAssetInstaller::ensureDarkSkinAvailable,
-            afterApplySkin = { _, _, reason ->
-                IntlHomeThemeRefreshCompat.refresh(reason)
-            },
-            bottomBarHomeFoldedFieldNames = BaiduBottomBarHookPoints.INTL_HOME_FOLDED_FIELDS,
-            bottomBarThemeRefreshMethodNames = BaiduBottomBarHookPoints.INTL_THEME_REFRESH_METHODS,
         ),
     )
 
     internal fun hook(cl: ClassLoader) {
         IntlChainInfoThemeCompat.hook(cl)
-        IntlHomeThemeRefreshCompat.hook(
-            cl,
-            BaiduIntlHookPoints.NEW_FEED_HOME_FRAGMENT,
-            BaiduIntlHookPoints.FH_FEED_FRAGMENT,
-            BaiduIntlHookPoints.NEW_FEED_HOME_TITLE_BAR_FRAGMENT,
-        )
         delegate.hook(cl)
     }
 }

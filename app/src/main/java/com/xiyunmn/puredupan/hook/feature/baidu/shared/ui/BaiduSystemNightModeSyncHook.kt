@@ -23,15 +23,12 @@ internal data class BaiduSystemNightModeHookPoints(
     val settingsItemViewClassName: String,
     val skinConfigClassName: String,
     val changeSkinKtClassName: String? = null,
-    val changeSkinKtFallbackClassNames: List<String> = emptyList(),
     val skinManagerClassName: String? = null,
     val darkSkinTheme: String = "dark_theme.skin",
     val changeSkinMethodNames: Set<String> = setOf("changeSkin"),
     val changeSkinMethodResolver: ((ClassLoader) -> Method?)? = null,
-    val allowSkinManagerApplyFallback: Boolean = true,
     val settingsSwitchViewIdName: String = "dark_settings",
     val beforeApplyDarkSkin: ((Activity) -> Boolean)? = null,
-    val afterApplySkin: ((Activity, Boolean, String) -> Unit)? = null,
     val bottomBarHomeFoldedFieldNames: List<String>,
     val bottomBarThemeRefreshMethodNames: List<String>,
     val bottomBarThemeRefreshCompletionMethodName: String? = null,
@@ -41,9 +38,8 @@ internal data class BaiduSystemNightModeHookPoints(
 /**
  * Syncs Baidu Netdisk host skin with system night mode.
  *
- * CN follows ChangeSkinKt.changeSkin(), while hosts without a stable ChangeSkinKt
- * symbol can use the retained SkinManager backend. The bottom avatar is refreshed
- * through MainActivity.refreshAboutmeTabImage().
+ * All hosts use the native changeSkin transaction, resolved by call structure when obfuscated.
+ * The bottom avatar is refreshed through MainActivity.refreshAboutmeTabImage().
  */
 internal class BaiduSystemNightModeSyncHook(
     private val logTag: String,
@@ -372,15 +368,6 @@ internal class BaiduSystemNightModeSyncHook(
                 return
             }
 
-            if (hookPoints.allowSkinManagerApplyFallback) {
-                bottomBarThemeRefresh.expectHostThemeChange()
-                if (applySystemSkinWithSkinManager(cl, activity, listenerClass, isSystemNight)) {
-                    lastAppliedNightMode = isSystemNight
-                    return
-                }
-                bottomBarThemeRefresh.cancelExpectedHostThemeChange()
-            }
-
             log("No available skin backend")
         } catch (e: Throwable) {
             bottomBarThemeRefresh.cancelExpectedHostThemeChange()
@@ -427,8 +414,7 @@ internal class BaiduSystemNightModeSyncHook(
     }
 
     private fun changeSkinKtClassNames(): List<String> =
-        (listOfNotNull(hookPoints.changeSkinKtClassName) + hookPoints.changeSkinKtFallbackClassNames)
-            .distinct()
+        listOfNotNull(hookPoints.changeSkinKtClassName)
 
     private fun findChangeSkinMethods(changeSkinClass: Class<*>): List<Method> {
         val methods = (changeSkinClass.methods.asSequence() + changeSkinClass.declaredMethods.asSequence())
@@ -463,17 +449,12 @@ internal class BaiduSystemNightModeSyncHook(
                     listenerClass,
                     activity,
                     isSystemNight,
-                    afterApplyReason = if (isSystemNight) "changeSkin-success" else null,
                 )
                 changeMethod.invoke(null, skinName, listener)
-                if (!isSystemNight) {
-                    notifyAfterApplySkin(activity, false, "changeSkin-default")
-                }
             } else {
                 changeMethod.invoke(null, skinName, null)
                 syncSettingsNightSwitch(isSystemNight)
                 mainHandler.postDelayed({
-                    notifyAfterApplySkin(activity, isSystemNight, "changeSkin-fallback")
                     scheduleForceAvatarRefresh("changeSkin-fallback")
                     pulseDecor(activity)
                 }, FALLBACK_REFRESH_DELAY_MS)
@@ -492,115 +473,10 @@ internal class BaiduSystemNightModeSyncHook(
         }
     }
 
-    private fun applySystemSkinWithSkinManager(
-        cl: ClassLoader,
-        activity: Activity,
-        listenerClass: Class<*>?,
-        isSystemNight: Boolean,
-    ): Boolean {
-        val skinManagerClassName = hookPoints.skinManagerClassName ?: return false
-        val skinManagerClass = XposedCompat.findClassOrNull(skinManagerClassName, cl)
-            ?: run {
-                log("SkinManager class NOT FOUND")
-                return false
-            }
-        val getInstanceMethod = XposedCompat.findMethodOrNull(skinManagerClass, "getInstance")
-            ?: run {
-                log("SkinManager.getInstance NOT FOUND")
-                return false
-            }
-        val manager = getInstanceMethod.invoke(null)
-            ?: run {
-                log("SkinManager.getInstance returned null")
-                return false
-            }
-
-        return if (isSystemNight) {
-            applyDarkSkinWithSkinManager(activity, skinManagerClass, manager, listenerClass)
-        } else {
-            restoreDefaultSkinWithSkinManager(activity, skinManagerClass, manager)
-        }
-    }
-
-    private fun applyDarkSkinWithSkinManager(
-        activity: Activity,
-        skinManagerClass: Class<*>,
-        manager: Any,
-        listenerClass: Class<*>?,
-    ): Boolean {
-        val loadMethod = findSkinManagerLoadMethod(skinManagerClass, listenerClass)
-            ?: run {
-                log("SkinManager.loadDefaultUpdateSkin NOT FOUND")
-                return false
-            }
-
-        val listener = listenerClass?.let {
-            createSkinLoaderListener(
-                it,
-                activity,
-                expectedNightMode = true,
-                afterApplyReason = "skinManager-dark-success",
-            )
-        }
-        loadMethod.invoke(manager, hookPoints.darkSkinTheme, listener)
-        if (listener == null) {
-            syncSettingsNightSwitch(true)
-            mainHandler.postDelayed({
-                HostThemeChangeDispatcher.notifyChanged("skinManager-dark-fallback")
-                notifyAfterApplySkin(activity, true, "skinManager-dark-fallback")
-                scheduleForceAvatarRefresh("skinManager-dark-fallback")
-                pulseDecor(activity)
-            }, FALLBACK_REFRESH_DELAY_MS)
-        }
-        log("Changed to Dark Skin")
-        return true
-    }
-
-    private fun restoreDefaultSkinWithSkinManager(
-        activity: Activity,
-        skinManagerClass: Class<*>,
-        manager: Any,
-    ): Boolean {
-        val restoreMethod = XposedCompat.findMethodOrNull(skinManagerClass, "restoreDefaultTheme")
-            ?: run {
-                log("SkinManager.restoreDefaultTheme NOT FOUND")
-                return false
-            }
-
-        restoreMethod.invoke(manager)
-        HostThemeChangeDispatcher.notifyChanged("skinManager-default")
-        notifyAfterApplySkin(activity, false, "skinManager-default")
-        syncSettingsNightSwitch(false)
-        scheduleForceAvatarRefresh("skinManager-default")
-        pulseDecor(activity)
-        log("Changed to Default Skin")
-        return true
-    }
-
-    private fun findSkinManagerLoadMethod(
-        skinManagerClass: Class<*>,
-        listenerClass: Class<*>?,
-    ): Method? {
-        if (listenerClass != null) {
-            XposedCompat.findMethodOrNull(
-                skinManagerClass,
-                "loadDefaultUpdateSkin",
-                String::class.java,
-                listenerClass,
-            )?.let { return it }
-        }
-        return skinManagerClass.methods.firstOrNull {
-            it.name == "loadDefaultUpdateSkin" &&
-                it.parameterTypes.size == 2 &&
-                it.parameterTypes[0] == String::class.java
-        }?.apply { isAccessible = true }
-    }
-
     private fun createSkinLoaderListener(
         listenerClass: Class<*>,
         activity: Activity,
         expectedNightMode: Boolean,
-        afterApplyReason: String?,
     ): Any {
         val activityRef = WeakReference(activity)
         val handler = InvocationHandler { proxy, method, args ->
@@ -617,9 +493,6 @@ internal class BaiduSystemNightModeSyncHook(
                         updateMainActivityRef(target)
                         updateSettingsActivityRef(target)
                         HostThemeChangeDispatcher.notifyChanged("skin-loader-success")
-                        afterApplyReason?.let { reason ->
-                            notifyAfterApplySkin(target, expectedNightMode, reason)
-                        }
                         syncSettingsNightSwitch(expectedNightMode)
                         scheduleForceAvatarRefresh("changeSkin-success")
                         pulseDecor(target)
@@ -636,18 +509,6 @@ internal class BaiduSystemNightModeSyncHook(
             arrayOf(listenerClass),
             handler,
         )
-    }
-
-    private fun notifyAfterApplySkin(
-        activity: Activity,
-        isNightMode: Boolean,
-        reason: String,
-    ) {
-        try {
-            hookPoints.afterApplySkin?.invoke(activity, isNightMode, reason)
-        } catch (t: Throwable) {
-            logD("afterApplySkin callback failed ($reason): ${t.message}")
-        }
     }
 
     private fun scheduleForceAvatarRefresh(reason: String) {

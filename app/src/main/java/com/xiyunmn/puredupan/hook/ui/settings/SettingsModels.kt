@@ -25,11 +25,11 @@ internal data class SettingGroup(
 )
 
 internal data class TopLevelSettingsDefaultValues(
+    val popupBlock: Boolean,
     val homeCustomize: Boolean,
     val filePageCustomize: Boolean,
     val downloadPageCustomize: Boolean,
     val searchPageCustomize: Boolean,
-    val sharePageCustomize: Boolean,
     val myPageCustomize: Boolean,
     val memberCardCustomize: Boolean,
     val bottomBarCustomize: Boolean,
@@ -38,11 +38,11 @@ internal data class TopLevelSettingsDefaultValues(
 )
 
 internal data class TopLevelSettingsActionHandlers(
+    val onPopupBlockClick: () -> Unit,
     val onHomeCustomizeClick: () -> Unit,
     val onFilePageCustomizeClick: () -> Unit,
     val onDownloadPageCustomizeClick: () -> Unit,
     val onSearchPageCustomizeClick: () -> Unit,
-    val onSharePageCustomizeClick: () -> Unit,
     val onMyPageCustomizeClick: () -> Unit,
     val onMemberCardCustomizeClick: () -> Unit,
     val onBottomBarCustomizeClick: () -> Unit,

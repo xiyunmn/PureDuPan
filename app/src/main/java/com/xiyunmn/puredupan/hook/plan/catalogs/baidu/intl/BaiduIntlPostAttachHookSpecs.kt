@@ -18,14 +18,10 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlTaskScoreRe
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.IntlLaunchHandoffOptimizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashRemoveHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlAlbumBackupBarBlockHook
-import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabHideHook
-import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabReplaceHook
-import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlHomeLeftScreenSwipeDisableHook
-import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlHomeSaveCardCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.NightModeSupportHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.SystemNightModeSyncHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.entry.IntlAboutMeModuleEntryHook
-import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.entry.IntlHomeTitleBarModuleEntryHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.entry.HomeTitleBarModuleEntryHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlMemberCardCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.search.IntlSearchPageCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPageCustomizeHook
@@ -34,17 +30,6 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoSpeedUnlo
 import com.xiyunmn.puredupan.hook.plan.HookSpec
 
 internal object BaiduIntlPostAttachHookSpecs {
-    val home = listOf(
-        HookSpec("IntlHomeSaveCardCustomizeHook", { context, settings, _ ->
-            context.isMain &&
-                settings.isHomeCustomizeEnabled &&
-                settings.isHomeSaveVerticalLayoutEnabled &&
-                !settings.isHomeSaveSectionHidden
-        }, featureKey = FeatureKeys.KEY_HOME_SAVE_VERTICAL_LAYOUT) { cl ->
-            IntlHomeSaveCardCustomizeHook.hook(cl)
-        },
-    )
-
     val automation = listOf(
         HookSpec("IntlAutoDailySignInHook", { context, _, _ ->
             context.isMain
@@ -121,20 +106,6 @@ internal object BaiduIntlPostAttachHookSpecs {
     )
 
     val bottomBar = listOf(
-        HookSpec("IntlBottomAiTabReplaceHook", { context, settings, _ ->
-            context.isMain &&
-                settings.isBottomBarCustomEnabled &&
-                settings.isBottomAiReplaced
-        }, featureKey = FeatureKeys.KEY_REPLACE_BOTTOM_AI) { cl ->
-            IntlBottomAiTabReplaceHook.hook(cl)
-        },
-        HookSpec("IntlBottomAiTabHideHook", { context, settings, _ ->
-            context.isMain &&
-                settings.isBottomBarCustomEnabled &&
-                settings.isBottomBarTabAigcHidden
-        }, featureKey = FeatureKeys.KEY_HIDE_TAB_AIGC) { cl ->
-            IntlBottomAiTabHideHook.hook(cl)
-        },
         // 国际版相册备份栏走渲染入口（工厂 new AlbumBackupBarView → 返回 null）；国内/三星
         // 走共享数据层 AddUseCase 短路（见 BaiduSharedPostAttachHookSpecs.postMemberLead，
         // 已排除 intl）。intl 13.11.9 R8 剥离 @Metadata，AddUseCase 无静态存活锚点。
@@ -146,12 +117,6 @@ internal object BaiduIntlPostAttachHookSpecs {
     )
 
     val theme = listOf(
-        HookSpec("IntlHomeLeftScreenSwipeDisableHook", { context, settings, _ ->
-            context.isMain &&
-                settings.isIntlHomeLeftScreenSwipeDisabled
-        }, featureKey = FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE) { cl ->
-            IntlHomeLeftScreenSwipeDisableHook.hook(cl)
-        },
         HookSpec("NightModeSupportHook", { context, settings, _ ->
             context.isMain &&
                 settings.isNightModeSupportEnabled
@@ -253,8 +218,8 @@ internal object BaiduIntlPostAttachHookSpecs {
     )
 
     val tailEntry = listOf(
-        HookSpec("IntlHomeTitleBarModuleEntryHook", { context, _, _ ->
+        HookSpec("HomeTitleBarModuleEntryHook", { context, _, _ ->
             context.isMain
-        }) { cl -> IntlHomeTitleBarModuleEntryHook.hook(cl) },
+        }) { cl -> HomeTitleBarModuleEntryHook.hook(cl) },
     )
 }

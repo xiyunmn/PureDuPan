@@ -5,11 +5,11 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 
 internal enum class TopLevelSettingsAction {
     NONE,
+    POPUP_BLOCK,
     HOME_CUSTOMIZE,
     FILE_PAGE_CUSTOMIZE,
     DOWNLOAD_PAGE_CUSTOMIZE,
     SEARCH_PAGE_CUSTOMIZE,
-    SHARE_PAGE_CUSTOMIZE,
     MY_PAGE_CUSTOMIZE,
     MEMBER_CARD_CUSTOMIZE,
     BOTTOM_BAR_CUSTOMIZE,
@@ -60,39 +60,10 @@ internal object TopLevelSettingsRegistry {
 
     val contentSpecs: List<TopLevelSwitchSpec> = listOf(
         TopLevelSwitchSpec(
-            SettingsUserState.KEY_BLOCK_IN_APP_DIALOG,
-            UiText.Settings.BLOCK_IN_APP_DIALOG_LABEL,
-            UiText.Settings.BLOCK_IN_APP_DIALOG_DESC,
-        ),
-        TopLevelSwitchSpec(
-            SettingsUserState.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG,
-            UiText.Settings.BLOCK_NON_WIFI_DOWNLOAD_DIALOG_LABEL,
-            UiText.Settings.BLOCK_NON_WIFI_DOWNLOAD_DIALOG_DESC,
-        ),
-        TopLevelSwitchSpec(
-            SettingsUserState.KEY_BLOCK_NOTIFICATION_PROMPT,
-            UiText.Settings.BLOCK_NOTIFICATION_PROMPT_LABEL,
-            UiText.Settings.BLOCK_NOTIFICATION_PROMPT_DESC,
-        ),
-        TopLevelSwitchSpec(
-            SettingsUserState.KEY_BLOCK_UPDATE_DIALOG,
-            UiText.Settings.BLOCK_UPDATE_DIALOG_LABEL,
-            UiText.Settings.BLOCK_UPDATE_DIALOG_DESC,
-        ),
-        TopLevelSwitchSpec(
-            SettingsUserState.KEY_BLOCK_FULL_SCREEN_BACKUP,
-            UiText.Settings.BLOCK_FULL_SCREEN_BACKUP_LABEL,
-            UiText.Settings.BLOCK_FULL_SCREEN_BACKUP_DESC,
-        ),
-        TopLevelSwitchSpec(
-            SettingsUserState.KEY_BLOCK_APP_STORE_REVIEW,
-            UiText.Settings.BLOCK_APP_STORE_REVIEW_LABEL,
-            UiText.Settings.BLOCK_APP_STORE_REVIEW_DESC,
-        ),
-        TopLevelSwitchSpec(
-            SettingsUserState.KEY_BLOCK_SHARE_PUSH_GUIDE,
-            UiText.Settings.BLOCK_SHARE_PUSH_GUIDE_LABEL,
-            UiText.Settings.BLOCK_SHARE_PUSH_GUIDE_DESC,
+            SettingsUserState.KEY_POPUP_BLOCK,
+            UiText.Settings.POPUP_BLOCK_LABEL,
+            UiText.Settings.POPUP_BLOCK_DESC,
+            action = TopLevelSettingsAction.POPUP_BLOCK,
         ),
     )
 
@@ -137,13 +108,6 @@ internal object TopLevelSettingsRegistry {
             restricted = true,
         ),
         TopLevelSwitchSpec(
-            SettingsUserState.KEY_SHARE_PAGE_CUSTOMIZE,
-            UiText.Settings.SHARE_PAGE_CUSTOMIZE_LABEL,
-            UiText.Settings.SHARE_PAGE_CUSTOMIZE_DESC,
-            action = TopLevelSettingsAction.SHARE_PAGE_CUSTOMIZE,
-            restricted = true,
-        ),
-        TopLevelSwitchSpec(
             SettingsUserState.KEY_MY_PAGE_CUSTOMIZE,
             UiText.Settings.MY_PAGE_CUSTOMIZE_LABEL,
             UiText.Settings.MY_PAGE_CUSTOMIZE_DESC,
@@ -169,15 +133,6 @@ internal object TopLevelSettingsRegistry {
     val uiSpecs: List<TopLevelSwitchSpec> = emptyList()
 
     fun themeSpecs(isIntlHost: Boolean): List<TopLevelSwitchSpec> = buildList {
-        if (isIntlHost) {
-            add(
-                TopLevelSwitchSpec(
-                    SettingsUserState.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE,
-                    UiText.Settings.DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE_LABEL,
-                    UiText.Settings.DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE_DESC,
-                )
-            )
-        }
         add(
             TopLevelSwitchSpec(
                 SettingsUserState.KEY_ENABLE_NIGHT_MODE_SUPPORT,

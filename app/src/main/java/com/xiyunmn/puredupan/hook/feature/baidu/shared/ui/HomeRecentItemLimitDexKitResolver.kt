@@ -92,8 +92,7 @@ internal object HomeRecentItemLimitDexKitResolver {
         val refs = DexKitCompat.withBridge(TAG, resolverId = STATUS_CACHE_ID, cl = cl) {
             bridge ->
             bridge.setThreadNum(1)
-            val sources = BaiduHomeCardHookPoints.DOMESTIC_RECENT_CARD_VIEW_MODELS
-                .plus(BaiduHomeCardHookPoints.INTL_RECENT_CARD_VIEW_MODELS)
+            val sources = BaiduHomeCardHookPoints.RECENT_CARD_VIEW_MODELS
                 .distinct()
                 .flatMap { className ->
                     bridge.findMethod(
@@ -169,8 +168,7 @@ internal object HomeRecentItemLimitDexKitResolver {
     }
 
     private fun resolveStableFallback(cl: ClassLoader): List<ResolvedMethods> {
-        val classNames = BaiduHomeCardHookPoints.DOMESTIC_RECENT_CARD_VIEW_MODELS
-            .plus(BaiduHomeCardHookPoints.INTL_RECENT_CARD_VIEW_MODELS)
+        val classNames = BaiduHomeCardHookPoints.RECENT_CARD_VIEW_MODELS
             .distinct()
         return classNames.mapNotNull { className ->
             val clazz = XposedCompat.findClassOrNull(className, cl) ?: return@mapNotNull null

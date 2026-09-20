@@ -6,13 +6,13 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 
 /**
- * 首页悬浮球逻辑层拦截 Hook。
+ * 首页及共享页广告悬浮窗的数据层拦截，共享页子类沿用此回调。
  *
  * 不修改 UI 布局（避免 ViewBinding 崩溃），而是直接切断数据下发通道：
  * 拦截 [NewHomePageFabFragment.onOperationActivitySuccess] 回调，
  * 阻止运营数据到达渲染层，从根源上杜绝悬浮球显示。
  *
- * 受 [HookSettings.isHomeFabRemoved] 控制，默认开启。
+ * 受“弹窗屏蔽”总开关及广告悬浮窗子项控制，由 [HookSettings.isHomeFabRemoved] 统一读取。
  */
 object NewHomeFabRemoveHook {
     private val hookState = HookState()
@@ -79,5 +79,5 @@ object NewHomeFabRemoveHook {
 
 
     private fun isEnabled(): Boolean =
-        HookSettings.isSharePageCustomizeEnabled && HookSettings.isHomeFabRemoved
+        HookSettings.isHomeFabRemoved
 }

@@ -14,6 +14,7 @@ object NightModeSupportHook {
 
     internal fun hook(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
+        HookSettings.appContext()?.let(IntlNightModeSkinAssetInstaller::ensureDarkSkinAvailable)
         if (!hookState.markInstalled()) return
 
         try {

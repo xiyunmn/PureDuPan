@@ -30,6 +30,7 @@ object ConfigManager {
     const val KEY_BLOCK_SPLASH_INTERSTITIAL = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL
     const val KEY_REMOVE_HOT_START_SPLASH = FeatureKeys.KEY_REMOVE_HOT_START_SPLASH
     const val KEY_BLOCK_IN_APP_DIALOG = FeatureKeys.KEY_BLOCK_IN_APP_DIALOG
+    const val KEY_POPUP_BLOCK = FeatureKeys.KEY_POPUP_BLOCK
     const val KEY_BLOCK_UPDATE_DIALOG = FeatureKeys.KEY_BLOCK_UPDATE_DIALOG
     const val KEY_BLOCK_FULL_SCREEN_BACKUP = FeatureKeys.KEY_BLOCK_FULL_SCREEN_BACKUP
     const val KEY_BLOCK_SHARE_PUSH_GUIDE = FeatureKeys.KEY_BLOCK_SHARE_PUSH_GUIDE
@@ -42,8 +43,7 @@ object ConfigManager {
     const val KEY_HIDE_HOME_SEARCH_PLACEHOLDER = FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER
     const val KEY_HIDE_HOME_SEARCH_AIGC_ICON = FeatureKeys.KEY_HIDE_HOME_SEARCH_AIGC_ICON
     const val KEY_HIDE_HOME_TOOLBAR = FeatureKeys.KEY_HIDE_HOME_TOOLBAR
-    const val KEY_HIDE_HOME_FEED_TIP = FeatureKeys.KEY_HIDE_HOME_FEED_TIP
-    const val KEY_HIDE_HOME_BANNER = FeatureKeys.KEY_HIDE_HOME_BANNER
+    const val KEY_HIDE_HOME_RECOMMEND_SECTION = FeatureKeys.KEY_HIDE_HOME_RECOMMEND_SECTION
     const val KEY_HIDE_HOME_MEMORIES_SECTION = FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION
     const val KEY_HIDE_HOME_SAVE_SECTION = FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION
     const val KEY_HIDE_HOME_RECENT_SECTION = FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION
@@ -71,7 +71,6 @@ object ConfigManager {
     const val KEY_STORAGE_ROOT_GUARD_ENABLED = FeatureKeys.KEY_STORAGE_ROOT_GUARD_ENABLED
     const val KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED = FeatureKeys.KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED
     const val KEY_STORAGE_READER_SDK_REDIRECT_ENABLED = FeatureKeys.KEY_STORAGE_READER_SDK_REDIRECT_ENABLED
-    const val KEY_SHARE_PAGE_CUSTOMIZE = FeatureKeys.KEY_SHARE_PAGE_CUSTOMIZE
     const val KEY_BLOCK_TRANSFER_SVIP_CARD = FeatureKeys.KEY_BLOCK_TRANSFER_SVIP_CARD
     const val KEY_MY_PAGE_CUSTOMIZE = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE
     const val KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD =
@@ -92,7 +91,6 @@ object ConfigManager {
     const val KEY_HIDE_ABOUT_ME_REWARD_TEXT = FeatureKeys.KEY_HIDE_ABOUT_ME_REWARD_TEXT
     const val KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT = FeatureKeys.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT
     const val KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT = FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT
-    const val KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT = FeatureKeys.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT
     const val KEY_REMOVE_HOME_FAB = FeatureKeys.KEY_REMOVE_HOME_FAB
     const val KEY_HIDE_RENEW_BUTTON = FeatureKeys.KEY_HIDE_RENEW_BUTTON
     const val KEY_BLOCK_BOTTOM_BADGE = FeatureKeys.KEY_BLOCK_BOTTOM_BADGE
@@ -125,7 +123,6 @@ object ConfigManager {
     const val KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON = FeatureKeys.KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON
     const val KEY_REMOVE_MEMBER_CARD_CLICK = FeatureKeys.KEY_REMOVE_MEMBER_CARD_CLICK
     const val KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK = FeatureKeys.KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK
-    const val KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE = FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE
     const val KEY_ENABLE_NIGHT_MODE_SUPPORT = FeatureKeys.KEY_ENABLE_NIGHT_MODE_SUPPORT
     const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE
     const val KEY_AUTO_DAILY_SIGN_IN = FeatureKeys.KEY_AUTO_DAILY_SIGN_IN
@@ -171,6 +168,7 @@ object ConfigManager {
     val isSplashInterstitialBlockEnabled: Boolean get() = settingsSnapshot.isSplashInterstitialBlockEnabled
     val isHotStartSplashRemoveEnabled: Boolean get() = settingsSnapshot.isHotStartSplashRemoveEnabled
     val isInAppDialogBlocked: Boolean get() = settingsSnapshot.isInAppDialogBlocked
+    val isPopupBlockEnabled: Boolean get() = settingsSnapshot.isPopupBlockEnabled
     val isUpdateDialogBlocked: Boolean get() = settingsSnapshot.isUpdateDialogBlocked
     val isFullScreenBackupBlocked: Boolean get() = settingsSnapshot.isFullScreenBackupBlocked
     val isSharePushGuideBlocked: Boolean get() = settingsSnapshot.isSharePushGuideBlocked
@@ -185,8 +183,7 @@ object ConfigManager {
     val isHomeSearchPlaceholderHidden: Boolean get() = settingsSnapshot.isHomeSearchPlaceholderHidden
     val isHomeSearchAigcIconHidden: Boolean get() = settingsSnapshot.isHomeSearchAigcIconHidden
     val isHomeToolbarHidden: Boolean get() = settingsSnapshot.isHomeToolbarHidden
-    val isHomeFeedTipHidden: Boolean get() = settingsSnapshot.isHomeFeedTipHidden
-    val isHomeBannerHidden: Boolean get() = settingsSnapshot.isHomeBannerHidden
+    val isHomeRecommendSectionHidden: Boolean get() = settingsSnapshot.isHomeRecommendSectionHidden
     val isHomeMemoriesSectionHidden: Boolean get() = settingsSnapshot.isHomeMemoriesSectionHidden
     val isHomeSaveSectionHidden: Boolean get() = settingsSnapshot.isHomeSaveSectionHidden
     val isHomeRecentSectionHidden: Boolean get() = settingsSnapshot.isHomeRecentSectionHidden
@@ -215,7 +212,6 @@ object ConfigManager {
     val isStorageRootGuardEnabled: Boolean get() = settingsSnapshot.isStorageRootGuardEnabled
     val isStorageWechatBackupRedirectEnabled: Boolean get() = settingsSnapshot.isStorageWechatBackupRedirectEnabled
     val isStorageReaderSdkRedirectEnabled: Boolean get() = settingsSnapshot.isStorageReaderSdkRedirectEnabled
-    val isSharePageCustomizeEnabled: Boolean get() = settingsSnapshot.isSharePageCustomizeEnabled
     val isTransferSvipCardBlocked: Boolean get() = settingsSnapshot.isTransferSvipCardBlocked
     val isMyPageCustomizeEnabled: Boolean get() = settingsSnapshot.isMyPageCustomizeEnabled
     val isGameCenterRemoved: Boolean get() = settingsSnapshot.isGameCenterRemoved
@@ -227,7 +223,6 @@ object ConfigManager {
     val isAboutMeRewardTextHidden: Boolean get() = settingsSnapshot.isAboutMeRewardTextHidden
     val isAboutMeAccountExitTextHidden: Boolean get() = settingsSnapshot.isAboutMeAccountExitTextHidden
     val isAboutMeStarSkinTextHidden: Boolean get() = settingsSnapshot.isAboutMeStarSkinTextHidden
-    val isAboutMeFreeDataCardTextHidden: Boolean get() = settingsSnapshot.isAboutMeFreeDataCardTextHidden
     val isHomeFabRemoved: Boolean get() = settingsSnapshot.isHomeFabRemoved
     val isRenewButtonHidden: Boolean get() = settingsSnapshot.isRenewButtonHidden
     val isBottomBarBadgeBlocked: Boolean get() = settingsSnapshot.isBottomBarBadgeBlocked
@@ -257,7 +252,6 @@ object ConfigManager {
     val isIntlMemberCardUpgradeButtonHidden: Boolean get() = settingsSnapshot.isIntlMemberCardUpgradeButtonHidden
     val isMemberCardClickRemoved: Boolean get() = settingsSnapshot.isMemberCardClickRemoved
     val isMemberCardBackgroundViewedOnClick: Boolean get() = settingsSnapshot.isMemberCardBackgroundViewedOnClick
-    val isIntlHomeLeftScreenSwipeDisabled: Boolean get() = settingsSnapshot.isIntlHomeLeftScreenSwipeDisabled
     val isNightModeSupportEnabled: Boolean get() = settingsSnapshot.isNightModeSupportEnabled
     val isFollowSystemNightModeEnabled: Boolean get() = settingsSnapshot.isFollowSystemNightModeEnabled
     val isPerformanceOptimizeEnabled: Boolean
@@ -491,6 +485,14 @@ object ConfigManager {
         fun featureInt(key: String, defaultValue: Int): Int {
             return if (isFeatureAvailable(key)) p.getInt(key, defaultValue) else defaultValue
         }
+        // 未保存新总开关时沿用当前宿主已有子项；关闭总开关不清除子项选择。
+        val hasPopupOptionEnabled = featureBoolean(KEY_BLOCK_IN_APP_DIALOG) ||
+            featureBoolean(KEY_BLOCK_UPDATE_DIALOG) || featureBoolean(KEY_BLOCK_FULL_SCREEN_BACKUP) ||
+            featureBoolean(KEY_BLOCK_SHARE_PUSH_GUIDE) || featureBoolean(KEY_BLOCK_APP_STORE_REVIEW) ||
+            featureBoolean(KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG) || featureBoolean(KEY_BLOCK_NOTIFICATION_PROMPT) ||
+            featureBoolean(KEY_REMOVE_HOME_FAB)
+        val popupBlockEnabled = featureBoolean(KEY_POPUP_BLOCK, hasPopupOptionEnabled)
+        fun popupBoolean(key: String): Boolean = popupBlockEnabled && featureBoolean(key)
         val homeRecentItemLimitEnabled = featureBoolean(KEY_HOME_RECENT_ITEM_LIMIT_ENABLED, false)
         val homeRecentItemLimit = featureInt(KEY_HOME_RECENT_ITEM_LIMIT, 3).coerceIn(1, 10)
         val homeSaveItemLimit = featureInt(KEY_HOME_SAVE_ITEM_LIMIT, 3).coerceIn(1, 10)
@@ -523,8 +525,7 @@ object ConfigManager {
                 featureBoolean(KEY_HIDE_HOME_SEARCH_PLACEHOLDER, false) ||
                 featureBoolean(KEY_HIDE_HOME_SEARCH_AIGC_ICON, false) ||
                 featureBoolean(KEY_HIDE_HOME_TOOLBAR, false) ||
-                featureBoolean(KEY_HIDE_HOME_FEED_TIP, false) ||
-                featureBoolean(KEY_HIDE_HOME_BANNER, false) ||
+                featureBoolean(KEY_HIDE_HOME_RECOMMEND_SECTION, false) ||
                 featureBoolean(KEY_HIDE_HOME_MEMORIES_SECTION, false) ||
                 featureBoolean(KEY_HIDE_HOME_SAVE_SECTION, false) ||
                 featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false) ||
@@ -545,8 +546,6 @@ object ConfigManager {
                 featureBoolean(KEY_HIDE_SEARCH_PAGE_RECOMMEND, false) ||
                 featureBoolean(KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER, false) ||
                 featureBoolean(KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH, false)
-        val hasSharePageOptionEnabled =
-            featureBoolean(KEY_REMOVE_HOME_FAB, false)
         val myPageContentAutoFollowMemberCard =
             featureBoolean(KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD, false)
         val myPageContentManualOffset =
@@ -565,8 +564,7 @@ object ConfigManager {
                 featureBoolean(KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT, false) ||
                 featureBoolean(KEY_HIDE_ABOUT_ME_REWARD_TEXT, false) ||
                 featureBoolean(KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, false) ||
-                featureBoolean(KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false) ||
-                featureBoolean(KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT, false)
+                featureBoolean(KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false)
         val hasBottomBarOptionEnabled =
             featureBoolean(KEY_REPLACE_BOTTOM_AI, false) ||
                 featureBoolean(KEY_BLOCK_BOTTOM_BADGE, false) ||
@@ -609,21 +607,21 @@ object ConfigManager {
             isDexKitSupported = doesCurrentHostSupportDexKit(),
             isSplashInterstitialBlockEnabled = featureBoolean(KEY_BLOCK_SPLASH_INTERSTITIAL, false),
             isHotStartSplashRemoveEnabled = featureBoolean(KEY_REMOVE_HOT_START_SPLASH, false),
-            isInAppDialogBlocked = featureBoolean(KEY_BLOCK_IN_APP_DIALOG, false),
-            isUpdateDialogBlocked = featureBoolean(KEY_BLOCK_UPDATE_DIALOG, false),
-            isFullScreenBackupBlocked = featureBoolean(KEY_BLOCK_FULL_SCREEN_BACKUP, false),
-            isSharePushGuideBlocked = featureBoolean(KEY_BLOCK_SHARE_PUSH_GUIDE, false),
-            isAppStoreReviewBlocked = featureBoolean(KEY_BLOCK_APP_STORE_REVIEW, false),
-            isNonWifiDownloadDialogBlocked = featureBoolean(KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG, false),
-            isNotificationPromptBlocked = featureBoolean(KEY_BLOCK_NOTIFICATION_PROMPT, false),
+            isPopupBlockEnabled = popupBlockEnabled,
+            isInAppDialogBlocked = popupBoolean(KEY_BLOCK_IN_APP_DIALOG),
+            isUpdateDialogBlocked = popupBoolean(KEY_BLOCK_UPDATE_DIALOG),
+            isFullScreenBackupBlocked = popupBoolean(KEY_BLOCK_FULL_SCREEN_BACKUP),
+            isSharePushGuideBlocked = popupBoolean(KEY_BLOCK_SHARE_PUSH_GUIDE),
+            isAppStoreReviewBlocked = popupBoolean(KEY_BLOCK_APP_STORE_REVIEW),
+            isNonWifiDownloadDialogBlocked = popupBoolean(KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG),
+            isNotificationPromptBlocked = popupBoolean(KEY_BLOCK_NOTIFICATION_PROMPT),
             isBottomAiReplaced = featureBoolean(KEY_REPLACE_BOTTOM_AI, false),
             isHomeCustomizeEnabled = featureBoolean(KEY_HOME_CUSTOMIZE, hasHomeCustomizeOptionEnabled),
             isHomeTopPromotionHidden = featureBoolean(KEY_HIDE_HOME_TOP_PROMOTION, readHomeTopPromotionHidden(p)),
             isHomeSearchPlaceholderHidden = featureBoolean(KEY_HIDE_HOME_SEARCH_PLACEHOLDER, false),
             isHomeSearchAigcIconHidden = featureBoolean(KEY_HIDE_HOME_SEARCH_AIGC_ICON, false),
             isHomeToolbarHidden = featureBoolean(KEY_HIDE_HOME_TOOLBAR, false),
-            isHomeFeedTipHidden = featureBoolean(KEY_HIDE_HOME_FEED_TIP, false),
-            isHomeBannerHidden = featureBoolean(KEY_HIDE_HOME_BANNER, false),
+            isHomeRecommendSectionHidden = featureBoolean(KEY_HIDE_HOME_RECOMMEND_SECTION, false),
             isHomeMemoriesSectionHidden = featureBoolean(KEY_HIDE_HOME_MEMORIES_SECTION, false),
             isHomeSaveSectionHidden = featureBoolean(KEY_HIDE_HOME_SAVE_SECTION, false),
             isHomeRecentSectionHidden = featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false),
@@ -651,7 +649,6 @@ object ConfigManager {
             isStorageRootGuardEnabled = featureBoolean(KEY_STORAGE_ROOT_GUARD_ENABLED, false),
             isStorageWechatBackupRedirectEnabled = featureBoolean(KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED, false),
             isStorageReaderSdkRedirectEnabled = featureBoolean(KEY_STORAGE_READER_SDK_REDIRECT_ENABLED, false),
-            isSharePageCustomizeEnabled = featureBoolean(KEY_SHARE_PAGE_CUSTOMIZE, hasSharePageOptionEnabled),
             isTransferSvipCardBlocked = featureBoolean(KEY_BLOCK_TRANSFER_SVIP_CARD, false),
             isMyPageCustomizeEnabled = featureBoolean(KEY_MY_PAGE_CUSTOMIZE, hasMyPageOptionEnabled),
             isMyPageContentAutoFollowMemberCardEnabled = myPageContentAutoFollowMemberCard,
@@ -670,8 +667,7 @@ object ConfigManager {
             isAboutMeRewardTextHidden = featureBoolean(KEY_HIDE_ABOUT_ME_REWARD_TEXT, false),
             isAboutMeAccountExitTextHidden = featureBoolean(KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, false),
             isAboutMeStarSkinTextHidden = featureBoolean(KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false),
-            isAboutMeFreeDataCardTextHidden = featureBoolean(KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT, false),
-            isHomeFabRemoved = featureBoolean(KEY_REMOVE_HOME_FAB, false),
+            isHomeFabRemoved = popupBoolean(KEY_REMOVE_HOME_FAB),
             isRenewButtonHidden = featureBoolean(KEY_HIDE_RENEW_BUTTON, false),
             isBottomBarBadgeBlocked = featureBoolean(KEY_BLOCK_BOTTOM_BADGE, false),
             isAlbumBackupBarBlocked = featureBoolean(KEY_BLOCK_ALBUM_BACKUP_BAR, false),
@@ -719,10 +715,6 @@ object ConfigManager {
             ),
             isMemberCardClickRemoved = memberCardClickRemoved,
             isMemberCardBackgroundViewedOnClick = memberCardBackgroundViewedOnClick,
-            isIntlHomeLeftScreenSwipeDisabled = featureBoolean(
-                KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE,
-                false,
-            ),
             isNightModeSupportEnabled = nightModeSupportEnabled,
             isFollowSystemNightModeEnabled = followSystemNightModeEnabled,
             isAutoDailySignInEnabled = featureBoolean(KEY_AUTO_DAILY_SIGN_IN, false),

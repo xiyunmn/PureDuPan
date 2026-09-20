@@ -75,13 +75,9 @@ internal object SettingsHostTextCatalog {
                 "移除消息通知弹窗",
                 "拦截应用内消息通知引导弹窗",
             )
-            this[SettingsUserState.KEY_HIDE_HOME_BANNER] = text(
-                "轮播图广告",
-                "隐藏「首页」信息流头部轮播图广告区域",
-            )
-            this[SettingsUserState.KEY_HIDE_HOME_FEED_TIP] = text(
-                "开启推荐提示",
-                "隐藏「首页」信息流上方的开启推荐提示条",
+            this[SettingsUserState.KEY_HIDE_HOME_RECOMMEND_SECTION] = text(
+                UiText.Settings.HIDE_HOME_RECOMMEND_SECTION_LABEL,
+                UiText.Settings.HIDE_HOME_RECOMMEND_SECTION_DESC,
             )
             this[SettingsUserState.KEY_HIDE_HOME_MEMORIES_SECTION] = text(
                 "回忆",
@@ -94,10 +90,6 @@ internal object SettingsHostTextCatalog {
             this[SettingsUserState.KEY_HIDE_HOME_RECENT_SECTION] = text(
                 "最近",
                 "隐藏「首页」信息流头部的最近板块",
-            )
-            this[SettingsUserState.KEY_REMOVE_HOME_FAB] = text(
-                "广告悬浮窗",
-                "移除「共享」页面右下角广告悬浮球",
             )
             this[SettingsUserState.KEY_REMOVE_ABOUT_ME_BANNER] = text(
                 "横幅广告",
@@ -260,13 +252,9 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.HIDE_HOME_TOOLBAR_LABEL,
                 UiText.Settings.HIDE_HOME_TOOLBAR_DESC,
             ),
-            SettingsUserState.KEY_HIDE_HOME_FEED_TIP to text(
-                UiText.Settings.HIDE_HOME_FEED_TIP_LABEL,
-                UiText.Settings.HIDE_HOME_FEED_TIP_DESC,
-            ),
-            SettingsUserState.KEY_HIDE_HOME_BANNER to text(
-                UiText.Settings.HIDE_HOME_BANNER_LABEL,
-                UiText.Settings.HIDE_HOME_BANNER_DESC,
+            SettingsUserState.KEY_HIDE_HOME_RECOMMEND_SECTION to text(
+                UiText.Settings.HIDE_HOME_RECOMMEND_SECTION_LABEL,
+                UiText.Settings.HIDE_HOME_RECOMMEND_SECTION_DESC,
             ),
             SettingsUserState.KEY_HIDE_HOME_MEMORIES_SECTION to text(
                 UiText.Settings.HIDE_HOME_MEMORIES_SECTION_LABEL,
@@ -348,10 +336,6 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.HIDE_SEARCH_PAGE_VOICE_SEARCH_LABEL,
                 UiText.Settings.HIDE_SEARCH_PAGE_VOICE_SEARCH_DESC,
             ),
-            SettingsUserState.KEY_SHARE_PAGE_CUSTOMIZE to text(
-                UiText.Settings.SHARE_PAGE_CUSTOMIZE_LABEL,
-                UiText.Settings.SHARE_PAGE_CUSTOMIZE_DESC,
-            ),
             SettingsUserState.KEY_REMOVE_HOME_FAB to text(
                 UiText.Settings.REMOVE_HOME_FAB_LABEL,
                 UiText.Settings.REMOVE_HOME_FAB_DESC,
@@ -407,10 +391,6 @@ internal object SettingsHostTextCatalog {
             SettingsUserState.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT to text(
                 UiText.Settings.HIDE_ABOUT_ME_STAR_SKIN_TEXT_LABEL,
                 UiText.Settings.HIDE_ABOUT_ME_STAR_SKIN_TEXT_DESC,
-            ),
-            SettingsUserState.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT to text(
-                UiText.Settings.HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT_LABEL,
-                UiText.Settings.HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT_DESC,
             ),
             SettingsUserState.KEY_BLOCK_ALBUM_BACKUP_BAR to text(
                 UiText.Settings.BLOCK_ALBUM_BACKUP_BAR_LABEL,
@@ -495,10 +475,6 @@ internal object SettingsHostTextCatalog {
             SettingsUserState.KEY_CUSTOM_BOTTOM_BAR to text(
                 UiText.Settings.CUSTOM_BOTTOM_BAR_LABEL,
                 UiText.Settings.CUSTOM_BOTTOM_BAR_DESC,
-            ),
-            SettingsUserState.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE to text(
-                UiText.Settings.DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE_LABEL,
-                UiText.Settings.DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE_DESC,
             ),
             SettingsUserState.KEY_REPLACE_BOTTOM_AI to text(
                 UiText.Settings.REPLACE_BOTTOM_AI_LABEL,

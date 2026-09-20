@@ -142,6 +142,63 @@ internal object PageCustomizeSettingsDialogs {
         }
     }
 
+    fun showPopupBlock(
+        context: Context,
+        prefs: SharedPreferences,
+        settingsSession: SettingsRuntimeSession,
+        texts: SettingsTextResolver,
+    ) {
+        try {
+            if (!settingsSession.isFeatureVisible(SettingsUserState.KEY_POPUP_BLOCK)) {
+                XposedCompat.logW("$LOG_TAG showPopupBlock skipped: unsupported host")
+                return
+            }
+            val density = context.resources.displayMetrics.density
+            val padding = (16 * density).toInt()
+
+            val root = createDialogRoot(context, padding)
+            val popupBlockItems = PageCustomizeSettingsItemsBuilder.popupBlockItems(
+                prefs = prefs,
+                texts = texts,
+                isFeatureVisible = settingsSession::isFeatureVisible,
+            )
+            val rowsByKey = createRowsByKey(context, prefs, padding, popupBlockItems)
+            SettingsDialogLayout.addVisibleRows(root, popupBlockItems.visibleRows(rowsByKey))
+
+            val switchesByKey = collectSwitchesByKey(rowsByKey)
+            if (switchesByKey.values.any { it == null }) {
+                XposedCompat.logW("$LOG_TAG showPopupBlock failed: switch view missing")
+                return
+            }
+
+            val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
+                .setTitle(UiText.Settings.POPUP_BLOCK_LABEL)
+                .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
+                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
+                .setPositiveButton(UiText.Settings.SAVE, null)
+                .create()
+            dialog.setOnShowListener {
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
+                    PageCustomizeSettingsItemsBuilder.putPopupBlockValues(
+                        prefs = prefs,
+                        editor = prefs.edit(),
+                        isFeatureVisible = settingsSession::isFeatureVisible,
+                        isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                    ).apply()
+                    Toast.makeText(
+                        context,
+                        UiText.Settings.withRestartHint(UiText.Settings.POPUP_BLOCK_SAVED),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    dialog.dismiss()
+                }
+            }
+            SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)
+        } catch (t: Throwable) {
+            XposedCompat.logW("$LOG_TAG showPopupBlock failed: ${t.message}")
+        }
+    }
+
     fun showSearchPage(
         context: Context,
         prefs: SharedPreferences,
@@ -201,68 +258,6 @@ internal object PageCustomizeSettingsDialogs {
             SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)
         } catch (t: Throwable) {
             XposedCompat.logW("$LOG_TAG showSearchPage failed: ${t.message}")
-        }
-    }
-
-    fun showSharePage(
-        context: Context,
-        prefs: SharedPreferences,
-        settingsSession: SettingsRuntimeSession,
-        texts: SettingsTextResolver,
-    ) {
-        try {
-            if (!settingsSession.isFeatureVisible(SettingsUserState.KEY_SHARE_PAGE_CUSTOMIZE)) {
-                XposedCompat.logW("$LOG_TAG showSharePage skipped: unsupported host")
-                return
-            }
-            val density = context.resources.displayMetrics.density
-            val padding = (16 * density).toInt()
-
-            val root = createDialogRoot(context, padding)
-            val sharePageItems = PageCustomizeSettingsItemsBuilder.sharePageCustomizeItems(
-                prefs = prefs,
-                texts = texts,
-                isFeatureVisible = settingsSession::isFeatureVisible,
-            )
-            val rowsByKey = createRowsByKey(context, prefs, padding, sharePageItems)
-            SettingsDialogLayout.addTitledSection(
-                root = root,
-                context = context,
-                padding = padding,
-                titleView = SettingsDialogLayout.createCustomHideWidgetSectionTitle(context, padding),
-                rows = sharePageItems.visibleRows(rowsByKey),
-            )
-
-            val switchesByKey = collectSwitchesByKey(rowsByKey)
-            if (switchesByKey.values.any { it == null }) {
-                XposedCompat.logW("$LOG_TAG showSharePage failed: switch view missing")
-                return
-            }
-
-            val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
-                .setTitle(UiText.Settings.SHARE_PAGE_CUSTOMIZE_DIALOG_TITLE)
-                .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
-                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-                .setPositiveButton(UiText.Settings.SAVE, null)
-                .create()
-            dialog.setOnShowListener {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
-                    PageCustomizeSettingsItemsBuilder.putSharePageCustomizeValues(
-                        editor = prefs.edit(),
-                        isFeatureVisible = settingsSession::isFeatureVisible,
-                        isChecked = { key -> switchesByKey[key]?.isChecked == true },
-                    ).apply()
-                    Toast.makeText(
-                        context,
-                        UiText.Settings.withRestartHint(UiText.Settings.SHARE_PAGE_CUSTOMIZE_SAVED),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    dialog.dismiss()
-                }
-            }
-            SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)
-        } catch (t: Throwable) {
-            XposedCompat.logW("$LOG_TAG showSharePage failed: ${t.message}")
         }
     }
 

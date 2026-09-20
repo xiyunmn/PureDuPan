@@ -102,6 +102,57 @@ internal object PageCustomizeSettingsItemsBuilder {
         return editor
     }
 
+    fun popupBlockItems(
+        prefs: SharedPreferences,
+        texts: SettingsTextResolver,
+        isFeatureVisible: (String) -> Boolean,
+    ): List<KeyedSwitchItem> {
+        return PopupBlockSettingsRegistry.specs.map { spec ->
+            val visible = isFeatureVisible(spec.key)
+            val text = texts.text(spec.key, spec.label, spec.description)
+            KeyedSwitchItem(
+                key = spec.key,
+                item = SwitchItem(
+                    label = text.label,
+                    description = text.description,
+                    prefKey = null,
+                    supported = visible,
+                    defaultValue = prefs.getBoolean(spec.key, false),
+                    visible = visible,
+                ),
+            )
+        }
+    }
+
+    fun hasEnabledPopupBlockOption(
+        isFeatureVisible: (String) -> Boolean,
+        isChecked: (String) -> Boolean,
+    ): Boolean {
+        return PopupBlockSettingsRegistry.specs.any { spec ->
+            isFeatureVisible(spec.key) && isChecked(spec.key)
+        }
+    }
+
+    fun putPopupBlockValues(
+        prefs: SharedPreferences,
+        editor: SharedPreferences.Editor,
+        isFeatureVisible: (String) -> Boolean,
+        isChecked: (String) -> Boolean,
+    ): SharedPreferences.Editor {
+        // 编辑子项保留当前总开关状态；首次保存将由旧子项推导的状态明确持久化。
+        val enabled = prefs.getBoolean(
+            SettingsUserState.KEY_POPUP_BLOCK,
+            hasEnabledPopupBlockOption(isFeatureVisible) { key -> prefs.getBoolean(key, false) },
+        )
+        editor.putBoolean(SettingsUserState.KEY_POPUP_BLOCK, enabled)
+        PopupBlockSettingsRegistry.specs.filter { spec ->
+            isFeatureVisible(spec.key)
+        }.forEach { spec ->
+            editor.putBoolean(spec.key, isChecked(spec.key))
+        }
+        return editor
+    }
+
     fun searchPageCustomizeItems(
         prefs: SharedPreferences,
         texts: SettingsTextResolver,
@@ -144,55 +195,6 @@ internal object PageCustomizeSettingsItemsBuilder {
         )
         editor.putBoolean(SettingsUserState.KEY_SEARCH_PAGE_CUSTOMIZE, hasEnabledOption)
         SearchPageCustomizeSettingsRegistry.specs.filter { spec ->
-            isFeatureVisible(spec.key)
-        }.forEach { spec ->
-            editor.putBoolean(spec.key, isChecked(spec.key))
-        }
-        return editor
-    }
-
-    fun sharePageCustomizeItems(
-        prefs: SharedPreferences,
-        texts: SettingsTextResolver,
-        isFeatureVisible: (String) -> Boolean,
-    ): List<KeyedSwitchItem> {
-        return SharePageCustomizeSettingsRegistry.specs.map { spec ->
-            val visible = isFeatureVisible(spec.key)
-            val text = texts.text(spec.key, spec.label, spec.description)
-            KeyedSwitchItem(
-                key = spec.key,
-                item = SwitchItem(
-                    label = text.label,
-                    description = text.description,
-                    prefKey = null,
-                    supported = visible,
-                    defaultValue = prefs.getBoolean(spec.key, false),
-                    visible = visible,
-                ),
-            )
-        }
-    }
-
-    fun hasEnabledSharePageCustomizeOption(
-        isFeatureVisible: (String) -> Boolean,
-        isChecked: (String) -> Boolean,
-    ): Boolean {
-        return SharePageCustomizeSettingsRegistry.specs.any { spec ->
-            isFeatureVisible(spec.key) && isChecked(spec.key)
-        }
-    }
-
-    fun putSharePageCustomizeValues(
-        editor: SharedPreferences.Editor,
-        isFeatureVisible: (String) -> Boolean,
-        isChecked: (String) -> Boolean,
-    ): SharedPreferences.Editor {
-        val hasEnabledOption = hasEnabledSharePageCustomizeOption(
-            isFeatureVisible = isFeatureVisible,
-            isChecked = isChecked,
-        )
-        editor.putBoolean(SettingsUserState.KEY_SHARE_PAGE_CUSTOMIZE, hasEnabledOption)
-        SharePageCustomizeSettingsRegistry.specs.filter { spec ->
             isFeatureVisible(spec.key)
         }.forEach { spec ->
             editor.putBoolean(spec.key, isChecked(spec.key))

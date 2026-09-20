@@ -27,7 +27,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticAboutMeAiCoi
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticRenewButtonHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticSystemNightModeSyncHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.entry.DomesticAboutMeModuleEntryHook
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.entry.DomesticHomeTitleBarModuleEntryHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.entry.HomeTitleBarModuleEntryHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.membercard.DomesticMemberCardCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.AppStoreReviewBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.FullScreenBackupBlockHook
@@ -299,8 +299,8 @@ internal object BaiduDomesticPostAttachHookSpecs {
     )
 
     val tailEntry = listOf(
-        HookSpec("DomesticHomeTitleBarModuleEntryHook", { context, _, _ ->
+        HookSpec("HomeTitleBarModuleEntryHook", { context, _, _ ->
             context.isMain
-        }) { cl -> DomesticHomeTitleBarModuleEntryHook.hook(cl) },
+        }) { cl -> HomeTitleBarModuleEntryHook.hook(cl) },
     )
 }

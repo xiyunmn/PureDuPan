@@ -14,7 +14,6 @@ import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAboutMeHookPoints
 import java.lang.ref.WeakReference
 import java.lang.reflect.Method
@@ -52,7 +51,7 @@ internal object AboutMeBottomContentPositionHook {
         Collections.synchronizedMap(WeakHashMap())
     // The tab's views are reparented out of its Activity window. Keep the calibrated root,
     // using a weak value as well as a weak key because the view's context holds the Activity.
-    private val domesticRoots: MutableMap<Activity, WeakReference<View>> =
+    private val calibratedRoots: MutableMap<Activity, WeakReference<View>> =
         Collections.synchronizedMap(WeakHashMap())
     private val installedHeightRefreshMethods = mutableSetOf<Method>()
 
@@ -95,12 +94,9 @@ internal object AboutMeBottomContentPositionHook {
 
     private fun schedulePositionApply(root: View) {
         val snapshot = HookSettings.settingsSnapshot()
-        if (
-            BaiduFeatureRuntime.isDomesticFamilyHost(root.context) &&
-            snapshot.isMyPageContentAutoFollowMemberCardEnabled
-        ) {
-            hookDomesticHeightRefresh(root.context.classLoader)
-            scheduleDomesticCachedPositionApply(root)
+        if (snapshot.isMyPageContentAutoFollowMemberCardEnabled) {
+            hookNativeHeightRefresh(root.context.classLoader)
+            scheduleCachedPositionApply(root)
             return
         }
         root.post { applyPosition(root, "cache", allowCalibration = false) }
@@ -110,7 +106,7 @@ internal object AboutMeBottomContentPositionHook {
         )
     }
 
-    private fun hookDomesticHeightRefresh(cl: ClassLoader) {
+    private fun hookNativeHeightRefresh(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
         val centerConfig = XposedCompat.findClassOrNull(BaiduAboutMeHookPoints.CENTER_CONFIG, cl)
         val targets = listOf(
@@ -134,7 +130,7 @@ internal object AboutMeBottomContentPositionHook {
             mod.hook(method).intercept { chain ->
                 val result = chain.proceed()
                 val activity = chain.thisObject as? Activity
-                val root = activity?.let { domesticRoots[it]?.get() }
+                val root = activity?.let { calibratedRoots[it]?.get() }
                 val snapshot = HookSettings.settingsSnapshot()
                 if (
                     root?.isAttachedToWindow == true && isEnabled(snapshot) &&
@@ -151,14 +147,14 @@ internal object AboutMeBottomContentPositionHook {
     }
 
     /**
-     * Domestic hosts asynchronously restore the collapsing header after the cached position has
+     * The hosts asynchronously restore the collapsing header after the cached position has
      * been applied. Keep the cached target stable before drawing until host initialization ends,
-     * so the intermediate host height never becomes a visible frame. Samsung uses the same layout.
+     * so the intermediate host height never becomes a visible frame.
      */
-    private fun scheduleDomesticCachedPositionApply(root: View) {
+    private fun scheduleCachedPositionApply(root: View) {
         lateinit var listener: ViewTreeObserver.OnPreDrawListener
         listener = ViewTreeObserver.OnPreDrawListener {
-            maintainDomesticCachedPositionBeforeDraw(root)
+            maintainCachedPositionBeforeDraw(root)
         }
         root.viewTreeObserver.addOnPreDrawListener(listener)
         root.postDelayed(
@@ -174,7 +170,7 @@ internal object AboutMeBottomContentPositionHook {
         )
     }
 
-    private fun maintainDomesticCachedPositionBeforeDraw(root: View): Boolean {
+    private fun maintainCachedPositionBeforeDraw(root: View): Boolean {
         val snapshot = HookSettings.settingsSnapshot()
         if (!isEnabled(snapshot) || !snapshot.isMyPageContentAutoFollowMemberCardEnabled) return true
         val scrollView = findScrollView(root) ?: return true
@@ -259,9 +255,7 @@ internal object AboutMeBottomContentPositionHook {
             HeaderLayoutCache(baseHeight)
         }
         val targetHeight = (cached.baseHeight + offsetPx).coerceAtLeast(1)
-        if (BaiduFeatureRuntime.isDomesticFamilyHost(root.context)) {
-            findActivity(root.context)?.let { domesticRoots[it] = WeakReference(root) }
-        }
+        findActivity(root.context)?.let { calibratedRoots[it] = WeakReference(root) }
         if (params.height != targetHeight) {
             params.height = targetHeight
             header.layoutParams = params

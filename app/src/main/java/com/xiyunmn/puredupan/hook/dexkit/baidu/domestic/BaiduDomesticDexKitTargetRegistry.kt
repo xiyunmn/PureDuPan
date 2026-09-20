@@ -11,7 +11,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.BottomAiTabDexKitRes
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.aboutme.AboutMeTopHeteromoDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPagePromotionAdDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticChangeSkinDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BaiduChangeSkinDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticDynamicPluginAutoDecisionDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticFloatViewStartupDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticIconResourceDownloadDexKitResolver
@@ -22,7 +22,6 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.DomesticCookie
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.startup.DomesticColdStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.startup.DomesticColdStartModeDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticHotStartSplashDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageSafetyFooterUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeRecentItemLimitDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeRecentScrollRangeDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeMiddleViewHolderDexKitResolver
@@ -64,7 +63,7 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             featureKey = FeatureKeys.KEY_REPLACE_BOTTOM_AI,
         ),
         DexKitTargetDescriptor(
-            id = DomesticChangeSkinDexKitResolver.CACHE_ID,
+            id = BaiduChangeSkinDexKitResolver.CACHE_ID,
             target = "domestic changeSkin method",
             feature = "follow system night mode",
             featureKey = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
@@ -146,12 +145,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             target = "album backup bar add use case realExecute",
             feature = "album backup bar block",
             featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
-        ),
-        DexKitTargetDescriptor(
-            id = FilePageSafetyFooterUseCaseDexKitResolver.CACHE_ID,
-            target = "file page safety footer use case realExecute",
-            feature = "file page bottom safety tip",
-            featureKey = FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE,
         ),
         DexKitTargetDescriptor(
             id = DownloadPagePromotionAdDexKitResolver.CACHE_ID,
@@ -259,8 +252,8 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             }
         }
         if (available(FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE)) {
-            tasks += DexKitWarmUpTask(DomesticChangeSkinDexKitResolver.CACHE_ID) {
-                DomesticChangeSkinDexKitResolver.warmUpDexKitCache(classLoader)
+            tasks += DexKitWarmUpTask(BaiduChangeSkinDexKitResolver.CACHE_ID) {
+                BaiduChangeSkinDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         if (available(FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE)) {
@@ -331,11 +324,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(AboutMeTopHeteromoDexKitResolver.CACHE_ID) {
                 AboutMeTopHeteromoDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
-        if (available(FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE)) {
-            tasks += DexKitWarmUpTask(FilePageSafetyFooterUseCaseDexKitResolver.CACHE_ID) {
-                FilePageSafetyFooterUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         if (available(FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT)) {

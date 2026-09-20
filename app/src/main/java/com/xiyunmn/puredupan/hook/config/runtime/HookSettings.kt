@@ -7,6 +7,9 @@ import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 
 internal object HookSettings {
+    val isPopupBlockEnabled: Boolean
+        get() = ConfigManager.isPopupBlockEnabled
+
     data class ContentPositionCache(
         val signature: String,
         val offsetPx: Int,
@@ -25,7 +28,6 @@ internal object HookSettings {
         val isAboutMeRewardTextHidden: Boolean,
         val isAboutMeAccountExitTextHidden: Boolean,
         val isAboutMeStarSkinTextHidden: Boolean,
-        val isAboutMeFreeDataCardTextHidden: Boolean,
     )
 
     fun initialize(context: Context) {
@@ -51,7 +53,6 @@ internal object HookSettings {
             isAboutMeRewardTextHidden = snapshot.isAboutMeRewardTextHidden,
             isAboutMeAccountExitTextHidden = snapshot.isAboutMeAccountExitTextHidden,
             isAboutMeStarSkinTextHidden = snapshot.isAboutMeStarSkinTextHidden,
-            isAboutMeFreeDataCardTextHidden = snapshot.isAboutMeFreeDataCardTextHidden,
         )
     }
 
@@ -166,9 +167,6 @@ internal object HookSettings {
     val isBottomAiReplaced: Boolean
         get() = ConfigManager.isBottomAiReplaced
 
-    val isSharePageCustomizeEnabled: Boolean
-        get() = ConfigManager.isSharePageCustomizeEnabled
-
     val isTransferSvipCardBlocked: Boolean
         get() = ConfigManager.isTransferSvipCardBlocked
 
@@ -186,9 +184,6 @@ internal object HookSettings {
 
     val isBottomBarBadgeBlocked: Boolean
         get() = ConfigManager.isBottomBarBadgeBlocked
-
-    val isIntlHomeLeftScreenSwipeDisabled: Boolean
-        get() = ConfigManager.isIntlHomeLeftScreenSwipeDisabled
 
     val isAlbumBackupBarBlocked: Boolean
         get() = ConfigManager.isAlbumBackupBarBlocked
@@ -304,11 +299,8 @@ internal object HookSettings {
     val isHomeToolbarHidden: Boolean
         get() = ConfigManager.isHomeToolbarHidden
 
-    val isHomeFeedTipHidden: Boolean
-        get() = ConfigManager.isHomeFeedTipHidden
-
-    val isHomeBannerHidden: Boolean
-        get() = ConfigManager.isHomeBannerHidden
+    val isHomeRecommendSectionHidden: Boolean
+        get() = ConfigManager.isHomeRecommendSectionHidden
 
     val isHomeMemoriesSectionHidden: Boolean
         get() = ConfigManager.isHomeMemoriesSectionHidden

@@ -96,12 +96,6 @@ internal object MyPageCustomizeSettingsRegistry {
             UiText.Settings.HIDE_ABOUT_ME_STAR_SKIN_TEXT_DESC,
             MyPageCustomizeSettingsSection.TEXT_WIDGET,
         ),
-        MyPageCustomizeSwitchSpec(
-            SettingsUserState.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT,
-            UiText.Settings.HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT_LABEL,
-            UiText.Settings.HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT_DESC,
-            MyPageCustomizeSettingsSection.TEXT_WIDGET,
-        ),
     )
 
     fun specsIn(section: MyPageCustomizeSettingsSection): List<MyPageCustomizeSwitchSpec> {

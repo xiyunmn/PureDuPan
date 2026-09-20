@@ -4,11 +4,13 @@ import android.content.Context
 import android.os.Environment
 import com.xiyunmn.puredupan.hook.BuildConfig
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduThemeHookPoints
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FilterInputStream
 import java.io.InputStream
 import java.util.zip.ZipFile
+import java.security.MessageDigest
 
 internal object IntlNightModeSkinAssetInstaller {
     private const val MODULE_ASSET_PATH = "baidu/intl/skin/dark_theme.skin"
@@ -16,6 +18,10 @@ internal object IntlNightModeSkinAssetInstaller {
     private const val HOST_SKIN_DIR_NAME = "skin"
     private const val HOST_DARK_SKIN_FILE_NAME = "dark_theme.skin"
 
+    private const val BUNDLED_SKIN_SHA256 = "d3ab65ee5bdb9cc9441f53fd510858fc153166b0e1963a4989f286af3cefd5e8"
+    private var verifiedFileStamp: String? = null
+
+    @Synchronized
     fun ensureDarkSkinAvailable(context: Context): Boolean {
         val hostContext = context.applicationContext ?: context
         val skinDir = resolveHostSkinDir(hostContext)
@@ -29,11 +35,6 @@ internal object IntlNightModeSkinAssetInstaller {
                 XposedCompat.logW("[IntlNightModeSkinAssetInstaller] create skin dir failed: ${skinDir.absolutePath}")
                 return false
             }
-            if (target.exists() && !target.delete()) {
-                XposedCompat.logW("[IntlNightModeSkinAssetInstaller] replace invalid skin failed: ${target.absolutePath}")
-                return false
-            }
-
             val temp = File(skinDir, "$HOST_DARK_SKIN_FILE_NAME.tmp")
             if (temp.exists() && !temp.delete()) {
                 XposedCompat.logW("[IntlNightModeSkinAssetInstaller] delete stale temp failed: ${temp.absolutePath}")
@@ -194,10 +195,22 @@ internal object IntlNightModeSkinAssetInstaller {
     @Suppress("DEPRECATION")
     private fun isUsableSkinPackage(context: Context, file: File): Boolean {
         if (!file.isFile || file.length() <= 0L) return false
+        val stamp = "${file.absolutePath}|${file.length()}|${file.lastModified()}"
+        if (verifiedFileStamp == stamp) return true
         return runCatching {
-            context.packageManager.getPackageArchiveInfo(file.absolutePath, 0)
-                ?.packageName
-                ?.isNotBlank() == true
+            if (context.packageManager.getPackageArchiveInfo(file.absolutePath, 0)?.packageName !=
+                BaiduThemeHookPoints.DARK_SKIN_PACKAGE) return false
+            val digest = MessageDigest.getInstance("SHA-256")
+            file.inputStream().buffered().use { input ->
+                val bytes = ByteArray(8192)
+                while (true) {
+                    val count = input.read(bytes)
+                    if (count < 0) break
+                    digest.update(bytes, 0, count)
+                }
+            }
+            val hash = digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
+            (hash == BUNDLED_SKIN_SHA256).also { if (it) verifiedFileStamp = stamp }
         }.getOrDefault(false)
     }
 

@@ -121,11 +121,7 @@ internal object BaiduSharedPostAttachHookSpecs {
                     enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT, settings.isAboutMeManageSpaceTextHidden) ||
                         enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_REWARD_TEXT, settings.isAboutMeRewardTextHidden) ||
                         enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, settings.isAboutMeAccountExitTextHidden) ||
-                        enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, settings.isAboutMeStarSkinTextHidden) ||
-                        enabled(
-                            FeatureKeys.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT,
-                            settings.isAboutMeFreeDataCardTextHidden,
-                        )
+                        enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, settings.isAboutMeStarSkinTextHidden)
                     )
         }, featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE) { cl ->
             AboutMeTextEntryHideHook.hook(cl)
@@ -142,7 +138,6 @@ internal object BaiduSharedPostAttachHookSpecs {
         }, featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR) { cl -> AlbumBackupBarBlockHook.hook(cl) },
         HookSpec("NewHomeFabRemoveHook", { context, settings, _ ->
             context.isMain &&
-                settings.isSharePageCustomizeEnabled &&
                 settings.isHomeFabRemoved
         }, featureKey = FeatureKeys.KEY_REMOVE_HOME_FAB) { cl -> NewHomeFabRemoveHook.hook(cl) },
         HookSpec("TransferSvipCardGuideBlockHook", { context, settings, _ ->

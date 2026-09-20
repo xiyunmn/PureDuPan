@@ -64,8 +64,7 @@ internal object HookInstallPlanner {
                     enabled(FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER, settings.isHomeSearchPlaceholderHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_HOME_SEARCH_AIGC_ICON, settings.isHomeSearchAigcIconHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_HOME_TOOLBAR, settings.isHomeToolbarHidden) ||
-                    enabled(FeatureKeys.KEY_HIDE_HOME_FEED_TIP, settings.isHomeFeedTipHidden) ||
-                    enabled(FeatureKeys.KEY_HIDE_HOME_BANNER, settings.isHomeBannerHidden) ||
+                    enabled(FeatureKeys.KEY_HIDE_HOME_RECOMMEND_SECTION, settings.isHomeRecommendSectionHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION, settings.isHomeMemoriesSectionHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION, settings.isHomeSaveSectionHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION, settings.isHomeRecentSectionHidden) ||
@@ -127,11 +126,7 @@ internal object HookInstallPlanner {
                     enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT, settings.isAboutMeManageSpaceTextHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_REWARD_TEXT, settings.isAboutMeRewardTextHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, settings.isAboutMeAccountExitTextHidden) ||
-                    enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, settings.isAboutMeStarSkinTextHidden) ||
-                    enabled(
-                        FeatureKeys.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT,
-                        settings.isAboutMeFreeDataCardTextHidden,
-                    ),
+                    enabled(FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, settings.isAboutMeStarSkinTextHidden),
         )
     }
 }

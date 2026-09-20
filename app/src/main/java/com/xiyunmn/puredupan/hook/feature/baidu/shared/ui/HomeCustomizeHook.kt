@@ -7,7 +7,6 @@ import android.content.ContextWrapper
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -42,8 +41,6 @@ object HomeCustomizeHook {
     private const val HOME25_TOP_CONTAINER_ID = "home25ai_v1"
     private const val HOME25_CONTENT_ID = "home25ai_content"
     private const val HOME25_SEARCHBOX_CONTENT_ID = "searchbox_content"
-    private const val FEED_CONTAINER_ID = "feed_container"
-    private const val INIT_FEED_SETTING_TIP_HEADER_METHOD = "initFeedSettingTipHeader"
     private const val EXPECT_KT_CLASS = "com.mars.united.core.architecture.ExpectKt"
     private const val EXPECT_SUCCESS_METHOD = "success"
     private const val NATIVE_RECENT_ITEM_LIMIT = 3
@@ -58,6 +55,8 @@ object HomeCustomizeHook {
     private val publishingSavedHistory = ThreadLocal<Any?>()
     private val savedRowBinders = mutableMapOf<Class<*>, Method?>()
     private val subscriptionRowBinders = mutableMapOf<Class<*>, Pair<Method, Method>?>()
+    private val saveTabListenerFields = mutableMapOf<Class<*>, Field?>()
+    private val saveTabSelectionHooks = mutableSetOf<Method>()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val saveHistorySessions =
         Collections.synchronizedMap(WeakHashMap<Any, SavedHistorySession>())
@@ -75,12 +74,12 @@ object HomeCustomizeHook {
             XposedCompat.log("[HomeCustomizeHook] skipped: config disabled")
             return
         }
-        val mod = XposedCompat.module ?: return
-        val recentItemLimitHookCount = hookRecentCardItemLimit(cl) + hookRecentScrollRange(cl)
+        val independentHookCount = hookRecentCardItemLimit(cl) + hookRecentScrollRange(cl) +
+            HomeRecommendSectionHideHook.hook(cl)
         if (!hookState.markInstalled()) return
 
         try {
-            var installedCount = recentItemLimitHookCount
+            var installedCount = independentHookCount
             installedCount += hookTopBannerView(cl)
             installedCount += hookHomeSearchPlaceholderText(cl)
             installedCount += hookHomeToolbarRenderEntry(cl)
@@ -88,14 +87,10 @@ object HomeCustomizeHook {
             installedCount += hookSearchboxAigcAnimation(cl)
             installedCount += hookRecentCardDataUseCase(cl)
             installedCount += hookSaveCardViewModel(cl)
-            if (!usesIntlSaveCardImplementation()) {
-                installedCount += hookSaveCardVerticalLayout(cl)
-            }
+            installedCount += hookSaveCardVerticalLayout(cl)
             installedCount += hookNativeFeedScrollRange(cl)
             installedCount += hookHomeStoryCardRenderEntry(cl)
             installedCount += hookHomeHeaderCardRenderEntries(cl)
-            installedCount += hookFeedSettingTipRenderEntry(cl)
-            installedCount += hookHomeBannerCardRenderEntry(cl)
             installedCount += hookStartupHomeBannerPreload(cl)
 
             if (installedCount == 0) {
@@ -490,7 +485,7 @@ object HomeCustomizeHook {
             count += hookSaveCardViewModelMethods(
                 mod = mod,
                 clazz = clazz,
-                methodNames = points.saveCardSetListMethodNames,
+                methodNames = listOfNotNull(HomeSaveCardBindingResolver.listWriter(clazz)?.name),
                 label = "save card set list method",
                 hookedMethods = hookedMethods,
                 matcher = ::isSaveCardSetListMethod,
@@ -498,7 +493,9 @@ object HomeCustomizeHook {
             count += hookSaveCardViewModelMethods(
                 mod = mod,
                 clazz = clazz,
-                methodNames = points.saveCardSetRecommendMethodNames,
+                methodNames = listOfNotNull(
+                    clazz.declaredMethods.singleOrNull(::isSaveCardSetRecommendMethod)?.name,
+                ),
                 label = "save card recommend method",
                 hookedMethods = hookedMethods,
                 matcher = ::isSaveCardSetRecommendMethod,
@@ -724,7 +721,10 @@ object HomeCustomizeHook {
                 if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
                     val card = chain.thisObject as? ViewGroup
                     applySaveCardVerticalLayout(card)
-                    if (card != null) prepareVerticalSaveRows(card)
+                    if (card != null) {
+                        prepareVerticalSaveRows(card)
+                        hookSaveCardTabSelection(mod, card, clazz)
+                    }
                 }
                 result
             }
@@ -770,28 +770,20 @@ object HomeCustomizeHook {
         cl: ClassLoader,
         cardClass: Class<*>,
     ): Int {
-        // 同一个 emit 内完成原生前三行与扩展行的绑定，不再 post 到下一轮消息。
-        // 已有强/弱混淆样本分别使用 $4$_ / $4$1，仍须验证持有者及 typed emit 签名。
+        // 同一次状态回调内完成原生前三行与扩展行的绑定；typed emit 本身也可能被混淆。
         for (suffix in BaiduHomeCardHookPoints.SAVE_STATE_COLLECTOR_SUFFIXES) {
             val collector = XposedCompat.findClassOrNull(cardClass.name + suffix, cl) ?: continue
-            val owner = collector.declaredFields.singleOrNull {
-                !Modifier.isStatic(it.modifiers) && it.type == cardClass
-            }?.apply { isAccessible = true } ?: continue
-            val emit = collector.declaredMethods.singleOrNull {
-                !it.isBridge && it.name == "emit" && it.parameterTypes.size == 2 &&
-                    isSaveCardUiStateClass(it.parameterTypes[0]) &&
-                    it.parameterTypes[1].name == "kotlin.coroutines.Continuation"
-            }?.apply { isAccessible = true } ?: continue
-            mod.hook(emit).intercept { chain ->
+            val callback = HomeSaveCardBindingResolver.stateCollector(collector, cardClass) ?: continue
+            mod.hook(callback.method).intercept { chain ->
                 val result = chain.proceed()
                 if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
-                    applySaveCardVerticalLayout(owner.get(chain.thisObject) as? View, chain.args[0])
+                    applySaveCardVerticalLayout(callback.owner.get(chain.thisObject) as? View, chain.args[0])
                 }
                 result
             }
             return 1
         }
-        // 未匹配到 collector 的旧版仍同步处理已验证的 State 渲染入口。
+        // collector 失配时仍同步处理已验证的 State 渲染入口。
         val methods = cardClass.declaredMethods.filter(::isSaveCardStateRenderMethod)
         methods.forEach { method ->
             method.isAccessible = true
@@ -806,9 +798,51 @@ object HomeCustomizeHook {
         return methods.size
     }
 
+    private fun hookSaveCardTabSelection(
+        mod: io.github.libxposed.api.XposedModule,
+        card: ViewGroup,
+        cardClass: Class<*>,
+    ) {
+        val tabs = findHostView<View>(card, "save_card_tab") ?: return
+        runCatching {
+            val listenersField = saveTabListenerFields.getOrPut(tabs.javaClass) {
+                generateSequence(tabs.javaClass as Class<*>?) { it.superclass }
+                    .firstOrNull { it.name == "com.google.android.material.tabs.TabLayout" }
+                    ?.getDeclaredField("selectedListeners")
+                    ?.takeIf { List::class.java.isAssignableFrom(it.type) }
+                    ?.apply { isAccessible = true }
+            } ?: return
+            val tabClass = XposedCompat.findClassOrNull(
+                "com.google.android.material.tabs.TabLayout\$Tab", cardClass.classLoader ?: return,
+            ) ?: return
+            val listeners = listenersField.get(tabs) as? List<*> ?: return
+            // TabLayout 逆序通知监听器，额外添加监听器会早于宿主回写高度。
+            // 仅挂钩这张卡片实际注册且捕获卡片实例的原生回调，不保留 View 引用。
+            listeners.filterNotNull().forEach { listener ->
+                val callback = HomeSaveCardBindingResolver.tabSelectionCallback(
+                    listener.javaClass, cardClass, tabClass,
+                ) ?: return@forEach
+                if (callback.owner.get(listener) !== card || callback.method in saveTabSelectionHooks) {
+                    return@forEach
+                }
+                mod.hook(callback.method).intercept { chain ->
+                    val result = chain.proceed()
+                    if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
+                        applySaveCardVerticalLayout(callback.owner.get(chain.thisObject) as? View)
+                    }
+                    result
+                }
+                saveTabSelectionHooks.add(callback.method)
+            }
+        }.onFailure {
+            XposedCompat.logW("[HomeCustomizeHook] save tab callback hook failed: ${it.message}")
+        }
+    }
+
     private fun hookNativeFeedScrollRange(cl: ClassLoader): Int {
         val saveEnabled = isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden
-        if (!isRecentScrollRangeAdjustmentEnabled() && !saveEnabled) return 0
+        if (!isRecentScrollRangeAdjustmentEnabled() && !saveEnabled &&
+            !HookSettings.isHomeRecommendSectionHidden) return 0
         if (!homeCustomizeHookPoints().supportsRecentScrollRangeAdjustment) return 0
         val mod = XposedCompat.module ?: return 0
         val compat = HomeFeedScrollCompat.install(cl) ?: return 0
@@ -847,23 +881,7 @@ object HomeCustomizeHook {
     private fun isSaveCardStateRenderMethod(method: Method): Boolean {
         return method.returnType == Void.TYPE &&
             method.parameterTypes.size == 1 &&
-            isSaveCardUiStateClass(method.parameterTypes[0])
-    }
-
-    private fun isSaveCardUiStateClass(clazz: Class<*>): Boolean {
-        if (clazz.isPrimitive || clazz == Any::class.java) return false
-        val fields = clazz.declaredFields.filter { !Modifier.isStatic(it.modifiers) }
-        val listCount = fields.count { List::class.java.isAssignableFrom(it.type) }
-        val hasEnum = fields.any { it.type.isEnum }
-        val hasBoolean = fields.any { it.type == Boolean::class.javaPrimitiveType }
-        val hasCopy = clazz.declaredMethods.any { method ->
-            !Modifier.isStatic(method.modifiers) &&
-                method.returnType == clazz &&
-                method.parameterTypes.size >= 4 &&
-                method.parameterTypes.count { List::class.java.isAssignableFrom(it) } >= 2 &&
-                method.parameterTypes.any { it == Boolean::class.javaPrimitiveType }
-        }
-        return listCount >= 2 && hasEnum && hasBoolean && hasCopy
+            HomeSaveCardBindingResolver.isUiState(method.parameterTypes[0])
     }
 
     private fun hookSaveCardUpdateObservers(
@@ -873,9 +891,12 @@ object HomeCustomizeHook {
     ): Int {
         var count = 0
         viewModelClassNames.distinct().forEach { viewModelClassName ->
-            val stateClass = XposedCompat.findClassOrNull(
-                viewModelClassName.replace(".NewHomeSaveCardViewModel", ".SaveCardUiState"), cl,
-            )?.takeIf(::isSaveCardUiStateClass) ?: return@forEach
+            val cardName = viewModelClassName.replace(
+                ".viewmodels.NewHomeSaveCardViewModel", ".view.fragment.NewHomeSaveCardView",
+            )
+            val cardClass = XposedCompat.findClassOrNull(cardName, cl) ?: return@forEach
+            val stateClass = cardClass.declaredMethods.filter(::isSaveCardStateRenderMethod)
+                .map { it.parameterTypes[0] }.distinct().singleOrNull() ?: return@forEach
             val copy = stateClass.declaredMethods.singleOrNull { method ->
                 !Modifier.isStatic(method.modifiers) && method.returnType == stateClass &&
                     method.parameterTypes.size == 5 && method.parameterTypes[0].isEnum &&
@@ -1129,18 +1150,7 @@ object HomeCustomizeHook {
 
     private fun bindSubscriptionRow(cardView: ViewGroup, holder: SaveRow, item: Any): Boolean {
         val methods = subscriptionRowBinders.getOrPut(cardView.javaClass) {
-            val method = cardView.javaClass.declaredMethods.firstOrNull { candidate ->
-                candidate.returnType == Void.TYPE &&
-                    candidate.parameterTypes.size == 2 &&
-                    candidate.parameterTypes[0].name.endsWith(".SubscribeToUpdatesLayoutBinding") &&
-                    candidate.parameterTypes[1].isInstance(item)
-            }?.apply { isAccessible = true } ?: return@getOrPut null
-            val bindingType = method.parameterTypes[0]
-            val bind = bindingType.declaredMethods.firstOrNull { candidate ->
-                Modifier.isStatic(candidate.modifiers) && candidate.returnType == bindingType &&
-                    candidate.parameterTypes.contentEquals(arrayOf(View::class.java))
-            }?.apply { isAccessible = true } ?: return@getOrPut null
-            method to bind
+            HomeSaveCardBindingResolver.subscriptionBinder(cardView.javaClass, item.javaClass, View::class.java)
         } ?: return false
         val row = holder.view
         val updateRoot = findHostView<View>(row, "update_root") ?: return false
@@ -1229,9 +1239,7 @@ object HomeCustomizeHook {
         var count = 0
         viewModelClassNames.distinct().forEach { name ->
             val clazz = XposedCompat.findClassOrNull(name, cl) ?: return@forEach
-            val setList = XposedCompat.findMethodOrNull(
-                clazz, "setListData", Boolean::class.javaPrimitiveType!!, List::class.java,
-            ) ?: return@forEach
+            val setList = HomeSaveCardBindingResolver.listWriter(clazz) ?: return@forEach
             mod.hook(setList).intercept { chain ->
                 val viewModel = chain.thisObject ?: return@intercept chain.proceed()
                 if (publishingSavedHistory.get() === viewModel) return@intercept chain.proceed()
@@ -1687,15 +1695,13 @@ object HomeCustomizeHook {
         runCatching {
             val stateFlow = findSaveCardStateFlow(viewModel) ?: return
             val current = invokeNoArg(stateFlow, "getValue") ?: return
-            if (!isSaveCardUiStateClass(current.javaClass)) return
+            if (!HomeSaveCardBindingResolver.isUiState(current.javaClass)) return
             val currentSaveList = readSaveCardStateList(current, ".SavedDataInfo")
             if (currentSaveList == saveList) return
             val hasMore = current.javaClass.declaredFields.singleOrNull {
                 !Modifier.isStatic(it.modifiers) && it.type == Boolean::class.javaPrimitiveType
             }?.apply { isAccessible = true }?.getBoolean(current) ?: return
-            val setList = XposedCompat.findMethodOrNull(
-                viewModel.javaClass, "setListData", Boolean::class.javaPrimitiveType!!, List::class.java,
-            ) ?: return
+            val setList = HomeSaveCardBindingResolver.listWriter(viewModel.javaClass) ?: return
             // 走宿主 DATA 状态及去重逻辑，确保首三行也绑定新数据；不把上一种状态直接复制发布。
             val previous = publishingSavedHistory.get()
             publishingSavedHistory.set(viewModel)
@@ -1717,7 +1723,7 @@ object HomeCustomizeHook {
             field.isAccessible = true
             val value = field.get(viewModel) ?: return@firstNotNullOfOrNull null
             val current = invokeNoArg(value, "getValue") ?: return@firstNotNullOfOrNull null
-            value.takeIf { isSaveCardUiStateClass(current.javaClass) }
+            value.takeIf { HomeSaveCardBindingResolver.isUiState(current.javaClass) }
         }
     }
 
@@ -1735,7 +1741,23 @@ object HomeCustomizeHook {
         rowIdNames: List<String>,
         innerIdNames: List<String>,
     ) {
-        if (group == null || verticalSaveGroups.containsKey(group)) return
+        if (group == null) return
+        if (verticalSaveGroups.containsKey(group)) {
+            // 原生重新绑定或切换 Tab 后仍恢复前三行的宽度与容器的自然高度。
+            for (rowId in rowIdNames) {
+                val row = findHostView<View>(group, rowId) ?: continue
+                for (innerId in innerIdNames) {
+                    val inner = findHostView<View>(row, innerId) ?: continue
+                    if (inner.layoutParams.width != ViewGroup.LayoutParams.MATCH_PARENT) {
+                        inner.layoutParams = inner.layoutParams.apply {
+                            width = ViewGroup.LayoutParams.MATCH_PARENT
+                        }
+                    }
+                }
+            }
+            enforceWrapContentHeight(group)
+            return
+        }
         val rows = rowIdNames.mapNotNull { idName -> findHostView<View>(group, idName) }
         if (rows.isEmpty()) return
         // 新布局的行和容器均可为 WRAP_CONTENT。只给旧 MATCH_PARENT 行补原容器高度。
@@ -1779,7 +1801,7 @@ object HomeCustomizeHook {
         verticalSaveHeightGuards[contentArea] = true
         val saveReference = WeakReference(saveGroup)
         val subscribeReference = WeakReference(subscribeGroup)
-        // 旧宿主切换 Tab 会改写此固定容器的高度；只在其布局变化时恢复自然测量。
+        // 固定容器仍保留布局守护，处理状态更新等路径的异步高度回写。
         contentArea.addOnLayoutChangeListener(
             View.OnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
                 if (!isSaveCardVerticalLayoutEnabled() || HookSettings.isHomeSaveSectionHidden) {
@@ -1946,97 +1968,6 @@ object HomeCustomizeHook {
      * 因此渲染入口 no-op 即可阻止提示条创建，无需字段级 View 隐藏，
      * 也不会改写 [KEY_HOME_PAGE_SHOW_RECOMMENDED] 配置。
      */
-    private fun hookFeedSettingTipRenderEntry(cl: ClassLoader): Int {
-        if (!isFeedTipHidden()) return 0
-        val mod = XposedCompat.module ?: return 0
-        var count = 0
-        val feedFragmentClasses = homeCustomizeHookPoints().feedFragmentClassNames.distinct()
-        if (feedFragmentClasses.isEmpty()) {
-            XposedCompat.log("[HomeCustomizeHook] feed fragment host capabilities missing")
-            return 0
-        }
-        feedFragmentClasses.forEach { className ->
-            val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
-                XposedCompat.logD("[HomeCustomizeHook] $className not found, skipped")
-                return@forEach
-            }
-
-            val initFeedSettingTipHeader = XposedCompat.findMethodOrNull(
-                clazz,
-                INIT_FEED_SETTING_TIP_HEADER_METHOD,
-            )
-            if (initFeedSettingTipHeader != null) {
-                mod.hook(initFeedSettingTipHeader).intercept { chain ->
-                    if (isFeedTipHidden()) {
-                        XposedCompat.logD(
-                            "[HomeCustomizeHook] $className.$INIT_FEED_SETTING_TIP_HEADER_METHOD blocked",
-                        )
-                        null
-                    } else {
-                        chain.proceed()
-                    }
-                }
-                count += 1
-            } else {
-                XposedCompat.logD(
-                    "[HomeCustomizeHook] $className.$INIT_FEED_SETTING_TIP_HEADER_METHOD not found",
-                )
-            }
-        }
-        return count
-    }
-
-    private fun hookHomeBannerCardRenderEntry(cl: ClassLoader): Int {
-        if (!isHomeBannerHidden()) return 0
-        val mod = XposedCompat.module ?: return 0
-        val points = homeCustomizeHookPoints()
-        val className = points.netdiskContextCompanionClassName
-        val methodName = points.newHomeBannerCardViewMethodName
-        if (className == null || methodName == null) {
-            XposedCompat.log("[HomeCustomizeHook] new home banner render host capability missing")
-            return 0
-        }
-        val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
-            XposedCompat.log("[HomeCustomizeHook] NetdiskContext.Companion class NOT FOUND")
-            return 0
-        }
-        val fragmentActivityClass = XposedCompat.findClassOrNull("androidx.fragment.app.FragmentActivity", cl)
-            ?: run {
-                XposedCompat.log("[HomeCustomizeHook] FragmentActivity class NOT FOUND")
-                return 0
-            }
-        val lifecycleOwnerClass = XposedCompat.findClassOrNull("androidx.lifecycle.LifecycleOwner", cl)
-            ?: run {
-                XposedCompat.log("[HomeCustomizeHook] LifecycleOwner class NOT FOUND")
-                return 0
-            }
-        val method = XposedCompat.findMethodOrNull(
-            clazz,
-            methodName,
-            Context::class.java,
-            AttributeSet::class.java,
-            fragmentActivityClass,
-            lifecycleOwnerClass,
-        ) ?: run {
-            XposedCompat.log("[HomeCustomizeHook] NetdiskContext.getNewHomeBannerCardView(...) NOT FOUND")
-            return 0
-        }
-        if (!FrameLayout::class.java.isAssignableFrom(method.returnType)) {
-            XposedCompat.log("[HomeCustomizeHook] NetdiskContext.getNewHomeBannerCardView return type mismatch")
-            return 0
-        }
-        mod.hook(method).intercept { chain ->
-            val context = chain.args.getOrNull(0) as? Context
-            if (isHomeBannerHidden() && context != null) {
-                XposedCompat.logD("[HomeCustomizeHook] NetdiskContext.getNewHomeBannerCardView blocked")
-                createCollapsedFrameLayout(context)
-            } else {
-                chain.proceed()
-            }
-        }
-        return 1
-    }
-
     private fun adjustHomeToolbarRootLayout(root: View?) {
         if (!isHomeToolbarHidden() || root == null) return
         adjustHomeToolbarRootLayoutNow(root)
@@ -2057,7 +1988,6 @@ object HomeCustomizeHook {
             }
         }
         adjustHome25ContentOffset(root, resources, packageName)
-        adjustIntlFeedContainerOffset(root, resources, packageName)
     }
 
     private fun hideSearchboxAigcBindingViews(fragment: Any?) {
@@ -2195,48 +2125,6 @@ object HomeCustomizeHook {
         content.post { adjustContentOffset() }
     }
 
-    private fun adjustIntlFeedContainerOffset(
-        root: View,
-        resources: android.content.res.Resources,
-        packageName: String,
-    ) {
-        val feedId = resources.getIdentifier(FEED_CONTAINER_ID, "id", packageName)
-        if (feedId == 0) return
-        val feed = root.findViewById<View>(feedId) ?: return
-        var changed = false
-        if (feed.translationY != 0f) {
-            feed.translationY = 0f
-            changed = true
-        }
-        val params = feed.layoutParams ?: return
-        if (params is ViewGroup.MarginLayoutParams && params.topMargin != 0) {
-            params.topMargin = 0
-            changed = true
-        }
-        if (setIntFieldIfPresent(params, "topToTop", 0)) {
-            changed = true
-        }
-        if (setIntFieldIfPresent(params, "topToBottom", -1)) {
-            changed = true
-        }
-        if (changed) {
-            feed.layoutParams = params
-            feed.requestLayout()
-            (feed.parent as? ViewGroup)?.requestLayout()
-            XposedCompat.logD("[HomeCustomizeHook] intl feed container offset collapsed")
-        }
-    }
-
-    private fun setIntFieldIfPresent(target: Any, fieldName: String, value: Int): Boolean {
-        return runCatching {
-            val field = findFieldInHierarchy(target.javaClass) { it.name == fieldName } ?: return false
-            val currentValue = field.getInt(target)
-            if (currentValue == value) return false
-            field.setInt(target, value)
-            true
-        }.getOrDefault(false)
-    }
-
     private fun hookStartupHomeBannerPreload(cl: ClassLoader): Int {
         if (!isTopPromotionHidden()) return 0
         val mod = XposedCompat.module ?: return 0
@@ -2286,28 +2174,12 @@ object HomeCustomizeHook {
                     HookSettings.isHomeRecentSectionHidden ||
                     isRecentItemLimitEnabled() ||
                     HookSettings.isHomeSaveVerticalLayoutEnabled ||
-                    hasFeedRenderHookOption()
-            )
-    }
-
-    private fun hasFeedRenderHookOption(): Boolean {
-        return HookSettings.isHomeCustomizeEnabled &&
-            (
-                HookSettings.isHomeFeedTipHidden ||
-                    HookSettings.isHomeBannerHidden
+                    HookSettings.isHomeRecommendSectionHidden
             )
     }
 
     private fun isTopPromotionHidden(): Boolean {
         return HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeTopPromotionHidden
-    }
-
-    private fun isFeedTipHidden(): Boolean {
-        return HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeFeedTipHidden
-    }
-
-    private fun isHomeBannerHidden(): Boolean {
-        return HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeBannerHidden
     }
 
     private fun isSearchPlaceholderHidden(): Boolean {
@@ -2338,7 +2210,4 @@ object HomeCustomizeHook {
     private fun homeCustomizeHookPoints() =
         BaiduFeatureRuntime.currentHomeCustomizeHookPoints()
 
-    private fun usesIntlSaveCardImplementation(): Boolean {
-        return BaiduFeatureRuntime.usesIntlHomeSaveCardImplementation()
-    }
 }

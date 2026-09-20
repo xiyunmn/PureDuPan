@@ -10,6 +10,7 @@ data class SettingsSnapshot(
     // Splash / interstitial and dialog blocking
     val isSplashInterstitialBlockEnabled: Boolean = false,
     val isHotStartSplashRemoveEnabled: Boolean = false,
+    val isPopupBlockEnabled: Boolean = false,
     val isInAppDialogBlocked: Boolean = false,
     val isUpdateDialogBlocked: Boolean = false,
     val isFullScreenBackupBlocked: Boolean = false,
@@ -25,8 +26,7 @@ data class SettingsSnapshot(
     val isHomeSearchPlaceholderHidden: Boolean = false,
     val isHomeSearchAigcIconHidden: Boolean = false,
     val isHomeToolbarHidden: Boolean = false,
-    val isHomeFeedTipHidden: Boolean = false,
-    val isHomeBannerHidden: Boolean = false,
+    val isHomeRecommendSectionHidden: Boolean = false,
     val isHomeMemoriesSectionHidden: Boolean = false,
     val isHomeSaveSectionHidden: Boolean = false,
     val isHomeRecentSectionHidden: Boolean = false,
@@ -55,7 +55,6 @@ data class SettingsSnapshot(
     val isStorageRootGuardEnabled: Boolean = false,
     val isStorageWechatBackupRedirectEnabled: Boolean = false,
     val isStorageReaderSdkRedirectEnabled: Boolean = false,
-    val isSharePageCustomizeEnabled: Boolean = false,
     val isTransferSvipCardBlocked: Boolean = false,
     val isMyPageCustomizeEnabled: Boolean = false,
     val isMyPageContentAutoFollowMemberCardEnabled: Boolean = false,
@@ -70,7 +69,6 @@ data class SettingsSnapshot(
     val isAboutMeRewardTextHidden: Boolean = false,
     val isAboutMeAccountExitTextHidden: Boolean = false,
     val isAboutMeStarSkinTextHidden: Boolean = false,
-    val isAboutMeFreeDataCardTextHidden: Boolean = false,
     val isHomeFabRemoved: Boolean = false,
     val isRenewButtonHidden: Boolean = false,
     val isBottomBarBadgeBlocked: Boolean = false,
@@ -100,7 +98,6 @@ data class SettingsSnapshot(
     val isIntlMemberCardUpgradeButtonHidden: Boolean = false,
     val isMemberCardClickRemoved: Boolean = false,
     val isMemberCardBackgroundViewedOnClick: Boolean = false,
-    val isIntlHomeLeftScreenSwipeDisabled: Boolean = false,
     val isNightModeSupportEnabled: Boolean = false,
     val isFollowSystemNightModeEnabled: Boolean = false,
     val isAutoDailySignInEnabled: Boolean = false,
@@ -167,7 +164,6 @@ data class SettingsSnapshot(
             FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET -> isIntlNonCoreDiffSocketDelayed
             FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT -> isIntlAlbumAiInitBlocked
             FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE -> isFollowSystemNightModeEnabled
-            FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE -> isIntlHomeLeftScreenSwipeDisabled
             FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED -> isHomeRecentItemLimitEnabled
             FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT ->
                 isHomeRecentItemLimitEnabled && homeRecentItemLimit != 3
@@ -203,7 +199,6 @@ data class SettingsSnapshot(
             FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET,
             FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT,
             FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
-            FeatureKeys.KEY_DISABLE_INTL_HOME_LEFT_SCREEN_SWIPE,
             FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED,
             FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT,
         )
