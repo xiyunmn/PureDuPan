@@ -30,6 +30,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.MemberCardBackgroundLayout
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -47,7 +48,7 @@ import kotlin.math.max
  * 全部子功能挂 setCardUi(CenterConfig) 渲染入口：宿主在其中先设 ivVipImage + 主题，
  * 最后调 setCardText 写权益/续费/svip 文案，proceed() 后所有 binding 就绪。单次按明文资源 ID：
  * 隐藏权益/SVIP等级/续费（C），重套背景/尺寸/点击（A）。宿主每次数据变化重渲染即触发一次，
- * 无 ViewTreeObserver / OnPreDraw / 文案全树递归。
+ * 仅背景使用布局后的单次 pre-draw，不阻止绘制，不按文案全树递归。
  *
  * 国际版 combinedLiveData 为 Pair<IdentityBean, CenterConfig>（无 PopupResponse 运营位），
  * 无 myCardHasOperation 逻辑门；operation 相关隐藏为 null-safe no-op（benefit-slot 布局无运营位）。
@@ -153,7 +154,7 @@ internal object IntlMemberCardCustomizeHook {
 
     /**
      * 渲染入口：hook setCardUi(CenterConfig)，proceed() 后取 fragment.getView()，
-     * 单次按资源 ID 套用隐藏/背景/尺寸/点击。宿主每次重渲染触发一次，无需 View 树监听。
+     * 按资源 ID 套用隐藏/尺寸/点击；背景合并到布局后的单次 pre-draw，避免用旧尺寸裁剪。
      */
     private fun hookCardRenderEntry(method: java.lang.reflect.Method) {
         val mod = XposedCompat.module ?: return
@@ -237,7 +238,7 @@ internal object IntlMemberCardCustomizeHook {
         if (background != null) {
             applyCardSize(background, snapshot)
             if (snapshot.isMemberCardBackgroundReplaced && background is ImageView) {
-                applyCustomBackground(background, snapshot)
+                MemberCardBackgroundLayout.apply(background, ::applyCustomBackground)
             }
         }
 
@@ -613,11 +614,13 @@ internal object IntlMemberCardCustomizeHook {
             .coerceAtLeast(ViewGroup.LayoutParams.WRAP_CONTENT)
     }
 
-    private fun applyCustomBackground(background: ImageView, snapshot: SettingsSnapshot) {
+    private fun applyCustomBackground(background: ImageView) {
+        val snapshot = HookSettings.memberCardSnapshot()
+        if (!snapshot.isMemberCardCustomizeEnabled || !snapshot.isMemberCardBackgroundReplaced) return
         val uriString = snapshot.memberCardBackgroundUri?.takeIf { it.isNotBlank() } ?: return
         val blurRadius = snapshot.memberCardBackgroundBlurRadius.coerceIn(0, 25)
-        val width = background.width.takeIf { it > 0 } ?: 1080
-        val height = background.height.takeIf { it > 0 } ?: 360
+        val width = background.width.takeIf { it > 0 } ?: return
+        val height = background.height.takeIf { it > 0 } ?: return
         val key = buildString {
             append(uriString)
             append('|').append(blurRadius)
@@ -629,7 +632,12 @@ internal object IntlMemberCardCustomizeHook {
         }
         val applied = appliedBackgrounds[background]
         val currentBitmap = (background.drawable as? BitmapDrawable)?.bitmap
-        if (applied != null && applied.key == key && currentBitmap === applied.bitmap) return
+        if (applied != null && applied.key == key && currentBitmap === applied.bitmap) {
+            // The host may reset the scale type while retaining our bitmap.
+            background.alpha = 1f
+            background.scaleType = ImageView.ScaleType.FIT_XY
+            return
+        }
 
         val bitmap = if (applied != null && applied.key == key) {
             applied.bitmap

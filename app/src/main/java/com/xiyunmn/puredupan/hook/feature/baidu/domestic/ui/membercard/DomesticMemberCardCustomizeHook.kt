@@ -30,6 +30,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.MemberCardBackgroundLayout
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -168,7 +169,7 @@ internal object DomesticMemberCardCustomizeHook {
      * hook setCardUi(CenterConfig, PopupResponse)：宿主在其中先跑 setCardText（tvEnter/
      * tvDurationContent/tvVipNumber/权益卡/clAboutmeTop 点击），再设 ivVipImage、ivBg 主题。
      * 因此 proceed() 后所有 binding 就绪，单次按明文资源 ID 套用：隐藏权益/SVIP/状态/续费（C），
-     * 重套背景/尺寸/点击（A）。宿主每次数据变化重渲染即触发一次，无需 ViewTreeObserver / OnPreDraw。
+     * 重套尺寸/点击（A）；背景合并到布局完成后的单次 pre-draw，使用真实尺寸生成裁剪图。
      */
     private fun hookCardRenderEntry(fragmentClass: Class<*>) {
         val mod = XposedCompat.module ?: return
@@ -224,7 +225,7 @@ internal object DomesticMemberCardCustomizeHook {
         if (background != null) {
             applyCardSize(background, snapshot)
             if (snapshot.isMemberCardBackgroundReplaced && background is ImageView) {
-                applyCustomBackground(background, snapshot)
+                MemberCardBackgroundLayout.apply(background, ::applyCustomBackground)
             }
         }
 
@@ -554,11 +555,13 @@ internal object DomesticMemberCardCustomizeHook {
             .coerceAtLeast(ViewGroup.LayoutParams.WRAP_CONTENT)
     }
 
-    private fun applyCustomBackground(background: ImageView, snapshot: SettingsSnapshot) {
+    private fun applyCustomBackground(background: ImageView) {
+        val snapshot = HookSettings.memberCardSnapshot()
+        if (!snapshot.isMemberCardCustomizeEnabled || !snapshot.isMemberCardBackgroundReplaced) return
         val uriString = snapshot.memberCardBackgroundUri?.takeIf { it.isNotBlank() } ?: return
         val blurRadius = snapshot.memberCardBackgroundBlurRadius.coerceIn(0, 25)
-        val width = background.width.takeIf { it > 0 } ?: 1080
-        val height = background.height.takeIf { it > 0 } ?: 360
+        val width = background.width.takeIf { it > 0 } ?: return
+        val height = background.height.takeIf { it > 0 } ?: return
         val key = buildString {
             append(uriString)
             append('|').append(blurRadius)
@@ -570,7 +573,12 @@ internal object DomesticMemberCardCustomizeHook {
         }
         val applied = appliedBackgrounds[background]
         val currentBitmap = (background.drawable as? BitmapDrawable)?.bitmap
-        if (applied != null && applied.key == key && currentBitmap === applied.bitmap) return
+        if (applied != null && applied.key == key && currentBitmap === applied.bitmap) {
+            // The host may reset the scale type while retaining our bitmap.
+            background.alpha = 1f
+            background.scaleType = ImageView.ScaleType.FIT_XY
+            return
+        }
 
         val bitmap = if (applied != null && applied.key == key) {
             applied.bitmap
