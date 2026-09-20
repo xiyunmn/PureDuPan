@@ -78,6 +78,7 @@ internal class BaiduSystemNightModeSyncHook(
 
     internal fun hook(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
+        FileFilterThemeCompat.hook(cl)
         if (!hookState.markInstalled()) return
 
         try {

@@ -953,6 +953,7 @@ object HomeCustomizeHook {
 
     private fun applySaveCardVerticalLayout(cardView: View?, state: Any? = null) {
         if (cardView !is ViewGroup) return
+        if (state != null) HomeSaveCardLongPressCompat.dismiss(cardView)
         val saveGroup = findHostView<ViewGroup>(cardView, "horizontalScrollView")
         val subscribeGroup = findHostView<ViewGroup>(cardView, "linkHorizontalScrollView")
         val contentArea = findHostView<View>(cardView, "fh_save_date_area")
@@ -967,6 +968,12 @@ object HomeCustomizeHook {
             rowIdNames = listOf("link_root_one_layout", "link_root_two_layout", "link_root_three_layout"),
             innerIdNames = listOf("update_root"),
         )
+        for ((group, subscription) in listOf(saveGroup to false, subscribeGroup to true)) {
+            val wrapper = group?.getChildAt(0) as? VerticalSaveRows ?: continue
+            for (index in 0 until minOf(3, wrapper.childCount)) {
+                HomeSaveCardLongPressCompat.bind(cardView, wrapper.getChildAt(index), index, subscription)
+            }
+        }
         if (state != null) {
             val subscriptionItems = readSaveCardStateList(state, ".UpdatedDataInfo")
             updateVerticalSaveRows(
@@ -1015,6 +1022,7 @@ object HomeCustomizeHook {
         return SaveRow(row).also {
             wrapper.addView(row)
             wrapper.extraRows.add(it)
+            HomeSaveCardLongPressCompat.bind(card, row, index, subscription)
         }
     }
 

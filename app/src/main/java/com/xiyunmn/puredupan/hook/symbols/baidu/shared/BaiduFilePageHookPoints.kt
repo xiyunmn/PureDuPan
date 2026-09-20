@@ -1,6 +1,14 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.shared
 
 internal object BaiduFilePageHookPoints {
+    const val FILE_LIST_TOOLBAR_HEADER =
+        "com.baidu.netdisk.allfiles.listfragment.extraview.header.FileListToolBarHeader"
+    const val FILE_LIST_TOOLBAR_HEADER_VIEW =
+        "com.baidu.netdisk.allfiles.listfragment.extraview.header.FileListToolBarHeaderView"
+    const val FILTER_TYPE_TAG_ADAPTER =
+        "com.baidu.netdisk.allfiles.listfragment.extraview.header.FilterTypeTagSelectAdapter"
+    const val RECYCLER_VIEW_ADAPTER = "androidx.recyclerview.widget.RecyclerView\$Adapter"
+
     /**
      * 旧版文件页底部安全提示渲染入口（明文，跨版本稳定）。
      *
