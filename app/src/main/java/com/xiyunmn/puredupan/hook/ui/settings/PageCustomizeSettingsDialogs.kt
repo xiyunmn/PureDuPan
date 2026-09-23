@@ -163,13 +163,55 @@ internal object PageCustomizeSettingsDialogs {
                 isFeatureVisible = settingsSession::isFeatureVisible,
             )
             val rowsByKey = createRowsByKey(context, prefs, padding, popupBlockItems)
-            SettingsDialogLayout.addVisibleRows(root, popupBlockItems.visibleRows(rowsByKey))
-
             val switchesByKey = collectSwitchesByKey(rowsByKey)
             if (switchesByKey.values.any { it == null }) {
                 XposedCompat.logW("$LOG_TAG showPopupBlock failed: switch view missing")
                 return
             }
+
+            val enableAllRow = SettingsSwitchRows.create(
+                context = context,
+                prefs = prefs,
+                label = UiText.Settings.POPUP_BLOCK_ENABLE_ALL_LABEL,
+                description = UiText.Settings.POPUP_BLOCK_ENABLE_ALL_DESC,
+                prefKey = null,
+                padding = padding,
+                defaultValue = PageCustomizeSettingsItemsBuilder.areAllPopupBlockOptionsEnabled(
+                    isFeatureVisible = settingsSession::isFeatureVisible,
+                    isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                ),
+            )
+            val enableAllSwitch = SettingsSwitchRows.findSwitchView(enableAllRow) ?: return
+            val visibleSwitches = popupBlockItems.filter { it.item.visible }
+                .mapNotNull { switchesByKey[it.key] }
+            var updatingSwitches = false
+            enableAllSwitch.setOnCheckedChangeListener { _, checked ->
+                if (updatingSwitches) return@setOnCheckedChangeListener
+                updatingSwitches = true
+                try {
+                    visibleSwitches.forEach { it.isChecked = checked }
+                } finally {
+                    updatingSwitches = false
+                }
+            }
+            visibleSwitches.forEach { child ->
+                child.setOnCheckedChangeListener { _, _ ->
+                    if (updatingSwitches) return@setOnCheckedChangeListener
+                    updatingSwitches = true
+                    try {
+                        enableAllSwitch.isChecked = PageCustomizeSettingsItemsBuilder
+                            .areAllPopupBlockOptionsEnabled(
+                                isFeatureVisible = settingsSession::isFeatureVisible,
+                                isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                            )
+                    } finally {
+                        updatingSwitches = false
+                    }
+                }
+            }
+            root.addView(enableAllRow)
+            root.addView(SettingsDialogLayout.createDivider(context, padding))
+            SettingsDialogLayout.addVisibleRows(root, popupBlockItems.visibleRows(rowsByKey))
 
             val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.POPUP_BLOCK_LABEL)
@@ -184,6 +226,7 @@ internal object PageCustomizeSettingsDialogs {
                         editor = prefs.edit(),
                         isFeatureVisible = settingsSession::isFeatureVisible,
                         isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                        enableMaster = enableAllSwitch.isChecked,
                     ).apply()
                     Toast.makeText(
                         context,

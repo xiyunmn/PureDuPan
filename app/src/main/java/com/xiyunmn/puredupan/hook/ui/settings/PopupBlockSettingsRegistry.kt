@@ -8,20 +8,16 @@ internal data class PopupBlockSwitchSpec(val key: String, val label: String, val
 internal object PopupBlockSettingsRegistry {
     val specs: List<PopupBlockSwitchSpec> = listOf(
         PopupBlockSwitchSpec(
-            SettingsUserState.KEY_REMOVE_HOME_FAB,
-            UiText.Settings.REMOVE_HOME_FAB_LABEL,
-            UiText.Settings.REMOVE_HOME_FAB_DESC,
-        ),
-        PopupBlockSwitchSpec(
-            SettingsUserState.KEY_BLOCK_IN_APP_DIALOG,
-            UiText.Settings.BLOCK_IN_APP_DIALOG_LABEL,
-            UiText.Settings.BLOCK_IN_APP_DIALOG_DESC,
-        ),
-        PopupBlockSwitchSpec(
             SettingsUserState.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG,
             UiText.Settings.BLOCK_NON_WIFI_DOWNLOAD_DIALOG_LABEL,
             UiText.Settings.BLOCK_NON_WIFI_DOWNLOAD_DIALOG_DESC,
         ),
+        PopupBlockSwitchSpec(
+            SettingsUserState.KEY_REMOVE_HOME_FAB,
+            UiText.Settings.REMOVE_HOME_FAB_LABEL,
+            UiText.Settings.REMOVE_HOME_FAB_DESC,
+        ),
+    ) + MarketingPopupSettingsText.specs + listOf(
         PopupBlockSwitchSpec(
             SettingsUserState.KEY_BLOCK_NOTIFICATION_PROMPT,
             UiText.Settings.BLOCK_NOTIFICATION_PROMPT_LABEL,

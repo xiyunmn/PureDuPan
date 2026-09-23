@@ -1,6 +1,7 @@
 ﻿package com.xiyunmn.puredupan.hook.config
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
+import com.xiyunmn.puredupan.hook.config.model.MarketingPopup
 
 data class SettingsSnapshot(
     // Logging
@@ -11,6 +12,7 @@ data class SettingsSnapshot(
     val isSplashInterstitialBlockEnabled: Boolean = false,
     val isHotStartSplashRemoveEnabled: Boolean = false,
     val isPopupBlockEnabled: Boolean = false,
+    val blockedMarketingPopups: Set<MarketingPopup> = emptySet(),
     val isInAppDialogBlocked: Boolean = false,
     val isUpdateDialogBlocked: Boolean = false,
     val isFullScreenBackupBlocked: Boolean = false,

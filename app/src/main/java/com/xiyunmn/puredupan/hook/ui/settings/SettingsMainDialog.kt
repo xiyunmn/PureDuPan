@@ -434,7 +434,7 @@ internal object SettingsMainDialog {
         return TopLevelSettingsDefaultValues(
             popupBlock = PageCustomizeSettingsItemsBuilder.hasEnabledPopupBlockOption(
                 isFeatureVisible = settingsSession::isFeatureVisible,
-                isChecked = { key -> prefs.getBoolean(key, false) },
+                isChecked = { key -> SettingsUserState.popupBoolean(prefs, key) },
             ),
             homeCustomize = PageCustomizeSettingsItemsBuilder.hasEnabledHomeCustomizeOption(
                 prefs = prefs,

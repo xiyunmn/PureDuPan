@@ -1,6 +1,7 @@
 package com.xiyunmn.puredupan.hook.host.features.baidu
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
+import com.xiyunmn.puredupan.hook.config.model.MarketingPopup
 
 internal object BaiduFeatureSets {
     val baiduCnAvailableKeys: Set<String>
@@ -83,6 +84,45 @@ internal object BaiduFeatureSets {
     private val baiduSharedStartup = listOf(
         FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL,
     )
+
+    private val domesticSharedMarketingPopups = listOf(
+        MarketingPopup.OPERATION_ANIMATION,
+        MarketingPopup.OPERATION_AFX,
+        MarketingPopup.NEW_USER_OFFER,
+        MarketingPopup.NEW_USER_REWARD,
+        MarketingPopup.COIN_PROMOTION,
+        MarketingPopup.MIGHTY_MARKETING,
+        MarketingPopup.MODERATE_MARKETING,
+        MarketingPopup.SEARCH_MEMBERSHIP,
+        MarketingPopup.TRANSFER_COUPON,
+        MarketingPopup.TRANSFER_LIMIT,
+        MarketingPopup.TRANSFER_SPACE,
+    ).map { it.key }
+
+    private val domesticMarketingPopups = listOf(
+        MarketingPopup.NEW_USER_REWARD_V2,
+        MarketingPopup.COUPON_GIFT_V3,
+        MarketingPopup.COUPON_GIFT_V2,
+        MarketingPopup.LIFE_COUPON,
+        MarketingPopup.LIFE_PRODUCT,
+        MarketingPopup.LIFE_PRODUCT_V3,
+        MarketingPopup.LIFE_V10,
+        MarketingPopup.LIFE_V10_REPURCHASE,
+        MarketingPopup.LIFE_COMBO,
+        MarketingPopup.LIFE_LIMITED,
+        MarketingPopup.LIFE_RETENTION,
+        MarketingPopup.LIFE_PRICE_UPGRADE,
+        MarketingPopup.OVERDUE_UNION,
+        MarketingPopup.OVERDUE_COUPON,
+        MarketingPopup.OVERDUE_PRODUCT,
+        MarketingPopup.MY_PAGE_OFFER,
+        MarketingPopup.INCENTIVE_ENTRANCE,
+        MarketingPopup.INCENTIVE_GUIDE,
+        MarketingPopup.INCENTIVE_NEXT,
+        MarketingPopup.FREE_MODE,
+        MarketingPopup.FREE_MODE_NEW,
+        MarketingPopup.FREE_MODE_FLOAT,
+    ).map { it.key }
 
     private val baiduSharedContentBlock = listOf(
         FeatureKeys.KEY_POPUP_BLOCK,
@@ -186,7 +226,7 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_BLOCK_NOTIFICATION_PROMPT,
         FeatureKeys.KEY_BLOCK_SHARE_PUSH_GUIDE,
         FeatureKeys.KEY_BLOCK_UPDATE_DIALOG,
-    )
+    ) + domesticSharedMarketingPopups + domesticMarketingPopups
 
     private val baiduDomesticSearchPageCustomize = listOf(
         FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE,

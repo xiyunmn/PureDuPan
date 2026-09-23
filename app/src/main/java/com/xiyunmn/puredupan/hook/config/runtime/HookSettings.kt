@@ -5,8 +5,12 @@ import android.content.SharedPreferences
 import android.os.Build
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
+import com.xiyunmn.puredupan.hook.config.model.MarketingPopup
 
 internal object HookSettings {
+    fun isMarketingPopupBlocked(option: MarketingPopup): Boolean =
+        option in ConfigManager.snapshot().blockedMarketingPopups
+
     val isPopupBlockEnabled: Boolean
         get() = ConfigManager.isPopupBlockEnabled
 

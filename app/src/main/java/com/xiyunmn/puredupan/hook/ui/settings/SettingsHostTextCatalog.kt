@@ -64,8 +64,8 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.BLOCK_SPLASH_INTERSTITIAL_DESC,
             )
             this[SettingsUserState.KEY_BLOCK_IN_APP_DIALOG] = text(
-                "屏蔽应用内弹窗",
-                "拦截网盘运行期间弹出的运营活动弹窗",
+                UiText.Settings.BLOCK_IN_APP_DIALOG_LABEL,
+                UiText.Settings.BLOCK_IN_APP_DIALOG_DESC,
             )
             this[SettingsUserState.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG] = text(
                 UiText.Settings.BLOCK_NON_WIFI_DOWNLOAD_DIALOG_LABEL,

@@ -1,0 +1,42 @@
+package com.xiyunmn.puredupan.hook.symbols.baidu.shared
+
+internal object BaiduMarketingDialogHookPoints {
+    private const val OPERATION = "com.baidu.netdisk.ui.operation."
+    private const val LIFE = "com.baidu.netdisk.business.guide.dialog.lifeproduct."
+    private const val OVERDUE = "com.baidu.netdisk.business.guide.dialog.overdue2."
+    private const val INCENTIVE = "com.baidu.netdisk.business.guide.dialog.incentivevideo."
+
+    const val OPERATION_IMAGE = OPERATION + "BusinessOPDialog"
+    const val OPERATION_ANIMATION = OPERATION + "BusinessOPAnimDialog"
+    const val OPERATION_AFX = OPERATION + "BusinessOPAfxAnimDialog"
+    const val NEW_USER_OFFER = "com.baidu.netdisk.ui.newuserpopup.NewUserPopupDialog"
+    const val NEW_USER_REWARD = "com.baidu.netdisk.operation.ui.dialog.newuser.HomeNewUserDialog"
+    const val NEW_USER_REWARD_V2 = "com.baidu.netdisk.operation.ui.dialog.newuser.HomeNewUserDialogV2"
+    const val COIN_PROMOTION = "com.baidu.netdisk.operation.ui.dialog.OperationDialog"
+    const val COUPON_GIFT_V3 = LIFE + "ReceiveCouponDialogV3"
+    const val COUPON_GIFT_V2 = LIFE + "ReceiveCouponDialogV2"
+    const val LIFE_COUPON = LIFE + "LifeCouponDialogV3"
+    const val LIFE_PRODUCT = LIFE + "LifeProductPushDialog"
+    const val LIFE_PRODUCT_V3 = LIFE + "LifeProductPushDialogV3"
+    const val LIFE_V10 = LIFE + "LifeV10GuideDialog"
+    const val LIFE_V10_REPURCHASE = LIFE + "LifeV10RepurchaseGuideDialog"
+    const val LIFE_COMBO = LIFE + "LifeComboPurchaseGuideDialog"
+    const val LIFE_LIMITED = LIFE + "LifeLimitedTimeBenefitDialog"
+    const val LIFE_RETENTION = LIFE + "LosePreventionDialog"
+    const val LIFE_PRICE_UPGRADE = LIFE + "LifePriceUpgradeGuideDialog"
+    const val OVERDUE_UNION = OVERDUE + "OverdueUnionSVipCenterDialog"
+    const val OVERDUE_COUPON = OVERDUE + "OverdueReceiveCouponDialog"
+    const val OVERDUE_PRODUCT = OVERDUE + "OverdueBuyProductCenterDialog"
+    const val INCENTIVE_ENTRANCE = INCENTIVE + "IncentiveVideoEntranceDialog"
+    const val INCENTIVE_GUIDE = INCENTIVE + "IncentiveVideoGuideDialog"
+    const val INCENTIVE_NEXT = INCENTIVE + "IncentiveVideoNextDialog"
+    const val FREE_MODE = INCENTIVE + "IncentiveFreeModeDialog"
+    const val FREE_MODE_NEW = INCENTIVE + "IncentiveFreeModeNewDialog"
+
+    const val USER_ACTIVITY_VIEW_MODEL = "com.baidu.netdisk.ui.aboutme.viewmodel.UserActivityViewModel"
+    const val MY_OFFER_OBSERVER = USER_ACTIVITY_VIEW_MODEL +
+        "\$check3C1Guide\$\$inlined\$observerOnlyOnce\$1"
+    const val MY_OFFER_ENTRY = "check3C1Guide"
+    const val MUTABLE_LIVE_DATA = "androidx.lifecycle.MutableLiveData"
+    const val FRAGMENT_ACTIVITY = "androidx.fragment.app.FragmentActivity"
+}

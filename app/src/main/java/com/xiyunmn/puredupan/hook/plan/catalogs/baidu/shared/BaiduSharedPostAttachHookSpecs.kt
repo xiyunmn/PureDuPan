@@ -3,6 +3,9 @@ package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.shared
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.host.HostIds
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.TransferSvipCardGuideBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.MarketingDialogBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.MarketingGuidanceBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.MarketingSearchTransferBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.SplashBypassCore
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeBannerHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeBottomContentPositionHook
@@ -21,6 +24,15 @@ import com.xiyunmn.puredupan.hook.plan.HookSpec
 
 internal object BaiduSharedPostAttachHookSpecs {
     val preAd = listOf(
+        HookSpec("MarketingDialogBlockHook", { context, settings, _ ->
+            context.isMain && settings.blockedMarketingPopups.isNotEmpty()
+        }, featureKey = FeatureKeys.KEY_POPUP_BLOCK) { cl -> MarketingDialogBlockHook.hook(cl) },
+        HookSpec("MarketingGuidanceBlockHook", { context, settings, _ ->
+            context.isMain && settings.blockedMarketingPopups.isNotEmpty()
+        }, featureKey = FeatureKeys.KEY_POPUP_BLOCK) { cl -> MarketingGuidanceBlockHook.hook(cl) },
+        HookSpec("MarketingSearchTransferBlockHook", { context, settings, _ ->
+            context.isMain && settings.blockedMarketingPopups.isNotEmpty()
+        }, featureKey = FeatureKeys.KEY_POPUP_BLOCK) { cl -> MarketingSearchTransferBlockHook.hook(cl) },
         HookSpec("SettingsImagePickerResultHook", { context, _, _ ->
             context.isMain
         }, featureKey = FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE) { cl -> SettingsImagePickerResultHook.hook(cl) },

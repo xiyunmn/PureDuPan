@@ -117,7 +117,7 @@ internal object PageCustomizeSettingsItemsBuilder {
                     description = text.description,
                     prefKey = null,
                     supported = visible,
-                    defaultValue = prefs.getBoolean(spec.key, false),
+                    defaultValue = SettingsUserState.popupBoolean(prefs, spec.key),
                     visible = visible,
                 ),
             )
@@ -133,16 +133,25 @@ internal object PageCustomizeSettingsItemsBuilder {
         }
     }
 
+    fun areAllPopupBlockOptionsEnabled(
+        isFeatureVisible: (String) -> Boolean,
+        isChecked: (String) -> Boolean,
+    ): Boolean {
+        val visible = PopupBlockSettingsRegistry.specs.filter { isFeatureVisible(it.key) }
+        return visible.isNotEmpty() && visible.all { isChecked(it.key) }
+    }
+
     fun putPopupBlockValues(
         prefs: SharedPreferences,
         editor: SharedPreferences.Editor,
         isFeatureVisible: (String) -> Boolean,
+        enableMaster: Boolean = false,
         isChecked: (String) -> Boolean,
     ): SharedPreferences.Editor {
-        // 编辑子项保留当前总开关状态；首次保存将由旧子项推导的状态明确持久化。
-        val enabled = prefs.getBoolean(
+        // 单独编辑子项保留总开关；全部子项启用时同时启用总开关。
+        val enabled = enableMaster || prefs.getBoolean(
             SettingsUserState.KEY_POPUP_BLOCK,
-            hasEnabledPopupBlockOption(isFeatureVisible) { key -> prefs.getBoolean(key, false) },
+            hasEnabledPopupBlockOption(isFeatureVisible) { key -> SettingsUserState.popupBoolean(prefs, key) },
         )
         editor.putBoolean(SettingsUserState.KEY_POPUP_BLOCK, enabled)
         PopupBlockSettingsRegistry.specs.filter { spec ->

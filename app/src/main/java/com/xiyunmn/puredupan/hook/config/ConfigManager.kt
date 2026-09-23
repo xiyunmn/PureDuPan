@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.xiyunmn.puredupan.hook.BuildConfig
 import com.xiyunmn.puredupan.hook.config.model.FeatureAvailabilityStatus
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
+import com.xiyunmn.puredupan.hook.config.model.MarketingPopup
 import com.xiyunmn.puredupan.hook.config.runtime.ConfigHostRuntime
 import com.xiyunmn.puredupan.hook.config.runtime.DexKitSettingsRuntime
 import com.xiyunmn.puredupan.hook.config.runtime.FeatureAvailabilityRuntime
@@ -31,6 +32,39 @@ object ConfigManager {
     const val KEY_REMOVE_HOT_START_SPLASH = FeatureKeys.KEY_REMOVE_HOT_START_SPLASH
     const val KEY_BLOCK_IN_APP_DIALOG = FeatureKeys.KEY_BLOCK_IN_APP_DIALOG
     const val KEY_POPUP_BLOCK = FeatureKeys.KEY_POPUP_BLOCK
+    const val KEY_BLOCK_POPUP_OPERATION_ANIMATION = FeatureKeys.KEY_BLOCK_POPUP_OPERATION_ANIMATION
+    const val KEY_BLOCK_POPUP_OPERATION_AFX = FeatureKeys.KEY_BLOCK_POPUP_OPERATION_AFX
+    const val KEY_BLOCK_POPUP_NEW_USER_OFFER = FeatureKeys.KEY_BLOCK_POPUP_NEW_USER_OFFER
+    const val KEY_BLOCK_POPUP_NEW_USER_REWARD = FeatureKeys.KEY_BLOCK_POPUP_NEW_USER_REWARD
+    const val KEY_BLOCK_POPUP_NEW_USER_REWARD_V2 = FeatureKeys.KEY_BLOCK_POPUP_NEW_USER_REWARD_V2
+    const val KEY_BLOCK_POPUP_COIN_PROMOTION = FeatureKeys.KEY_BLOCK_POPUP_COIN_PROMOTION
+    const val KEY_BLOCK_POPUP_COUPON_GIFT_V3 = FeatureKeys.KEY_BLOCK_POPUP_COUPON_GIFT_V3
+    const val KEY_BLOCK_POPUP_COUPON_GIFT_V2 = FeatureKeys.KEY_BLOCK_POPUP_COUPON_GIFT_V2
+    const val KEY_BLOCK_POPUP_LIFE_COUPON = FeatureKeys.KEY_BLOCK_POPUP_LIFE_COUPON
+    const val KEY_BLOCK_POPUP_LIFE_PRODUCT = FeatureKeys.KEY_BLOCK_POPUP_LIFE_PRODUCT
+    const val KEY_BLOCK_POPUP_LIFE_PRODUCT_V3 = FeatureKeys.KEY_BLOCK_POPUP_LIFE_PRODUCT_V3
+    const val KEY_BLOCK_POPUP_LIFE_V10 = FeatureKeys.KEY_BLOCK_POPUP_LIFE_V10
+    const val KEY_BLOCK_POPUP_LIFE_V10_REPURCHASE = FeatureKeys.KEY_BLOCK_POPUP_LIFE_V10_REPURCHASE
+    const val KEY_BLOCK_POPUP_LIFE_COMBO = FeatureKeys.KEY_BLOCK_POPUP_LIFE_COMBO
+    const val KEY_BLOCK_POPUP_LIFE_LIMITED = FeatureKeys.KEY_BLOCK_POPUP_LIFE_LIMITED
+    const val KEY_BLOCK_POPUP_LIFE_RETENTION = FeatureKeys.KEY_BLOCK_POPUP_LIFE_RETENTION
+    const val KEY_BLOCK_POPUP_LIFE_PRICE_UPGRADE = FeatureKeys.KEY_BLOCK_POPUP_LIFE_PRICE_UPGRADE
+    const val KEY_BLOCK_POPUP_OVERDUE_UNION = FeatureKeys.KEY_BLOCK_POPUP_OVERDUE_UNION
+    const val KEY_BLOCK_POPUP_OVERDUE_COUPON = FeatureKeys.KEY_BLOCK_POPUP_OVERDUE_COUPON
+    const val KEY_BLOCK_POPUP_OVERDUE_PRODUCT = FeatureKeys.KEY_BLOCK_POPUP_OVERDUE_PRODUCT
+    const val KEY_BLOCK_POPUP_MY_PAGE_OFFER = FeatureKeys.KEY_BLOCK_POPUP_MY_PAGE_OFFER
+    const val KEY_BLOCK_POPUP_INCENTIVE_ENTRANCE = FeatureKeys.KEY_BLOCK_POPUP_INCENTIVE_ENTRANCE
+    const val KEY_BLOCK_POPUP_INCENTIVE_GUIDE = FeatureKeys.KEY_BLOCK_POPUP_INCENTIVE_GUIDE
+    const val KEY_BLOCK_POPUP_INCENTIVE_NEXT = FeatureKeys.KEY_BLOCK_POPUP_INCENTIVE_NEXT
+    const val KEY_BLOCK_POPUP_FREE_MODE = FeatureKeys.KEY_BLOCK_POPUP_FREE_MODE
+    const val KEY_BLOCK_POPUP_FREE_MODE_NEW = FeatureKeys.KEY_BLOCK_POPUP_FREE_MODE_NEW
+    const val KEY_BLOCK_POPUP_FREE_MODE_FLOAT = FeatureKeys.KEY_BLOCK_POPUP_FREE_MODE_FLOAT
+    const val KEY_BLOCK_POPUP_MIGHTY_MARKETING = FeatureKeys.KEY_BLOCK_POPUP_MIGHTY_MARKETING
+    const val KEY_BLOCK_POPUP_MODERATE_MARKETING = FeatureKeys.KEY_BLOCK_POPUP_MODERATE_MARKETING
+    const val KEY_BLOCK_POPUP_SEARCH_MEMBERSHIP = FeatureKeys.KEY_BLOCK_POPUP_SEARCH_MEMBERSHIP
+    const val KEY_BLOCK_POPUP_TRANSFER_COUPON = FeatureKeys.KEY_BLOCK_POPUP_TRANSFER_COUPON
+    const val KEY_BLOCK_POPUP_TRANSFER_LIMIT = FeatureKeys.KEY_BLOCK_POPUP_TRANSFER_LIMIT
+    const val KEY_BLOCK_POPUP_TRANSFER_SPACE = FeatureKeys.KEY_BLOCK_POPUP_TRANSFER_SPACE
     const val KEY_BLOCK_UPDATE_DIALOG = FeatureKeys.KEY_BLOCK_UPDATE_DIALOG
     const val KEY_BLOCK_FULL_SCREEN_BACKUP = FeatureKeys.KEY_BLOCK_FULL_SCREEN_BACKUP
     const val KEY_BLOCK_SHARE_PUSH_GUIDE = FeatureKeys.KEY_BLOCK_SHARE_PUSH_GUIDE
@@ -485,7 +519,12 @@ object ConfigManager {
         fun featureInt(key: String, defaultValue: Int): Int {
             return if (isFeatureAvailable(key)) p.getInt(key, defaultValue) else defaultValue
         }
-        val hasPopupOptionEnabled = featureBoolean(KEY_BLOCK_IN_APP_DIALOG) ||
+        val selectedMarketingPopups = MarketingPopup.entries.filterTo(linkedSetOf()) { option ->
+            isFeatureAvailable(option.key) && MarketingPopup.savedValue(
+                option.key, p::contains,
+            ) { key -> p.getBoolean(key, false) }
+        }
+        val hasPopupOptionEnabled = selectedMarketingPopups.isNotEmpty() || featureBoolean(KEY_BLOCK_IN_APP_DIALOG) ||
             featureBoolean(KEY_BLOCK_UPDATE_DIALOG) || featureBoolean(KEY_BLOCK_FULL_SCREEN_BACKUP) ||
             featureBoolean(KEY_BLOCK_SHARE_PUSH_GUIDE) || featureBoolean(KEY_BLOCK_APP_STORE_REVIEW) ||
             featureBoolean(KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG) || featureBoolean(KEY_BLOCK_NOTIFICATION_PROMPT) ||
@@ -607,6 +646,7 @@ object ConfigManager {
             isSplashInterstitialBlockEnabled = featureBoolean(KEY_BLOCK_SPLASH_INTERSTITIAL, false),
             isHotStartSplashRemoveEnabled = featureBoolean(KEY_REMOVE_HOT_START_SPLASH, false),
             isPopupBlockEnabled = popupBlockEnabled,
+            blockedMarketingPopups = if (popupBlockEnabled) selectedMarketingPopups.toSet() else emptySet(),
             isInAppDialogBlocked = popupBoolean(KEY_BLOCK_IN_APP_DIALOG),
             isUpdateDialogBlocked = popupBoolean(KEY_BLOCK_UPDATE_DIALOG),
             isFullScreenBackupBlocked = popupBoolean(KEY_BLOCK_FULL_SCREEN_BACKUP),

@@ -1,8 +1,6 @@
 package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.domestic
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ad.DomesticBusinessOpDialogBlockHook
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ad.DomesticLuckyCouponBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ad.DomesticNotificationPromptBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ad.DomesticSharePushGuideBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ad.DomesticUpdateDialogBlockHook
@@ -179,16 +177,6 @@ internal object BaiduDomesticPostAttachHookSpecs {
     )
 
     val ad = listOf(
-        HookSpec("DomesticBusinessOpDialogBlockHook", { context, settings, _ ->
-            context.isMain && settings.isInAppDialogBlocked
-        }, featureKey = FeatureKeys.KEY_BLOCK_IN_APP_DIALOG) { cl ->
-            DomesticBusinessOpDialogBlockHook.hook(cl)
-        },
-        HookSpec("DomesticLuckyCouponBlockHook", { context, settings, _ ->
-            context.isMain && settings.isInAppDialogBlocked
-        }, featureKey = FeatureKeys.KEY_BLOCK_IN_APP_DIALOG) { cl ->
-            DomesticLuckyCouponBlockHook.hook(cl)
-        },
         HookSpec("DomesticUpdateDialogBlockHook", { context, settings, _ ->
             context.isMain &&
                 settings.isUpdateDialogBlocked
