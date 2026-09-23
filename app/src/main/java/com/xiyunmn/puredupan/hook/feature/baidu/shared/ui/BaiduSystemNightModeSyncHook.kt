@@ -9,6 +9,7 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.HookUtils
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
+import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduThemeHookPoints
 import com.xiyunmn.puredupan.hook.ui.HostThemeChangeDispatcher
 import java.lang.ref.WeakReference
 import java.lang.reflect.InvocationHandler
@@ -75,10 +76,16 @@ internal class BaiduSystemNightModeSyncHook(
     private var activeActivityRef: WeakReference<Activity>? = null
     private var mainActivityRef: WeakReference<Activity>? = null
     private var settingsActivityRef: WeakReference<Activity>? = null
+    private var flutterSearchActivityRef: WeakReference<Activity>? = null
+    private var flutterSearchResumed = false
+    private var flutterSearchRefreshPending = false
+    private var flutterSearchDefaultSkin: Boolean? = null
+    private var flutterSearchRefreshing = false
 
     internal fun hook(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
         FileFilterThemeCompat.hook(cl)
+        ComposeSearchThemeCompat.hook(cl)
         if (!hookState.markInstalled()) return
 
         try {
@@ -128,6 +135,8 @@ internal class BaiduSystemNightModeSyncHook(
                 }
             }
 
+            installFlutterSearchActivityHooks(cl, queueSyncLogic)
+
             log(
                 "hooks INSTALLED: BaseActivity.onResume + " +
                     "onConfigurationChanged + MainActivity.refreshTabSkin + skin observer",
@@ -135,6 +144,92 @@ internal class BaiduSystemNightModeSyncHook(
         } catch (t: Throwable) {
             hookState.reset()
             log("FAILED: ${t.message}")
+        }
+    }
+
+    private fun installFlutterSearchActivityHooks(cl: ClassLoader, queueSync: (Activity) -> Unit) {
+        val mod = XposedCompat.module ?: return
+        val activityClass = XposedCompat.findClassOrNull(BaiduThemeHookPoints.FLUTTER_BUSINESS_ACTIVITY, cl)
+            ?: return
+        if (!FlutterSearchThemeRefresh.hook(cl)) return
+        XposedCompat.findMethodOrNull(activityClass, "onResume")?.let { method ->
+            mod.hook(method).intercept { chain ->
+                val result = chain.proceed()
+                (chain.thisObject as? Activity)?.takeIf(::isFlutterSearchActivity)?.let { activity ->
+                    if (flutterSearchActivityRef?.get() !== activity) {
+                        flutterSearchDefaultSkin = resolveDefaultSkin(cl, activity)
+                        flutterSearchRefreshPending = false
+                    }
+                    flutterSearchActivityRef = WeakReference(activity)
+                    flutterSearchResumed = true
+                    requestFlutterSearchRefresh(cl)
+                    queueSync(activity)
+                }
+                result
+            }
+        }
+        XposedCompat.findMethodOrNull(activityClass, "onPause")?.let { method ->
+            mod.hook(method).intercept { chain ->
+                (chain.thisObject as? Activity)?.let { activity ->
+                    if (flutterSearchActivityRef?.get() === activity) flutterSearchResumed = false
+                }
+                chain.proceed()
+            }
+        }
+        activityClass.superclass?.let { XposedCompat.findMethodOrNull(it, "onDestroy") }?.let { method ->
+            mod.hook(method).intercept { chain ->
+                (chain.thisObject as? Activity)?.let { activity ->
+                    FlutterSearchThemeRefresh.cancel(activity)
+                    if (flutterSearchActivityRef?.get() === activity) {
+                        flutterSearchActivityRef = null
+                        flutterSearchResumed = false
+                        flutterSearchRefreshPending = false
+                        flutterSearchDefaultSkin = null
+                        flutterSearchRefreshing = false
+                    }
+                }
+                chain.proceed()
+            }
+        }
+    }
+
+    private fun isFlutterSearchActivity(activity: Activity): Boolean {
+        if (activity.javaClass.name != BaiduThemeHookPoints.FLUTTER_BUSINESS_ACTIVITY) return false
+        val route = runCatching { activity.javaClass.getField("path").get(activity) as? String }.getOrNull()
+            ?.takeIf { it.isNotEmpty() } ?: activity.intent?.getStringExtra("path")
+            ?: activity.intent?.getStringExtra("extra_path")
+        return route == BaiduThemeHookPoints.FLUTTER_SEARCH_ROUTE
+    }
+
+    private fun resolveDefaultSkin(cl: ClassLoader, activity: Activity): Boolean? = runCatching {
+        XposedCompat.findClassOrNull(hookPoints.skinConfigClassName, cl)
+            ?.getMethod("isDefaultSkin", android.content.Context::class.java)
+            ?.invoke(null, activity.applicationContext) as? Boolean
+    }.getOrNull()
+
+    private fun requestFlutterSearchRefresh(cl: ClassLoader) {
+        val activity = flutterSearchActivityRef?.get() ?: return
+        if (activity.isFinishing || activity.isDestroyed) return
+        val defaultSkin = resolveDefaultSkin(cl, activity) ?: return
+        flutterSearchRefreshPending = flutterSearchDefaultSkin != null && flutterSearchDefaultSkin != defaultSkin
+        if (flutterSearchResumed && flutterSearchRefreshPending && !flutterSearchRefreshing) {
+            refreshFlutterSearchActivity(cl, defaultSkin)
+        }
+    }
+
+    private fun refreshFlutterSearchActivity(cl: ClassLoader, defaultSkin: Boolean) {
+        val activity = flutterSearchActivityRef?.get() ?: return
+        if (!flutterSearchRefreshPending || !flutterSearchResumed || activity.isFinishing || activity.isDestroyed) return
+        flutterSearchRefreshing = true
+        FlutterSearchThemeRefresh.refresh(activity, {
+            flutterSearchActivityRef?.get() === activity && flutterSearchResumed
+        }) { success ->
+            flutterSearchRefreshing = false
+            if (flutterSearchActivityRef?.get() === activity && success) {
+                flutterSearchDefaultSkin = defaultSkin
+                flutterSearchRefreshPending = false
+                mainHandler.post { requestFlutterSearchRefresh(cl) }
+            }
         }
     }
 
@@ -204,6 +299,15 @@ internal class BaiduSystemNightModeSyncHook(
                     log("SkinManager class NOT FOUND")
                     return
                 }
+            XposedCompat.findMethodOrNull(skinManagerClass, "notifySkinUpdate")?.let { method ->
+                mod.hook(method).intercept { chain ->
+                    val result = chain.proceed()
+                    // Both restoreDefaultTheme and the asynchronous dark-skin loader finish here.
+                    // The light branch never invokes SkinLoaderListener.onSuccess.
+                    mainHandler.post { requestFlutterSearchRefresh(cl) }
+                    result
+                }
+            }
             val listenerClass = XposedCompat.findClassOrNull(hookPoints.skinLoaderListenerClassName, cl)
             if (listenerClass != null) {
                 XposedCompat.findMethodOrNull(
