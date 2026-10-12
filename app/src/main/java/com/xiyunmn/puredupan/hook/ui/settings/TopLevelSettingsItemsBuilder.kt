@@ -226,6 +226,12 @@ internal object TopLevelSettingsItemsBuilder {
             onStatusBadgeClick = statusBadgeClickForDebugSpec(spec, actionHandlers),
             showSwitch = spec.showSwitch,
             onActionClick = actionClickForDebugSpec(spec, actionHandlers),
+            secondaryActionIcon = if (spec.action == DebugSettingsAction.MANAGE_LOGS) {
+                UiText.Settings.ACTION_ICON_CLEAR
+            } else null,
+            onSecondaryActionClick = if (spec.action == DebugSettingsAction.MANAGE_LOGS) {
+                actionHandlers.onClearLogsClick
+            } else null,
             visible = visible,
         )
     }
@@ -236,7 +242,7 @@ internal object TopLevelSettingsItemsBuilder {
     ): String? {
         return when (spec.action) {
             DebugSettingsAction.DEXKIT_STATUS -> UiText.Settings.ACTION_ICON_SIGN_IN
-            DebugSettingsAction.CLEAR_LOGS -> UiText.Settings.ACTION_ICON_CLEAR
+            DebugSettingsAction.MANAGE_LOGS -> UiText.Settings.EXPORT_LOGS_LABEL
             DebugSettingsAction.RESET_MODULE_SETTINGS -> UiText.Settings.ACTION_ICON_RESET
             DebugSettingsAction.NONE -> null
         }
@@ -249,7 +255,7 @@ internal object TopLevelSettingsItemsBuilder {
         return when (spec.action) {
             DebugSettingsAction.DEXKIT_STATUS ->
                 "${UiText.Settings.DEXKIT_STATUS_BADGE_PREFIX}: ${formatDexKitSummaryForBadge(dexKitSummaryText)}"
-            DebugSettingsAction.CLEAR_LOGS,
+            DebugSettingsAction.MANAGE_LOGS,
             DebugSettingsAction.RESET_MODULE_SETTINGS,
             DebugSettingsAction.NONE -> null
         }
@@ -270,7 +276,7 @@ internal object TopLevelSettingsItemsBuilder {
     ): (() -> Unit)? {
         return when (spec.action) {
             DebugSettingsAction.DEXKIT_STATUS -> actionHandlers.onDexKitDetailsClick
-            DebugSettingsAction.CLEAR_LOGS,
+            DebugSettingsAction.MANAGE_LOGS,
             DebugSettingsAction.RESET_MODULE_SETTINGS,
             DebugSettingsAction.NONE -> null
         }
@@ -282,7 +288,7 @@ internal object TopLevelSettingsItemsBuilder {
     ): (() -> Unit)? {
         return when (spec.action) {
             DebugSettingsAction.DEXKIT_STATUS -> actionHandlers.onDexKitScanClick
-            DebugSettingsAction.CLEAR_LOGS -> actionHandlers.onClearLogsClick
+            DebugSettingsAction.MANAGE_LOGS -> actionHandlers.onExportLogsClick
             DebugSettingsAction.RESET_MODULE_SETTINGS -> actionHandlers.onResetModuleSettingsClick
             DebugSettingsAction.NONE -> null
         }

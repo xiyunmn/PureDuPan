@@ -11,11 +11,13 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.ui.UiText
 
@@ -42,6 +44,8 @@ internal object SettingsSwitchRows {
         actionButtonText: String? = null,
         statusBadgeText: String? = null,
         onStatusBadgeClick: (() -> Unit)? = null,
+        secondaryActionIcon: String? = null,
+        onSecondaryActionClick: (() -> Unit)? = null,
     ): View {
         val tokens = UiStyle.tokens(context)
         val density = context.resources.displayMetrics.density
@@ -93,7 +97,19 @@ internal object SettingsSwitchRows {
 
         if (description != null) {
             textContainer.addView(TextView(context).apply {
-                text = emphasizeWarningHints(description, tokens)
+                text = SpannableString(emphasizeWarningHints(description, tokens)).apply {
+                    if (prefKey == SettingsUserState.KEY_ENABLE_DETAILED_LOGGING) {
+                        val pathStart = description.indexOf("/data/")
+                        if (pathStart >= 0) {
+                            setSpan(
+                                ForegroundColorSpan(if (enabled) tokens.accent else tokens.textMuted),
+                                pathStart,
+                                description.length,
+                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                            )
+                        }
+                    }
+                }
                 textSize = 11.5f
                 setTextColor(if (enabled) tokens.textSecondary else tokens.textMuted)
                 setPadding(0, (3 * density).toInt(), (14 * density).toInt(), 0)
@@ -130,6 +146,12 @@ internal object SettingsSwitchRows {
                         enabled = enabled,
                         contentDescription = actionIcon,
                     )
+                    if (secondaryActionIcon != null) {
+                        layoutParams = LinearLayout.LayoutParams(
+                            (36 * density).toInt(),
+                            (36 * density).toInt(),
+                        )
+                    }
                     setOnClickListener {
                         if (enabled) {
                             UiStyle.animateActionPress(this)
@@ -160,6 +182,37 @@ internal object SettingsSwitchRows {
                             onActionClick()
                         }
                     }
+                })
+            }
+        }
+
+        if (secondaryActionIcon != null && onSecondaryActionClick != null) {
+            materialActionIcon(secondaryActionIcon)?.let { icon ->
+                val switchSlotWidth = Switch(context).apply {
+                    measure(
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                    )
+                }.measuredWidth
+                val button = ImageButton(context).apply {
+                    UiStyle.paintMaterialIconButton(
+                        this, density, tokens, icon, enabled, secondaryActionIcon,
+                    )
+                    layoutParams = FrameLayout.LayoutParams(
+                        (36 * density).toInt(),
+                        (36 * density).toInt(),
+                        Gravity.CENTER,
+                    )
+                    setOnClickListener {
+                        if (enabled) {
+                            UiStyle.animateActionPress(this)
+                            onSecondaryActionClick()
+                        }
+                    }
+                }
+                row.addView(FrameLayout(context).apply {
+                    layoutParams = LinearLayout.LayoutParams(switchSlotWidth, (36 * density).toInt())
+                    addView(button)
                 })
             }
         }
@@ -324,6 +377,7 @@ internal object SettingsSwitchRows {
             UiText.Settings.ACTION_ICON_SETTINGS -> UiStyle.MaterialActionIcon.SETTINGS
             UiText.Settings.ACTION_ICON_SIGN_IN -> UiStyle.MaterialActionIcon.PLAY_PAUSE
             UiText.Settings.ACTION_ICON_CLEAR -> UiStyle.MaterialActionIcon.DELETE
+            UiText.Settings.EXPORT_LOGS_LABEL -> UiStyle.MaterialActionIcon.EXPORT
             UiText.Settings.ACTION_ICON_RESET -> UiStyle.MaterialActionIcon.REFRESH
             else -> null
         }

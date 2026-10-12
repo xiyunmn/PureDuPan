@@ -6,7 +6,7 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 internal enum class DebugSettingsAction {
     NONE,
     DEXKIT_STATUS,
-    CLEAR_LOGS,
+    MANAGE_LOGS,
     RESET_MODULE_SETTINGS,
 }
 
@@ -36,9 +36,9 @@ internal object DebugSettingsRegistry {
             ),
             DebugSwitchSpec(
                 key = null,
-                label = UiText.Settings.CLEAR_LOGS_LABEL,
-                description = UiText.Settings.CLEAR_LOGS_DESC,
-                action = DebugSettingsAction.CLEAR_LOGS,
+                label = UiText.Settings.MANAGE_LOGS_LABEL,
+                description = UiText.Settings.MANAGE_LOGS_DESC,
+                action = DebugSettingsAction.MANAGE_LOGS,
                 showSwitch = false,
             ),
             DebugSwitchSpec(

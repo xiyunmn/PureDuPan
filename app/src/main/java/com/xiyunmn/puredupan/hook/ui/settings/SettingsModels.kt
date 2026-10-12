@@ -17,6 +17,8 @@ internal data class SwitchItem(
     val showSwitch: Boolean = true,
     val onActionClick: (() -> Unit)? = null,
     val visible: Boolean = true,
+    val secondaryActionIcon: String? = null,
+    val onSecondaryActionClick: (() -> Unit)? = null,
 )
 
 internal data class SettingGroup(
@@ -55,6 +57,7 @@ internal data class DebugSettingsActionHandlers(
     val onDexKitScanClick: () -> Unit,
     val onDexKitDetailsClick: () -> Unit,
     val onClearLogsClick: () -> Unit,
+    val onExportLogsClick: () -> Unit,
     val onResetModuleSettingsClick: () -> Unit,
 )
 

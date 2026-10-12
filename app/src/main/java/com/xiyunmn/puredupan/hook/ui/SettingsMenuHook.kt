@@ -9,6 +9,8 @@ import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.DocumentsContract
 import android.widget.Toast
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -18,11 +20,80 @@ import com.xiyunmn.puredupan.hook.ui.settings.MemberCardBackgroundSelectionState
 import com.xiyunmn.puredupan.hook.ui.settings.MemberCardBackgroundEditorDialog
 import com.xiyunmn.puredupan.hook.ui.settings.SettingsMainDialog
 import com.xiyunmn.puredupan.hook.ui.settings.StorageTreeSelectionState
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.concurrent.thread
 
 internal const val REQUEST_MEMBER_CARD_BACKGROUND_IMAGE = 0x4D31
 internal const val REQUEST_STORAGE_DOWNLOAD_TREE = 0x4D32
+internal const val REQUEST_EXPORT_LOGS = 0x4D33
 
 object SettingsMenuHook {
+    internal fun launchLogExportPicker(context: Context) {
+        try {
+            if (!XposedCompat.hasLogFiles(context)) {
+                Toast.makeText(context, UiText.Settings.EXPORT_LOGS_EMPTY, Toast.LENGTH_LONG).show()
+                return
+            }
+            val activity = context as? Activity ?: error("settings context is not Activity")
+            val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "application/zip"
+                putExtra(Intent.EXTRA_TITLE, "PureDuPan-${context.packageName}-$timestamp.zip")
+                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            }
+            val preferred = resolvePreferredSystemDocumentPicker(context, intent)
+            try {
+                activity.startActivityForResult(Intent(intent).apply { component = preferred }, REQUEST_EXPORT_LOGS)
+                XposedCompat.logD(
+                    "[SettingsMenuHook] log export picker launched: " +
+                        (preferred?.flattenToShortString() ?: "implicit-system"),
+                )
+            } catch (e: Exception) {
+                if (preferred == null) throw e
+                XposedCompat.logW(
+                    "[SettingsMenuHook] preferred log export picker failed: " +
+                        "${preferred.flattenToShortString()} ${e.message}",
+                )
+                activity.startActivityForResult(intent, REQUEST_EXPORT_LOGS)
+            }
+        } catch (e: Exception) {
+            XposedCompat.logW("[SettingsMenuHook] launch log export picker failed: ${e.message}")
+            Toast.makeText(context, UiText.Settings.EXPORT_LOGS_PICK_FAILED, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    internal fun handleLogExportResult(
+        context: Context?,
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?,
+    ): Boolean {
+        if (requestCode != REQUEST_EXPORT_LOGS) return false
+        if (context == null || resultCode != Activity.RESULT_OK) return true
+        val uri = data?.data ?: return true
+        val appContext = context.applicationContext ?: context
+        Toast.makeText(appContext, UiText.Settings.EXPORT_LOGS_STARTED, Toast.LENGTH_SHORT).show()
+        thread(name = "WPH-LogExport") {
+            val message = try {
+                appContext.contentResolver.openOutputStream(uri, "wt").use { output ->
+                    checkNotNull(output) { "Cannot open export destination" }
+                    XposedCompat.exportLogFiles(appContext, output)
+                }
+                UiText.Settings.EXPORT_LOGS_SUCCESS
+            } catch (e: Exception) {
+                XposedCompat.logW("[SettingsMenuHook] export logs failed: ${e.message}")
+                UiText.Settings.EXPORT_LOGS_FAILED
+            }
+            Handler(Looper.getMainLooper()).post {
+                Toast.makeText(appContext, message, Toast.LENGTH_SHORT).show()
+            }
+        }
+        return true
+    }
+
     internal fun launchMemberCardBackgroundPicker(context: Context) {
         try {
             if (!canUseMemberCardBackground(context)) {
@@ -119,7 +190,7 @@ object SettingsMenuHook {
                         runCatching { putExtra(DocumentsContract.EXTRA_INITIAL_URI, Uri.parse(stored)) }
                     }
             }
-            val preferredComponent = resolvePreferredSystemTreePicker(context, baseIntent)
+            val preferredComponent = resolvePreferredSystemDocumentPicker(context, baseIntent)
             val preferredIntent = Intent(baseIntent).apply { component = preferredComponent }
             try {
                 activity.startActivityForResult(preferredIntent, REQUEST_STORAGE_DOWNLOAD_TREE)
@@ -142,36 +213,36 @@ object SettingsMenuHook {
     }
 
     @Suppress("DEPRECATION")
-    private fun resolvePreferredSystemTreePicker(context: Context, intent: Intent): ComponentName? {
+    private fun resolvePreferredSystemDocumentPicker(context: Context, intent: Intent): ComponentName? {
         val packageManager = context.packageManager
-        val flags = PackageManager.MATCH_DEFAULT_ONLY or PackageManager.MATCH_SYSTEM_ONLY
-        val systemHandlers = runCatching { packageManager.queryIntentActivities(intent, flags) }
-            .getOrDefault(emptyList())
-            .filter(::isUsableSystemHandler)
-        if (systemHandlers.isEmpty()) return null
+        val vendorTokens = deviceVendorTokens()
+        // OEM file managers can be installed as ordinary apps, without FLAG_SYSTEM.
+        val handlers = runCatching {
+            packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        }.getOrDefault(emptyList()).filter { info ->
+            val activity = info.activityInfo ?: return@filter false
+            val application = activity.applicationInfo ?: return@filter false
+            val systemFlags = ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP
+            activity.enabled && activity.exported && application.enabled &&
+                activity.packageName != context.packageName && !isFrameworkResolver(info) &&
+                ((application.flags and systemFlags) != 0 || isVendorDocumentHandler(info, vendorTokens))
+        }
+        if (handlers.isEmpty()) return null
 
         val resolved = runCatching {
             packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
-        }.getOrNull()?.takeIf(::isUsableSystemHandler)
-        val vendorTokens = deviceVendorTokens()
-        val preferred = systemHandlers.maxWithOrNull(
-            compareBy<ResolveInfo> { treePickerVendorScore(it, packageManager, vendorTokens) }
+        }.getOrNull()?.let { default ->
+            handlers.firstOrNull { it.toComponentName() == default.toComponentName() }
+        }
+        val preferred = handlers.maxWithOrNull(
+            compareBy<ResolveInfo> { documentPickerScore(it, vendorTokens) }
                 .thenBy { it.priority }
                 .thenBy { it.preferredOrder },
         ) ?: return null
-        if (resolved != null && !isFrameworkResolver(resolved)) {
-            val resolvedScore = treePickerVendorScore(resolved, packageManager, vendorTokens)
-            val preferredScore = treePickerVendorScore(preferred, packageManager, vendorTokens)
-            if (resolvedScore >= preferredScore) return resolved.toComponentName()
+        if (resolved != null && documentPickerScore(resolved, vendorTokens) >= documentPickerScore(preferred, vendorTokens)) {
+            return resolved.toComponentName()
         }
         return preferred.toComponentName()
-    }
-
-    private fun isUsableSystemHandler(info: ResolveInfo): Boolean {
-        val activity = info.activityInfo ?: return false
-        val application = activity.applicationInfo ?: return false
-        val systemFlags = ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP
-        return activity.enabled && activity.exported && (application.flags and systemFlags) != 0
     }
 
     private fun isFrameworkResolver(info: ResolveInfo): Boolean {
@@ -186,32 +257,28 @@ object SettingsMenuHook {
         return ComponentName(activity.packageName, activity.name)
     }
 
-    private fun treePickerVendorScore(
-        info: ResolveInfo,
-        packageManager: PackageManager,
-        vendorTokens: Set<String>,
-    ): Int {
+    private fun isVendorDocumentHandler(info: ResolveInfo, vendorTokens: Set<String>): Boolean {
+        return info.activityInfo?.packageName?.lowercase(Locale.ROOT)?.split('.')
+            ?.any { it in vendorTokens } == true
+    }
+
+    private fun documentPickerScore(info: ResolveInfo, vendorTokens: Set<String>): Int {
         val activity = info.activityInfo ?: return Int.MIN_VALUE
-        val packageAndClass = "${activity.packageName}.${activity.name}".lowercase()
-        val label = runCatching { info.loadLabel(packageManager).toString().lowercase() }.getOrDefault("")
-        val vendorMatch = vendorTokens.any { token ->
-            token.length >= 3 && (token in packageAndClass || token in label)
-        }
-        val standardDocumentsUi = packageAndClass.contains("documentsui")
-        return (if (vendorMatch) 1_000 else 0) +
+        val standardDocumentsUi = activity.packageName.contains("documentsui", ignoreCase = true)
+        return (if (isVendorDocumentHandler(info, vendorTokens)) 1_000 else 0) +
             (if (!standardDocumentsUi) 100 else 0) +
             (if (info.isDefault) 20 else 0)
     }
 
     private fun deviceVendorTokens(): Set<String> {
-        val raw = setOf(Build.MANUFACTURER, Build.BRAND).map { it.lowercase().trim() }.filter { it.isNotBlank() }
+        val raw = setOf(Build.MANUFACTURER, Build.BRAND).map { it.lowercase(Locale.ROOT).trim() }.filter { it.isNotBlank() }
         return buildSet {
             addAll(raw)
             raw.forEach { vendor ->
                 when {
-                    vendor.contains("samsung") -> addAll(setOf("samsung", "sec", "myfiles"))
+                    vendor.contains("samsung") -> addAll(setOf("samsung", "sec"))
                     vendor.contains("xiaomi") || vendor.contains("redmi") || vendor.contains("poco") ->
-                        addAll(setOf("xiaomi", "miui", "redmi", "poco", "fileexplorer"))
+                        addAll(setOf("xiaomi", "mi", "miui", "redmi", "poco"))
                     vendor.contains("huawei") || vendor.contains("honor") ->
                         addAll(setOf("huawei", "honor", "hwfilemanager"))
                     vendor.contains("oppo") || vendor.contains("realme") || vendor.contains("oneplus") ->

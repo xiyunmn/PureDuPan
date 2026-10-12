@@ -21,6 +21,7 @@ import com.xiyunmn.puredupan.hook.settings.registry.SettingsDexKitState
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.settings.runtime.SettingsRuntimeSession
 import com.xiyunmn.puredupan.hook.ui.HostThemeChangeDispatcher
+import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.ui.UiText
 import com.xiyunmn.puredupan.hook.ui.showRestrictedFeatureWarningDialog
@@ -123,6 +124,7 @@ internal object SettingsMainDialog {
                     },
                     onDexKitDetailsClick = { SettingsDebugActions.showDexKitStatusDialog(context) },
                     onClearLogsClick = { SettingsDebugActions.showClearLogsConfirmDialog(context) },
+                    onExportLogsClick = { SettingsMenuHook.launchLogExportPicker(context) },
                     onResetModuleSettingsClick = {
                         SettingsDebugActions.showResetModuleSettingsConfirmDialog(context) {
                             onRestartHost()
@@ -207,7 +209,15 @@ internal object SettingsMainDialog {
                         item.actionButtonText,
                         item.statusBadgeText,
                         item.onStatusBadgeClick,
+                        item.secondaryActionIcon,
+                        item.onSecondaryActionClick,
                     )
+                    if (item.prefKey == SettingsUserState.KEY_ENABLE_DETAILED_LOGGING) {
+                        rowView.setOnLongClickListener {
+                            SettingsDebugActions.copyLogDirectoryPath(context)
+                            true
+                        }
+                    }
                     root.addView(rowView)
                     item.prefKey?.let { key ->
                         rowsByPrefKey[key] = rowView

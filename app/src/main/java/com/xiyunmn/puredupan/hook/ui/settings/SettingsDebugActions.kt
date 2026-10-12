@@ -250,6 +250,16 @@ internal object SettingsDebugActions {
         return buildDexKitStatusDetailsText(context, statuses, summary)
     }
 
+    fun copyLogDirectoryPath(context: Context) {
+        try {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("日志路径", XposedCompat.logDirectoryPath(context)))
+            Toast.makeText(context, UiText.Settings.LOG_DIRECTORY_COPIED, Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(context, UiText.Settings.LOG_DIRECTORY_COPY_FAILED, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     fun showClearLogsConfirmDialog(context: Context) {
         try {
             val path = XposedCompat.logDirectoryPath(context)

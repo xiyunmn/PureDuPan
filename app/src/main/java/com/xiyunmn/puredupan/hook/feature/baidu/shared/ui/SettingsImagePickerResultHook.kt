@@ -8,7 +8,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRunti
 import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
 
 /**
- * Receives image picker results launched from module settings entry points.
+ * Receives document and image picker results launched from module settings entry points.
  */
 object SettingsImagePickerResultHook {
     private val hookState = HookState()
@@ -49,6 +49,15 @@ object SettingsImagePickerResultHook {
                 }
 
                 mod.hook(method).intercept { chain ->
+                    if (SettingsMenuHook.handleLogExportResult(
+                            context = chain.thisObject as? Activity,
+                            requestCode = chain.args.getOrNull(0) as? Int ?: -1,
+                            resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
+                            data = chain.args.getOrNull(2) as? Intent,
+                        )
+                    ) {
+                        return@intercept null
+                    }
                     val result = chain.proceed()
                     try {
                         SettingsMenuHook.handleMemberCardBackgroundImageResult(

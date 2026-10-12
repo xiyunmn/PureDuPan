@@ -4,10 +4,13 @@ import android.content.Context
 import android.os.Process
 import android.util.Log
 import java.io.File
+import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.ArrayDeque
 import java.util.Date
 import java.util.Locale
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 internal object HookFileLogger {
     private const val LOG_DIR = "wangpanhook/logs"
@@ -105,6 +108,32 @@ internal object HookFileLogger {
     fun logDirectoryPath(context: Context?): String {
         val dir = logDir ?: context?.let { File((it.applicationContext ?: it).cacheDir, LOG_DIR) }
         return dir?.absolutePath.orEmpty()
+    }
+
+    fun hasLogFiles(context: Context): Boolean = synchronized(lock) {
+        logFiles(context).isNotEmpty()
+    }
+
+    fun exportLogs(context: Context, output: OutputStream) {
+        val snapshot = synchronized(lock) {
+            logFiles(context).map { file -> file.name to file.readBytes() }
+        }
+        check(snapshot.isNotEmpty()) { "No saved logs" }
+        ZipOutputStream(output).use { zip ->
+            snapshot.forEach { (name, bytes) ->
+                zip.putNextEntry(ZipEntry(name))
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+        }
+    }
+
+    private fun logFiles(context: Context): List<File> {
+        val dir = logDir ?: File(context.cacheDir, LOG_DIR)
+        return dir.listFiles().orEmpty().filter { file ->
+            file.isFile && file.name.startsWith("wangpanhook") &&
+                (file.name.endsWith(".log") || file.name.endsWith(".log.1")) && file.length() > 0
+        }.sortedBy { it.name }
     }
 
     private fun addPendingLineLocked(line: String) {

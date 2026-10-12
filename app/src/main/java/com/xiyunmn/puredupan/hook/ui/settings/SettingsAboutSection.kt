@@ -58,6 +58,7 @@ internal object SettingsAboutSection {
 
             addView(TextView(context).apply {
                 text = UiText.Settings.ABOUT
+                setTextIsSelectable(true)
                 textSize = 12.5f
                 letterSpacing = 0.04f
                 setTextColor(tokens.accent)
@@ -231,6 +232,8 @@ internal object SettingsAboutSection {
                 gravity = Gravity.CENTER_VERTICAL
                 addView(TextView(context).apply {
                     text = item.title
+                    setTextIsSelectable(true)
+                    item.onClickListener?.let { setOnClickListener(it) }
                     textSize = 14.5f
                     setTextColor(tokens.textPrimary)
                     typeface = Typeface.DEFAULT_BOLD
@@ -256,6 +259,8 @@ internal object SettingsAboutSection {
 
             val descriptionView = TextView(context).apply {
                 text = item.description
+                setTextIsSelectable(true)
+                item.onClickListener?.let { setOnClickListener(it) }
                 visibility = if (item.description.isBlank()) View.GONE else View.VISIBLE
                 textSize = 13f
                 setTextColor(if (item.url != null) tokens.accent else tokens.textSecondary)

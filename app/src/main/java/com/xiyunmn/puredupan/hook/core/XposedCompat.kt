@@ -59,6 +59,12 @@ object XposedCompat {
         return HookFileLogger.logDirectoryPath(context)
     }
 
+    internal fun hasLogFiles(context: Context): Boolean = HookFileLogger.hasLogFiles(context)
+
+    internal fun exportLogFiles(context: Context, output: java.io.OutputStream) {
+        HookFileLogger.exportLogs(context, output)
+    }
+
     // Logging
     fun log(msg: String) {
         // Deduplication for hook install logs
