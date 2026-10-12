@@ -244,6 +244,8 @@ internal class BaiduBottomBarThemeRefreshCompat(
         if (activity.isFinishing || activity.isDestroyed) return
 
         try {
+            // setFolder replaces each tab's image delegate, which captures the skin asset directory.
+            resolved.refreshTabFolder.invoke(activity)
             replaySelectedVisual(activity, selectedTab, resolved)
             finishSelectedAnimation(selectedTab, resolved)
             logD("selected tab refreshed: ${resourceEntryName(activity, selectedTab)} ($reason)")
