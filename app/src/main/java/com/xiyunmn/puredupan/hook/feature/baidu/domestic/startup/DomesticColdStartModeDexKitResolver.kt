@@ -16,6 +16,12 @@ internal object DomesticColdStartModeDexKitResolver {
     private const val CONFIG_KEY = "key_main_open_ad_parallel"
 
     fun resolve(cl: ClassLoader): Method? {
+        val directRef = DexKitCompat.MethodRef(BaiduDomesticHookPoints.MAIN_PROCESS_INIT_KT, BaiduDomesticHookPoints.MAIN_AD_PARALLEL_IS_OPEN)
+        validateRef(cl, directRef)?.let { method ->
+            DexKitCompat.putCachedMethod(TAG, CACHE_ID, directRef)
+            DexKitCompat.markTargetSuccess(TAG, CACHE_ID, "direct:${method.declaringClass.name}.${method.name}")
+            return method
+        }
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { validateRef(cl, it) }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
             DexKitCompat.CachedResult.NotFound -> return null

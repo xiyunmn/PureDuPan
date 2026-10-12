@@ -45,6 +45,9 @@ internal object AboutMePopupResponseHelperDexKitResolver {
     }
 
     fun resolve(cl: ClassLoader): Method? {
+        if (!BaiduFeatureRuntime.isCurrentIntlHost()) {
+            resolveStableFallback(cl)?.let { return it }
+        }
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateRef(cl, ref)
         }) {

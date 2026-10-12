@@ -2,6 +2,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduHomeCardHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -39,6 +40,13 @@ internal object HomeRecentItemLimitDexKitResolver {
     }
 
     fun resolve(cl: ClassLoader): List<ResolvedMethods> {
+        if (!BaiduFeatureRuntime.isCurrentIntlHost()) {
+            val direct = resolveStableFallback(cl, requireComplete = true)
+            if (direct.isNotEmpty()) {
+                markResolution("direct", direct)
+                return direct
+            }
+        }
         val cached = readCached(cl)
         if (cached.isNotEmpty()) {
             markResolution("cache", cached)
@@ -60,13 +68,13 @@ internal object HomeRecentItemLimitDexKitResolver {
                 "candidateGroupCount=0",
             )
         }
-        return resolveStableFallback(cl).also { fallback ->
+        return resolveStableFallback(cl, requireComplete = !BaiduFeatureRuntime.isCurrentIntlHost()).also { fallback ->
             if (fallback.isNotEmpty()) markResolution("fallback", fallback)
         }
     }
 
     private fun readCached(cl: ClassLoader): List<ResolvedMethods> {
-        return sourceCacheIds.indices.mapNotNull { index ->
+        val methods = sourceCacheIds.indices.mapNotNull { index ->
             val source = cachedMethod(cl, sourceCacheIds[index]) ?: return@mapNotNull null
             val cacheWriter = cachedMethod(cl, cacheWriterCacheIds[index]) ?: return@mapNotNull null
             val stateWriter = cachedMethod(cl, stateWriterCacheIds[index]) ?: return@mapNotNull null
@@ -78,6 +86,12 @@ internal object HomeRecentItemLimitDexKitResolver {
             }
             ResolvedMethods(source, cacheWriter, stateWriter)
         }
+        if (BaiduFeatureRuntime.isCurrentIntlHost()) return methods
+        val owners = BaiduHomeCardHookPoints.RECENT_CARD_VIEW_MODELS
+            .mapNotNull { XposedCompat.findClassOrNull(it, cl) }.toSet()
+        return methods.takeIf { resolved ->
+            resolved.mapTo(mutableSetOf()) { it.source.declaringClass } == owners
+        }.orEmpty()
     }
 
     private fun cachedMethod(cl: ClassLoader, id: String): Method? {
@@ -167,14 +181,26 @@ internal object HomeRecentItemLimitDexKitResolver {
         DexKitCompat.markTargetSuccess(TAG, STATUS_CACHE_ID, "$source:$members")
     }
 
-    private fun resolveStableFallback(cl: ClassLoader): List<ResolvedMethods> {
+    private fun resolveStableFallback(
+        cl: ClassLoader,
+        requireComplete: Boolean = false,
+    ): List<ResolvedMethods> {
         val classNames = BaiduHomeCardHookPoints.RECENT_CARD_VIEW_MODELS
             .distinct()
         return classNames.mapNotNull { className ->
             val clazz = XposedCompat.findClassOrNull(className, cl) ?: return@mapNotNull null
-            val source = findNamedListMethod(clazz, "onRequestSuccess") ?: return@mapNotNull null
-            val cacheWriter = findNamedListMethod(clazz, "saveByPersonConfig") ?: return@mapNotNull null
-            val stateWriter = findNamedListMethod(clazz, "updateNewStateByData") ?: return@mapNotNull null
+            val source = findNamedListMethod(clazz, "onRequestSuccess") ?: run {
+                if (requireComplete) return emptyList()
+                return@mapNotNull null
+            }
+            val cacheWriter = findNamedListMethod(clazz, "saveByPersonConfig") ?: run {
+                if (requireComplete) return emptyList()
+                return@mapNotNull null
+            }
+            val stateWriter = findNamedListMethod(clazz, "updateNewStateByData") ?: run {
+                if (requireComplete) return emptyList()
+                return@mapNotNull null
+            }
             ResolvedMethods(source, cacheWriter, stateWriter)
         }.also { methods ->
             methods.forEachIndexed { index, resolved ->

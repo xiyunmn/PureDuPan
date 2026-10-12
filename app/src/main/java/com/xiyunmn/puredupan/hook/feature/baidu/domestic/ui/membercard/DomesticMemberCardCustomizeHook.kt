@@ -35,7 +35,7 @@ import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.aboutme.AboutMeTopHeteromoDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.aboutme.AboutMeTopHeteromoResolver
 import com.xiyunmn.puredupan.hook.ui.UiText
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.ui.ZoomableImageView
@@ -84,7 +84,7 @@ internal object DomesticMemberCardCustomizeHook {
         if (!hookState.markInstalled()) return
 
         try {
-            val fragmentClass = AboutMeTopHeteromoDexKitResolver.resolve(cl) ?: run {
+            val fragmentClass = AboutMeTopHeteromoResolver.resolve(cl) ?: run {
                 XposedCompat.log("[MemberCardCustomizeHook] AboutMeTopFragmentHeteromo NOT RESOLVED")
                 hookState.reset()
                 return
@@ -112,7 +112,7 @@ internal object DomesticMemberCardCustomizeHook {
         val mod = XposedCompat.module ?: return
         if (!HookSettings.memberCardSnapshot().isMemberCardOperationHidden) return
 
-        val method = AboutMeTopHeteromoDexKitResolver.findMyCardHasOperationMethod(fragmentClass) ?: run {
+        val method = AboutMeTopHeteromoResolver.findMyCardHasOperationMethod(fragmentClass) ?: run {
             XposedCompat.log("[MemberCardCustomizeHook] operation gate: myCardHasOperation NOT FOUND")
             return
         }
@@ -175,7 +175,7 @@ internal object DomesticMemberCardCustomizeHook {
         val mod = XposedCompat.module ?: return
         if (!hasViewRenderOption(HookSettings.memberCardSnapshot())) return
 
-        val method = AboutMeTopHeteromoDexKitResolver.findSetCardUiMethod(fragmentClass) ?: run {
+        val method = AboutMeTopHeteromoResolver.findSetCardUiMethod(fragmentClass) ?: run {
             XposedCompat.log("[MemberCardCustomizeHook] render entry: setCardUi NOT FOUND")
             return
         }

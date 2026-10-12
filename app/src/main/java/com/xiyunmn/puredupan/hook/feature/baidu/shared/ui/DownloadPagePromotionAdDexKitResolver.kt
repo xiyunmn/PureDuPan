@@ -2,6 +2,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduTransferHookPoints
 import java.lang.reflect.Method
@@ -40,6 +41,9 @@ internal object DownloadPagePromotionAdDexKitResolver {
     }
 
     fun resolve(cl: ClassLoader): Method? {
+        if (!BaiduFeatureRuntime.isCurrentIntlHost()) {
+            resolveStableFallback(cl)?.let { return it }
+        }
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateRef(cl, ref)
         }) {

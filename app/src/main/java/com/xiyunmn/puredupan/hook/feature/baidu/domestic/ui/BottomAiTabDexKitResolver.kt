@@ -46,6 +46,7 @@ internal object BottomAiTabDexKitResolver {
     }
 
     fun resolve(cl: ClassLoader): Method? {
+        resolveStableFallback(cl)?.let { return it }
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateRef(cl, ref)
         }) {

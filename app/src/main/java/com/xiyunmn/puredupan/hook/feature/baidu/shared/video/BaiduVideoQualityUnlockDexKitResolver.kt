@@ -72,6 +72,9 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
     }
 
     fun resolveVideoPrivilegeOwner(cl: ClassLoader): Class<*>? {
+        if (!isIntlHost()) {
+            markStableOwnerFallback { resolveDirectVideoPrivilegeOwner(cl) }?.let { return it }
+        }
         when (
             val cached = DexKitCompat.getCachedMethod(TAG, VIDEO_PRIVILEGE_OWNER_CACHE_ID) { ref ->
                 if (ref.methodName != OWNER_SENTINEL_METHOD) return@getCachedMethod null
@@ -129,6 +132,10 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
 
     fun resolveVideoPrivilegeQualityMethods(cl: ClassLoader): List<Method> {
         val owner = resolveVideoPrivilegeOwner(cl) ?: return emptyList()
+        if (!isIntlHost()) {
+            val direct = markStableQualityMethodsFallback(owner, requireComplete = true)
+            if (direct.isNotEmpty()) return direct
+        }
 
         when (
             val cached = DexKitCompat.getCachedMethod(TAG, VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID) { ref ->
@@ -236,7 +243,10 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
         return methods
     }
 
-    private fun markStableQualityMethodsFallback(owner: Class<*>): List<Method> {
+    private fun markStableQualityMethodsFallback(
+        owner: Class<*>,
+        requireComplete: Boolean = false,
+    ): List<Method> {
         val named = owner.declaredMethods
             .filter { method ->
                 !Modifier.isStatic(method.modifiers) &&
@@ -246,6 +256,9 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             }
             .onEach { method -> method.isAccessible = true }
         if (named.isEmpty()) return emptyList()
+        if (requireComplete && named.mapTo(mutableSetOf()) { it.name } != QUALITY_METHOD_NAMES) {
+            return emptyList()
+        }
         DexKitCompat.putCachedMethod(
             TAG,
             VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID,

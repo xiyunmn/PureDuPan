@@ -25,15 +25,8 @@ internal object BaiduDomesticDexKitHookPoints {
 
     const val THUMBNAIL_OPERATOR_UTIL =
         "com.baidu.netdisk.terminalcalc.compress.service.operator.ThumbnailOperatorUtil"
-    const val THUMBNAIL_OPERATOR_UTIL_JVM_NAME = "ThumbnailOperatorUtil"
-    const val THUMBNAIL_ADD_JOB_STABLE_METHOD = "addJob"
     const val CONFIG_COMPRESS_IMAGE =
         "com.baidu.netdisk.base.storage.config.ConfigCompressImage"
-    const val THUMBNAIL_ADD_JOB_PARAM_CONTEXT = "context"
-    const val THUMBNAIL_ADD_JOB_PARAM_COMPRESS_BEAN = "compressBean"
-    const val THUMBNAIL_ADD_JOB_PARAM_CONFIG = "config"
-    const val THUMBNAIL_ADD_JOB_PARAM_UID = "uid"
-    const val THUMBNAIL_JOB_NAME_PREFIX = "thumbnail_"
 
     const val FLOAT_VIEW_STARTUP_TASK_NAME = "FloatViewStartupTask"
     const val FLOAT_VIEW_STARTUP_TASK_STABLE_CLASS = "com.baidu.netdisk.startup.task.FloatViewStartupTask"
@@ -43,7 +36,7 @@ internal object BaiduDomesticDexKitHookPoints {
     const val AUDIO_API_INIT_AUDIO_CIRCLE_METHOD = "audioCircleViewInit"
 
     const val DYNAMIC_PLUGIN_HELPER = "com.baidu.netdisk.dynamic.IDynamicPluginHelper"
-    const val DYNAMIC_PLUGIN_DOWNLOADER = "com.baidu.netdisk.dynamic.base.PluginDownloader"
+    const val DYNAMIC_PLUGIN_HELPER_STABLE_CLASS = "com.baidu.netdisk.dynamic.DynamicPluginHelper"
     const val DYNAMIC_PLUGIN_EXECUTOR = "com.baidu.netdisk.dynamic.base.PluginExecutor"
     const val DYNAMIC_PLUGIN_SUB_DOWNLOADER =
         "com.baidu.netdisk.dynamic.base.PluginDownloader\$SubDownloader"
@@ -51,8 +44,6 @@ internal object BaiduDomesticDexKitHookPoints {
         "com.baidu.netdisk.dynamic.base.PluginExecutor\$SubExecutor"
     const val DYNAMIC_PLUGIN_MODEL =
         "com.baidu.netdisk.dynamic.base.model.DynamicPlugin"
-    const val DYNAMIC_PLUGIN_AUTO_DOWNLOAD_CALL_SITE_TOKEN =
-        "downloadAllPlugins toDownloadPlugin"
     const val DYNAMIC_PLUGIN_AUTO_INSTALL_CALL_SITE_TOKEN =
         "autoInstallByPluginId"
 }

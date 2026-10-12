@@ -37,6 +37,7 @@ internal object DomesticFloatViewStartupDexKitResolver {
     }
 
     fun resolveInitAudioCircleView(cl: ClassLoader): Method? {
+        resolveFallback(cl)?.let { return it }
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateRef(cl, ref)
         }) {

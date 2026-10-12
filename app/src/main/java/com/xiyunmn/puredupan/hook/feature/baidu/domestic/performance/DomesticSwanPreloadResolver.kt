@@ -30,6 +30,7 @@ internal object DomesticSwanPreloadResolver {
     }
 
     fun resolvePrefetchEventMethod(cl: ClassLoader): Method? {
+        resolveStablePrefetchEventMethod(cl)?.let { return it }
         when (val cached = DexKitCompat.getCachedMethod(TAG, PREFETCH_EVENT_CACHE_ID) { ref ->
             validatePrefetchEventRef(cl, ref)
         }) {

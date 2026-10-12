@@ -2,6 +2,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduThemeHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -29,6 +30,14 @@ internal object BaiduChangeSkinDexKitResolver {
     )
 
     fun resolve(cl: ClassLoader): Method? {
+        if (!BaiduFeatureRuntime.isCurrentIntlHost()) {
+            val ref = DexKitCompat.MethodRef(BaiduThemeHookPoints.CHANGE_SKIN_KT, "changeSkin")
+            resolveRef(cl, ref)?.let { method ->
+                DexKitCompat.putCachedMethod(TAG, CACHE_ID, ref)
+                DexKitCompat.markTargetSuccess(TAG, CACHE_ID, "direct:${method.declaringClass.name}.${method.name}")
+                return method
+            }
+        }
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref -> resolveRef(cl, ref) }) {
             is DexKitCompat.CachedResult.Found -> return cached.value
             DexKitCompat.CachedResult.NotFound -> return null

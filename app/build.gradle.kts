@@ -305,17 +305,6 @@ val validateHookArchitecture = tasks.register("validateHookArchitecture") {
                 )
             }
         }
-        val fallbackFirstWarmUpPattern = Regex(
-            """fun\s+warmUpDexKitCache\b[\s\S]{0,220}return\s+[\s\S]{0,120}fallback[\s\S]{0,80}\|\|""",
-            RegexOption.IGNORE_CASE,
-        )
-        val fallbackFirstWarmUpMatches = sourceTextByPath.mapNotNull { (path, text) ->
-            if (fallbackFirstWarmUpPattern.containsMatchIn(text)) path else null
-        }
-        failIfNotEmpty(
-            "DexKit warm-up must not test fallback before scan resolution",
-            fallbackFirstWarmUpMatches,
-        )
         val featureTerminalDexKitErrors = sourceTextByPath.filter { (path, text) ->
             path.startsWith("com/xiyunmn/puredupan/hook/feature/") &&
                 "DexKitCompat.markTargetError" in text

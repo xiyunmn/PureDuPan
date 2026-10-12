@@ -41,6 +41,10 @@ internal object DomesticHotStartSplashDexKitResolver {
     )
 
     fun resolve(cl: ClassLoader): ResolveResult? {
+        resolveKnownFallback(cl)?.let {
+            cacheResolved(it, "direct")
+            return it
+        }
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateCachedResult(cl, ref)
         }) {

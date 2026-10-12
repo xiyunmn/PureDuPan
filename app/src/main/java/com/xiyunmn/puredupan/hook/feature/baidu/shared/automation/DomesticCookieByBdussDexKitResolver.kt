@@ -2,6 +2,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.automation
 
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
+import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAutomationHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import org.luckypray.dexkit.query.FindMethod
@@ -41,12 +42,20 @@ internal object DomesticCookieByBdussDexKitResolver {
     )
 
     fun cookieFor(cl: ClassLoader, bduss: String): String {
-        val method = resolveCached(cl) ?: return ""
+        val method = resolveDirect(cl) ?: resolveCached(cl) ?: return ""
         return invokeCookieMethod(method, bduss)
     }
 
     fun warmUpDexKitCache(cl: ClassLoader): Boolean {
         return resolveWithScan(cl) != null
+    }
+
+    private fun resolveDirect(cl: ClassLoader): Method? {
+        val ref = DexKitCompat.MethodRef(BaiduAutomationHookPoints.COOKIE_UTILS, "getCookieByBduss")
+        return validateCachedResult(cl, ref)?.also {
+            DexKitCompat.putCachedMethod(TAG, CACHE_ID, ref)
+            DexKitCompat.markTargetSuccess(TAG, CACHE_ID, "direct:${ref.className}.${ref.methodName}")
+        }
     }
 
     private fun resolveCached(cl: ClassLoader): Method? {
@@ -61,6 +70,7 @@ internal object DomesticCookieByBdussDexKitResolver {
     }
 
     private fun resolveWithScan(cl: ClassLoader): Method? {
+        resolveDirect(cl)?.let { return it }
         resolveCached(cl)?.let { return it }
 
         val scan = DexKitCompat.withBridge(TAG, cl, resolverId = CACHE_ID) { bridge ->

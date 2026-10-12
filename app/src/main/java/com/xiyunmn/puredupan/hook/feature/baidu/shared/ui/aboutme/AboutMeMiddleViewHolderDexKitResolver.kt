@@ -2,6 +2,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme
 
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAboutMeHookPoints
 import java.lang.reflect.Method
@@ -54,6 +55,13 @@ internal object AboutMeMiddleViewHolderDexKitResolver {
     }
 
     fun resolve(cl: ClassLoader): Method? {
+        if (!BaiduFeatureRuntime.isCurrentIntlHost()) {
+            val clazz = XposedCompat.findClassOrNull(BaiduAboutMeHookPoints.BASE_MIDDLE_VIEW_HOLDER, cl)
+                ?: return null
+            return clazz.declaredMethods.singleOrNull { method ->
+                method.name == "bind" && isBindMethod(method)
+            }?.apply { isAccessible = true }
+        }
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateRef(cl, ref)
         }) {

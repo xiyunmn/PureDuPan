@@ -4,13 +4,13 @@ import android.view.View
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.aboutme.AboutMeTopHeteromoDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.aboutme.AboutMeTopHeteromoResolver
 
 /**
  * 隐藏我的页顶部会员卡上的 AI 硬币入口（layout_ai_coin）。
  *
  * 迁移到渲染入口层：layout_ai_coin 由 AboutMeTopFragmentHeteromo.setCardUi→initAiPoint() 渲染，
- * 复用会员卡的 AboutMeTopHeteromoDexKitResolver 定位 setCardUi，proceed() 后按稳定资源名
+ * 复用会员卡的 AboutMeTopHeteromoResolver 定位 setCardUi，proceed() 后按稳定资源名
  * layout_ai_coin 单次 findViewById 定位并设为 GONE。宿主每次数据变化重渲染即触发一次。
  *
  * 属「我的页定制」域（KEY_HIDE_ABOUT_ME_AI_COIN_ASSET，仅国内/三星可见），故独立于会员卡 hook
@@ -33,12 +33,12 @@ internal object DomesticAboutMeAiCoinHideHook {
         if (!hookState.markInstalled()) return
 
         try {
-            val fragmentClass = AboutMeTopHeteromoDexKitResolver.resolve(cl) ?: run {
+            val fragmentClass = AboutMeTopHeteromoResolver.resolve(cl) ?: run {
                 hookState.reset()
                 XposedCompat.log("[$TAG] AboutMeTopFragmentHeteromo NOT RESOLVED")
                 return
             }
-            val method = AboutMeTopHeteromoDexKitResolver.findSetCardUiMethod(fragmentClass) ?: run {
+            val method = AboutMeTopHeteromoResolver.findSetCardUiMethod(fragmentClass) ?: run {
                 hookState.reset()
                 XposedCompat.log("[$TAG] setCardUi NOT FOUND")
                 return

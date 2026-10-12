@@ -664,7 +664,7 @@ object HomeCustomizeHook {
         if (!isRecentScrollRangeAdjustmentEnabled()) return 0
         if (!homeCustomizeHookPoints().supportsRecentScrollRangeAdjustment) return 0
         val mod = XposedCompat.module ?: return 0
-        val methods = HomeRecentScrollRangeDexKitResolver.resolve(cl) ?: run {
+        val methods = HomeRecentScrollRangeResolver.resolve(cl) ?: run {
             XposedCompat.logD("[HomeCustomizeHook] recent scroll range methods not resolved")
             return 0
         }

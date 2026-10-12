@@ -8,7 +8,6 @@ import com.xiyunmn.puredupan.hook.dexkit.DexKitTargetRegistry
 import com.xiyunmn.puredupan.hook.dexkit.DexKitWarmUpTask
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ad.DomesticUpdateDialogDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.BottomAiTabDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.aboutme.AboutMeTopHeteromoDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPagePromotionAdDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BaiduChangeSkinDexKitResolver
@@ -23,8 +22,6 @@ import com.xiyunmn.puredupan.hook.feature.baidu.domestic.startup.DomesticColdSta
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.startup.DomesticColdStartModeDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticHotStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeRecentItemLimitDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeRecentScrollRangeDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeMiddleViewHolderDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMePopupResponseHelperDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.search.SearchPageVoiceSearchDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoQualityUnlockDexKitResolver
@@ -75,12 +72,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             featureKey = FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE,
         ),
         DexKitTargetDescriptor(
-            id = DomesticThumbnailOperatorDexKitResolver.THUMBNAIL_ADD_JOB_CACHE_ID,
-            target = "domestic thumbnail add-job method",
-            feature = "thumbnail operator service block",
-            featureKey = FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE,
-        ),
-        DexKitTargetDescriptor(
             id = DomesticFloatViewStartupDexKitResolver.CACHE_ID,
             target = "domestic float-view startup audio method",
             feature = "audio circle autostart block",
@@ -123,12 +114,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             featureKey = FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD,
         ),
         DexKitTargetDescriptor(
-            id = DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_DOWNLOAD_DECISION_CACHE_ID,
-            target = "domestic dynamic plugin auto-download decision",
-            feature = "dynamic plugin auto download block",
-            featureKey = FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD,
-        ),
-        DexKitTargetDescriptor(
             id = DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_INSTALL_DECISION_CACHE_ID,
             target = "domestic dynamic plugin auto-install decision",
             feature = "dynamic plugin auto download block",
@@ -153,20 +138,8 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             featureKey = FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE,
         ),
         DexKitTargetDescriptor(
-            id = AboutMeTopHeteromoDexKitResolver.CACHE_ID,
-            target = "about me top heteromo member card fragment",
-            feature = "member card customize",
-            featureKey = FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE,
-        ),
-        DexKitTargetDescriptor(
             id = AboutMePopupResponseHelperDexKitResolver.CACHE_ID,
             target = "about me PopupResponseHelper refresh method",
-            feature = "my page customize",
-            featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
-        ),
-        DexKitTargetDescriptor(
-            id = AboutMeMiddleViewHolderDexKitResolver.CACHE_ID,
-            target = "about me middle row bind method",
             feature = "my page customize",
             featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
         ),
@@ -213,14 +186,7 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             feature = "home recent item limit",
             featureKey = FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT,
         ),
-    ) + HomeRecentScrollRangeDexKitResolver.cacheIds.map { id ->
-        DexKitTargetDescriptor(
-            id = id,
-            target = "home recent scroll range method",
-            feature = "home recent item limit",
-            featureKey = FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED,
-        )
-    }
+    )
 
     override fun buildTasks(
         host: DexKitHostContext,
@@ -260,9 +226,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             tasks += DexKitWarmUpTask(DomesticThumbnailOperatorDexKitResolver.CLIENT_COMPUTE_INIT_CACHE_ID) {
                 DomesticThumbnailOperatorDexKitResolver.resolveClientComputeInit(classLoader) != null
             }
-            tasks += DexKitWarmUpTask(DomesticThumbnailOperatorDexKitResolver.THUMBNAIL_ADD_JOB_CACHE_ID) {
-                DomesticThumbnailOperatorDexKitResolver.resolveThumbnailAddJob(classLoader) != null
-            }
         }
         if (available(FeatureKeys.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART)) {
             tasks += DexKitWarmUpTask(DomesticFloatViewStartupDexKitResolver.CACHE_ID) {
@@ -301,11 +264,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
                 DomesticDynamicPluginAutoDecisionDexKitResolver.warmUpAutoInstallFactoryCache(classLoader)
             }
             tasks += DexKitWarmUpTask(
-                DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_DOWNLOAD_DECISION_CACHE_ID,
-            ) {
-                DomesticDynamicPluginAutoDecisionDexKitResolver.warmUpAutoDownloadDecisionCache(classLoader)
-            }
-            tasks += DexKitWarmUpTask(
                 DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_INSTALL_DECISION_CACHE_ID,
             ) {
                 DomesticDynamicPluginAutoDecisionDexKitResolver.warmUpAutoInstallDecisionCache(classLoader)
@@ -321,11 +279,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
                 AlbumBackupBarAddUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
-        if (available(FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE)) {
-            tasks += DexKitWarmUpTask(AboutMeTopHeteromoDexKitResolver.CACHE_ID) {
-                AboutMeTopHeteromoDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
         if (available(FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT)) {
             tasks += DexKitWarmUpTask(
                 id = HomeRecentItemLimitDexKitResolver.STATUS_CACHE_ID,
@@ -333,13 +286,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
                     HomeRecentItemLimitDexKitResolver.STATUS_CACHE_ID,
             ) {
                 HomeRecentItemLimitDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
-        if (available(FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED)) {
-            HomeRecentScrollRangeDexKitResolver.cacheIds.forEach { id ->
-                tasks += DexKitWarmUpTask(id) {
-                    HomeRecentScrollRangeDexKitResolver.warmUpDexKitCache(classLoader)
-                }
             }
         }
         if (available(FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE)) {
@@ -350,9 +296,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_MY_PAGE_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(AboutMePopupResponseHelperDexKitResolver.CACHE_ID) {
                 AboutMePopupResponseHelperDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-            tasks += DexKitWarmUpTask(AboutMeMiddleViewHolderDexKitResolver.CACHE_ID) {
-                AboutMeMiddleViewHolderDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         if (available(FeatureKeys.KEY_UNLOCK_VIDEO_SPEED)) {

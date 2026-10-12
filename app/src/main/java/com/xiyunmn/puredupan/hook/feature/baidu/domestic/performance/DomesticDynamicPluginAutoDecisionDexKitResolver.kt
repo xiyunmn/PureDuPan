@@ -12,7 +12,6 @@ import org.luckypray.dexkit.query.matchers.MethodMatcher
 internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
     const val AUTO_DOWNLOAD_FACTORY_CACHE_ID = "domestic_dynamic_plugin_auto_download_factory"
     const val AUTO_INSTALL_FACTORY_CACHE_ID = "domestic_dynamic_plugin_auto_install_factory"
-    const val AUTO_DOWNLOAD_DECISION_CACHE_ID = "domestic_dynamic_plugin_auto_download_decision"
     const val AUTO_INSTALL_DECISION_CACHE_ID = "domestic_dynamic_plugin_auto_install_decision"
 
     private const val TAG = "DomesticDynamicPluginAutoDecisionDexKitResolver"
@@ -42,9 +41,8 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
     fun warmUpDexKitCache(cl: ClassLoader): Boolean {
         val download = resolveAutoDownloadFactory(cl) != null
         val install = resolveAutoInstallFactory(cl) != null
-        val downloadDecision = warmUpAutoDownloadDecisionCache(cl)
         val installDecision = warmUpAutoInstallDecisionCache(cl)
-        return download || install || downloadDecision || installDecision
+        return download || install || installDecision
     }
 
     fun warmUpAutoDownloadFactoryCache(cl: ClassLoader): Boolean {
@@ -53,10 +51,6 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
 
     fun warmUpAutoInstallFactoryCache(cl: ClassLoader): Boolean {
         return resolveAutoInstallFactory(cl) != null
-    }
-
-    fun warmUpAutoDownloadDecisionCache(cl: ClassLoader): Boolean {
-        return resolveAutoDownloadDecisionInterfaceMethod(cl) != null
     }
 
     fun warmUpAutoInstallDecisionCache(cl: ClassLoader): Boolean {
@@ -135,22 +129,32 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
             cl = cl,
             cacheId = AUTO_DOWNLOAD_FACTORY_CACHE_ID,
             returnTypeName = BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_SUB_DOWNLOADER,
+            stableMethodName = "getDownloader",
             label = "autoDownloadFactory",
         )
     }
 
     private fun resolveAutoDownloadDecisionInterfaceMethod(cl: ClassLoader): Method? {
-        return resolveDecisionInterfaceMethod(
-            cl = cl,
-            cacheId = AUTO_DOWNLOAD_DECISION_CACHE_ID,
-            hostClassName = BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_DOWNLOADER,
-            interfaceClassName = BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_SUB_DOWNLOADER,
-            callSiteToken = BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_AUTO_DOWNLOAD_CALL_SITE_TOKEN,
-            label = "autoDownloadDecision",
-        )
+        val owner = XposedCompat.findClassOrNull(BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_SUB_DOWNLOADER, cl)
+            ?: return null
+        val plugin = XposedCompat.findClassOrNull(BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_MODEL, cl)
+            ?: return null
+        return owner.declaredMethods.singleOrNull { method ->
+            !Modifier.isStatic(method.modifiers) && method.returnType == Boolean::class.javaPrimitiveType &&
+                method.parameterTypes.contentEquals(arrayOf(plugin))
+        }?.apply { isAccessible = true }
     }
 
     private fun resolveAutoInstallDecisionInterfaceMethod(cl: ClassLoader): Method? {
+        val ref = DexKitCompat.MethodRef(
+            BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_SUB_EXECUTOR,
+            "isAutoInstall",
+        )
+        validateDecisionInterfaceRef(cl, ref, ref.className)?.let { method ->
+            DexKitCompat.putCachedMethod(TAG, AUTO_INSTALL_DECISION_CACHE_ID, ref)
+            DexKitCompat.markTargetSuccess(TAG, AUTO_INSTALL_DECISION_CACHE_ID, "direct:${ref.className}.${ref.methodName}")
+            return method
+        }
         return resolveDecisionInterfaceMethod(
             cl = cl,
             cacheId = AUTO_INSTALL_DECISION_CACHE_ID,
@@ -166,6 +170,7 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
             cl = cl,
             cacheId = AUTO_INSTALL_FACTORY_CACHE_ID,
             returnTypeName = BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_SUB_EXECUTOR,
+            stableMethodName = "getExecutor",
             label = "autoInstallFactory",
         )
     }
@@ -174,8 +179,18 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
         cl: ClassLoader,
         cacheId: String,
         returnTypeName: String,
+        stableMethodName: String,
         label: String,
     ): Method? {
+        val directRef = DexKitCompat.MethodRef(
+            BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_HELPER_STABLE_CLASS,
+            stableMethodName,
+        )
+        validateFactoryRef(cl, directRef, returnTypeName)?.let { method ->
+            DexKitCompat.putCachedMethod(TAG, cacheId, directRef)
+            DexKitCompat.markTargetSuccess(TAG, cacheId, "direct:${directRef.className}.${directRef.methodName}")
+            return method
+        }
         when (val cached = DexKitCompat.getCachedMethod(TAG, cacheId) { ref ->
             validateFactoryRef(cl, ref, returnTypeName)
         }) {
@@ -315,10 +330,11 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
             ?: return null
         val returnClass = XposedCompat.findClassOrNull(returnTypeName, cl) ?: return null
         if (!helperClass.isAssignableFrom(clazz)) return null
-        val method = XposedCompat.findMethodOrNull(clazz, ref.methodName, pluginClass) ?: return null
-        if (Modifier.isStatic(method.modifiers)) return null
-        if (!returnClass.isAssignableFrom(method.returnType)) return null
-        return method.apply { isAccessible = true }
+        return clazz.declaredMethods.singleOrNull { method ->
+            method.name == ref.methodName && !Modifier.isStatic(method.modifiers) && !method.isBridge &&
+                method.parameterTypes.contentEquals(arrayOf(pluginClass)) &&
+                returnClass.isAssignableFrom(method.returnType)
+        }?.apply { isAccessible = true }
     }
 
     private fun validateDecisionInterfaceRef(

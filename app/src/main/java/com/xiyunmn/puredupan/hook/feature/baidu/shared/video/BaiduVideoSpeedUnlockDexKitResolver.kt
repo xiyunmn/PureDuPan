@@ -187,6 +187,9 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
         label: String,
         stableFallback: () -> Method?,
     ): Method? {
+        if (!isIntlHost()) {
+            markStableFallback(cacheId, stableFallback)?.let { return it }
+        }
         when (
             val cached = DexKitCompat.getCachedMethod(TAG, cacheId) { ref ->
                 validateVideoPrivilegeRef(cl, ref, paramCount, firstParamBoolean)
@@ -270,6 +273,9 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
         label: String,
         stableFallback: () -> Method?,
     ): Method? {
+        if (!isIntlHost()) {
+            markStableFallback(cacheId, stableFallback)?.let { return it }
+        }
         when (
             val cached = DexKitCompat.getCachedMethod(TAG, cacheId) { ref ->
                 validatePresentRef(cl, ref)
