@@ -5,11 +5,16 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Typeface
+import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
+import android.text.Selection
+import android.text.Spannable
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Switch
@@ -287,6 +292,7 @@ internal object SettingsMainDialog {
             val tokensTitle = UiStyle.tokens(context)
             val titleView = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
+                isFocusableInTouchMode = true
                 setPadding(padding, padding, padding, padding / 2)
 
                 addView(TextView(context).apply {
@@ -372,6 +378,23 @@ internal object SettingsMainDialog {
                 unregisterThemeListener = null
             }
             dialog.window?.let { window ->
+                val originalCallback = window.callback
+                window.callback = object : Window.Callback by originalCallback {
+                    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+                        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                            val selectedText = window.currentFocus as? TextView
+                            if (selectedText?.isTextSelectable == true) {
+                                val bounds = Rect()
+                                selectedText.getGlobalVisibleRect(bounds)
+                                if (!bounds.contains(event.x.toInt(), event.y.toInt())) {
+                                    titleView.requestFocus()
+                                    (selectedText.text as? Spannable)?.let(Selection::removeSelection)
+                                }
+                            }
+                        }
+                        return originalCallback.dispatchTouchEvent(event)
+                    }
+                }
                 val windowDensity = context.resources.displayMetrics.density
                 SettingsDialogWindows.applyCardStyle(window, windowDensity)
                 UiStyle.animateDialogEntry(window.decorView, windowDensity)
