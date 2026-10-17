@@ -16,6 +16,7 @@ internal enum class TopLevelSettingsAction {
     PERFORMANCE_OPTIMIZE,
     AUTO_DAILY_SIGN_IN_NOW,
     STORAGE_PATH_MANAGEMENT,
+    DEFAULT_STARTUP_TAB,
 }
 
 internal data class TopLevelSwitchSpec(
@@ -149,6 +150,21 @@ internal object TopLevelSettingsRegistry {
                 } else {
                     UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_DESC
                 },
+            )
+        )
+        add(
+            TopLevelSwitchSpec(
+                SettingsUserState.KEY_DEFAULT_STARTUP_TAB_ENABLED,
+                UiText.Settings.DEFAULT_STARTUP_TAB_LABEL,
+                UiText.Settings.DEFAULT_STARTUP_TAB_DESC,
+                action = TopLevelSettingsAction.DEFAULT_STARTUP_TAB,
+            )
+        )
+        add(
+            TopLevelSwitchSpec(
+                SettingsUserState.KEY_DOWNLOAD_OPEN_WITH,
+                UiText.Settings.DOWNLOAD_OPEN_WITH_LABEL,
+                UiText.Settings.DOWNLOAD_OPEN_WITH_DESC,
             )
         )
     }

@@ -51,6 +51,7 @@ internal data class TopLevelSettingsActionHandlers(
     val onPerformanceOptimizeClick: () -> Unit,
     val onAutoDailySignInNowClick: () -> Unit,
     val onStoragePathManagementClick: () -> Unit,
+    val onDefaultStartupTabClick: () -> Unit,
 )
 
 internal data class DebugSettingsActionHandlers(

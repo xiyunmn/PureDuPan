@@ -102,6 +102,9 @@ data class SettingsSnapshot(
     val isMemberCardBackgroundViewedOnClick: Boolean = false,
     val isNightModeSupportEnabled: Boolean = false,
     val isFollowSystemNightModeEnabled: Boolean = false,
+    val isDefaultStartupTabEnabled: Boolean = false,
+    val defaultStartupTab: String? = null,
+    val isDownloadOpenWithEnabled: Boolean = false,
     val isAutoDailySignInEnabled: Boolean = false,
     val isVideoSpeedUnlockEnabled: Boolean = false,
     val isVideoQualityUnlockEnabled: Boolean = false,
@@ -166,6 +169,7 @@ data class SettingsSnapshot(
             FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET -> isIntlNonCoreDiffSocketDelayed
             FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT -> isIntlAlbumAiInitBlocked
             FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE -> isFollowSystemNightModeEnabled
+            FeatureKeys.KEY_DOWNLOAD_OPEN_WITH -> isDownloadOpenWithEnabled
             FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED -> isHomeRecentItemLimitEnabled
             FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT ->
                 isHomeRecentItemLimitEnabled && homeRecentItemLimit != 3
@@ -201,6 +205,7 @@ data class SettingsSnapshot(
             FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET,
             FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT,
             FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
+            FeatureKeys.KEY_DOWNLOAD_OPEN_WITH,
             FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT_ENABLED,
             FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT,
         )

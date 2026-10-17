@@ -15,6 +15,8 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeTextEnt
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BottomBarBadgeBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BottomBarStaticTabHideHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DefaultStartupTabHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadOpenWithHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.NewHomeFabRemoveHook
@@ -49,6 +51,12 @@ internal object BaiduSharedPostAttachHookSpecs {
     )
 
     val middle = listOf(
+        HookSpec("DefaultStartupTabHook", { context, _, _ ->
+            context.isMain
+        }, featureKey = FeatureKeys.KEY_DEFAULT_STARTUP_TAB_ENABLED) { cl -> DefaultStartupTabHook.hook(cl) },
+        HookSpec("DownloadOpenWithHook", { context, settings, _ ->
+            context.isMain && settings.isDownloadOpenWithEnabled
+        }, featureKey = FeatureKeys.KEY_DOWNLOAD_OPEN_WITH) { cl -> DownloadOpenWithHook.hook(cl) },
         HookSpec("BottomBarStaticTabHideHook", { context, settings, _ ->
             fun enabled(featureKey: String, value: Boolean): Boolean {
                 return context.isFeatureAvailable(featureKey) && value

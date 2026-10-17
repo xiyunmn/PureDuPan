@@ -109,6 +109,9 @@ internal object SettingsMainDialog {
                     onStoragePathManagementClick = {
                         StoragePathSettingsDialog.show(context, prefs, settingsSession.isSamsungHost)
                     },
+                    onDefaultStartupTabClick = {
+                        DefaultStartupTabSettingsDialog.show(context, prefs)
+                    },
                 ),
                 texts = texts,
                 isFeatureVisible = settingsSession::isFeatureVisible,

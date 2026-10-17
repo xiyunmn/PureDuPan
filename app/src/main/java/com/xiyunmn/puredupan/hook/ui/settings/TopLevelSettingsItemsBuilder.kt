@@ -177,6 +177,7 @@ internal object TopLevelSettingsItemsBuilder {
             TopLevelSettingsAction.PERFORMANCE_OPTIMIZE -> defaultValues.performanceOptimize
             TopLevelSettingsAction.AUTO_DAILY_SIGN_IN_NOW -> false
             TopLevelSettingsAction.STORAGE_PATH_MANAGEMENT -> defaultValues.storageRedirect
+            TopLevelSettingsAction.DEFAULT_STARTUP_TAB -> false
             TopLevelSettingsAction.NONE -> false
         }
     }
@@ -197,6 +198,7 @@ internal object TopLevelSettingsItemsBuilder {
             TopLevelSettingsAction.PERFORMANCE_OPTIMIZE -> actionHandlers.onPerformanceOptimizeClick
             TopLevelSettingsAction.AUTO_DAILY_SIGN_IN_NOW -> actionHandlers.onAutoDailySignInNowClick
             TopLevelSettingsAction.STORAGE_PATH_MANAGEMENT -> actionHandlers.onStoragePathManagementClick
+            TopLevelSettingsAction.DEFAULT_STARTUP_TAB -> actionHandlers.onDefaultStartupTabClick
             TopLevelSettingsAction.NONE -> null
         }
     }

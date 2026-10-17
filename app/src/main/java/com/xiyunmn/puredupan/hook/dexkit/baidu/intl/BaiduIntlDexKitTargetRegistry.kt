@@ -16,12 +16,19 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BaiduChangeSkinDexKitR
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlAlbumBackupBarFactoryDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlAboutMeTopFragmentDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeRecentItemLimitDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadOpenWithBindingsResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeMiddleViewHolderDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoQualityUnlockDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoSpeedUnlockDexKitResolver
 
 internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
     override val descriptors = listOf(
+        DexKitTargetDescriptor(
+            id = DownloadOpenWithBindingsResolver.CACHE_ID,
+            target = "current download page edit model bindings",
+            feature = "下载页用其它应用打开",
+            featureKey = FeatureKeys.KEY_DOWNLOAD_OPEN_WITH,
+        ),
         DexKitTargetDescriptor(
             id = IntlColdStartSplashDexKitResolver.CACHE_ID,
             target = "intl Navigate cold splash decision",
@@ -134,6 +141,12 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
     ): List<DexKitWarmUpTask> {
         val tasks = mutableListOf<DexKitWarmUpTask>()
         fun available(featureKey: String): Boolean = host.isFeatureAvailable(featureKey)
+
+        if (available(FeatureKeys.KEY_DOWNLOAD_OPEN_WITH)) {
+            tasks += DexKitWarmUpTask(DownloadOpenWithBindingsResolver.CACHE_ID, DownloadOpenWithBindingsResolver.cacheIds) {
+                DownloadOpenWithBindingsResolver.resolve(classLoader) != null
+            }
+        }
 
         if (available(FeatureKeys.KEY_ACCELERATE_INTL_SPLASH_STARTUP)) {
             tasks += DexKitWarmUpTask(IntlColdStartSplashDexKitResolver.CACHE_ID) {

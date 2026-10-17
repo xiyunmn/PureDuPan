@@ -3,6 +3,8 @@ package com.xiyunmn.puredupan.hook.settings.registry
 import android.content.Context
 import android.content.SharedPreferences
 import com.xiyunmn.puredupan.hook.config.ConfigManager
+import com.xiyunmn.puredupan.hook.config.StartupTabCache
+import com.xiyunmn.puredupan.hook.config.model.StartupTab
 import com.xiyunmn.puredupan.hook.config.model.FeatureAvailabilityStatus
 import com.xiyunmn.puredupan.hook.config.model.MarketingPopup
 
@@ -156,6 +158,9 @@ internal object SettingsUserState {
     const val KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK = ConfigManager.KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK
     const val KEY_ENABLE_NIGHT_MODE_SUPPORT = ConfigManager.KEY_ENABLE_NIGHT_MODE_SUPPORT
     const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = ConfigManager.KEY_FOLLOW_SYSTEM_NIGHT_MODE
+    const val KEY_DEFAULT_STARTUP_TAB_ENABLED = ConfigManager.KEY_DEFAULT_STARTUP_TAB_ENABLED
+    const val KEY_DEFAULT_STARTUP_TAB = ConfigManager.KEY_DEFAULT_STARTUP_TAB
+    const val KEY_DOWNLOAD_OPEN_WITH = ConfigManager.KEY_DOWNLOAD_OPEN_WITH
     const val KEY_AUTO_DAILY_SIGN_IN = ConfigManager.KEY_AUTO_DAILY_SIGN_IN
     const val KEY_UNLOCK_VIDEO_SPEED = ConfigManager.KEY_UNLOCK_VIDEO_SPEED
     const val KEY_UNLOCK_VIDEO_QUALITY = ConfigManager.KEY_UNLOCK_VIDEO_QUALITY
@@ -218,6 +223,8 @@ internal object SettingsUserState {
     fun getModuleStatePrefs(context: Context): SharedPreferences {
         return ConfigManager.getModuleStatePrefs(context)
     }
+
+    fun startupTabs(context: Context): List<StartupTab> = StartupTabCache.read(context, getModuleStatePrefs(context))
 
     fun applyFeatureAvailability(
         context: Context,

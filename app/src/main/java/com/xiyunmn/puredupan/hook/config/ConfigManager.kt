@@ -159,6 +159,9 @@ object ConfigManager {
     const val KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK = FeatureKeys.KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK
     const val KEY_ENABLE_NIGHT_MODE_SUPPORT = FeatureKeys.KEY_ENABLE_NIGHT_MODE_SUPPORT
     const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE
+    const val KEY_DEFAULT_STARTUP_TAB_ENABLED = FeatureKeys.KEY_DEFAULT_STARTUP_TAB_ENABLED
+    const val KEY_DEFAULT_STARTUP_TAB = FeatureKeys.KEY_DEFAULT_STARTUP_TAB
+    const val KEY_DOWNLOAD_OPEN_WITH = FeatureKeys.KEY_DOWNLOAD_OPEN_WITH
     const val KEY_AUTO_DAILY_SIGN_IN = FeatureKeys.KEY_AUTO_DAILY_SIGN_IN
     const val KEY_UNLOCK_VIDEO_SPEED = FeatureKeys.KEY_UNLOCK_VIDEO_SPEED
     const val KEY_UNLOCK_VIDEO_QUALITY = FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY
@@ -756,6 +759,11 @@ object ConfigManager {
             isMemberCardBackgroundViewedOnClick = memberCardBackgroundViewedOnClick,
             isNightModeSupportEnabled = nightModeSupportEnabled,
             isFollowSystemNightModeEnabled = followSystemNightModeEnabled,
+            isDefaultStartupTabEnabled = featureBoolean(KEY_DEFAULT_STARTUP_TAB_ENABLED),
+            defaultStartupTab = if (isFeatureAvailable(KEY_DEFAULT_STARTUP_TAB)) {
+                p.getString(KEY_DEFAULT_STARTUP_TAB, null)
+            } else null,
+            isDownloadOpenWithEnabled = featureBoolean(KEY_DOWNLOAD_OPEN_WITH),
             isAutoDailySignInEnabled = featureBoolean(KEY_AUTO_DAILY_SIGN_IN, false),
             isVideoSpeedUnlockEnabled = featureBoolean(KEY_UNLOCK_VIDEO_SPEED, false),
             isVideoQualityUnlockEnabled = featureBoolean(KEY_UNLOCK_VIDEO_QUALITY, false),

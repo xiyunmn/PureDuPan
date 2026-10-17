@@ -10,6 +10,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ad.DomesticUpdateDialog
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.BottomAiTabDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPagePromotionAdDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadOpenWithBindingsResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BaiduChangeSkinDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticDynamicPluginAutoDecisionDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticFloatViewStartupDexKitResolver
@@ -29,6 +30,12 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoSpeedUnlo
 
 internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
     override val descriptors = listOf(
+        DexKitTargetDescriptor(
+            id = DownloadOpenWithBindingsResolver.CACHE_ID,
+            target = "current download page edit model bindings",
+            feature = "下载页用其它应用打开",
+            featureKey = FeatureKeys.KEY_DOWNLOAD_OPEN_WITH,
+        ),
         DexKitTargetDescriptor(
             id = DomesticColdStartModeDexKitResolver.CACHE_ID,
             target = "domestic cold-start advertising mode",
@@ -195,6 +202,12 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
     ): List<DexKitWarmUpTask> {
         val tasks = mutableListOf<DexKitWarmUpTask>()
         fun available(featureKey: String): Boolean = host.isFeatureAvailable(featureKey)
+
+        if (available(FeatureKeys.KEY_DOWNLOAD_OPEN_WITH)) {
+            tasks += DexKitWarmUpTask(DownloadOpenWithBindingsResolver.CACHE_ID, DownloadOpenWithBindingsResolver.cacheIds) {
+                DownloadOpenWithBindingsResolver.resolve(classLoader) != null
+            }
+        }
 
         if (available(FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL)) {
             tasks += DexKitWarmUpTask(DomesticColdStartModeDexKitResolver.CACHE_ID) {

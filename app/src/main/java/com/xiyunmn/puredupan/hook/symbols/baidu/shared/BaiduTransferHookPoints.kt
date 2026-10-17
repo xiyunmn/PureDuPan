@@ -44,6 +44,15 @@ internal object BaiduTransferHookPoints {
         "com.baidu.netdisk.ui.transfer.probationary.view.DownloadProbationaryView"
     const val TRANSFER_LIST_TAB_ACTIVITY =
         "com.baidu.netdisk.ui.transfer.TransferListTabActivity"
+    const val DOWNLOAD_LIST_BASE_FRAGMENT = "com.baidu.netdisk.ui.transfer.download.fragment.TransferListBaseFragment"
+    const val TRANSMISSION_DOWNLOAD_FRAGMENT = "com.baidu.netdisk.ui.transfer.download.fragment.TransmissionDownloadListFragment"
+    const val ALL_DOWNLOAD_TASK_FRAGMENT = "com.baidu.netdisk.ui.transfer.download.fragment.AllDownloadTaskFragment"
+    const val COMPLETED_DOWNLOAD_FRAGMENT = "com.baidu.netdisk.ui.transfer.download.fragment.CompletedDownloadFragment"
+    const val DOWNLOAD_EDIT_UTIL = "com.baidu.netdisk.ui.transfer.download.util.DownloadEditUtil"
+    const val ALL_DOWNLOAD_TASK_MODEL_KT = "com.baidu.netdisk.ui.transfer.download.logic.model.AllDownloadTaskModelKt"
+    const val COMPLETED_DOWNLOAD_DATA_INFO_KT = "com.baidu.netdisk.ui.transfer.download.logic.model.CompletedDownloadDataInfoKt"
+    const val ANDROIDX_ARRAY_MAP = "androidx.collection.ArrayMap"
+    const val ANDROIDX_FILE_PROVIDER = "androidx.core.content.FileProvider"
     const val ANDROIDX_FRAGMENT_ACTIVITY =
         "androidx.fragment.app.FragmentActivity"
     const val KOTLIN_FUNCTION0 = "kotlin.jvm.functions.Function0"

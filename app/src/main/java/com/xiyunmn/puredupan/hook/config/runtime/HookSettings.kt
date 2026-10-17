@@ -5,6 +5,8 @@ import android.content.SharedPreferences
 import android.os.Build
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
+import com.xiyunmn.puredupan.hook.config.StartupTabCache
+import com.xiyunmn.puredupan.hook.config.model.StartupTab
 import com.xiyunmn.puredupan.hook.config.model.MarketingPopup
 
 internal object HookSettings {
@@ -66,6 +68,10 @@ internal object HookSettings {
 
     fun getModuleStatePrefs(context: Context): SharedPreferences {
         return ConfigManager.getModuleStatePrefs(context)
+    }
+
+    fun cacheStartupTabs(context: Context, tabs: List<StartupTab>) {
+        StartupTabCache.write(context, ConfigManager.getModuleStatePrefs(context), tabs)
     }
 
     fun hasRecordedMemberCardDefaultSize(context: Context): Boolean {
