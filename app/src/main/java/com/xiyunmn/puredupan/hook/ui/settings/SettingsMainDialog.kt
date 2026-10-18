@@ -362,14 +362,20 @@ internal object SettingsMainDialog {
             )
             var unregisterThemeListener: (() -> Unit)? = null
             var reopeningForTheme = false
-            unregisterThemeListener = HostThemeChangeDispatcher.register { reason ->
-                if (reopeningForTheme || !dialog.isShowing) return@register
-                val activity = context as? Activity
-                if (activity != null && (activity.isFinishing || activity.isDestroyed)) return@register
-
+            var pendingThemeReason: String? = null
+            fun refreshThemeWhenFocused() {
+                val decor = dialog.window?.decorView ?: return
+                if (pendingThemeReason == null || reopeningForTheme || !dialog.isShowing || !decor.hasWindowFocus()) return
                 reopeningForTheme = true
-                val scrollY = scrollContainer.scrollY
-                dialog.window?.decorView?.post {
+                decor.post {
+                    reopeningForTheme = false
+                    // A child dialog or document picker may have opened since the notification.
+                    if (!dialog.isShowing || !decor.hasWindowFocus()) return@post
+                    val activity = context as? Activity
+                    if (activity != null && (activity.isFinishing || activity.isDestroyed)) return@post
+                    val reason = pendingThemeReason ?: return@post
+                    pendingThemeReason = null
+                    val scrollY = scrollContainer.scrollY
                     try {
                         unregisterThemeListener?.invoke()
                         unregisterThemeListener = null
@@ -383,6 +389,10 @@ internal object SettingsMainDialog {
                     }
                 }
             }
+            unregisterThemeListener = HostThemeChangeDispatcher.register { reason ->
+                pendingThemeReason = reason
+                refreshThemeWhenFocused()
+            }
             dialog.setOnDismissListener {
                 unregisterImportedSettings()
                 unregisterDeviceFingerprintVisibilityRefresh()
@@ -394,6 +404,11 @@ internal object SettingsMainDialog {
             dialog.window?.let { window ->
                 val originalCallback = window.callback
                 window.callback = object : Window.Callback by originalCallback {
+                    override fun onWindowFocusChanged(hasFocus: Boolean) {
+                        originalCallback.onWindowFocusChanged(hasFocus)
+                        if (hasFocus) refreshThemeWhenFocused()
+                    }
+
                     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
                         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
                             val selectedText = window.currentFocus as? TextView

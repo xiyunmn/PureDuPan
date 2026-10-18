@@ -279,7 +279,7 @@ object UiText {
         const val DEXKIT_STATUS_NOT_FOUND = "未找到"
         const val DEXKIT_STATUS_ERROR = "失败"
         const val MANAGE_LOGS_LABEL = "管理日志"
-        const val MANAGE_LOGS_DESC = "导出或清理当前应用保存的详细日志"
+        const val MANAGE_LOGS_DESC = "导出或清理当前保存的详细日志"
         const val EXPORT_LOGS_LABEL = "导出日志"
         const val EXPORT_LOGS_EMPTY = "暂无日志，请开启详细日志并使用应用后再导出"
         const val EXPORT_LOGS_STARTED = "正在导出日志"
@@ -298,10 +298,9 @@ object UiText {
         const val IMPORT_SETTINGS_FAILED = "模块设置保存失败"
         const val IMPORT_SETTINGS_DIRECTORY_REQUIRED = "下载目录未授权，请在存储路径重定向中重新选择目录"
 
-        fun settingsImportSummary(source: String, restored: Int, skipped: Int, startupSkipped: Boolean): String =
+        fun settingsImportSummary(source: String, restored: Int, skipped: Int): String =
             "来源：$source\n可恢复：$restored 项\n跳过：$skipped 项\n\n" +
-                "将覆盖备份范围内的设置，未保存的项目恢复默认。本机图片和下载目录保持不变。" +
-                if (startupSkipped) "\n默认启动 Tab 未迁移，请按需在当前应用中重新选择。" else ""
+                "将替换当前模块设置，备份中未包含或未保存的项目恢复默认。"
 
         const val LOG_DIRECTORY_COPY_FAILED = "日志路径复制失败"
         const val CLEAR_LOGS_CONFIRM_TITLE = "清理日志"

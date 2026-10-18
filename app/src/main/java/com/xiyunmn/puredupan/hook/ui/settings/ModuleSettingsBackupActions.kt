@@ -103,7 +103,7 @@ internal object ModuleSettingsBackupActions {
         val builder = AlertDialog.Builder(activity, SettingsDialogWindows.themeFor(activity))
             .setTitle(UiText.Settings.IMPORT_SETTINGS_LABEL)
             .setMessage(UiText.Settings.settingsImportSummary(
-                preview.sourcePackage, preview.keys.size, preview.skippedCount, preview.startupTabSkipped,
+                preview.sourcePackage, preview.keys.size, preview.skippedCount,
             ))
             .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
         if (preview.keys.isNotEmpty()) {

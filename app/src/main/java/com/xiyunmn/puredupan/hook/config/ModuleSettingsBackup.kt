@@ -53,14 +53,11 @@ internal object ModuleSettingsBackup {
         FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_URI,
         FeatureKeys.KEY_MEMBER_CARD_DEFAULT_SIZE_SIGNATURE,
     )
-    private val startupKeys = setOf(FeatureKeys.KEY_DEFAULT_STARTUP_TAB, FeatureKeys.KEY_DEFAULT_STARTUP_TAB_ENABLED)
-
     data class ImportPreview(
         val sourcePackage: String,
         val keys: Set<String>,
         val values: Map<String, Any>,
         val skippedCount: Int,
-        val startupTabSkipped: Boolean,
     )
 
     private fun portableKeys(packageName: String): Set<String> =
@@ -149,19 +146,14 @@ internal object ModuleSettingsBackup {
                 values[key] = checkedValue(key, entries.getJSONObject(key))
             }
         }
-        val eligible = (scope intersect portableKeys(source) intersect portableKeys(context.packageName)).toMutableSet()
-        val tab = values[FeatureKeys.KEY_DEFAULT_STARTUP_TAB] as? String
-        val tabUnavailable = source != context.packageName || (tab != null &&
-            StartupTabCache.read(context, ConfigManager.getModuleStatePrefs(context)).none { it.id == tab })
-        val skipStartup = tabUnavailable && eligible.any { it in startupKeys }
-        if (skipStartup) eligible.removeAll(startupKeys)
-        return ImportPreview(source, eligible, values.filterKeys { it in eligible }, scope.size - eligible.size, skipStartup)
+        val eligible = scope intersect portableKeys(source) intersect portableKeys(context.packageName)
+        return ImportPreview(source, eligible, values.filterKeys { it in eligible }, scope.size - eligible.size)
     }
 
     fun restore(context: Context, preview: ImportPreview): Boolean {
         val editor = ConfigManager.getPrefs(context).edit()
-        // Removing only the declared intersection preserves new options and implicit defaults.
-        preview.keys.forEach(editor::remove)
+        // Replace all portable choices, including options absent from an older backup.
+        portableKeys(context.packageName).forEach(editor::remove)
         preview.values.forEach { (key, value) ->
             when (value) {
                 is Boolean -> editor.putBoolean(key, value)

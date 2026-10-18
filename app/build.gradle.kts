@@ -12,7 +12,7 @@ val gitCommitCount = providers.exec {
     commandLine("git", "rev-list", "--count", "HEAD")
 }.standardOutput.asText.get().trim().toInt()
 val revisionVersionCode = 100000 + gitCommitCount * 2
-val ciVersionName = providers.gradleProperty("CI_VERSION_NAME").orNull
+val ciVersionName = providers.gradleProperty("CI_VERSION_NAME").orNull?.let { "$baseVersionName.$it" }
 
 fun versionNameForBuildType(buildType: String) = ciVersionName ?: when (buildType) {
     "debug" -> "$baseVersionName-debug"
