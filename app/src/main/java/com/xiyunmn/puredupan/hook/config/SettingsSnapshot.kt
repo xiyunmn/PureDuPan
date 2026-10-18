@@ -102,6 +102,7 @@ data class SettingsSnapshot(
     val isMemberCardBackgroundViewedOnClick: Boolean = false,
     val isNightModeSupportEnabled: Boolean = false,
     val isFollowSystemNightModeEnabled: Boolean = false,
+    val isAdaptiveStartupSplashEnabled: Boolean = false,
     val isDefaultStartupTabEnabled: Boolean = false,
     val defaultStartupTab: String? = null,
     val isDownloadOpenWithEnabled: Boolean = false,

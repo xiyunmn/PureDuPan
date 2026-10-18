@@ -209,6 +209,9 @@ object UiText {
         const val ENABLE_NIGHT_MODE_SUPPORT_LABEL = "启用夜间模式支持"
         const val ENABLE_NIGHT_MODE_SUPPORT_DESC = "内置夜间皮肤资源，并恢复宿主设置页中被隐藏的夜间模式开关"
         const val FOLLOW_SYSTEM_NIGHT_MODE_LABEL = "夜间模式跟随系统"
+        const val ADAPTIVE_STARTUP_SPLASH_LABEL = "启动图自适应"
+        const val ADAPTIVE_STARTUP_SPLASH_DESC =
+            "启动画面明暗跟随系统\nAndroid 12 及以上的系统启动画面需在 LSPosed 中勾选「系统界面」"
         const val DEFAULT_STARTUP_TAB_LABEL = "指定启动默认 Tab"
         const val DEFAULT_STARTUP_TAB_DESC = "选择启动时默认显示的底栏页面"
         const val DEFAULT_STARTUP_TAB_EMPTY = "尚未扫描到 Tab，请重启宿主进入主界面后重试"

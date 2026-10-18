@@ -135,6 +135,7 @@ object FeatureKeys {
     const val KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK = "view_member_card_background_on_click"
     const val KEY_ENABLE_NIGHT_MODE_SUPPORT = "enable_night_mode_support"
     const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = "follow_system_night_mode"
+    const val KEY_ADAPTIVE_STARTUP_SPLASH = "adaptive_startup_splash"
     const val KEY_DEFAULT_STARTUP_TAB_ENABLED = "default_startup_tab_enabled"
     const val KEY_DEFAULT_STARTUP_TAB = "default_startup_tab"
     const val KEY_DOWNLOAD_OPEN_WITH = "download_open_with"

@@ -40,6 +40,8 @@ class MainHook : XposedModule() {
         super.onPackageReady(param)
         XposedCompat.log("[MainHook] onPackageReady: pkg=${param.packageName}, process=$processName")
 
+        if (HostLoadRuntime.installSystemUiIfTarget(param.packageName, processName, param.classLoader)) return
+
         val hostSession = HostLoadRuntime.resolve(param.packageName)
         if (hostSession == null) {
             XposedCompat.log("[MainHook] onPackageReady: SKIP - non-target package (${param.packageName})")

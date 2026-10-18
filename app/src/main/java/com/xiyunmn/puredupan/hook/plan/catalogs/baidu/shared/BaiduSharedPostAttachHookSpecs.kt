@@ -7,6 +7,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.MarketingDialogBlockHo
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.MarketingGuidanceBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.MarketingSearchTransferBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.SplashBypassCore
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.AdaptiveStartupSplashHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeBannerHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeBottomContentPositionHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeCoinCenterBubbleHideHook
@@ -26,6 +27,9 @@ import com.xiyunmn.puredupan.hook.plan.HookSpec
 
 internal object BaiduSharedPostAttachHookSpecs {
     val preAd = listOf(
+        HookSpec("AdaptiveStartupSplashHook", { context, settings, _ ->
+            context.isMain && settings.isAdaptiveStartupSplashEnabled
+        }, featureKey = FeatureKeys.KEY_ADAPTIVE_STARTUP_SPLASH) { cl -> AdaptiveStartupSplashHook.hook(cl) },
         HookSpec("MarketingDialogBlockHook", { context, settings, _ ->
             context.isMain && settings.blockedMarketingPopups.isNotEmpty()
         }, featureKey = FeatureKeys.KEY_POPUP_BLOCK) { cl -> MarketingDialogBlockHook.hook(cl) },

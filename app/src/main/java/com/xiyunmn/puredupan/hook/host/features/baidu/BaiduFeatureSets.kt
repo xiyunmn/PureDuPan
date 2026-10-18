@@ -83,6 +83,7 @@ internal object BaiduFeatureSets {
 
     private val baiduSharedStartup = listOf(
         FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL,
+        FeatureKeys.KEY_ADAPTIVE_STARTUP_SPLASH,
         FeatureKeys.KEY_DEFAULT_STARTUP_TAB_ENABLED,
         FeatureKeys.KEY_DEFAULT_STARTUP_TAB,
         FeatureKeys.KEY_DOWNLOAD_OPEN_WITH,

@@ -1,10 +1,13 @@
 package com.xiyunmn.puredupan.hook.runtime
 
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
+import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.SystemStartupSplashHook
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCacheWarmUp
 import com.xiyunmn.puredupan.hook.dexkit.DexKitHostContext
 import com.xiyunmn.puredupan.hook.host.HostDexKitRuntimeInfo
 import com.xiyunmn.puredupan.hook.host.HostProfile
+import com.xiyunmn.puredupan.hook.host.HostPackages
 import com.xiyunmn.puredupan.hook.host.HostRuntimeState
 import com.xiyunmn.puredupan.hook.plan.HookInstallPlan
 import com.xiyunmn.puredupan.hook.plan.HookInstallPlanner
@@ -45,6 +48,13 @@ internal class HostLoadSession(
 }
 
 internal object HostLoadRuntime {
+    fun installSystemUiIfTarget(packageName: String, processName: String, cl: ClassLoader): Boolean {
+        if (packageName != HostPackages.SYSTEM_UI || processName != HostPackages.SYSTEM_UI) return false
+        XposedCompat.setCurrentPackageName(packageName)
+        SystemStartupSplashHook.hook(cl)
+        return true
+    }
+
     fun resolve(packageName: String): HostLoadSession? {
         return HostRuntimeState.profileForPackage(packageName)?.let(::HostLoadSession)
     }

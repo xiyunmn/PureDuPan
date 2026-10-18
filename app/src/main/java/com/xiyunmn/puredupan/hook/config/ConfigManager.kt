@@ -159,6 +159,7 @@ object ConfigManager {
     const val KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK = FeatureKeys.KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK
     const val KEY_ENABLE_NIGHT_MODE_SUPPORT = FeatureKeys.KEY_ENABLE_NIGHT_MODE_SUPPORT
     const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE
+    const val KEY_ADAPTIVE_STARTUP_SPLASH = FeatureKeys.KEY_ADAPTIVE_STARTUP_SPLASH
     const val KEY_DEFAULT_STARTUP_TAB_ENABLED = FeatureKeys.KEY_DEFAULT_STARTUP_TAB_ENABLED
     const val KEY_DEFAULT_STARTUP_TAB = FeatureKeys.KEY_DEFAULT_STARTUP_TAB
     const val KEY_DOWNLOAD_OPEN_WITH = FeatureKeys.KEY_DOWNLOAD_OPEN_WITH
@@ -374,6 +375,7 @@ object ConfigManager {
             ensureUserSettingsVersion(p)
 
             val snapshot = refreshUserSettingsSnapshot(p)
+            StartupSplashSettingsSync.publish(appCtx, snapshot.isAdaptiveStartupSplashEnabled)
             if (snapshot.isDetailedLoggingEnabled) {
                 XposedCompat.initializeFileLogging(appCtx)
             }
@@ -402,6 +404,9 @@ object ConfigManager {
                 }
                 val previousSnapshot = settingsSnapshot
                 val snapshot = refreshUserSettingsSnapshot(sharedPrefs)
+                if (key == KEY_ADAPTIVE_STARTUP_SPLASH || key == null) {
+                    appContext?.let { StartupSplashSettingsSync.publish(it, snapshot.isAdaptiveStartupSplashEnabled) }
+                }
                 if (
                     snapshot.isDexKitSupported &&
                     snapshot.enablesDexKitTargetComparedTo(previousSnapshot)
@@ -759,6 +764,7 @@ object ConfigManager {
             isMemberCardBackgroundViewedOnClick = memberCardBackgroundViewedOnClick,
             isNightModeSupportEnabled = nightModeSupportEnabled,
             isFollowSystemNightModeEnabled = followSystemNightModeEnabled,
+            isAdaptiveStartupSplashEnabled = featureBoolean(KEY_ADAPTIVE_STARTUP_SPLASH),
             isDefaultStartupTabEnabled = featureBoolean(KEY_DEFAULT_STARTUP_TAB_ENABLED),
             defaultStartupTab = if (isFeatureAvailable(KEY_DEFAULT_STARTUP_TAB)) {
                 p.getString(KEY_DEFAULT_STARTUP_TAB, null)

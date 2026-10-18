@@ -143,6 +143,13 @@ internal object TopLevelSettingsRegistry {
         )
         add(
             TopLevelSwitchSpec(
+                SettingsUserState.KEY_ADAPTIVE_STARTUP_SPLASH,
+                UiText.Settings.ADAPTIVE_STARTUP_SPLASH_LABEL,
+                UiText.Settings.ADAPTIVE_STARTUP_SPLASH_DESC,
+            )
+        )
+        add(
+            TopLevelSwitchSpec(
                 SettingsUserState.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
                 UiText.Settings.FOLLOW_SYSTEM_NIGHT_MODE_LABEL,
                 if (isIntlHost) {
