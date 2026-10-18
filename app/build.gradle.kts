@@ -3,27 +3,23 @@ plugins {
 }
 
 val majorVersion = 1
-val minorVersion = 4
-val patchVersion = 7
+val minorVersion = 5
+val patchVersion = 0
 
-val releaseVersionCode = majorVersion * 10000 + minorVersion * 100 + patchVersion
-val betaVersionCode = releaseVersionCode + 50
-val debugVersionCode = releaseVersionCode + 99
 val baseVersionName = "$majorVersion.$minorVersion.$patchVersion"
+// CI and Release share one Actions run sequence; local builds use its reserved baseline.
+val moduleVersionCode = providers.gradleProperty("MODULE_VERSION_CODE").map { it.toInt() }.getOrElse(100000)
+val ciVersionName = providers.gradleProperty("CI_VERSION_NAME").orNull
 
-fun versionNameForBuildType(buildType: String) = when (buildType) {
+fun versionNameForBuildType(buildType: String) = ciVersionName ?: when (buildType) {
     "debug" -> "$baseVersionName-debug"
     "beta" -> "$baseVersionName-beta"
     else -> baseVersionName
 }
 
-fun versionCodeForBuildType(buildType: String) = when (buildType) {
-    "debug" -> debugVersionCode
-    "beta" -> betaVersionCode
-    else -> releaseVersionCode
-}
-
-fun apkFileNameForBuildType(buildType: String) = when (buildType) {
+fun apkFileNameForBuildType(buildType: String) = if (ciVersionName != null) {
+    "PureDuPan-$ciVersionName.apk"
+} else when (buildType) {
     "debug" -> "PureDuPan-v${baseVersionName}-debug.apk"
     "beta" -> "PureDuPan-v${baseVersionName}-beta.apk"
     else -> "PureDuPan-v${baseVersionName}-release.apk"
@@ -78,8 +74,9 @@ android {
         applicationId = "com.xiyunmn.puredupan.hook"
         minSdk = 26
         targetSdk = 36
-        versionCode = releaseVersionCode
-        versionName = baseVersionName
+        versionCode = moduleVersionCode
+        versionName = ciVersionName ?: baseVersionName
+        buildConfigField("boolean", "IS_CI_BUILD", (ciVersionName != null).toString())
         buildConfigField(
             "int",
             "MIN_SUPPORTED_USER_SETTINGS_VERSION_CODE",
@@ -156,7 +153,7 @@ androidComponents {
         variant.outputs.forEach { output ->
             val buildType = variant.buildType ?: "release"
             output.versionName.set(versionNameForBuildType(buildType))
-            output.versionCode.set(versionCodeForBuildType(buildType))
+            output.versionCode.set(moduleVersionCode)
         }
     }
 }
@@ -206,6 +203,14 @@ tasks.matching { it.name == "preBuild" }.configureEach {
 
 listOf("debug", "beta", "release").forEach { buildType ->
     val capitalizedBuildType = buildType.replaceFirstChar { it.uppercase() }
+    val moduleVersionName = versionNameForBuildType(buildType)
+    tasks.withType<Sync>().matching { it.name == "process${capitalizedBuildType}JavaRes" }.configureEach {
+        inputs.property("moduleVersionName", moduleVersionName)
+        filteringCharset = "UTF-8"
+        filesMatching("META-INF/xposed/module.prop") {
+            filter { line -> if (line.startsWith("version=")) "version=$moduleVersionName" else line }
+        }
+    }
     val apkFileName = apkFileNameForBuildType(buildType)
     val apkDirProvider = layout.buildDirectory.dir("outputs/apk/$buildType")
     val renameTask = tasks.register("rename${capitalizedBuildType}Apk") {

@@ -194,10 +194,11 @@ internal object SettingsAboutSection {
             hostBuildType = "",
             hostPackageName = context.packageName,
             moduleVersion = moduleVersion,
-            moduleBuildType = if (BuildConfig.DEBUG) {
-                UiText.Settings.MODULE_DEBUG_VERSION
-            } else {
-                UiText.Settings.MODULE_RELEASE_VERSION
+            moduleBuildType = when {
+                BuildConfig.IS_CI_BUILD -> UiText.Settings.MODULE_CI_VERSION
+                BuildConfig.DEBUG -> UiText.Settings.MODULE_DEBUG_VERSION
+                BuildConfig.BUILD_TYPE == "beta" -> UiText.Settings.MODULE_BETA_VERSION
+                else -> UiText.Settings.MODULE_RELEASE_VERSION
             },
         )
     }

@@ -435,6 +435,8 @@ object UiText {
         const val SOURCE_REPOSITORY_URL = "https://github.com/xiyunmn/PureDuPan"
         const val UNKNOWN = "未知"
         const val MODULE_DEBUG_VERSION = "Debug"
+        const val MODULE_CI_VERSION = "CI"
+        const val MODULE_BETA_VERSION = "Beta"
         const val MODULE_RELEASE_VERSION = "Release"
 
         fun deviceFingerprintDesc(summaryLines: List<String>): String {
