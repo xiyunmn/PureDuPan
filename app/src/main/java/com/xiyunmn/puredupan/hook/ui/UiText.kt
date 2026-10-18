@@ -287,6 +287,22 @@ object UiText {
         const val EXPORT_LOGS_FAILED = "日志导出失败"
         const val EXPORT_LOGS_PICK_FAILED = "无法打开文件选择器"
         const val LOG_DIRECTORY_COPIED = "日志路径已复制"
+        const val MANAGE_MODULE_SETTINGS_LABEL = "管理模块设置"
+        const val MANAGE_MODULE_SETTINGS_DESC = "导出或导入模块设置"
+        const val IMPORT_SETTINGS_LABEL = "导入设置"
+        const val EXPORT_SETTINGS_LABEL = "导出设置"
+        const val EXPORT_SETTINGS_SUCCESS = "模块设置已导出"
+        const val EXPORT_SETTINGS_FAILED = "模块设置导出失败"
+        const val IMPORT_SETTINGS_INVALID = "无法导入，请确认备份格式、读取权限及文件大小（最大 1 MiB）。原设置未修改"
+        const val IMPORT_SETTINGS_SUCCESS = "模块设置已导入，请手动重启当前应用生效"
+        const val IMPORT_SETTINGS_FAILED = "模块设置保存失败"
+        const val IMPORT_SETTINGS_DIRECTORY_REQUIRED = "下载目录未授权，请在存储路径重定向中重新选择目录"
+
+        fun settingsImportSummary(source: String, restored: Int, skipped: Int, startupSkipped: Boolean): String =
+            "来源：$source\n可恢复：$restored 项\n跳过：$skipped 项\n\n" +
+                "将覆盖备份范围内的设置，未保存的项目恢复默认。本机图片和下载目录保持不变。" +
+                if (startupSkipped) "\n默认启动 Tab 未迁移，请按需在当前应用中重新选择。" else ""
+
         const val LOG_DIRECTORY_COPY_FAILED = "日志路径复制失败"
         const val CLEAR_LOGS_CONFIRM_TITLE = "清理日志"
         const val CLEAR_LOGS_CONFIRM_MESSAGE = "将删除 APP 缓存目录中的模块日志文件。"

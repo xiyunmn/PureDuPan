@@ -213,7 +213,7 @@ object SettingsMenuHook {
     }
 
     @Suppress("DEPRECATION")
-    private fun resolvePreferredSystemDocumentPicker(context: Context, intent: Intent): ComponentName? {
+    internal fun resolvePreferredSystemDocumentPicker(context: Context, intent: Intent): ComponentName? {
         val packageManager = context.packageManager
         val vendorTokens = deviceVendorTokens()
         // OEM file managers can be installed as ordinary apps, without FLAG_SYSTEM.

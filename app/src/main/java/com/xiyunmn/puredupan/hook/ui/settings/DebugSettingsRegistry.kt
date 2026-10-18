@@ -7,6 +7,7 @@ internal enum class DebugSettingsAction {
     NONE,
     DEXKIT_STATUS,
     MANAGE_LOGS,
+    MANAGE_MODULE_SETTINGS,
     RESET_MODULE_SETTINGS,
 }
 
@@ -39,6 +40,13 @@ internal object DebugSettingsRegistry {
                 label = UiText.Settings.MANAGE_LOGS_LABEL,
                 description = UiText.Settings.MANAGE_LOGS_DESC,
                 action = DebugSettingsAction.MANAGE_LOGS,
+                showSwitch = false,
+            ),
+            DebugSwitchSpec(
+                key = null,
+                label = UiText.Settings.MANAGE_MODULE_SETTINGS_LABEL,
+                description = UiText.Settings.MANAGE_MODULE_SETTINGS_DESC,
+                action = DebugSettingsAction.MANAGE_MODULE_SETTINGS,
                 showSwitch = false,
             ),
             DebugSwitchSpec(

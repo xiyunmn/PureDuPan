@@ -6,6 +6,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
+import com.xiyunmn.puredupan.hook.ui.settings.ModuleSettingsBackupActions
 
 /**
  * Receives document and image picker results launched from module settings entry points.
@@ -49,6 +50,15 @@ object SettingsImagePickerResultHook {
                 }
 
                 mod.hook(method).intercept { chain ->
+                    if (ModuleSettingsBackupActions.handleResult(
+                            activity = chain.thisObject as? Activity,
+                            requestCode = chain.args.getOrNull(0) as? Int ?: -1,
+                            resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
+                            data = chain.args.getOrNull(2) as? Intent,
+                        )
+                    ) {
+                        return@intercept null
+                    }
                     if (SettingsMenuHook.handleLogExportResult(
                             context = chain.thisObject as? Activity,
                             requestCode = chain.args.getOrNull(0) as? Int ?: -1,

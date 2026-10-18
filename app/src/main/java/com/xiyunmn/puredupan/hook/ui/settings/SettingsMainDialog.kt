@@ -133,6 +133,8 @@ internal object SettingsMainDialog {
                     onDexKitDetailsClick = { SettingsDebugActions.showDexKitStatusDialog(context) },
                     onClearLogsClick = { SettingsDebugActions.showClearLogsConfirmDialog(context) },
                     onExportLogsClick = { SettingsMenuHook.launchLogExportPicker(context) },
+                    onImportSettingsClick = { ModuleSettingsBackupActions.launchPicker(context, importing = true) },
+                    onExportSettingsClick = { ModuleSettingsBackupActions.launchPicker(context, importing = false) },
                     onResetModuleSettingsClick = {
                         SettingsDebugActions.showResetModuleSettingsConfirmDialog(context) {
                             onRestartHost()
@@ -333,6 +335,14 @@ internal object SettingsMainDialog {
             settingsDialog = dialog
 
             dialog.show()
+            val unregisterImportedSettings = ModuleSettingsBackupActions.bindImportedListener {
+                val activity = context as? Activity
+                if (dialog.isShowing && activity?.isFinishing != true && activity?.isDestroyed != true) {
+                    val scrollY = scrollContainer.scrollY
+                    dialog.dismiss()
+                    onReopenSettings(scrollY)
+                }
+            }
             val unregisterDeviceFingerprintVisibilityRefresh = bindDeviceFingerprintVisibilityRefresh(
                 prefs = prefs,
                 refresh = aboutSection.refreshDeviceFingerprintDescription,
@@ -374,6 +384,7 @@ internal object SettingsMainDialog {
                 }
             }
             dialog.setOnDismissListener {
+                unregisterImportedSettings()
                 unregisterDeviceFingerprintVisibilityRefresh()
                 dexKitSummaryRefresh?.unregister?.invoke()
                 unregisterNightModeDependency?.invoke()

@@ -377,7 +377,8 @@ internal object SettingsSwitchRows {
             UiText.Settings.ACTION_ICON_SETTINGS -> UiStyle.MaterialActionIcon.SETTINGS
             UiText.Settings.ACTION_ICON_SIGN_IN -> UiStyle.MaterialActionIcon.PLAY_PAUSE
             UiText.Settings.ACTION_ICON_CLEAR -> UiStyle.MaterialActionIcon.DELETE
-            UiText.Settings.EXPORT_LOGS_LABEL -> UiStyle.MaterialActionIcon.EXPORT
+            UiText.Settings.EXPORT_LOGS_LABEL, UiText.Settings.EXPORT_SETTINGS_LABEL -> UiStyle.MaterialActionIcon.EXPORT
+            UiText.Settings.IMPORT_SETTINGS_LABEL -> UiStyle.MaterialActionIcon.IMPORT
             UiText.Settings.ACTION_ICON_RESET -> UiStyle.MaterialActionIcon.REFRESH
             else -> null
         }

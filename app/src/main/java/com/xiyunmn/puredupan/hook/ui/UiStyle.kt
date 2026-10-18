@@ -39,6 +39,7 @@ internal object UiStyle {
     internal enum class MaterialActionIcon {
         SETTINGS,
         DELETE,
+        IMPORT,
         EXPORT,
         REFRESH,
         PLAY_PAUSE,
@@ -349,6 +350,7 @@ internal object UiStyle {
         val size = (36 * density).toInt()
         val padding = (6 * density).toInt()
         button.contentDescription = contentDescription
+        button.tooltipText = contentDescription
         button.isEnabled = enabled
         button.alpha = if (enabled) 1f else 0.42f
         button.setImageDrawable(
@@ -737,6 +739,7 @@ internal object UiStyle {
             when (icon) {
                 MaterialActionIcon.SETTINGS -> drawSettings(canvas)
                 MaterialActionIcon.DELETE -> drawDelete(canvas)
+                MaterialActionIcon.IMPORT -> drawImport(canvas)
                 MaterialActionIcon.EXPORT -> drawExport(canvas)
                 MaterialActionIcon.REFRESH -> drawRefresh(canvas)
                 MaterialActionIcon.PLAY_PAUSE -> drawPlayPause(canvas)
@@ -762,6 +765,16 @@ internal object UiStyle {
             canvas.drawLine(7f, 19f, 17f, 19f, paint)
             canvas.drawLine(10f, 9.6f, 10f, 17f, paint)
             canvas.drawLine(14f, 9.6f, 14f, 17f, paint)
+        }
+
+        private fun drawImport(canvas: Canvas) {
+            setStroke(width = 1.9f)
+            canvas.drawLine(12f, 3.9f, 12f, 14.5f, paint)
+            canvas.drawLine(7.5f, 8.4f, 12f, 3.9f, paint)
+            canvas.drawLine(16.5f, 8.4f, 12f, 3.9f, paint)
+            canvas.drawLine(4.8f, 15f, 4.8f, 19f, paint)
+            canvas.drawLine(4.8f, 19f, 19.2f, 19f, paint)
+            canvas.drawLine(19.2f, 19f, 19.2f, 15f, paint)
         }
 
         private fun drawExport(canvas: Canvas) {

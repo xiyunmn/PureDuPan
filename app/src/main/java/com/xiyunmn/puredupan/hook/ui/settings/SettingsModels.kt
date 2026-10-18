@@ -59,6 +59,8 @@ internal data class DebugSettingsActionHandlers(
     val onDexKitDetailsClick: () -> Unit,
     val onClearLogsClick: () -> Unit,
     val onExportLogsClick: () -> Unit,
+    val onImportSettingsClick: () -> Unit,
+    val onExportSettingsClick: () -> Unit,
     val onResetModuleSettingsClick: () -> Unit,
 )
 

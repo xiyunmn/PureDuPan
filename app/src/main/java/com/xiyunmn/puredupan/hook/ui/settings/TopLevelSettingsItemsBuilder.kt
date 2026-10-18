@@ -228,12 +228,16 @@ internal object TopLevelSettingsItemsBuilder {
             onStatusBadgeClick = statusBadgeClickForDebugSpec(spec, actionHandlers),
             showSwitch = spec.showSwitch,
             onActionClick = actionClickForDebugSpec(spec, actionHandlers),
-            secondaryActionIcon = if (spec.action == DebugSettingsAction.MANAGE_LOGS) {
-                UiText.Settings.ACTION_ICON_CLEAR
-            } else null,
-            onSecondaryActionClick = if (spec.action == DebugSettingsAction.MANAGE_LOGS) {
-                actionHandlers.onClearLogsClick
-            } else null,
+            secondaryActionIcon = when (spec.action) {
+                DebugSettingsAction.MANAGE_LOGS -> UiText.Settings.ACTION_ICON_CLEAR
+                DebugSettingsAction.MANAGE_MODULE_SETTINGS -> UiText.Settings.IMPORT_SETTINGS_LABEL
+                else -> null
+            },
+            onSecondaryActionClick = when (spec.action) {
+                DebugSettingsAction.MANAGE_LOGS -> actionHandlers.onClearLogsClick
+                DebugSettingsAction.MANAGE_MODULE_SETTINGS -> actionHandlers.onImportSettingsClick
+                else -> null
+            },
             visible = visible,
         )
     }
@@ -245,6 +249,7 @@ internal object TopLevelSettingsItemsBuilder {
         return when (spec.action) {
             DebugSettingsAction.DEXKIT_STATUS -> UiText.Settings.ACTION_ICON_SIGN_IN
             DebugSettingsAction.MANAGE_LOGS -> UiText.Settings.EXPORT_LOGS_LABEL
+            DebugSettingsAction.MANAGE_MODULE_SETTINGS -> UiText.Settings.EXPORT_SETTINGS_LABEL
             DebugSettingsAction.RESET_MODULE_SETTINGS -> UiText.Settings.ACTION_ICON_RESET
             DebugSettingsAction.NONE -> null
         }
@@ -258,6 +263,7 @@ internal object TopLevelSettingsItemsBuilder {
             DebugSettingsAction.DEXKIT_STATUS ->
                 "${UiText.Settings.DEXKIT_STATUS_BADGE_PREFIX}: ${formatDexKitSummaryForBadge(dexKitSummaryText)}"
             DebugSettingsAction.MANAGE_LOGS,
+            DebugSettingsAction.MANAGE_MODULE_SETTINGS,
             DebugSettingsAction.RESET_MODULE_SETTINGS,
             DebugSettingsAction.NONE -> null
         }
@@ -279,6 +285,7 @@ internal object TopLevelSettingsItemsBuilder {
         return when (spec.action) {
             DebugSettingsAction.DEXKIT_STATUS -> actionHandlers.onDexKitDetailsClick
             DebugSettingsAction.MANAGE_LOGS,
+            DebugSettingsAction.MANAGE_MODULE_SETTINGS,
             DebugSettingsAction.RESET_MODULE_SETTINGS,
             DebugSettingsAction.NONE -> null
         }
@@ -291,6 +298,7 @@ internal object TopLevelSettingsItemsBuilder {
         return when (spec.action) {
             DebugSettingsAction.DEXKIT_STATUS -> actionHandlers.onDexKitScanClick
             DebugSettingsAction.MANAGE_LOGS -> actionHandlers.onExportLogsClick
+            DebugSettingsAction.MANAGE_MODULE_SETTINGS -> actionHandlers.onExportSettingsClick
             DebugSettingsAction.RESET_MODULE_SETTINGS -> actionHandlers.onResetModuleSettingsClick
             DebugSettingsAction.NONE -> null
         }
