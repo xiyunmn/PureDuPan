@@ -78,10 +78,9 @@ internal object SettingsDialogLayout {
     }
 
     fun createDivider(context: Context, padding: Int): View {
-        val tokens = UiStyle.tokens(context)
         val density = context.resources.displayMetrics.density
         val divider = View(context)
-        divider.setBackgroundColor(tokens.divider)
+        UiStyle.bindTheme(divider) { tokens -> setBackgroundColor(tokens.divider) }
         val lp = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             (0.8f * density).toInt().coerceAtLeast(1),
@@ -101,12 +100,11 @@ internal object SettingsDialogLayout {
         padding: Int,
         title: String,
     ): TextView {
-        val tokens = UiStyle.tokens(context)
         return TextView(context).apply {
             text = title
             textSize = 12.5f
             letterSpacing = 0.04f
-            setTextColor(tokens.accent)
+            UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.accent) }
             typeface = Typeface.DEFAULT_BOLD
             includeFontPadding = false
             setPadding(0, (padding * 0.45f).toInt(), 0, (padding * 0.2f).toInt())

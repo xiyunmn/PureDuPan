@@ -39,7 +39,6 @@ internal object DeviceFingerprintDialog {
     ) {
         try {
             val density = context.resources.displayMetrics.density
-            val tokens = UiStyle.tokens(context)
             val contentPadding = (16 * density).toInt()
             val publicJson = buildPublicDeviceFingerprintJson(context)
             var currentJson = publicJson
@@ -49,7 +48,7 @@ internal object DeviceFingerprintDialog {
                 text = UiText.Settings.DEVICE_FINGERPRINT_PRIVACY_WARNING
                 textSize = 13f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(tokens.warning)
+                UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.warning) }
                 includeFontPadding = false
                 visibility = View.GONE
                 setPadding(contentPadding, contentPadding, contentPadding, 0)
@@ -58,7 +57,7 @@ internal object DeviceFingerprintDialog {
                 text = publicJson
                 textSize = 12.5f
                 typeface = Typeface.MONOSPACE
-                setTextColor(tokens.textPrimary)
+                UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textPrimary) }
                 setTextIsSelectable(true)
                 includeFontPadding = true
                 setLineSpacing(1.5f * density, 1f)

@@ -25,7 +25,6 @@ import com.xiyunmn.puredupan.hook.runtime.AutoDailySignInRuntime
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsDexKitState
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.settings.runtime.SettingsRuntimeSession
-import com.xiyunmn.puredupan.hook.ui.HostThemeChangeDispatcher
 import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.ui.UiText
@@ -174,13 +173,11 @@ internal object SettingsMainDialog {
                     )
                     root.addView(gap)
                 }
-
-                val tokens = UiStyle.tokens(context)
                 val headerLabel = TextView(context).apply {
                     text = group.name
                     textSize = 12.5f
                     letterSpacing = 0.04f
-                    setTextColor(tokens.accent)
+                    UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.accent) }
                     typeface = Typeface.DEFAULT_BOLD
                     includeFontPadding = false
                     setPadding(0, (padding * 0.7f).toInt(), 0, (padding * 0.35f).toInt())
@@ -293,8 +290,6 @@ internal object SettingsMainDialog {
                     scrollContainer.scrollTo(0, initialScrollY)
                 }
             }
-
-            val tokensTitle = UiStyle.tokens(context)
             val titleView = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 isFocusableInTouchMode = true
@@ -304,7 +299,7 @@ internal object SettingsMainDialog {
                     text = UiText.Settings.MODULE_SETTINGS
                     textSize = 22f
                     letterSpacing = 0.02f
-                    setTextColor(tokensTitle.textPrimary)
+                    UiStyle.bindTheme(this) { tokensTitle -> setTextColor(tokensTitle.textPrimary) }
                     typeface = Typeface.DEFAULT_BOLD
                 })
 
@@ -313,7 +308,7 @@ internal object SettingsMainDialog {
                     textSize = 11.5f
                     letterSpacing = 0.06f
                     typeface = Typeface.MONOSPACE
-                    setTextColor(tokensTitle.textMuted)
+                    UiStyle.bindTheme(this) { tokensTitle -> setTextColor(tokensTitle.textMuted) }
                     setPadding(0, (2 * density).toInt(), 0, 0)
                 }
                 addView(brandTag)
@@ -360,55 +355,15 @@ internal object SettingsMainDialog {
                 rowsByPrefKey = rowsByPrefKey,
                 switchesByPrefKey = switchesByPrefKey,
             )
-            var unregisterThemeListener: (() -> Unit)? = null
-            var reopeningForTheme = false
-            var pendingThemeReason: String? = null
-            fun refreshThemeWhenFocused() {
-                val decor = dialog.window?.decorView ?: return
-                if (pendingThemeReason == null || reopeningForTheme || !dialog.isShowing || !decor.hasWindowFocus()) return
-                reopeningForTheme = true
-                decor.post {
-                    reopeningForTheme = false
-                    // A child dialog or document picker may have opened since the notification.
-                    if (!dialog.isShowing || !decor.hasWindowFocus()) return@post
-                    val activity = context as? Activity
-                    if (activity != null && (activity.isFinishing || activity.isDestroyed)) return@post
-                    val reason = pendingThemeReason ?: return@post
-                    pendingThemeReason = null
-                    val scrollY = scrollContainer.scrollY
-                    try {
-                        unregisterThemeListener?.invoke()
-                        unregisterThemeListener = null
-                        dialog.dismiss()
-                        if (activity == null || (!activity.isFinishing && !activity.isDestroyed)) {
-                            onReopenSettings(scrollY)
-                        }
-                        XposedCompat.logD("[SettingsMainDialog] settings dialog recreated after host theme change: $reason")
-                    } catch (t: Throwable) {
-                        XposedCompat.logW("[SettingsMainDialog] recreate after theme change failed: ${t.message}")
-                    }
-                }
-            }
-            unregisterThemeListener = HostThemeChangeDispatcher.register { reason ->
-                pendingThemeReason = reason
-                refreshThemeWhenFocused()
-            }
             dialog.setOnDismissListener {
                 unregisterImportedSettings()
                 unregisterDeviceFingerprintVisibilityRefresh()
                 dexKitSummaryRefresh?.unregister?.invoke()
                 unregisterNightModeDependency?.invoke()
-                unregisterThemeListener?.invoke()
-                unregisterThemeListener = null
             }
             dialog.window?.let { window ->
                 val originalCallback = window.callback
                 window.callback = object : Window.Callback by originalCallback {
-                    override fun onWindowFocusChanged(hasFocus: Boolean) {
-                        originalCallback.onWindowFocusChanged(hasFocus)
-                        if (hasFocus) refreshThemeWhenFocused()
-                    }
-
                     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
                         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
                             val selectedText = window.currentFocus as? TextView

@@ -47,7 +47,6 @@ internal object SettingsSwitchRows {
         secondaryActionIcon: String? = null,
         onSecondaryActionClick: (() -> Unit)? = null,
     ): View {
-        val tokens = UiStyle.tokens(context)
         val density = context.resources.displayMetrics.density
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -65,7 +64,7 @@ internal object SettingsSwitchRows {
             addView(TextView(context).apply {
                 text = label
                 textSize = 14.5f
-                setTextColor(if (enabled) tokens.textPrimary else tokens.textMuted)
+                UiStyle.bindTheme(this) { tokens -> setTextColor(if (enabled) tokens.textPrimary else tokens.textMuted) }
                 typeface = Typeface.DEFAULT_BOLD
                 includeFontPadding = false
                 setLineSpacing(1.5f * density, 1f)
@@ -74,10 +73,13 @@ internal object SettingsSwitchRows {
                 addView(
                     TextView(context).apply {
                         tag = STATUS_BADGE_TEXT_VIEW_TAG
-                        text = emphasizeDexKitStatusBadge(statusBadgeText, tokens)
+                        text = statusBadgeText
                         maxLines = 1
                         ellipsize = android.text.TextUtils.TruncateAt.END
-                        UiStyle.paintStatusBadge(this, density, tokens, enabled)
+                        UiStyle.bindTheme(this) { tokens ->
+                            text = emphasizeDexKitStatusBadge(text.toString(), tokens)
+                            UiStyle.paintStatusBadge(this, density, tokens, enabled)
+                        }
                         setOnClickListener {
                             if (enabled) {
                                 UiStyle.animateActionPress(this)
@@ -97,21 +99,23 @@ internal object SettingsSwitchRows {
 
         if (description != null) {
             textContainer.addView(TextView(context).apply {
-                text = SpannableString(emphasizeWarningHints(description, tokens)).apply {
-                    if (prefKey == SettingsUserState.KEY_ENABLE_DETAILED_LOGGING) {
-                        val pathStart = description.indexOf("/data/")
-                        if (pathStart >= 0) {
-                            setSpan(
-                                ForegroundColorSpan(if (enabled) tokens.accent else tokens.textMuted),
-                                pathStart,
-                                description.length,
-                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
-                            )
+                UiStyle.bindTheme(this) { tokens ->
+                    text = SpannableString(emphasizeWarningHints(description, tokens)).apply {
+                        if (prefKey == SettingsUserState.KEY_ENABLE_DETAILED_LOGGING) {
+                            val pathStart = description.indexOf("/data/")
+                            if (pathStart >= 0) {
+                                setSpan(
+                                    ForegroundColorSpan(if (enabled) tokens.accent else tokens.textMuted),
+                                    pathStart,
+                                    description.length,
+                                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                                )
+                            }
                         }
                     }
                 }
                 textSize = 11.5f
-                setTextColor(if (enabled) tokens.textSecondary else tokens.textMuted)
+                UiStyle.bindTheme(this) { tokens -> setTextColor(if (enabled) tokens.textSecondary else tokens.textMuted) }
                 setPadding(0, (3 * density).toInt(), (14 * density).toInt(), 0)
                 includeFontPadding = false
                 setLineSpacing(1f * density, 1f)
@@ -126,7 +130,7 @@ internal object SettingsSwitchRows {
         if (actionButtonText != null && onActionClick != null) {
             row.addView(Button(context).apply {
                 text = actionButtonText
-                UiStyle.paintScanActionButton(this, density, if (enabled) tokens.accent else tokens.textMuted)
+                UiStyle.bindTheme(this) { tokens -> UiStyle.paintScanActionButton(this, density, if (enabled) tokens.accent else tokens.textMuted) }
                 setOnClickListener {
                     if (enabled) {
                         UiStyle.animateActionPress(this)
@@ -138,14 +142,17 @@ internal object SettingsSwitchRows {
             val materialIcon = materialActionIcon(actionIcon)
             if (materialIcon != null) {
                 row.addView(ImageButton(context).apply {
-                    UiStyle.paintMaterialIconButton(
-                        button = this,
-                        density = density,
-                        tokens = tokens,
-                        icon = materialIcon,
-                        enabled = enabled,
-                        contentDescription = actionIcon,
-                    )
+                    isEnabled = enabled
+                    UiStyle.bindTheme(this) { tokens ->
+                        UiStyle.paintMaterialIconButton(
+                            button = this,
+                            density = density,
+                            tokens = tokens,
+                            icon = materialIcon,
+                            enabled = isEnabled,
+                            contentDescription = actionIcon,
+                        )
+                    }
                     if (secondaryActionIcon != null) {
                         layoutParams = LinearLayout.LayoutParams(
                             (36 * density).toInt(),
@@ -165,10 +172,10 @@ internal object SettingsSwitchRows {
                     text = actionIcon
                     gravity = Gravity.CENTER
                     if (actionIcon == UiText.Settings.ACTION_ICON_SIGN_IN) {
-                        UiStyle.paintSignInActionIcon(this, density, tokens, enabled)
+                        UiStyle.bindTheme(this) { tokens -> UiStyle.paintSignInActionIcon(this, density, tokens, enabled) }
                     } else {
                         textSize = 18f
-                        setTextColor(if (enabled) tokens.accent else tokens.textMuted)
+                        UiStyle.bindTheme(this) { tokens -> setTextColor(if (enabled) tokens.accent else tokens.textMuted) }
                         setPadding(
                             (12 * density).toInt(),
                             (6 * density).toInt(),
@@ -195,9 +202,12 @@ internal object SettingsSwitchRows {
                     )
                 }.measuredWidth
                 val button = ImageButton(context).apply {
-                    UiStyle.paintMaterialIconButton(
-                        this, density, tokens, icon, enabled, secondaryActionIcon,
-                    )
+                    isEnabled = enabled
+                    UiStyle.bindTheme(this) { tokens ->
+                        UiStyle.paintMaterialIconButton(
+                            this, density, tokens, icon, isEnabled, secondaryActionIcon,
+                        )
+                    }
                     layoutParams = FrameLayout.LayoutParams(
                         (36 * density).toInt(),
                         (36 * density).toInt(),
@@ -230,24 +240,26 @@ internal object SettingsSwitchRows {
             }
             isEnabled = enabled
 
-            val states = arrayOf(
-                intArrayOf(android.R.attr.state_checked),
-                intArrayOf(-android.R.attr.state_checked),
-            )
-            thumbTintList = ColorStateList(
-                states,
-                intArrayOf(
-                    tokens.accent,
-                    tokens.accentThumbOff,
-                ),
-            )
-            trackTintList = ColorStateList(
-                states,
-                intArrayOf(
-                    tokens.accentTrackOn,
-                    tokens.accentTrackOff,
-                ),
-            )
+            UiStyle.bindTheme(this) { tokens ->
+                val states = arrayOf(
+                    intArrayOf(android.R.attr.state_checked),
+                    intArrayOf(-android.R.attr.state_checked),
+                )
+                thumbTintList = ColorStateList(
+                    states,
+                    intArrayOf(
+                        tokens.accent,
+                        tokens.accentThumbOff,
+                    ),
+                )
+                trackTintList = ColorStateList(
+                    states,
+                    intArrayOf(
+                        tokens.accentTrackOn,
+                        tokens.accentTrackOff,
+                    ),
+                )
+            }
 
             setOnCheckedChangeListener { _, isChecked ->
                 if (enabled && !reverting) {

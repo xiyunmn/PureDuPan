@@ -27,7 +27,6 @@ internal object MemberCardSettingsControls {
         onAdjust: () -> Unit,
         onClear: () -> Unit,
     ): MemberCardBackgroundImageControl {
-        val tokens = UiStyle.tokens(context)
         val density = context.resources.displayMetrics.density
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -44,14 +43,14 @@ internal object MemberCardSettingsControls {
         textContainer.addView(TextView(context).apply {
             text = label
             textSize = 15f
-            setTextColor(tokens.textPrimary)
+            UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textPrimary) }
             typeface = Typeface.DEFAULT_BOLD
             includeFontPadding = false
         })
         textContainer.addView(TextView(context).apply {
             text = description
             textSize = 12f
-            setTextColor(tokens.textSecondary)
+            UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textSecondary) }
             setPadding(0, (3 * density).toInt(), (12 * density).toInt(), 0)
             includeFontPadding = false
             setLineSpacing(1f * density, 1f)
@@ -63,7 +62,7 @@ internal object MemberCardSettingsControls {
 
         val enabledSwitch = Switch(context).apply {
             isChecked = prefs.getBoolean(SettingsUserState.KEY_REPLACE_MEMBER_CARD_BACKGROUND, false)
-            applySwitchTint(this, tokens)
+            UiStyle.bindTheme(this) { tokens -> applySwitchTint(this, tokens) }
         }
         header.addView(
             enabledSwitch,
@@ -86,9 +85,9 @@ internal object MemberCardSettingsControls {
             gravity = Gravity.CENTER_VERTICAL
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.MIDDLE
-            setTextColor(tokens.textPrimary)
+            UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textPrimary) }
             includeFontPadding = false
-            background = UiStyle.createPlainInputUnderlineBackground(tokens, density)
+            UiStyle.bindTheme(this) { tokens -> background = UiStyle.createPlainInputUnderlineBackground(tokens, density) }
             setPadding((10 * density).toInt(), 0, (10 * density).toInt(), 0)
             setOnClickListener {
                 enabledSwitch.isChecked = true
@@ -102,7 +101,7 @@ internal object MemberCardSettingsControls {
 
         val chooseButton = Button(context).apply {
             text = UiText.Settings.MEMBER_CARD_BACKGROUND_CHOOSE
-            UiStyle.paintScanActionButton(this, density, tokens.accent)
+            UiStyle.bindTheme(this) { tokens -> UiStyle.paintScanActionButton(this, density, tokens.accent) }
             setOnClickListener {
                 enabledSwitch.isChecked = true
                 onChoose()
@@ -120,7 +119,7 @@ internal object MemberCardSettingsControls {
 
         val adjustButton = Button(context).apply {
             text = UiText.Settings.MEMBER_CARD_BACKGROUND_ADJUST
-            UiStyle.paintScanActionButton(this, density, tokens.accent)
+            UiStyle.bindTheme(this) { tokens -> UiStyle.paintScanActionButton(this, density, tokens.accent) }
             updateButtonEnabledState(!imageUri.isNullOrBlank())
             setOnClickListener {
                 enabledSwitch.isChecked = true
@@ -139,7 +138,7 @@ internal object MemberCardSettingsControls {
 
         val clearButton = Button(context).apply {
             text = UiText.Settings.MEMBER_CARD_BACKGROUND_CLEAR
-            UiStyle.paintScanActionButton(this, density, tokens.textSecondary)
+            UiStyle.bindTheme(this) { tokens -> UiStyle.paintScanActionButton(this, density, tokens.textSecondary) }
             setOnClickListener {
                 enabledSwitch.isChecked = false
                 display.text = backgroundDisplayText(null)
@@ -178,12 +177,11 @@ internal object MemberCardSettingsControls {
         initialValue: Int,
         valueFormatter: (Int) -> String,
     ): IntSliderControl {
-        val tokens = UiStyle.tokens(context)
         val density = context.resources.displayMetrics.density
         val currentValue = intArrayOf(initialValue.coerceIn(minValue, maxValue))
         val valueText = TextView(context).apply {
             textSize = 13f
-            setTextColor(tokens.accent)
+            UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.accent) }
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.END
             includeFontPadding = false
@@ -210,7 +208,7 @@ internal object MemberCardSettingsControls {
             textContainer.addView(TextView(context).apply {
                 text = label
                 textSize = 15f
-                setTextColor(tokens.textPrimary)
+                UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textPrimary) }
                 typeface = Typeface.DEFAULT_BOLD
                 includeFontPadding = false
                 setLineSpacing(1.5f * density, 1f)
@@ -218,7 +216,7 @@ internal object MemberCardSettingsControls {
             textContainer.addView(TextView(context).apply {
                 text = description
                 textSize = 12f
-                setTextColor(tokens.textSecondary)
+                UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textSecondary) }
                 setPadding(0, (3 * density).toInt(), (12 * density).toInt(), 0)
                 includeFontPadding = false
                 setLineSpacing(1f * density, 1f)
@@ -239,7 +237,7 @@ internal object MemberCardSettingsControls {
                 splitTrack = false
                 val horizontalInset = (12 * density).toInt()
                 setPadding(horizontalInset, (4 * density).toInt(), horizontalInset, 0)
-                applySeekBarTint(this, tokens)
+                UiStyle.bindTheme(this) { tokens -> applySeekBarTint(this, tokens) }
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                         val value = (minValue + progress).coerceIn(minValue, maxValue)

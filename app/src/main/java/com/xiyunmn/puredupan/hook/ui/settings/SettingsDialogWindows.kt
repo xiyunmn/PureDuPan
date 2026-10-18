@@ -2,14 +2,18 @@ package com.xiyunmn.puredupan.hook.ui.settings
 
 import android.app.AlertDialog
 import android.content.Context
+import android.content.res.ColorStateList
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
+import android.widget.TextView
+import java.util.WeakHashMap
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 
 internal object SettingsDialogWindows {
+    private val themedWindows = WeakHashMap<Window, Boolean>()
     fun themeFor(context: Context): Int {
         return if (UiStyle.tokens(context).night) {
             android.R.style.Theme_DeviceDefault_Dialog_Alert
@@ -28,6 +32,22 @@ internal object SettingsDialogWindows {
     ) {
         val tokens = UiStyle.tokens(window.context)
         UiStyle.applyDialogCard(window, tokens)
+        if (themedWindows.put(window, true) == null) {
+            UiStyle.bindTheme(window.decorView) { palette ->
+                window.context.setTheme(themeFor(window.context))
+                UiStyle.applyDialogCard(window, palette)
+                val titleId = resources.getIdentifier("alertTitle", "id", "android")
+                window.findViewById<TextView>(titleId)?.setTextColor(palette.textPrimary)
+                window.findViewById<TextView>(android.R.id.message)?.setTextColor(palette.textPrimary)
+                val buttonColors = ColorStateList(
+                    arrayOf(intArrayOf(-android.R.attr.state_enabled), intArrayOf()),
+                    intArrayOf(palette.textMuted, palette.accent),
+                )
+                for (id in intArrayOf(android.R.id.button1, android.R.id.button2, android.R.id.button3)) {
+                    window.findViewById<TextView>(id)?.setTextColor(buttonColors)
+                }
+            }
+        }
         if (clearCustomPadding) {
             clearSystemDialogCustomPanelPadding(window)
         }

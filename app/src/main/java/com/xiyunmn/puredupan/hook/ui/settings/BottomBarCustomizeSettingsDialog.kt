@@ -32,7 +32,6 @@ internal object BottomBarCustomizeSettingsDialog {
             }
             val density = context.resources.displayMetrics.density
             val padding = (16 * density).toInt()
-            val tokens = UiStyle.tokens(context)
 
             val root = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
@@ -81,7 +80,7 @@ internal object BottomBarCustomizeSettingsDialog {
                     text = bottomBarGroups.tabSection.title
                     textSize = 12.5f
                     letterSpacing = 0.04f
-                    setTextColor(tokens.accent)
+                    UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.accent) }
                     typeface = Typeface.DEFAULT_BOLD
                     includeFontPadding = false
                     setPadding(0, (padding * 0.45f).toInt(), 0, (padding * 0.2f).toInt())

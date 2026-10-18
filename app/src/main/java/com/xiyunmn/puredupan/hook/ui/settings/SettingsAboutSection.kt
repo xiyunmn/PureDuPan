@@ -33,7 +33,6 @@ internal object SettingsAboutSection {
         setShowDeviceFingerprint: (Boolean) -> Unit,
     ): SettingsAboutSectionHandle {
         val density = context.resources.displayMetrics.density
-        val tokens = UiStyle.tokens(context)
         var deviceFingerprintDescriptionView: TextView? = null
         var deviceFingerprintToggleBadgeView: TextView? = null
         fun refreshDeviceFingerprintUi() {
@@ -61,7 +60,7 @@ internal object SettingsAboutSection {
                 setTextIsSelectable(true)
                 textSize = 12.5f
                 letterSpacing = 0.04f
-                setTextColor(tokens.accent)
+                UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.accent) }
                 typeface = Typeface.DEFAULT_BOLD
                 includeFontPadding = false
                 setPadding(0, (padding * 0.7f).toInt(), 0, (padding * 0.35f).toInt())
@@ -219,7 +218,6 @@ internal object SettingsAboutSection {
         onDescriptionCreated: ((TextView) -> Unit)? = null,
         onSecondaryActionBadgeCreated: ((TextView) -> Unit)? = null,
     ): View {
-        val tokens = UiStyle.tokens(context)
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, (padding * 0.4f).toInt(), 0, (padding * 0.4f).toInt())
@@ -236,7 +234,7 @@ internal object SettingsAboutSection {
                     setTextIsSelectable(true)
                     item.onClickListener?.let { setOnClickListener(it) }
                     textSize = 14.5f
-                    setTextColor(tokens.textPrimary)
+                    UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textPrimary) }
                     typeface = Typeface.DEFAULT_BOLD
                     includeFontPadding = false
                     gravity = Gravity.START or Gravity.CENTER_VERTICAL
@@ -264,7 +262,7 @@ internal object SettingsAboutSection {
                 item.onClickListener?.let { setOnClickListener(it) }
                 visibility = if (item.description.isBlank()) View.GONE else View.VISIBLE
                 textSize = 13f
-                setTextColor(if (item.url != null) tokens.accent else tokens.textSecondary)
+                UiStyle.bindTheme(this) { tokens -> setTextColor(if (item.url != null) tokens.accent else tokens.textSecondary) }
                 gravity = Gravity.START or Gravity.CENTER_VERTICAL
                 includeFontPadding = false
                 setPadding(0, (3 * density).toInt(), 0, 0)
@@ -297,12 +295,11 @@ internal object SettingsAboutSection {
         onClickListener: View.OnClickListener?,
     ): TextView? {
         if (text == null || onClickListener == null) return null
-        val tokens = UiStyle.tokens(context)
         val badge = TextView(context).apply {
             this.text = text
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
-            UiStyle.paintStatusBadge(this, density, tokens, enabled = true)
+            UiStyle.bindTheme(this) { tokens -> UiStyle.paintStatusBadge(this, density, tokens, enabled = true) }
             setOnClickListener {
                 UiStyle.animateActionPress(this)
                 onClickListener.onClick(this)

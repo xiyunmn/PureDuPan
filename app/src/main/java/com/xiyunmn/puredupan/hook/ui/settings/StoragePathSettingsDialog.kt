@@ -42,7 +42,7 @@ internal object StoragePathSettingsDialog {
         val directoryCard = createDirectoryCard(context, density) {
             SettingsMenuHook.launchStorageTreePicker(context)
         }
-        updateDirectoryCard(context, prefs, directoryCard)
+        UiStyle.bindTheme(directoryCard.root) { updateDirectoryCard(context, prefs, directoryCard) }
         root.addView(
             directoryCard.root,
             LinearLayout.LayoutParams(
@@ -53,7 +53,7 @@ internal object StoragePathSettingsDialog {
         root.addView(TextView(context).apply {
             text = "所选目录即下载根目录；授权失效或 provider 不可写时任务会停止，不会回退旧公共目录。"
             textSize = 11.5f
-            setTextColor(UiStyle.tokens(context).textMuted)
+            UiStyle.bindTheme(this) { tokens -> setTextColor(UiStyle.tokens(context).textMuted) }
             setPadding(0, (10 * density).toInt(), 0, (4 * density).toInt())
             includeFontPadding = false
             setLineSpacing(1f * density, 1f)
@@ -162,7 +162,6 @@ internal object StoragePathSettingsDialog {
         density: Float,
         onClick: () -> Unit,
     ): DirectoryCard {
-        val tokens = UiStyle.tokens(context)
         val horizontalPadding = (13 * density).toInt()
         val verticalPadding = (12 * density).toInt()
         val root = LinearLayout(context).apply {
@@ -172,10 +171,12 @@ internal object StoragePathSettingsDialog {
             isFocusable = true
             minimumHeight = (88 * density).toInt()
             setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
-            background = GradientDrawable().apply {
-                cornerRadius = 17f * density
-                setColor(tokens.surfaceAlt)
-                setStroke((1f * density).toInt().coerceAtLeast(1), tokens.inputStroke)
+            UiStyle.bindTheme(this) { tokens ->
+                background = GradientDrawable().apply {
+                    cornerRadius = 17f * density
+                    setColor(tokens.surfaceAlt)
+                    setStroke((1f * density).toInt().coerceAtLeast(1), tokens.inputStroke)
+                }
             }
             setOnClickListener {
                 UiStyle.animateActionPress(this)
@@ -188,13 +189,13 @@ internal object StoragePathSettingsDialog {
             addView(TextView(context).apply {
                 text = UiText.Settings.STORAGE_DOWNLOAD_DIRECTORY_LABEL
                 textSize = 12f
-                setTextColor(tokens.textSecondary)
+                UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textSecondary) }
                 includeFontPadding = false
             })
         }
         val path = TextView(context).apply {
             textSize = 14f
-            setTextColor(tokens.textPrimary)
+            UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textPrimary) }
             typeface = Typeface.DEFAULT_BOLD
             includeFontPadding = false
             maxLines = 2
@@ -224,11 +225,13 @@ internal object StoragePathSettingsDialog {
                 (10 * density).toInt(),
                 (7 * density).toInt(),
             )
-            setTextColor(tokens.accent)
-            background = GradientDrawable().apply {
-                cornerRadius = 14f * density
-                setColor(tokens.accentSoft)
-                setStroke((1f * density).toInt().coerceAtLeast(1), tokens.inputStroke)
+            UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.accent) }
+            UiStyle.bindTheme(this) { tokens ->
+                background = GradientDrawable().apply {
+                    cornerRadius = 14f * density
+                    setColor(tokens.accentSoft)
+                    setStroke((1f * density).toInt().coerceAtLeast(1), tokens.inputStroke)
+                }
             }
         }
         root.addView(action)

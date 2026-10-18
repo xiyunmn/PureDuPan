@@ -90,6 +90,25 @@ internal object UiStyle {
         cachedHostNightAtMs = 0L
     }
 
+    /** Repaint attached module controls without recreating their state or listeners. */
+    internal fun <T : View> bindTheme(view: T, paint: T.(Tokens) -> Unit) {
+        fun repaint() = view.paint(tokens(view.context))
+        var unregister: (() -> Unit)? = null
+        fun attach() {
+            repaint()
+            if (unregister == null) unregister = HostThemeChangeDispatcher.register { repaint() }
+        }
+        repaint()
+        view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) = attach()
+            override fun onViewDetachedFromWindow(v: View) {
+                unregister?.invoke()
+                unregister = null
+            }
+        })
+        if (view.isAttachedToWindow) attach()
+    }
+
     private fun isNight(context: Context): Boolean {
         resolveHostNightMode(context)?.let { return it }
         val mode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK

@@ -121,7 +121,6 @@ internal object SettingsDebugActions {
         padding: Int,
     ) {
         val density = context.resources.displayMetrics.density
-        val tokens = UiStyle.tokens(context)
         val statuses = SettingsDexKitState.statusViews(context)
         val summary = SettingsDexKitState.summaryText(context)
 
@@ -129,7 +128,7 @@ internal object SettingsDebugActions {
         root.addView(TextView(context).apply {
             text = "${UiText.Settings.DEXKIT_STATUS_SUMMARY_PREFIX}: $summary"
             textSize = 14f
-            setTextColor(tokens.accent)
+            UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.accent) }
             typeface = Typeface.DEFAULT_BOLD
             includeFontPadding = false
             setPadding(0, 0, 0, (10 * density).toInt())
@@ -138,7 +137,7 @@ internal object SettingsDebugActions {
         statuses.forEachIndexed { index, item ->
             if (index > 0) {
                 root.addView(View(context).apply {
-                    setBackgroundColor(tokens.divider)
+                    UiStyle.bindTheme(this) { tokens -> setBackgroundColor(tokens.divider) }
                     layoutParams = LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         1,
@@ -230,12 +229,11 @@ internal object SettingsDebugActions {
         summary: String,
     ): String {
         val density = context.resources.displayMetrics.density
-        val tokens = UiStyle.tokens(context)
         root.removeAllViews()
         root.addView(TextView(context).apply {
             text = "${UiText.Settings.DEXKIT_STATUS_SUMMARY_PREFIX}: $summary"
             textSize = 14f
-            setTextColor(tokens.accent)
+            UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.accent) }
             typeface = Typeface.DEFAULT_BOLD
             includeFontPadding = false
             setPadding(0, 0, 0, (10 * density).toInt())
@@ -342,19 +340,12 @@ internal object SettingsDebugActions {
         item: SettingsDexKitState.TargetStatusView,
     ): View {
         val density = context.resources.displayMetrics.density
-        val tokens = UiStyle.tokens(context)
         val stateText = when (item.state) {
             "success" -> UiText.Settings.DEXKIT_STATUS_SUCCESS
             "not_found" -> UiText.Settings.DEXKIT_STATUS_NOT_FOUND
             "error" -> UiText.Settings.DEXKIT_STATUS_ERROR
             "scanning" -> UiText.Settings.DEXKIT_STATUS_SCANNING
             else -> UiText.Settings.DEXKIT_STATUS_PENDING
-        }
-        val stateColor = when (item.state) {
-            "success" -> tokens.accent
-            "error", "not_found" -> 0xFFE66A5E.toInt()
-            "scanning" -> 0xFFF0A03A.toInt()
-            else -> tokens.textMuted
         }
 
         return LinearLayout(context).apply {
@@ -365,14 +356,21 @@ internal object SettingsDebugActions {
                 addView(TextView(context).apply {
                     text = item.id
                     textSize = 14f
-                    setTextColor(tokens.textPrimary)
+                    UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textPrimary) }
                     typeface = Typeface.DEFAULT_BOLD
                     includeFontPadding = false
                 }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
                 addView(TextView(context).apply {
                     text = stateText
                     textSize = 13f
-                    setTextColor(stateColor)
+                    UiStyle.bindTheme(this) { tokens ->
+                        setTextColor(when (item.state) {
+                            "success" -> tokens.accent
+                            "error", "not_found" -> 0xFFE66A5E.toInt()
+                            "scanning" -> 0xFFF0A03A.toInt()
+                            else -> tokens.textMuted
+                        })
+                    }
                     typeface = Typeface.DEFAULT_BOLD
                     gravity = Gravity.END
                     includeFontPadding = false
@@ -381,14 +379,14 @@ internal object SettingsDebugActions {
             addView(TextView(context).apply {
                 text = "${UiText.Settings.DEXKIT_STATUS_TARGET}: ${item.target}"
                 textSize = 12.5f
-                setTextColor(tokens.textSecondary)
+                UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textSecondary) }
                 includeFontPadding = false
                 setPadding(0, (6 * density).toInt(), 0, 0)
             })
             addView(TextView(context).apply {
                 text = "${UiText.Settings.DEXKIT_STATUS_FEATURE}: ${dexKitFeatureLabel(context, item)}"
                 textSize = 12.5f
-                setTextColor(tokens.textSecondary)
+                UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textSecondary) }
                 includeFontPadding = false
                 setPadding(0, (3 * density).toInt(), 0, 0)
             })
@@ -396,7 +394,7 @@ internal object SettingsDebugActions {
                 addView(TextView(context).apply {
                     text = item.detail
                     textSize = 12f
-                    setTextColor(tokens.textMuted)
+                    UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textMuted) }
                     includeFontPadding = false
                     setPadding(0, (3 * density).toInt(), 0, 0)
                 })
@@ -409,13 +407,12 @@ internal object SettingsDebugActions {
         item: SettingsDexKitState.TargetStatusView,
         index: Int,
     ): View {
-        val tokens = UiStyle.tokens(context)
         val failed = isDexKitFailure(item)
         return TextView(context).apply {
             text = buildDexKitStatusLogEntry(context, item, index)
             textSize = 12f
             typeface = Typeface.MONOSPACE
-            setTextColor(if (failed) tokens.danger else tokens.textPrimary)
+            UiStyle.bindTheme(this) { tokens -> setTextColor(if (failed) tokens.danger else tokens.textPrimary) }
             includeFontPadding = true
             setTextIsSelectable(true)
         }

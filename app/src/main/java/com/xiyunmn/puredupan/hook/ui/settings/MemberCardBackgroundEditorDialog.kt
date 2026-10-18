@@ -49,7 +49,6 @@ internal object MemberCardBackgroundEditorDialog {
             }
             val density = context.resources.displayMetrics.density
             val padding = (16 * density).toInt()
-            val tokens = UiStyle.tokens(context)
 
             val editorView = MemberCardBackgroundEditorView(context, bitmap, editorAspectRatio).apply {
                 scalePercent = prefs.getInt(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT, 100)
@@ -61,7 +60,7 @@ internal object MemberCardBackgroundEditorDialog {
             val scaleValue = TextView(context).apply {
                 textSize = 13f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(tokens.accent)
+                UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.accent) }
                 gravity = Gravity.END
                 includeFontPadding = false
             }
@@ -85,7 +84,7 @@ internal object MemberCardBackgroundEditorDialog {
                 addView(TextView(context).apply {
                     text = UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_HINT
                     textSize = 12.5f
-                    setTextColor(tokens.textSecondary)
+                    UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textSecondary) }
                     includeFontPadding = false
                     setLineSpacing(1f * density, 1f)
                     setPadding(0, 0, 0, (10 * density).toInt())
@@ -107,7 +106,7 @@ internal object MemberCardBackgroundEditorDialog {
                         text = UiText.Settings.MEMBER_CARD_BACKGROUND_SCALE_LABEL
                         textSize = 14.5f
                         typeface = Typeface.DEFAULT_BOLD
-                        setTextColor(tokens.textPrimary)
+                        UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textPrimary) }
                         includeFontPadding = false
                     }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
                     addView(
@@ -124,7 +123,7 @@ internal object MemberCardBackgroundEditorDialog {
                     splitTrack = false
                     val horizontalInset = (12 * density).toInt()
                     setPadding(horizontalInset, (4 * density).toInt(), horizontalInset, 0)
-                    MemberCardSettingsControls.applySeekBarTint(this, tokens)
+                    UiStyle.bindTheme(this) { tokens -> MemberCardSettingsControls.applySeekBarTint(this, tokens) }
                     setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                         override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                             val value = (100 + progress).coerceIn(100, 300)
@@ -140,7 +139,7 @@ internal object MemberCardBackgroundEditorDialog {
 
                 addView(Button(context).apply {
                     text = UiText.Settings.MEMBER_CARD_BACKGROUND_ROTATE
-                    UiStyle.paintScanActionButton(this, density, tokens.accent)
+                    UiStyle.bindTheme(this) { tokens -> UiStyle.paintScanActionButton(this, density, tokens.accent) }
                     setOnClickListener {
                         editorView.rotationDegrees = editorView.rotationDegrees + 90
                     }
