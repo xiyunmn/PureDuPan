@@ -8,6 +8,7 @@ import android.widget.Toast
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.host.HostPackages
 import com.xiyunmn.puredupan.hook.storage.StorageDestination
 import com.xiyunmn.puredupan.hook.storage.StorageDestinationResolver
 import com.xiyunmn.puredupan.hook.storage.StoragePathRules
@@ -17,8 +18,7 @@ import com.xiyunmn.puredupan.hook.storage.StorageRootGuard
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduStorageHookPoints
 import io.github.libxposed.api.XposedModule
 import java.io.File
-import java.lang.reflect.Method
-import java.nio.file.AccessDeniedException
+import java.lang.reflect.Modifier
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
@@ -37,33 +37,51 @@ object StorageRedirectHook {
         }
         val mod = XposedCompat.module ?: return
         if (!installState.markInstalled()) return
-        val context = HookSettings.appContext()
+        val international = XposedCompat.currentPackageName() == HostPackages.BAIDU_INTL
         var count = 0
         try {
             if (HookSettings.isStorageRedirectEnabled && HookSettings.isStorageDownloadRedirectEnabled) {
-                count += hookUriCreator(mod, cl, BaiduStorageHookPoints.DOMESTIC_TARGET30_STORAGE, BaiduStorageHookPoints.URI_CREATOR)
-                count += hookUriCreator(mod, cl, BaiduStorageHookPoints.INTL_TARGET30_STORAGE, BaiduStorageHookPoints.INTL_URI_CREATOR)
-                count += hookDownloadExtension(mod, cl, BaiduStorageHookPoints.DOMESTIC_DOWNLOAD_EXTENSION, setOf("getDownloadPath", "getLinkDownloadPath"))
-                count += hookDownloadExtension(mod, cl, BaiduStorageHookPoints.INTL_DOWNLOAD_EXTENSION, setOf("___", "_____"))
-                count += hookFolderTaskState(mod, cl)
-                count += hookLegacyDefaultSaveDir(mod, cl, BaiduStorageHookPoints.DEFAULT_SETTING)
-                count += hookLegacyDefaultSaveDir(mod, cl, BaiduStorageHookPoints.DEFAULT_SETTING_INTL)
+                val creators = hookUriCreator(
+                    mod,
+                    cl,
+                    if (international) BaiduStorageHookPoints.INTL_TARGET30_STORAGE else BaiduStorageHookPoints.DOMESTIC_TARGET30_STORAGE,
+                    if (international) BaiduStorageHookPoints.INTL_URI_CREATOR else BaiduStorageHookPoints.URI_CREATOR,
+                )
+                val extensions = hookDownloadExtension(
+                    mod,
+                    cl,
+                    if (international) BaiduStorageHookPoints.INTL_DOWNLOAD_EXTENSION else BaiduStorageHookPoints.DOMESTIC_DOWNLOAD_EXTENSION,
+                    if (international) setOf(BaiduStorageHookPoints.INTL_DOWNLOAD_PATH, BaiduStorageHookPoints.INTL_LINK_DOWNLOAD_PATH)
+                    else setOf("getDownloadPath", "getLinkDownloadPath"),
+                )
+                val folders = hookFolderTaskState(mod, cl, international)
+                val legacy = hookLegacyDefaultSaveDir(
+                    mod,
+                    cl,
+                    if (international) BaiduStorageHookPoints.DEFAULT_SETTING_INTL else BaiduStorageHookPoints.DEFAULT_SETTING,
+                    if (international) setOf(BaiduStorageHookPoints.INTL_DEFAULT_SAVE_DIR, BaiduStorageHookPoints.INTL_LEGACY_SAVE_DIR)
+                    else setOf(BaiduStorageHookPoints.DEFAULT_SAVE_DIR),
+                )
+                count += creators + extensions + folders + legacy
+                XposedCompat.logD("[$TAG] download bindings: creators=$creators extensions=$extensions folders=$folders legacy=$legacy")
+                if (creators == 0 || extensions == 0 || legacy == 0 ||
+                    (HookSettings.isStorageRemoveOuterPathEnabled && folders == 0)
+                ) {
+                    XposedCompat.logW("[$TAG] download bindings incomplete; path query/root guard hooks do not redirect downloads")
+                }
                 count += hookStoragePathQueries(
                     mod,
                     cl,
-                    BaiduStorageHookPoints.DOMESTIC_TARGET30_STORAGE,
-                    emptySet(),
-                    setOf(BaiduStorageHookPoints.QUERY_ABSOLUTE_PATH),
-                    setOf(BaiduStorageHookPoints.QUERY_PATH),
+                    if (international) BaiduStorageHookPoints.INTL_TARGET30_STORAGE else BaiduStorageHookPoints.DOMESTIC_TARGET30_STORAGE,
+                    if (international) setOf(BaiduStorageHookPoints.INTL_GET_PARTITION_LOCAL_PATH) else emptySet(),
+                    setOf(if (international) BaiduStorageHookPoints.INTL_QUERY_ABSOLUTE_PATH else BaiduStorageHookPoints.QUERY_ABSOLUTE_PATH),
+                    setOf(if (international) BaiduStorageHookPoints.INTL_QUERY_PATH else BaiduStorageHookPoints.QUERY_PATH),
                 )
-                count += hookStoragePathQueries(
-                    mod,
-                    cl,
-                    BaiduStorageHookPoints.INTL_TARGET30_STORAGE,
-                    setOf(BaiduStorageHookPoints.INTL_GET_PARTITION_LOCAL_PATH),
-                    setOf(BaiduStorageHookPoints.INTL_QUERY_ABSOLUTE_PATH),
-                    setOf(BaiduStorageHookPoints.INTL_QUERY_PATH),
-                )
+            }
+            if (HookSettings.isStorageRedirectEnabled && HookSettings.isStorageReaderSdkRedirectEnabled) {
+                val sdk = hookSdkPublicDirectory(mod, cl)
+                count += sdk
+                if (sdk == 0) XposedCompat.logD("[$TAG] optional SDK public directory entry unavailable")
             }
             if (HookSettings.isStorageRootGuardEnabled) count += hookRootGuard(mod)
             if (count == 0) {
@@ -103,6 +121,7 @@ object StorageRedirectHook {
         var count = 0
         clazz.declaredMethods.filter { method ->
             method.name == methodName && method.parameterTypes.size == 3 &&
+                Modifier.isStatic(method.modifiers) && !method.isSynthetic &&
                 Context::class.java.isAssignableFrom(method.parameterTypes[0]) &&
                 method.parameterTypes[1] == String::class.java &&
                 method.parameterTypes[2] == String::class.java &&
@@ -146,14 +165,19 @@ object StorageRedirectHook {
         return count
     }
 
-    private fun hookLegacyDefaultSaveDir(mod: XposedModule, cl: ClassLoader, className: String): Int {
+    private fun hookLegacyDefaultSaveDir(
+        mod: XposedModule,
+        cl: ClassLoader,
+        className: String,
+        methodNames: Set<String>,
+    ): Int {
         val clazz = XposedCompat.findClassOrNull(className, cl) ?: return 0
         var count = 0
         clazz.declaredMethods.filter { method ->
-            method.name in setOf(BaiduStorageHookPoints.DEFAULT_SAVE_DIR, "m12634_") &&
+            method.name in methodNames &&
                 method.parameterTypes.size == 1 &&
                 Context::class.java.isAssignableFrom(method.parameterTypes[0]) &&
-                method.returnType == String::class.java && java.lang.reflect.Modifier.isStatic(method.modifiers)
+                method.returnType == String::class.java && Modifier.isStatic(method.modifiers)
         }.forEach { method ->
             method.isAccessible = true
             mod.hook(method).intercept { chain ->
@@ -171,6 +195,7 @@ object StorageRedirectHook {
                 }
             }
             count++
+            XposedCompat.logD("[$TAG] default directory hooked: ${clazz.name}.${method.name}")
         }
         return count
     }
@@ -185,7 +210,21 @@ object StorageRedirectHook {
         var count = 0
         clazz.declaredMethods.filter { method ->
             method.name in methodNames && method.returnType == String::class.java &&
-                method.parameterTypes.any { Context::class.java.isAssignableFrom(it) }
+                Modifier.isStatic(method.modifiers) && !method.isSynthetic &&
+                if (className == BaiduStorageHookPoints.INTL_DOWNLOAD_EXTENSION) {
+                    val parameters = listOf(
+                        Context::class.java.name, BaiduStorageHookPoints.DOWNLOADABLE,
+                        String::class.java.name, "boolean", "int",
+                    )
+                    val expected = if (method.name == BaiduStorageHookPoints.INTL_LINK_DOWNLOAD_PATH) {
+                        listOf(BaiduStorageHookPoints.FILE_INFO_GENERATOR) + parameters
+                    } else {
+                        parameters
+                    }
+                    method.parameterTypes.map { it.name } == expected
+                } else {
+                    method.parameterTypes.any { Context::class.java.isAssignableFrom(it) }
+                }
         }.forEach { method ->
             method.isAccessible = true
             mod.hook(method).intercept { chain ->
@@ -219,6 +258,8 @@ object StorageRedirectHook {
                     if (previousContext == null) downloadItemContext.remove() else downloadItemContext.set(previousContext)
                 }
                 val original = originalResult as? String ?: return@intercept originalResult
+                // The creator above already redirects new documents. Keep an existing task's URI
+                // when the host reuses it for resume; do not migrate saved downloads implicitly.
                 if (original.startsWith("content://") || original.isBlank()) return@intercept original
                 val actualContext = context ?: return@intercept original
                 val actualFileName = fileName ?: original.substringAfterLast('/').takeIf { it.isNotBlank() }
@@ -233,6 +274,7 @@ object StorageRedirectHook {
                 }
             }
             count++
+            XposedCompat.logD("[$TAG] download path hooked: ${clazz.name}.${method.name}")
         }
         return count
     }
@@ -339,16 +381,36 @@ object StorageRedirectHook {
         return false
     }
 
-    private fun hookFolderTaskState(mod: XposedModule, cl: ClassLoader): Int {
-        val clazz = XposedCompat.findClassOrNull(BaiduStorageHookPoints.FOLDER_TASK_STATE_UTIL, cl) ?: return 0
+    private fun hookFolderTaskState(mod: XposedModule, cl: ClassLoader, international: Boolean): Int {
+        val className = if (international) BaiduStorageHookPoints.INTL_FOLDER_TASK_STATE_UTIL
+            else BaiduStorageHookPoints.FOLDER_TASK_STATE_UTIL
+        val methodName = if (international) BaiduStorageHookPoints.INTL_ADD_DOWNLOAD_FOLDER_TASK
+            else BaiduStorageHookPoints.ADD_DOWNLOAD_FOLDER_TASK
+        val clazz = XposedCompat.findClassOrNull(className, cl) ?: return 0
         var count = 0
         clazz.declaredMethods.filter { method ->
-            method.name == BaiduStorageHookPoints.ADD_DOWNLOAD_FOLDER_TASK &&
+            method.name == methodName && Modifier.isStatic(method.modifiers) && !method.isSynthetic &&
                 method.parameterTypes.size == 6 &&
                 ContentResolver::class.java.isAssignableFrom(method.parameterTypes[0]) &&
                 Uri::class.java.isAssignableFrom(method.parameterTypes[1]) &&
+                (!international || method.parameterTypes[2].name == BaiduStorageHookPoints.INTL_FOLDER_TASK) &&
+                method.parameterTypes[3] == Boolean::class.javaPrimitiveType &&
+                method.parameterTypes[4] == Int::class.javaPrimitiveType &&
+                method.parameterTypes[5] == Boolean::class.javaPrimitiveType &&
                 method.returnType == Uri::class.java
         }.forEach { method ->
+            val folderType = method.parameterTypes[2]
+            val parentName = if (international) BaiduStorageHookPoints.INTL_FOLDER_TRANSFER_PARENT else "getTransferParentPath"
+            val nameName = if (international) BaiduStorageHookPoints.INTL_FOLDER_NAME else "getName"
+            val getters = folderType.methods.filter { it.parameterTypes.isEmpty() && it.returnType == String::class.java }
+            val parentGetter = getters.singleOrNull { it.name == parentName }
+            val nameGetter = getters.singleOrNull { it.name == nameName }
+            if (parentGetter == null || nameGetter == null) {
+                XposedCompat.logW("[$TAG] folder task getters unavailable: ${folderType.name}")
+                return@forEach
+            }
+            parentGetter.isAccessible = true
+            nameGetter.isAccessible = true
             method.isAccessible = true
             mod.hook(method).intercept { chain ->
                 if (!HookSettings.isStorageRedirectEnabled || !HookSettings.isStorageDownloadRedirectEnabled ||
@@ -359,9 +421,8 @@ object StorageRedirectHook {
                 val contentResolver = chain.args.getOrNull(0) as? ContentResolver
                     ?: return@intercept chain.proceed()
                 val folderInfo = chain.args.getOrNull(2) ?: return@intercept chain.proceed()
-                val transferParent = invokeString(folderInfo, "getTransferParentPath").orEmpty()
-                val name = invokeString(folderInfo, "getName")
-                    ?: return@intercept chain.proceed()
+                val transferParent = parentGetter.invoke(folderInfo) as String
+                val name = nameGetter.invoke(folderInfo) as String
                 val context = HookSettings.appContext() ?: return@intercept chain.proceed()
                 val relative = StoragePathRules.join(transferParent, name)
                 val preflight = resolver(context).resolveLegacyAbsolutePath(relative)
@@ -394,12 +455,27 @@ object StorageRedirectHook {
         return count
     }
 
-    private fun invokeString(target: Any, methodName: String): String? {
-        return runCatching {
-            target.javaClass.methods.firstOrNull {
-                it.name == methodName && it.parameterTypes.isEmpty()
-            }?.invoke(target) as? String
-        }.getOrNull()
+    private fun hookSdkPublicDirectory(mod: XposedModule, cl: ClassLoader): Int {
+        val clazz = XposedCompat.findClassOrNull(BaiduStorageHookPoints.SDK_FILE_UTILS, cl) ?: return 0
+        val method = clazz.declaredMethods.singleOrNull {
+            it.name == BaiduStorageHookPoints.SDK_PUBLIC_DIRECTORY && Modifier.isStatic(it.modifiers) &&
+                it.returnType == File::class.java &&
+                it.parameterTypes.contentEquals(arrayOf(String::class.java, String::class.java))
+        } ?: return 0
+        method.isAccessible = true
+        mod.hook(method).intercept { chain ->
+            if (!HookSettings.isStorageRedirectEnabled || !HookSettings.isStorageReaderSdkRedirectEnabled) {
+                return@intercept chain.proceed()
+            }
+            val context = HookSettings.appContext() ?: return@intercept chain.proceed()
+            val namespace = StoragePathRules.normalizeRelativePath(chain.args[1] as? String)
+            val child = StoragePathRules.normalizeRelativePath(chain.args[0] as? String)
+            val root = File(context.filesDir, "sdk/baidu/$namespace")
+            // The SDK creates only its root here; callers own creation of the returned child.
+            if (!root.isDirectory && !root.mkdirs()) null else File(root, child)
+        }
+        XposedCompat.logD("[$TAG] SDK public directory hooked: ${clazz.name}.${method.name}")
+        return 1
     }
 
     private fun hookRootGuard(mod: XposedModule): Int {
