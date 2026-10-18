@@ -5,7 +5,10 @@ import android.content.Context
 import android.provider.Settings
 import com.xiyunmn.puredupan.hook.host.HostDeviceFingerprintCollector
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduDeviceFingerprintSymbols
+import java.io.ByteArrayOutputStream
 import java.lang.reflect.Modifier
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
 
 internal object BaiduDomesticDeviceFingerprintRuntime : HostDeviceFingerprintCollector {
     override fun collect(context: Context): Map<String, Any?> {
@@ -23,13 +26,13 @@ private object BaiduDeviceFingerprintCollector {
     fun collect(context: Context, profile: String): Map<String, Any?> {
         return linkedMapOf<String, Any?>().apply {
             put("collectorProfile", profile)
-            putIfNotEmpty("deviceFingerprint", collectDeviceInfo(context))
+            putIfNotEmpty("deviceFingerprint", collectDeviceInfo(context, profile == "intl"))
             putIfNotEmpty("riskFingerprint", collectRiskFingerprint(context))
         }
     }
 
     @SuppressLint("HardwareIds")
-    private fun collectDeviceInfo(context: Context): Map<String, Any?> {
+    private fun collectDeviceInfo(context: Context, international: Boolean): Map<String, Any?> {
         val fields = linkedMapOf<String, Any?>()
         fields.putIfUseful(
             "Android ID",
@@ -47,20 +50,8 @@ private object BaiduDeviceFingerprintCollector {
                 ).getOrNull(),
             )
         }
-        fields.putIfAbsentUseful(
-            "OAID",
-            readPersonalConfigString(
-                context = context,
-                key = BaiduDeviceFingerprintSymbols.OAID_CONFIG_KEY,
-            ).getOrNull(),
-        )
-        fields.putIfAbsentUseful(
-            "HONOR OAID",
-            readPersonalConfigString(
-                context = context,
-                key = BaiduDeviceFingerprintSymbols.HONOR_OAID_CONFIG_KEY,
-            ).getOrNull(),
-        )
+        fields.putIfUseful("OAID", readOaid(context, international, honor = false))
+        fields.putIfUseful("HONOR OAID", readOaid(context, international, honor = true))
         fields.putIfUseful(
             "CUID",
             invokeStaticContextMethod(
@@ -124,28 +115,64 @@ private object BaiduDeviceFingerprintCollector {
 
     private fun MutableMap<String, Any?>.putIfUseful(key: String, value: Any?) {
         val text = value?.toString()?.trim()
-        if (!text.isNullOrEmpty() && isUsefulDisplayValue(key, text)) {
+        if (!text.isNullOrEmpty()) {
             this[key] = if (value is String) text else value
         }
     }
 
-    private fun MutableMap<String, Any?>.putIfAbsentUseful(key: String, value: Any?) {
-        if (!containsKey(key)) {
-            putIfUseful(key, value)
+    private fun readOaid(context: Context, international: Boolean, honor: Boolean): String? {
+        val className = if (international) BaiduDeviceFingerprintSymbols.INTL_APP_COMMON
+            else BaiduDeviceFingerprintSymbols.APP_COMMON
+        val fieldName = if (international) {
+            if (honor) BaiduDeviceFingerprintSymbols.INTL_HONOR_OAID_FIELD else BaiduDeviceFingerprintSymbols.INTL_OAID_FIELD
+        } else {
+            if (honor) "HONOR_OAID" else "OAID"
         }
+        val key = if (honor) BaiduDeviceFingerprintSymbols.HONOR_OAID_CONFIG_KEY
+            else BaiduDeviceFingerprintSymbols.OAID_CONFIG_KEY
+        val cached = (readStaticField(context, className, fieldName).getOrNull() as? String)
+            ?.takeIf { it.isNotBlank() }
+            ?: (readPersonalConfigString(context, key, international).getOrNull() as? String)
+        // A failure sentinel in the live field must not resurrect an older preference value.
+        return originalOaid(cached)
     }
 
-    private fun isUsefulDisplayValue(key: String, value: String): Boolean {
-        return !isOaidKey(key) || !isInvalidOaidSentinel(value)
-    }
-
-    private fun isOaidKey(key: String): Boolean {
-        return key.contains("oaid", ignoreCase = true)
-    }
-
-    private fun isInvalidOaidSentinel(value: String): Boolean {
-        val normalized = value.trim()
-        return normalized == "-1" || normalized == "-2"
+    /** Helios stores A10-Base32(UTF-8 OAID)-BDCC; only the middle segment contains the ID. */
+    private fun originalOaid(cached: String?): String? {
+        val value = cached?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val original = if (value.startsWith("A10-")) {
+            val parts = value.split('-')
+            val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+            if (parts.size != 3 || parts[1].isEmpty() || parts[2].isEmpty() ||
+                parts[2].any { it !in alphabet }
+            ) return null
+            val bytes = ByteArrayOutputStream()
+            var buffer = 0
+            var bits = 0
+            for (char in parts[1]) {
+                val digit = alphabet.indexOf(char)
+                if (digit < 0) return null
+                buffer = (buffer shl 5) or digit
+                bits += 5
+                if (bits >= 8) {
+                    bits -= 8
+                    bytes.write(buffer shr bits)
+                    buffer = buffer and ((1 shl bits) - 1)
+                }
+            }
+            if (bits >= 5 || buffer != 0) return null
+            runCatching {
+                Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(bytes.toByteArray())).toString()
+            }.getOrNull() ?: return null
+        } else {
+            value
+        }
+        return original.takeIf {
+            it.isNotBlank() && it != "-1" && it != "-2" &&
+                !it.all { char -> char == '0' || char == '-' } && !it.any { char -> char.isISOControl() }
+        }
     }
 
     private fun readStaticField(context: Context, className: String, fieldName: String): Result<Any?> {
@@ -160,13 +187,18 @@ private object BaiduDeviceFingerprintCollector {
         }
     }
 
-    private fun readPersonalConfigString(context: Context, key: String): Result<Any?> {
+    private fun readPersonalConfigString(context: Context, key: String, international: Boolean): Result<Any?> {
         return runCatching {
-            val clazz = loadClass(context, BaiduDeviceFingerprintSymbols.PERSONAL_CONFIG)
-            val getInstanceMethod = clazz.getDeclaredMethod("getInstance")
+            val clazz = loadClass(context, if (international) BaiduDeviceFingerprintSymbols.INTL_PERSONAL_CONFIG
+                else BaiduDeviceFingerprintSymbols.PERSONAL_CONFIG)
+            val getInstanceMethod = clazz.getDeclaredMethod(
+                if (international) BaiduDeviceFingerprintSymbols.INTL_CONFIG_INSTANCE else "getInstance",
+            )
             getInstanceMethod.isAccessible = true
             val instance = getInstanceMethod.invoke(null) ?: return@runCatching null
-            val getStringMethod = clazz.getMethod("getString", String::class.java)
+            val getStringMethod = clazz.getMethod(
+                if (international) BaiduDeviceFingerprintSymbols.INTL_CONFIG_STRING else "getString", String::class.java,
+            )
             getStringMethod.isAccessible = true
             getStringMethod.invoke(instance, key)
         }

@@ -387,7 +387,8 @@ internal object DeviceFingerprintDialog {
 
     private fun isOaidDisplayString(value: String): Boolean {
         val normalized = value.trim()
-        return normalized != "-1" && normalized != "-2"
+        return normalized != "-1" && normalized != "-2" &&
+            !normalized.all { it == '0' || it == '-' }
     }
 
     private fun String?.orUnknown(): String = this?.takeIf { it.isNotBlank() } ?: UiText.Settings.UNKNOWN
