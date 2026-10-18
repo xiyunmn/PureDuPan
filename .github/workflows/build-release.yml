@@ -1,9 +1,6 @@
-name: Build CI / Release
-run-name: ${{ github.event_name == 'push' && 'CI' || 'Release' }} · ${{ github.ref_name }} · build ${{ github.run_number }}
+name: Build Release
 
 on:
-  push:
-    branches: ['**']
   workflow_dispatch:
 
 permissions:
@@ -11,7 +8,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ github.event_name == 'push' && 'CI' || 'Release' }} APK
+    name: Build Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -19,20 +16,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      # Keep both channels in this workflow: run_number is scoped to a workflow.
-      # A rerun retains its code; each new push or manual run gets a higher code.
-      - name: Set build version
-        env:
-          BUILD_SEQUENCE: ${{ github.run_number }}
-          BUILD_EVENT: ${{ github.event_name }}
-        run: |
-          echo "ORG_GRADLE_PROJECT_MODULE_VERSION_CODE=$((100000 + BUILD_SEQUENCE))" >> "$GITHUB_ENV"
-          if [ "$BUILD_EVENT" = push ]; then
-            count=$(git rev-list --count HEAD)
-            commit=$(git rev-parse --short=7 HEAD)
-            echo "ORG_GRADLE_PROJECT_CI_VERSION_NAME=r${count}.${commit}" >> "$GITHUB_ENV"
-          fi
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -95,4 +78,4 @@ jobs:
           path: ${{ steps.artifact.outputs.apk }}
           archive: false
           if-no-files-found: error
-          retention-days: ${{ github.event_name == 'push' && 30 || 90 }}
+          retention-days: 90

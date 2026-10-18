@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.startup
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 import android.graphics.Paint
@@ -21,6 +22,8 @@ internal object SystemStartupSplashHook {
     private var installed = false
     private val failureLogged = AtomicBoolean(false)
 
+    // LSPosed accesses these framework members inside SystemUI, not from a sandboxed app.
+    @SuppressLint("BlockedPrivateApi")
     @Synchronized
     fun hook(cl: ClassLoader) {
         if (installed || Build.VERSION.SDK_INT < 31) return

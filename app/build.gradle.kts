@@ -7,8 +7,11 @@ val minorVersion = 5
 val patchVersion = 0
 
 val baseVersionName = "$majorVersion.$minorVersion.$patchVersion"
-// CI and Release share one Actions run sequence; local builds use its reserved baseline.
-val moduleVersionCode = providers.gradleProperty("MODULE_VERSION_CODE").map { it.toInt() }.getOrElse(100000)
+val gitCommitCount = providers.exec {
+    workingDir(rootProject.projectDir)
+    commandLine("git", "rev-list", "--count", "HEAD")
+}.standardOutput.asText.get().trim().toInt()
+val revisionVersionCode = 100000 + gitCommitCount * 2
 val ciVersionName = providers.gradleProperty("CI_VERSION_NAME").orNull
 
 fun versionNameForBuildType(buildType: String) = ciVersionName ?: when (buildType) {
@@ -16,6 +19,9 @@ fun versionNameForBuildType(buildType: String) = ciVersionName ?: when (buildTyp
     "beta" -> "$baseVersionName-beta"
     else -> baseVersionName
 }
+
+fun versionCodeForBuildType(buildType: String) =
+    revisionVersionCode + if (buildType == "release" && ciVersionName == null) 1 else 0
 
 fun apkFileNameForBuildType(buildType: String) = if (ciVersionName != null) {
     "PureDuPan-$ciVersionName.apk"
@@ -74,7 +80,7 @@ android {
         applicationId = "com.xiyunmn.puredupan.hook"
         minSdk = 26
         targetSdk = 36
-        versionCode = moduleVersionCode
+        versionCode = versionCodeForBuildType("release")
         versionName = ciVersionName ?: baseVersionName
         buildConfigField("boolean", "IS_CI_BUILD", (ciVersionName != null).toString())
         buildConfigField(
@@ -153,7 +159,7 @@ androidComponents {
         variant.outputs.forEach { output ->
             val buildType = variant.buildType ?: "release"
             output.versionName.set(versionNameForBuildType(buildType))
-            output.versionCode.set(moduleVersionCode)
+            output.versionCode.set(versionCodeForBuildType(buildType))
         }
     }
 }
