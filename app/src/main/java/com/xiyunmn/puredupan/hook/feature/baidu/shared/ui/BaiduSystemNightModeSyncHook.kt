@@ -29,7 +29,6 @@ internal data class BaiduSystemNightModeHookPoints(
     val changeSkinMethodNames: Set<String> = setOf("changeSkin"),
     val changeSkinMethodResolver: ((ClassLoader) -> Method?)? = null,
     val settingsSwitchViewIdName: String = "dark_settings",
-    val beforeApplyDarkSkin: ((Activity) -> Boolean)? = null,
     val bottomBarHomeFoldedFieldNames: List<String>,
     val bottomBarThemeRefreshMethodNames: List<String>,
     val bottomBarThemeRefreshCompletionMethodName: String? = null,
@@ -458,11 +457,6 @@ internal class BaiduSystemNightModeSyncHook(
                 logD("host skin already matches system: night=$isSystemNight")
                 return
             }
-            if (isSystemNight && hookPoints.beforeApplyDarkSkin?.invoke(activity) == false) {
-                log("Dark skin preparation failed")
-                return
-            }
-
             val listenerClass = XposedCompat.findClassOrNull(hookPoints.skinLoaderListenerClassName, cl)
             val changeMethod = resolveChangeSkinMethod(cl)
             if (changeMethod != null) {

@@ -136,13 +136,6 @@ internal object TopLevelSettingsRegistry {
     fun themeSpecs(isIntlHost: Boolean): List<TopLevelSwitchSpec> = buildList {
         add(
             TopLevelSwitchSpec(
-                SettingsUserState.KEY_ENABLE_NIGHT_MODE_SUPPORT,
-                UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_LABEL,
-                UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_DESC,
-            )
-        )
-        add(
-            TopLevelSwitchSpec(
                 SettingsUserState.KEY_ADAPTIVE_STARTUP_SPLASH,
                 UiText.Settings.ADAPTIVE_STARTUP_SPLASH_LABEL,
                 UiText.Settings.ADAPTIVE_STARTUP_SPLASH_DESC,

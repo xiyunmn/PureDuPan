@@ -133,7 +133,6 @@ object FeatureKeys {
     const val KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON = "hide_intl_member_card_upgrade_button"
     const val KEY_REMOVE_MEMBER_CARD_CLICK = "remove_member_card_click"
     const val KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK = "view_member_card_background_on_click"
-    const val KEY_ENABLE_NIGHT_MODE_SUPPORT = "enable_night_mode_support"
     const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = "follow_system_night_mode"
     const val KEY_ADAPTIVE_STARTUP_SPLASH = "adaptive_startup_splash"
     const val KEY_DEFAULT_STARTUP_TAB_ENABLED = "default_startup_tab_enabled"

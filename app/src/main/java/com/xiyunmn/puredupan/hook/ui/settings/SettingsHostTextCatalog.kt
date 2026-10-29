@@ -508,10 +508,6 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.BOTTOM_BAR_HIDE_TAB_MINE_LABEL,
                 null,
             ),
-            SettingsUserState.KEY_ENABLE_NIGHT_MODE_SUPPORT to text(
-                UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_LABEL,
-                UiText.Settings.ENABLE_NIGHT_MODE_SUPPORT_DESC,
-            ),
             SettingsUserState.KEY_AUTO_DAILY_SIGN_IN to text(
                 UiText.Settings.AUTO_DAILY_SIGN_IN_LABEL,
                 UiText.Settings.AUTO_DAILY_SIGN_IN_DESC,

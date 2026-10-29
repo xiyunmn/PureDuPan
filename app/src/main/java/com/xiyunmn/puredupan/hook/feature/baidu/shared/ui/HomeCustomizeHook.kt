@@ -728,6 +728,27 @@ object HomeCustomizeHook {
                 }
                 result
             }
+            // The card's Context/AttributeSet constructor owns initView + initObserver.
+            // Reapply after construction as well: an optimized private initView call must
+            // not be the only opportunity to restructure the native rows.
+            clazz.declaredConstructors.firstOrNull { constructor ->
+                constructor.parameterTypes.contentEquals(
+                    arrayOf(Context::class.java, android.util.AttributeSet::class.java),
+                )
+            }?.let { constructor ->
+                mod.hook(constructor).intercept { chain ->
+                    val result = chain.proceed()
+                    if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
+                        (chain.thisObject as? ViewGroup)?.let { card ->
+                            applySaveCardVerticalLayout(card)
+                            prepareVerticalSaveRows(card)
+                            hookSaveCardTabSelection(mod, card, clazz)
+                        }
+                    }
+                    result
+                }
+                count++
+            }
             count += hookSaveCardStateRendering(mod, cl, clazz)
             groupClasses += className.replace(
                 ".ui.view.fragment.NewHomeSaveCardView",

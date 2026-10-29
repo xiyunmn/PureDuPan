@@ -18,7 +18,6 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlTaskScoreRe
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.IntlLaunchHandoffOptimizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashRemoveHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlAlbumBackupBarBlockHook
-import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.NightModeSupportHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.SystemNightModeSyncHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.entry.IntlAboutMeModuleEntryHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.entry.HomeTitleBarModuleEntryHook
@@ -117,16 +116,9 @@ internal object BaiduIntlPostAttachHookSpecs {
     )
 
     val theme = listOf(
-        HookSpec("NightModeSupportHook", { context, settings, _ ->
-            context.isMain &&
-                settings.isNightModeSupportEnabled
-        }, featureKey = FeatureKeys.KEY_ENABLE_NIGHT_MODE_SUPPORT) { cl ->
-            NightModeSupportHook.hook(cl)
-        },
         HookSpec("IntlSystemNightModeSyncHook", { context, settings, _ ->
             context.isMain &&
-                (settings.isNightModeSupportEnabled ||
-                    settings.isFollowSystemNightModeEnabled)
+                settings.isFollowSystemNightModeEnabled
         }, featureKey = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE) { cl ->
             SystemNightModeSyncHook.hook(cl)
         },

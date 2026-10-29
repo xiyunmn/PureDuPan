@@ -2,7 +2,6 @@ package com.xiyunmn.puredupan.hook.ui
 
 import android.animation.ValueAnimator
 import android.content.Context
-import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -28,8 +27,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
  *
  * These helpers run on UI event paths such as dialog show, click, or scan
  * completion. They are not part of host hook callbacks. Tokens are resolved
- * against the current [Configuration] to avoid stale theme state across
- * Activity or skin changes.
+ * from the host skin rather than the system configuration.
  */
 internal object UiStyle {
     private const val CARD_CORNER_DP = 22f
@@ -45,6 +43,7 @@ internal object UiStyle {
         PLAY_PAUSE,
     }
 
+    @Volatile private var lastKnownHostNight: Boolean? = null
     @Volatile private var cachedHostNight: Boolean? = null
     @Volatile private var cachedHostNightAtMs = 0L
 
@@ -110,102 +109,17 @@ internal object UiStyle {
     }
 
     private fun isNight(context: Context): Boolean {
-        resolveHostNightMode(context)?.let { return it }
-        val mode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        return mode == Configuration.UI_MODE_NIGHT_YES
-    }
-
-    private fun resolveHostNightMode(context: Context): Boolean? {
-        val now = System.currentTimeMillis()
+        val now = android.os.SystemClock.uptimeMillis()
         val cached = cachedHostNight
-        if (cached != null && now - cachedHostNightAtMs < HOST_NIGHT_CACHE_MS) {
-            return cached
+        if (cached != null && now - cachedHostNightAtMs < HOST_NIGHT_CACHE_MS) return cached
+        val resolved = HostThemeRuntime.isNight(context)
+        if (resolved != null) {
+            cachedHostNight = resolved
+            lastKnownHostNight = resolved
+            cachedHostNightAtMs = now
         }
-
-        val resolved = resolveHostNightModeBySkinConfig(context)
-        cachedHostNight = resolved
-        cachedHostNightAtMs = now
-        return resolved
-    }
-
-    private fun resolveHostNightModeBySkinConfig(context: Context): Boolean? {
-        return try {
-            val skinConfigClassName = HostThemeRuntime.skinConfigClassName(context) ?: return null
-            val skinConfig = XposedCompat.findClassOrNull(
-                skinConfigClassName,
-                context.classLoader,
-            ) ?: return null
-
-            findNoArgBooleanMethod(
-                skinConfig,
-                "isDarkMode",
-                "isNightMode",
-                "isDarkSkin",
-                "isNightSkin",
-                "isUseDarkMode",
-            )?.let { method ->
-                method.isAccessible = true
-                return method.invoke(null) as? Boolean
-            }
-
-            findNoArgStringMethod(
-                skinConfig,
-                "getCurrentSkinName",
-                "getCurrentSkin",
-                "getSkinName",
-                "getSkinPath",
-                "getSkinFileName",
-            )?.let { method ->
-                method.isAccessible = true
-                val skinName = method.invoke(null) as? String
-                resolveNightFromSkinName(skinName)?.let { return it }
-            }
-
-            findNoArgBooleanMethod(skinConfig, "isDefaultSkin")?.let { method ->
-                method.isAccessible = true
-                val isDefaultSkin = method.invoke(null) as? Boolean ?: return null
-                return !isDefaultSkin
-            }
-
-            null
-        } catch (_: Throwable) {
-            null
-        }
-    }
-
-    private fun findNoArgBooleanMethod(clazz: Class<*>, vararg names: String): java.lang.reflect.Method? {
-        return clazz.methods.firstOrNull { method ->
-            method.name in names &&
-                method.parameterTypes.isEmpty() &&
-                (method.returnType == java.lang.Boolean.TYPE || method.returnType == java.lang.Boolean::class.java)
-        } ?: clazz.declaredMethods.firstOrNull { method ->
-            method.name in names &&
-                method.parameterTypes.isEmpty() &&
-                (method.returnType == java.lang.Boolean.TYPE || method.returnType == java.lang.Boolean::class.java)
-        }
-    }
-
-    private fun findNoArgStringMethod(clazz: Class<*>, vararg names: String): java.lang.reflect.Method? {
-        return clazz.methods.firstOrNull { method ->
-            method.name in names &&
-                method.parameterTypes.isEmpty() &&
-                method.returnType == String::class.java
-        } ?: clazz.declaredMethods.firstOrNull { method ->
-            method.name in names &&
-                method.parameterTypes.isEmpty() &&
-                method.returnType == String::class.java
-        }
-    }
-
-    private fun resolveNightFromSkinName(skinName: String?): Boolean? {
-        if (skinName.isNullOrBlank()) return null
-        val normalized = skinName.lowercase()
-        return when {
-            "dark_theme.skin" in normalized -> true
-            "dark" in normalized || "night" in normalized -> true
-            "default" in normalized -> false
-            else -> null
-        }
+        // A transient host lookup failure must not switch the dialog to the system theme.
+        return resolved ?: lastKnownHostNight ?: false
     }
 
     private fun lightTokens(density: Float): Tokens = Tokens(

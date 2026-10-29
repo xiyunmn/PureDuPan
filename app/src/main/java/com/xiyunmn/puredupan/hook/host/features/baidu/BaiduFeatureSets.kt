@@ -44,6 +44,7 @@ internal object BaiduFeatureSets {
             baiduSharedStorageCustomize,
             baiduIntlStartup,
             baiduIntlSearchPageCustomize,
+            listOf(FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT),
             baiduIntlMemberCardCustomize,
             baiduIntlThemeCustomize,
             baiduIntlPerformanceCustomize,
@@ -320,7 +321,6 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduIntlThemeCustomize = listOf(
-        FeatureKeys.KEY_ENABLE_NIGHT_MODE_SUPPORT,
         FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
         FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,
         FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,

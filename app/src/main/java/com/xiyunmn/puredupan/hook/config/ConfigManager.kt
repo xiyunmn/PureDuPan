@@ -157,7 +157,6 @@ object ConfigManager {
     const val KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON = FeatureKeys.KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON
     const val KEY_REMOVE_MEMBER_CARD_CLICK = FeatureKeys.KEY_REMOVE_MEMBER_CARD_CLICK
     const val KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK = FeatureKeys.KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK
-    const val KEY_ENABLE_NIGHT_MODE_SUPPORT = FeatureKeys.KEY_ENABLE_NIGHT_MODE_SUPPORT
     const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE
     const val KEY_ADAPTIVE_STARTUP_SPLASH = FeatureKeys.KEY_ADAPTIVE_STARTUP_SPLASH
     const val KEY_DEFAULT_STARTUP_TAB_ENABLED = FeatureKeys.KEY_DEFAULT_STARTUP_TAB_ENABLED
@@ -290,7 +289,6 @@ object ConfigManager {
     val isIntlMemberCardUpgradeButtonHidden: Boolean get() = settingsSnapshot.isIntlMemberCardUpgradeButtonHidden
     val isMemberCardClickRemoved: Boolean get() = settingsSnapshot.isMemberCardClickRemoved
     val isMemberCardBackgroundViewedOnClick: Boolean get() = settingsSnapshot.isMemberCardBackgroundViewedOnClick
-    val isNightModeSupportEnabled: Boolean get() = settingsSnapshot.isNightModeSupportEnabled
     val isFollowSystemNightModeEnabled: Boolean get() = settingsSnapshot.isFollowSystemNightModeEnabled
     val isPerformanceOptimizeEnabled: Boolean
         get() = settingsSnapshot.isPerformanceOptimizeEnabled
@@ -643,10 +641,8 @@ object ConfigManager {
                 featureBoolean(KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW, false) ||
                 featureBoolean(KEY_BLOCK_INTL_AIGC_WIDGET_BACKGROUND, false) ||
                 featureBoolean(KEY_BLOCK_INTL_ALBUM_AI_INIT, false)
-        val nightModeSupportEnabled = featureBoolean(KEY_ENABLE_NIGHT_MODE_SUPPORT, false)
         val followSystemNightModeEnabled =
-            featureBoolean(KEY_FOLLOW_SYSTEM_NIGHT_MODE, false) &&
-                (!isCurrentIntlHost() || nightModeSupportEnabled)
+            featureBoolean(KEY_FOLLOW_SYSTEM_NIGHT_MODE, false)
 
         return SettingsSnapshot(
             isDetailedLoggingEnabled = p.getBoolean(KEY_ENABLE_DETAILED_LOGGING, false),
@@ -762,7 +758,6 @@ object ConfigManager {
             ),
             isMemberCardClickRemoved = memberCardClickRemoved,
             isMemberCardBackgroundViewedOnClick = memberCardBackgroundViewedOnClick,
-            isNightModeSupportEnabled = nightModeSupportEnabled,
             isFollowSystemNightModeEnabled = followSystemNightModeEnabled,
             isAdaptiveStartupSplashEnabled = featureBoolean(KEY_ADAPTIVE_STARTUP_SPLASH),
             isDefaultStartupTabEnabled = featureBoolean(KEY_DEFAULT_STARTUP_TAB_ENABLED),
@@ -880,11 +875,6 @@ object ConfigManager {
     private fun doesCurrentHostSupportDexKit(): Boolean {
         val packageName = appContext?.packageName ?: XposedCompat.currentPackageName() ?: return false
         return ConfigHostRuntime.supportsDexKit(packageName)
-    }
-
-    private fun isCurrentIntlHost(): Boolean {
-        val packageName = appContext?.packageName ?: XposedCompat.currentPackageName() ?: return false
-        return ConfigHostRuntime.isIntlHost(packageName)
     }
 
     private fun Int.floorMod360(): Int {

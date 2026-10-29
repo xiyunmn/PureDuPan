@@ -13,6 +13,10 @@ package com.xiyunmn.puredupan.hook.symbols.baidu.intl
  * 抗方法名混淆；类定位用 Kotlin @Metadata d2 明文锚点，抗类名混淆。
  */
 internal object BaiduIntlMemberCardHookPoints {
+    const val USER_CENTER_FRAGMENT = "com.baidu.netdisk.ui.aboutme.view.UserCenterFragment"
+    const val SET_USER_CENTER_INFO = "setUserCenterInfo"
+    const val VIP_CENTER_CONFIG_RESPONSE =
+        "com.baidu.netdisk.ui.businessplatform.home.io.model.VipCenterConfigResponse"
     /** 稳定直连类名（强混淆样本仍明文）。 */
     const val ABOUT_ME_TOP_FRAGMENT =
         "com.baidu.netdisk.ui.aboutme.view.AboutMeTopFragment"

@@ -349,17 +349,10 @@ internal object SettingsMainDialog {
                 dexKitRow = rowsByPrefKey[SettingsUserState.KEY_DEXKIT_STATUS],
             )
             requestDexKitSummaryRefresh = dexKitSummaryRefresh?.requestRefresh
-            val unregisterNightModeDependency = bindIntlNightModeDependency(
-                prefs = prefs,
-                isIntlHost = settingsSession.isIntlHost,
-                rowsByPrefKey = rowsByPrefKey,
-                switchesByPrefKey = switchesByPrefKey,
-            )
             dialog.setOnDismissListener {
                 unregisterImportedSettings()
                 unregisterDeviceFingerprintVisibilityRefresh()
                 dexKitSummaryRefresh?.unregister?.invoke()
-                unregisterNightModeDependency?.invoke()
             }
             dialog.window?.let { window ->
                 val originalCallback = window.callback
@@ -518,50 +511,4 @@ internal object SettingsMainDialog {
         }
     }
 
-    private fun bindIntlNightModeDependency(
-        prefs: SharedPreferences,
-        isIntlHost: Boolean,
-        rowsByPrefKey: Map<String, View>,
-        switchesByPrefKey: Map<String, Switch>,
-    ): (() -> Unit)? {
-        if (!isIntlHost) return null
-
-        val supportKey = SettingsUserState.KEY_ENABLE_NIGHT_MODE_SUPPORT
-        val followKey = SettingsUserState.KEY_FOLLOW_SYSTEM_NIGHT_MODE
-        val followRow = rowsByPrefKey[followKey] ?: return null
-        val followSwitch = switchesByPrefKey[followKey] ?: return null
-        val supportSwitch = switchesByPrefKey[supportKey] ?: return null
-        val mainHandler = Handler(Looper.getMainLooper())
-
-        fun isSupportEnabled(): Boolean {
-            return supportSwitch.isChecked || prefs.getBoolean(supportKey, false)
-        }
-
-        fun refreshDependency() {
-            val supportEnabled = isSupportEnabled()
-            SettingsSwitchRows.setRowEnabled(followRow, supportEnabled)
-            if (!supportEnabled) {
-                if (prefs.getBoolean(followKey, false)) {
-                    prefs.edit().putBoolean(followKey, false).commit()
-                }
-                if (followSwitch.isChecked) {
-                    followSwitch.isChecked = false
-                }
-            }
-        }
-
-        val refreshRunnable = Runnable { refreshDependency() }
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == supportKey || key == followKey) {
-                mainHandler.post(refreshRunnable)
-            }
-        }
-        prefs.registerOnSharedPreferenceChangeListener(listener)
-        refreshDependency()
-
-        return {
-            prefs.unregisterOnSharedPreferenceChangeListener(listener)
-            mainHandler.removeCallbacks(refreshRunnable)
-        }
-    }
 }

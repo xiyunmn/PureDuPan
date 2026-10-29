@@ -47,13 +47,15 @@ object StorageRedirectHook {
                     if (international) BaiduStorageHookPoints.INTL_TARGET30_STORAGE else BaiduStorageHookPoints.DOMESTIC_TARGET30_STORAGE,
                     if (international) BaiduStorageHookPoints.INTL_URI_CREATOR else BaiduStorageHookPoints.URI_CREATOR,
                 )
-                val extensions = hookDownloadExtension(
+                val extensionOwners = if (international) BaiduStorageHookPoints.INTL_DOWNLOAD_EXTENSIONS
+                    else listOf(BaiduStorageHookPoints.DOMESTIC_DOWNLOAD_EXTENSION)
+                val extensions = extensionOwners.sumOf { owner -> hookDownloadExtension(
                     mod,
                     cl,
-                    if (international) BaiduStorageHookPoints.INTL_DOWNLOAD_EXTENSION else BaiduStorageHookPoints.DOMESTIC_DOWNLOAD_EXTENSION,
+                    owner,
                     if (international) setOf(BaiduStorageHookPoints.INTL_DOWNLOAD_PATH, BaiduStorageHookPoints.INTL_LINK_DOWNLOAD_PATH)
                     else setOf("getDownloadPath", "getLinkDownloadPath"),
-                )
+                ) }
                 val folders = hookFolderTaskState(mod, cl, international)
                 val legacy = hookLegacyDefaultSaveDir(
                     mod,
@@ -211,7 +213,7 @@ object StorageRedirectHook {
         clazz.declaredMethods.filter { method ->
             method.name in methodNames && method.returnType == String::class.java &&
                 Modifier.isStatic(method.modifiers) && !method.isSynthetic &&
-                if (className == BaiduStorageHookPoints.INTL_DOWNLOAD_EXTENSION) {
+                if (className in BaiduStorageHookPoints.INTL_DOWNLOAD_EXTENSIONS) {
                     val parameters = listOf(
                         Context::class.java.name, BaiduStorageHookPoints.DOWNLOADABLE,
                         String::class.java.name, "boolean", "int",
@@ -382,8 +384,17 @@ object StorageRedirectHook {
     }
 
     private fun hookFolderTaskState(mod: XposedModule, cl: ClassLoader, international: Boolean): Int {
-        val className = if (international) BaiduStorageHookPoints.INTL_FOLDER_TASK_STATE_UTIL
-            else BaiduStorageHookPoints.FOLDER_TASK_STATE_UTIL
+        val bindings = if (international) BaiduStorageHookPoints.INTL_FOLDER_TASK_BINDINGS
+            else listOf(BaiduStorageHookPoints.FOLDER_TASK_STATE_UTIL to null)
+        return bindings.sumOf { (className, folderClassName) ->
+            hookFolderTaskBinding(mod, cl, international, className, folderClassName)
+        }
+    }
+
+    private fun hookFolderTaskBinding(
+        mod: XposedModule, cl: ClassLoader, international: Boolean,
+        className: String, folderClassName: String?,
+    ): Int {
         val methodName = if (international) BaiduStorageHookPoints.INTL_ADD_DOWNLOAD_FOLDER_TASK
             else BaiduStorageHookPoints.ADD_DOWNLOAD_FOLDER_TASK
         val clazz = XposedCompat.findClassOrNull(className, cl) ?: return 0
@@ -393,7 +404,7 @@ object StorageRedirectHook {
                 method.parameterTypes.size == 6 &&
                 ContentResolver::class.java.isAssignableFrom(method.parameterTypes[0]) &&
                 Uri::class.java.isAssignableFrom(method.parameterTypes[1]) &&
-                (!international || method.parameterTypes[2].name == BaiduStorageHookPoints.INTL_FOLDER_TASK) &&
+                (!international || method.parameterTypes[2].name == folderClassName) &&
                 method.parameterTypes[3] == Boolean::class.javaPrimitiveType &&
                 method.parameterTypes[4] == Int::class.javaPrimitiveType &&
                 method.parameterTypes[5] == Boolean::class.javaPrimitiveType &&

@@ -35,6 +35,7 @@ import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
+import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlMemberCardHookPoints
 import com.xiyunmn.puredupan.hook.ui.UiText
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.ui.ZoomableImageView
@@ -134,6 +135,7 @@ internal object IntlMemberCardCustomizeHook {
             return
         }
         if (XposedCompat.module == null) return
+        hookUserCenterUpgrade(cl)
         if (!hookState.markInstalled()) return
 
         try {
@@ -149,6 +151,39 @@ internal object IntlMemberCardCustomizeHook {
             hookState.reset()
             XposedCompat.log("[IntlMemberCardCustomizeHook] FAILED: ${e.message}")
             XposedCompat.log(e)
+        }
+    }
+
+    private val userCenterHookState = HookState()
+
+    private fun hookUserCenterUpgrade(cl: ClassLoader) {
+        if (!HookSettings.memberCardSnapshot().isIntlMemberCardUpgradeButtonHidden ||
+            userCenterHookState.isInstalled()) return
+        val mod = XposedCompat.module ?: return
+        val owner = XposedCompat.findClassOrNull(BaiduIntlMemberCardHookPoints.USER_CENTER_FRAGMENT, cl)
+            ?: return
+        val response = XposedCompat.findClassOrNull(BaiduIntlMemberCardHookPoints.VIP_CENTER_CONFIG_RESPONSE, cl)
+            ?: return
+        val method = XposedCompat.findMethodOrNull(owner, BaiduIntlMemberCardHookPoints.SET_USER_CENTER_INFO, response)
+            ?.takeIf { it.returnType == Void.TYPE } ?: return
+        if (!userCenterHookState.markInstalled()) return
+        try {
+            mod.hook(method).intercept { chain ->
+                val result = chain.proceed()
+                val options = HookSettings.memberCardSnapshot()
+                if (options.isMemberCardCustomizeEnabled && options.isIntlMemberCardUpgradeButtonHidden) {
+                    val root = chain.thisObject?.let {
+                        runCatching { it.javaClass.getMethod("getView").invoke(it) as? View }.getOrNull()
+                    }
+                    if (root != null) {
+                        hideByEntryName(root, root.resources, root.context.packageName, MEMBER_CARD_USER_CENTER_RENEW_BUTTON_ID)
+                    }
+                }
+                result
+            }
+        } catch (e: Exception) {
+            userCenterHookState.reset()
+            XposedCompat.logW("[IntlMemberCardCustomizeHook] user center upgrade hook failed: ${e.message}")
         }
     }
 

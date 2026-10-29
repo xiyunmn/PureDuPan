@@ -206,8 +206,6 @@ object UiText {
         const val CUSTOM_BOTTOM_BAR_LABEL = "底栏Tab定制"
         const val CUSTOM_BOTTOM_BAR_DESC = "自定义隐藏底部导航栏中的指定 Tab"
 
-        const val ENABLE_NIGHT_MODE_SUPPORT_LABEL = "启用夜间模式支持"
-        const val ENABLE_NIGHT_MODE_SUPPORT_DESC = "内置夜间皮肤资源，并恢复宿主设置页中被隐藏的夜间模式开关"
         const val FOLLOW_SYSTEM_NIGHT_MODE_LABEL = "夜间模式跟随系统"
         const val ADAPTIVE_STARTUP_SPLASH_LABEL = "启动图自适应"
         const val ADAPTIVE_STARTUP_SPLASH_DESC =
@@ -224,7 +222,7 @@ object UiText {
         const val OPEN_WITH_FAILED = "无法打开所选文件或文件夹"
         const val FOLLOW_SYSTEM_NIGHT_MODE_DESC = "接管宿主换肤机制，使宿主界面主题与系统主题实时同步"
         const val FOLLOW_SYSTEM_NIGHT_MODE_INTL_DESC =
-            "DexKit 解析成功后生效\n需先开启「启用夜间模式支持」，使宿主界面主题与系统主题实时同步"
+            "DexKit 解析成功后生效\n使宿主界面主题与系统主题实时同步"
         const val AUTO_DAILY_SIGN_IN_LABEL = "自动签到"
         const val AUTO_DAILY_SIGN_IN_RISK_HINT = "可能导致设备或账号风控，谨慎启用"
         const val AUTO_DAILY_SIGN_IN_DESC = "$AUTO_DAILY_SIGN_IN_RISK_HINT\n启动后自动尝试一次签到"

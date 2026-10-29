@@ -4,7 +4,7 @@ plugins {
 
 val majorVersion = 1
 val minorVersion = 5
-val patchVersion = 0
+val patchVersion = 1
 
 val baseVersionName = "$majorVersion.$minorVersion.$patchVersion"
 val gitCommitCount = providers.exec {
@@ -80,6 +80,9 @@ android {
         applicationId = "com.xiyunmn.puredupan.hook"
         minSdk = 26
         targetSdk = 36
+        ndk {
+            abiFilters += setOf("arm64-v8a")
+        }
         versionCode = versionCodeForBuildType("release")
         versionName = ciVersionName ?: baseVersionName
         buildConfigField("boolean", "IS_CI_BUILD", (ciVersionName != null).toString())
