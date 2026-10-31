@@ -6,9 +6,7 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 
-/**
- * Blocks the incentive business service before it starts schedulers and ad reward jobs.
- */
+/** 在激励服务启动调度器和广告奖励任务前拦截。 */
 object DomesticIncentiveBusinessServiceBlockHook {
     private val hookState = HookState()
 

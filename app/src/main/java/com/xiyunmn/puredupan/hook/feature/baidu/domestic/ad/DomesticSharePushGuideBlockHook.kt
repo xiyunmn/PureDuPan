@@ -9,12 +9,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 import java.lang.reflect.Method
 
-/**
- * Blocks the share tab push notification guide DialogFragment.
- *
- * The hook lets FragmentManager finish the legal lifecycle transition first, then immediately
- * dismisses the target dialog. This avoids breaking tab-switch Handler logic at show(...).
- */
+/** 等待 FragmentManager 完成显示流程后关闭推送引导弹窗，保留正常生命周期。 */
 internal object DomesticSharePushGuideBlockHook {
     private val hookState = HookState()
 

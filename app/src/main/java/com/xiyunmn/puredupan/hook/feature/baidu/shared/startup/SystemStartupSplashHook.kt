@@ -16,13 +16,13 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduStartupSplashHookPoi
 import java.lang.reflect.Modifier
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Runs only in SystemUI; no host configuration, DexKit session or ordinary host plan is initialized here. */
+/** 在 SystemUI 中适配启动图，独立于网盘宿主的配置加载和 Hook 流程。 */
 internal object SystemStartupSplashHook {
     private const val TAG = "SystemStartupSplashHook"
     private var installed = false
     private val failureLogged = AtomicBoolean(false)
 
-    // LSPosed accesses these framework members inside SystemUI, not from a sandboxed app.
+    // 由 LSPosed 在 SystemUI 进程内访问框架成员。
     @SuppressLint("BlockedPrivateApi")
     @Synchronized
     fun hook(cl: ClassLoader) {
@@ -36,7 +36,7 @@ internal object SystemStartupSplashHook {
                 result
             }
         }.getOrElse { error ->
-            // 同步入口不可用时不安装后续启动图 Hook，也不阻断 SystemUI 原生初始化。
+            // 同步入口安装失败时退出本功能，保留 SystemUI 原生初始化。
             runCatching { XposedCompat.logW("[$TAG] attach install failed: ${error.message}") }
             return
         }
@@ -72,7 +72,7 @@ internal object SystemStartupSplashHook {
                         if (replacement != null) overlay.set(instance, replacement)
                         val mask = iconBackground.get(instance)
                         if (maskPaint != null && mask != null && maskPaint.declaringClass.isInstance(mask)) {
-                            // This is the system's separate mask, not the app icon drawable.
+                            // 调整系统图标遮罩的背景色。
                             (maskPaint.get(mask) as? Paint)?.color = StartupSplashDrawable.DARK_BACKGROUND
                         }
                     }
@@ -102,7 +102,7 @@ internal object SystemStartupSplashHook {
                         }) { "Unsupported ColorOS splash background: ${original.javaClass.name}" }
                     }
                 }
-                // ColorOS captures this argument in a queued assignment after Builder.build().
+                // ColorOS 会在 build 后的异步任务中使用此背景参数。
                 if (replacement == null) chain.proceed() else chain.proceed(arrayOf(chain.args[0], replacement))
             }
             XposedCompat.log("[$TAG] ColorOS splash hook INSTALLED")
@@ -117,11 +117,11 @@ internal object SystemStartupSplashHook {
             val baseFactory = factory.superclass
             val contextField = builder.getDeclaredField("mContext").apply { isAccessible = true }
             val build = builder.getDeclaredMethod("build")
-            // Current SettingsLib uses IconOptions; the older AOSP implementation normalizes directly.
+            // 兼容使用 IconOptions 的新接口和直接规范化图标的旧接口。
             val wrap = baseFactory.declaredMethods.singleOrNull {
                 it.name == "wrapToAdaptiveIcon" && it.parameterCount == 2 &&
                     it.parameterTypes[0] == Drawable::class.java &&
-                    // Optimized SystemUI DEX can omit InnerClass metadata; simpleName then includes the outer name.
+                    // 按完整类名匹配，兼容缺少内部类元数据的 SystemUI。
                     it.parameterTypes[1].name == "${baseFactory.name}\$IconOptions"
             } ?: baseFactory.getDeclaredMethod(
                 "normalizeAndWrapToAdaptiveIcon", Drawable::class.java, Boolean::class.javaPrimitiveType,
@@ -134,8 +134,7 @@ internal object SystemStartupSplashHook {
                 if (darkMask.get() == true && factory.isInstance(chain.thisObject) &&
                     chain.args[0] !is AdaptiveIconDrawable && result is AdaptiveIconDrawable
                 ) safely {
-                    // Only a wrapper just created for a legacy icon is eligible. Its foreground,
-                    // scaling and original pixels remain owned by the system and host.
+                    // 调整系统为旧式图标新建的包装背景，保留前景和缩放。
                     (result.background as? ColorDrawable)?.color = StartupSplashDrawable.DARK_BACKGROUND
                 }
                 result

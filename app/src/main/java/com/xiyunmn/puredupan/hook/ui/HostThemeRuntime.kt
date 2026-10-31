@@ -20,7 +20,7 @@ internal object HostThemeRuntime {
                 isAccessible = true
             }
         }
-        // Observation is optional; an unavailable writer must not prevent reading the skin.
+        // 皮肤变化监听安装失败时，仍可读取当前皮肤。
         runCatching { observeSkinChanges(owner) }
         !(reader.invoke(null, context.applicationContext ?: context) as Boolean)
     }.getOrNull()

@@ -7,7 +7,7 @@ import com.xiyunmn.puredupan.hook.config.model.StartupTab
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** Runtime bottom tabs belong to module state, independently of the user's selection. */
+/** 将运行时底栏信息存入模块状态，独立保存用户选择。 */
 internal object StartupTabCache {
     private const val KEY = "startup_tabs_v1"
 

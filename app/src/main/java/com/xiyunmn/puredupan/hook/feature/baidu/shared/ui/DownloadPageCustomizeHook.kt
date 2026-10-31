@@ -9,16 +9,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduTransferHookPoints
 
-/**
- * 下载页定制 Hook。
- *
- * 所有目标都挂下载页的业务或渲染单点：
- * - 游戏推荐浮窗动画：YunGameGuideViewModel.checkShowGameGuide(FragmentActivity)
- * - 推广广告：YouaGuide.setGuideViewUI(AlbumGuideResult.Success)
- * - 底部会员推广区域：DownloadProbationaryView.onBegin/onRunning/onEnd
- *
- * 不在 View 树中查找、遍历或递归处理控件。
- */
+/** 在下载页业务和渲染入口屏蔽游戏引导、推广广告及底部会员区域。 */
 internal object DownloadPageCustomizeHook {
     private val hookState = HookState()
 

@@ -5,15 +5,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 
-/**
- * 首页及共享页广告悬浮窗的数据层拦截，共享页子类沿用此回调。
- *
- * 不修改 UI 布局（避免 ViewBinding 崩溃），而是直接切断数据下发通道：
- * 拦截 [NewHomePageFabFragment.onOperationActivitySuccess] 回调，
- * 阻止运营数据到达渲染层，从根源上杜绝悬浮球显示。
- *
- * 受“弹窗屏蔽”总开关及广告悬浮窗子项控制，由 [HookSettings.isHomeFabRemoved] 统一读取。
- */
+/** 拦截首页及共享页的运营数据回调，阻止创建广告悬浮窗；由弹窗屏蔽总开关和子项共同控制。 */
 object NewHomeFabRemoveHook {
     private val hookState = HookState()
 
@@ -64,7 +56,7 @@ object NewHomeFabRemoveHook {
 
             mod.hook(method).intercept {
                 if (isEnabled()) {
-                    // 拦截原方法执行，切断数据渲染链路
+                    // 阻止运营数据进入渲染流程。
                     return@intercept null
                 }
                 it.proceed()

@@ -6,22 +6,20 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 
-/**
- * Blocks auto download/install decisions for selected edge dynamic plugin types only.
- */
+/** 按插件类型拦截自动下载和安装决策。 */
 object DomesticDynamicPluginAutoDownloadBlockHook {
     private val hookState = HookState()
 
     private val blockedPluginTypes = setOf(
-        24, // OCR_SCAN_MODEL_V5
-        28, // OCR_MODEL_RECOG
-        29, // OCR_SO_RECOG
-        32, // OCR_ENHANCE_MODEL_V5
-        33, // OCR_SO_SDK_V5
-        34, // IMAGE_TO_OFFICE
-        36, // SHOUBAI_IMAGE_BODY_IDENTIFY
-        37, // IMAGE_RECOG_SDK
-        38, // FACE_DETECT
+        24, // OCR 扫描模型：OCR_SCAN_MODEL_V5
+        28, // OCR 识别模型：OCR_MODEL_RECOG
+        29, // OCR 识别库：OCR_SO_RECOG
+        32, // OCR 增强模型：OCR_ENHANCE_MODEL_V5
+        33, // OCR SDK 库：OCR_SO_SDK_V5
+        34, // 图片转文档：IMAGE_TO_OFFICE
+        36, // 手百人体识别：SHOUBAI_IMAGE_BODY_IDENTIFY
+        37, // 图像识别 SDK：IMAGE_RECOG_SDK
+        38, // 人脸检测：FACE_DETECT
     )
 
     internal fun hook(cl: ClassLoader) {

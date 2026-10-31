@@ -38,8 +38,8 @@ internal object AdaptiveStartupSplashHook {
                 val type = Class.forName(name, false, cl)
                 val create = type.getDeclaredMethod("onCreate", Bundle::class.java)
                 if (create in installed) return@runCatching
-                // International Navigate's translucent theme has no welcome background.
-                // Use its launcher's welcome until initView supplies the locale-specific content.
+                // 国际版 Navigate 的透明主题缺少欢迎背景，先复用启动页背景。
+                // initView 就绪后再使用宿主当前语言的欢迎内容。
                 val backgroundActivity = if (BaiduFeatureRuntime.isCurrentIntlHost() &&
                     name == BaiduStartupSplashHookPoints.NAVIGATE_ACTIVITY
                 ) BaiduStartupSplashHookPoints.DEFAULT_MAIN_ACTIVITY else name
@@ -53,7 +53,7 @@ internal object AdaptiveStartupSplashHook {
 
                 module.hook(create).setPriority(XposedInterface.PRIORITY_HIGHEST).intercept { chain ->
                     val activity = chain.thisObject as Activity
-                    // Navigate caches its window background during onCreate for the MainActivity handoff.
+                    // 在 Navigate 缓存窗口背景前替换，以供 MainActivity 交接时复用。
                     if (enabled()) safely { activity.window.setBackgroundDrawable(state.newDrawable()) }
                     val result = chain.proceed()
                     if (enabled()) safely { updateWindow(activity) }
@@ -81,7 +81,7 @@ internal object AdaptiveStartupSplashHook {
     private fun updateLaunchContent(activity: Activity, contentId: Int) {
         val content = activity.findViewById<View>(contentId) ?: return
         val original = content.background ?: return
-        // activity_navigate draws its own welcome above the window, on a white parent.
+        // 导航布局会在窗口背景之上绘制欢迎页及白色父容器。
         content.background = checkNotNull(StartupSplashDrawable.wrap(original, activity.resources, ::enabled)) {
             "Unsupported launch content background: ${original.javaClass.name}"
         }
@@ -103,8 +103,7 @@ internal object AdaptiveStartupSplashHook {
                     val activity = chain.thisObject as Activity
                     val original = activity.window.decorView.background as? ColorDrawable
                     if (original?.color == Color.WHITE) {
-                        // Main writes white immediately before initView. Its native focus callback
-                        // later clears this temporary window background as usual.
+                        // Main 在 initView 前写入白色背景，后续焦点回调会清除该临时背景。
                         activity.window.setBackgroundDrawable(checkNotNull(
                             StartupSplashDrawable.wrap(original, activity.resources, ::enabled),
                         ))
@@ -121,7 +120,7 @@ internal object AdaptiveStartupSplashHook {
     private fun updateWindow(activity: Activity) {
         val window = activity.window
         val original = window.decorView.background ?: return
-        // A host hook can restore the native window background during initialization.
+        // 宿主初始化可能再次写入原生窗口背景。
         if (original !is StartupSplashDrawable) {
             val adaptive = StartupSplashDrawable.wrap(original, activity.resources, ::enabled)
             checkNotNull(adaptive) { "Unsupported launch background: ${original.javaClass.name}" }

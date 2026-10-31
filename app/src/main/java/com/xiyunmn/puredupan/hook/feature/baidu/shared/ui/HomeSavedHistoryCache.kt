@@ -10,7 +10,7 @@ import java.security.MessageDigest
 import java.util.concurrent.Executors
 import org.json.JSONObject
 
-/** Small account-scoped snapshot in the existing host-private module state preferences. */
+/** 按账号缓存转存历史快照，保存于宿主私有模块状态。 */
 internal object HomeSavedHistoryCache {
     private const val KEY = "home_saved_history_snapshot_v1"
     private const val MAX_JSON_CHARS = 128 * 1024
@@ -68,7 +68,7 @@ internal object HomeSavedHistoryCache {
         val prefs = HookSettings.getModuleStatePrefs(context)
         val version = hostVersion()
         val snapshot = items.take(SavedHistorySnapshotRules.MAX_ITEMS)
-        // 序列化与 apply 在后台串行完成，避免网络回调在滑动期间追加磁盘/JSON 工作。
+        // 在后台串行完成序列化和保存，避免滑动期间增加磁盘与 JSON 开销。
         writer.execute {
             runCatching {
                 val raw = JSONObject()

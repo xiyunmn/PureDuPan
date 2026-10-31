@@ -148,7 +148,7 @@ internal object PageCustomizeSettingsItemsBuilder {
         enableMaster: Boolean = false,
         isChecked: (String) -> Boolean,
     ): SharedPreferences.Editor {
-        // 单独编辑子项保留总开关；全部子项启用时同时启用总开关。
+        // 单独编辑时保留总开关状态，全部子项启用时同步开启总开关。
         val enabled = enableMaster || prefs.getBoolean(
             SettingsUserState.KEY_POPUP_BLOCK,
             hasEnabledPopupBlockOption(isFeatureVisible) { key -> SettingsUserState.popupBoolean(prefs, key) },

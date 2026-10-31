@@ -1,6 +1,6 @@
 package com.xiyunmn.puredupan.hook.storage
 
-/** Host-scoped storage preferences. Every flag is deliberately opt-in. */
+/** 按宿主保存存储设置，各功能默认关闭。 */
 data class StorageRedirectConfig(
     val enabled: Boolean = false,
     val downloadRedirectEnabled: Boolean = false,

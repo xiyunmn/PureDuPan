@@ -9,7 +9,7 @@ import java.lang.reflect.Modifier
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
-/** Native conversions keep the current download page's selection semantics. */
+/** 复用宿主的数据转换方法，保留下载页的文件选择规则。 */
 internal object DownloadOpenWithBindingsResolver {
     const val CACHE_ID = "download_open_with_bindings_v1"
     private const val PATH_ID = "download_edit_local_path_v1"

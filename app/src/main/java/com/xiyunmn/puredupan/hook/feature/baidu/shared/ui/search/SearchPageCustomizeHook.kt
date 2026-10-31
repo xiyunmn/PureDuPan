@@ -458,10 +458,7 @@ internal object SearchPageCustomizeHook {
         }
     }
 
-    /**
-     * @Metadata 存在时（cn/samsung）保持严格 token 校验；intl 13.11.9 R8 全局剥离
-     * @Metadata 后降级放行，由后续明文类名 + 强方法签名形状（参数类型/数量）兜底。
-     */
+    /** 存在 Metadata 时校验标识，缺失时由后续类名和参数签名校验接管。 */
     private fun metadataContainsAllOrAbsent(clazz: Class<*>, tokens: Collection<String>): Boolean {
         if (metadataTokens(clazz).isEmpty()) return true
         return metadataContainsAll(clazz, tokens)

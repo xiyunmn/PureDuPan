@@ -12,7 +12,7 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduThemeHookPoints
 import java.lang.reflect.Method
 import java.util.WeakHashMap
 
-/** Makes KMP search's plain SkinConfig read observable without replacing its composition. */
+/** 将宿主皮肤读取接入 Compose 状态观察，触发搜索页主题重组。 */
 internal object ComposeSearchThemeCompat {
     private const val TAG = "ComposeSearchThemeCompat"
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -45,7 +45,7 @@ internal object ComposeSearchThemeCompat {
                         synchronized(states) { states.remove(activity) }
                     } else {
                         runCatching {
-                            // Application context bypasses the Activity-only read hook below.
+                            // 使用 Application Context，避开下方针对 Activity 的读取 Hook。
                             binding.update(state, isDefaultSkin.invoke(null, activity.applicationContext) as Boolean)
                             refreshStatusBar(activity, isDefaultSkin)
                         }.onFailure { XposedCompat.logW("[$TAG] refresh failed: ${it.message}") }
@@ -71,12 +71,10 @@ internal object ComposeSearchThemeCompat {
                                 val state = synchronized(states) {
                                     states.getOrPut(activity) { binding.create(result) }
                                 }
-                                // KmpSharedActivity reads SkinConfig inside its root composable.
-                                // Reading this host MutableState registers that scope for recomposition.
-                                // Preserve SkinConfig's real result, including reads outside Compose.
+                                // 根组合读取宿主 MutableState 后，会随皮肤状态变化重组。
+                                // 保留 SkinConfig 的实际返回值。
                                 binding.read(state)
-                                // EdgeToEdge uses WindowInsetsController on Android 11+, while
-                                // the host skin callback only updates the legacy visibility flags.
+                                // Android 11 及以上需更新 WindowInsetsController，补齐宿主旧式系统栏刷新。
                                 activity.window.decorView.postOnAnimation {
                                     refreshStatusBar(activity, isDefaultSkin)
                                 }

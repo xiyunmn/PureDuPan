@@ -1,6 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.domestic.startup
 
-/** A single cold launcher handoff, with no Activity/Intent references or routing changes. */
+/** 记录一次冷启动窗口交接，避免持有 Activity 或 Intent。 */
 internal class ColdStartWindowPolicy {
     private var entryObserved = false
     private var launcherTaskId: Int? = null

@@ -188,9 +188,7 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
                 IntlAlbumBackupBarFactoryDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
-        // 国际版无 ShowSafetyFooterUseCase 数据层路径；FilePageCustomizeHook 使用
-        // FileListRecyclerView footer 参数边界覆盖实际 v2 页面，并保留旧 ListView 明文入口。
-        // 故不注册该 UseCase warm-up（国内/三星 registry 保留）。
+        // 国际版通过列表 footer 隐藏安全提示，跳过 UseCase 预热。
         if (available(FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT)) {
             tasks += DexKitWarmUpTask(
                 id = HomeRecentItemLimitDexKitResolver.STATUS_CACHE_ID,
@@ -200,17 +198,14 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
                 HomeRecentItemLimitDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
-        // 国际版通过 TransferListTabActivity.initYouaGuideView 明文入口阻止推广广告创建，
-        // 无需注册 YouaGuide DexKit warmup；国内/三星 registry 继续使用原 Resolver。
+        // 国际版通过 initYouaGuideView 拦截推广区域，跳过 YouaGuide 预热。
         if (available(FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(IntlAboutMeTopFragmentDexKitResolver.CACHE_ID) {
                 IntlAboutMeTopFragmentDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         if (available(FeatureKeys.KEY_MY_PAGE_CUSTOMIZE)) {
-            // 国际版签到红点走 activity render points 明文路径；PopupResponseHelper.refresh
-            // 在 intl 无静态存活锚点，AboutMeServiceAndSignDotHideHook 已宿主门控跳过，故不
-            // 注册该 warmup（国内/三星 registry 保留）。AboutMeMiddleViewHolder 仍需 warmup。
+            // 国际版通过 Activity 渲染入口隐藏签到红点；中部条目仍需预热定位。
             tasks += DexKitWarmUpTask(AboutMeMiddleViewHolderDexKitResolver.CACHE_ID) {
                 AboutMeMiddleViewHolderDexKitResolver.warmUpDexKitCache(classLoader)
             }

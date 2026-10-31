@@ -1,8 +1,6 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.intl
 
-/**
- * Stable hook points verified against Baidu Netdisk international host.
- */
+/** 已核对的国际版宿主入口符号。 */
 internal object BaiduIntlHookPoints {
     const val SETTINGS_ACTIVITY = "com.baidu.netdisk.ui.SettingsActivity"
     const val SKIN_MANAGER = "com.netdisk.themeskin.loader.SkinManager"

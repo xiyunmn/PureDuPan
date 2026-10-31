@@ -18,23 +18,10 @@ internal object KotlinMetadataUtils {
         }
     }
 
-    /**
-     * True when the class carries a Kotlin @Metadata annotation whose d2 token
-     * array is non-empty. On builds where R8 has globally stripped @Metadata
-     * (e.g. intl 13.11.9), this returns false for every class, which callers can
-     * use to decide whether the metadata gate is trustworthy at all.
-     */
+    /** 检查类是否保留非空的 Kotlin Metadata d2 标识。 */
     fun hasMetadata(clazz: Class<*>): Boolean = metadataTokens(clazz).isNotEmpty()
 
-    /**
-     * Softened metadata gate: acts as [metadataContainsAll] when the class still
-     * carries @Metadata, but returns true when @Metadata is absent so the caller
-     * can fall back to plaintext class-name + method-signature-shape validation.
-     *
-     * Hosts that retain @Metadata (cn / samsung) keep the exact same strict
-     * behavior as before; only builds that stripped @Metadata degrade to the
-     * fallback path.
-     */
+    /** 有 Metadata 时校验全部标识；缺失时交由调用方按类名和签名验证。 */
     fun metadataContainsAllOrAbsent(clazz: Class<*>, tokens: Collection<String>): Boolean {
         if (!hasMetadata(clazz)) return true
         return metadataContainsAll(clazz, tokens)

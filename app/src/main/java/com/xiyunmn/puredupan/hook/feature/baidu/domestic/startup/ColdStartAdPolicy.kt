@@ -1,6 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.domestic.startup
 
-/** A warm-up finishing during launch must not change the mode halfway through routing. */
+/** 首次确定进程启动模式后保持不变，避免启动路由中途切换。 */
 internal class ColdStartAdPolicy {
     private var ready = false
     private var selected: Boolean? = null

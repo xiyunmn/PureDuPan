@@ -6,12 +6,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookUtils
 import java.lang.reflect.Method
 
-/**
- * Blocks the in-app software update dialog.
- *
- * The narrow business entry is VersionUpdateHelper.showLCVersionDialog(...). Blocking this
- * avoids touching BaseDialogBuilder, which is shared by many unrelated host dialogs.
- */
+/** 拦截 VersionUpdateHelper 的更新提示入口，避免影响共用弹窗组件。 */
 internal object DomesticUpdateDialogBlockHook {
     private val hookState = HookState()
 

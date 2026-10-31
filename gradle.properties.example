@@ -1,9 +1,8 @@
-# Project-wide Gradle settings safe to commit.
+# 项目共用的 Gradle 配置示例。
 org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
 kotlin.code.style=official
 
-# Release signing is local-only. Copy this file to gradle.properties and fill
-# these values on your own machine when building signed release APKs.
+# 正式签名配置保存在本地；构建签名 APK 前，复制为 gradle.properties 并填写以下参数。
 # RELEASE_STORE_FILE=../key/key.jks
 # RELEASE_STORE_PASSWORD=
 # RELEASE_KEY_ALIAS=

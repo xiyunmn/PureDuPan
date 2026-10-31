@@ -14,7 +14,7 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.LayerDrawable
 import java.util.WeakHashMap
 
-/** Keeps the native artwork and geometry, including backgrounds retained by the host's launch cache. */
+/** 适配启动图颜色，保留原生图案、尺寸和宿主缓存的背景。 */
 internal class StartupSplashDrawable private constructor(
     private val light: Drawable,
     private val dark: Drawable,
@@ -67,7 +67,7 @@ internal class StartupSplashDrawable private constructor(
     }
 
     companion object {
-        const val DARK_BACKGROUND: Int = -0xededee // #FF121212
+        const val DARK_BACKGROUND: Int = -0xededee // 深色背景：#FF121212
         private val darkBitmaps = WeakHashMap<Bitmap, Bitmap>()
         private val darkBrandingBitmaps = WeakHashMap<Bitmap, Bitmap>()
 
@@ -80,7 +80,7 @@ internal class StartupSplashDrawable private constructor(
             val dark = when (original) {
                 is ColorDrawable -> ColorDrawable(DARK_BACKGROUND)
                 is LayerDrawable -> {
-                    // The host welcome resource contains a background, slogan and bottom branding.
+                    // 宿主欢迎图包含背景、标语和底部品牌图案。
                     if (original.numberOfLayers != 3 || (1..2).any { original.getDrawable(it) !is BitmapDrawable }) {
                         return null
                     }
@@ -129,14 +129,13 @@ internal class StartupSplashDrawable private constructor(
                     val low = minOf(red, green, blue)
                     val inBubble = bubble?.get(index) == true
                     pixels[index] = when {
-                        // K3: light brand text, muted secondary text, original colored logo.
+                        // 调亮品牌文字、弱化次要文字，并保留标志原色。
                         branding && high - low <= 40 && high <= 210 -> {
                             if (high < 80) Color.argb(alpha, 218, 221, 224)
                             else Color.argb(alpha, 142, 147, 153)
                         }
                         branding -> pixel
-                        // Invert only the isolated speech bubble's neutral fill and lettering.
-                        // White highlights on the mascot must not turn into dark holes.
+                        // 对独立气泡的中性色填充和文字反色，保留吉祥物白色高光。
                         inBubble && high - low <= 24 -> {
                             val ink = 255 - (red + green + blue) / 3
                             Color.argb(alpha, 18 + 200 * ink / 255,
@@ -144,8 +143,8 @@ internal class StartupSplashDrawable private constructor(
                         }
                         high < 160 && high - low <= 24 -> Color.argb(alpha, 218, 221, 224)
                         low >= 140 -> {
-                            // The native platform is a translucent pastel wash. Neutralize it
-                            // while retaining its alpha, curve and reflection; soften opaque whites.
+                            // 将底台淡彩背景转为中性色，保留透明度、曲线和倒影。
+                            // 柔化不透明的白色区域。
                             val wash = if (inBubble) 0 else ((248 - alpha) * 255 / 56).coerceIn(0, 255)
                             val gray = 26 + (red + green + blue) / 60
                             val lightPercent = if (inBubble) 90 else 84
@@ -164,7 +163,7 @@ internal class StartupSplashDrawable private constructor(
         }
 
         private fun speechBubble(pixels: IntArray, width: Int, height: Int): BooleanArray? {
-            // Locate the native, isolated top-right bubble by connectivity, not fixed pixel coordinates.
+            // 通过连通区域定位右上方独立气泡。
             val seed = pixels.indexOfFirst { Color.alpha(it) != 0 && (it and 0x00ffffff) == 0x00ffffff }
             if (seed < 0) return null
             val mask = BooleanArray(pixels.size)
@@ -180,7 +179,7 @@ internal class StartupSplashDrawable private constructor(
                 val index = pending.removeFirst()
                 val x = index % width
                 val y = index / width
-                // A connected mascot/background is not a speech bubble; leave its whites intact.
+                // 保留与吉祥物或背景相连的白色区域。
                 if (x < width / 2 || y >= height / 3) return null
                 if (x > 0) visit(index - 1)
                 if (x + 1 < width) visit(index + 1)

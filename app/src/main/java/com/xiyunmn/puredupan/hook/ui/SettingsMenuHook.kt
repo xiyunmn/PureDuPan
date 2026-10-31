@@ -216,7 +216,7 @@ object SettingsMenuHook {
     internal fun resolvePreferredSystemDocumentPicker(context: Context, intent: Intent): ComponentName? {
         val packageManager = context.packageManager
         val vendorTokens = deviceVendorTokens()
-        // OEM file managers can be installed as ordinary apps, without FLAG_SYSTEM.
+        // 部分系统自带文件管理器按普通应用安装，不能依赖 FLAG_SYSTEM 识别。
         val handlers = runCatching {
             packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
         }.getOrDefault(emptyList()).filter { info ->
@@ -344,7 +344,7 @@ object SettingsMenuHook {
             XposedCompat.logW("[SettingsMenuHook] settings dialog skipped: unsupported host=${context.packageName}")
             return
         }
-        // 首次使用检查免责声明
+        // 首次使用时检查免责声明确认状态。
         if (!SettingsUserState.isDisclaimerAccepted(context)) {
             showDisclaimerDialog(context) {
                 SettingsUserState.setDisclaimerAccepted(context)

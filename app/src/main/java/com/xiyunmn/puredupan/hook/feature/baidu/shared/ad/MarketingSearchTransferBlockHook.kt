@@ -65,7 +65,7 @@ internal object MarketingSearchTransferBlockHook {
                         methodField.get(call), argument.invoke(call, "sid"),
                     )
                 ) return@install false
-                // Complete the exact purchase request as cancelled, without invoking any purchase callback.
+                // 以取消状态结束当前购买请求，保留购买回调原有语义。
                 success.invoke(args[1], MarketingSearchTransferRules.SEARCH_CANCEL_RESULT)
                 true
             }
@@ -81,8 +81,7 @@ internal object MarketingSearchTransferBlockHook {
         install(method) { _, args ->
             if (!enabled(MarketingPopup.TRANSFER_COUPON)) return@install false
             val noCoupon = functionCancellation(args[1]) ?: return@install false
-            // This is the native no-coupon continuation. Constructing/dismissing DiscountCenterDialog
-            // would finish its Activity and interrupt the surrounding successful-save flow.
+            // 执行宿主无优惠券分支，避免关闭优惠券弹窗时结束转存容器。
             noCoupon()
             true
         }
@@ -126,8 +125,7 @@ internal object MarketingSearchTransferBlockHook {
     private fun installLimit(cl: ClassLoader) = attempt("transfer limit owner") {
         val owners = linkedSetOf<Class<*>>()
         XposedCompat.findClassOrNull(Points.TRANSFER_LIMIT_GUIDE, cl)?.let(owners::add)
-        // International TransferFileLimitGuide is obfuscated. Its type is retained in the known
-        // SaveResultReceiver's narrow (presenter, limitManager, fileCount) dispatch contract.
+        // 通过 SaveResultReceiver 的参数类型定位混淆的转存数量引导。
         val receiver = XposedCompat.findClassOrNull(Points.SAVE_RESULT_RECEIVER, cl)
         receiver?.declaredMethods?.filter {
             !Modifier.isStatic(it.modifiers) && it.returnType == Void.TYPE &&
@@ -178,7 +176,7 @@ internal object MarketingSearchTransferBlockHook {
         }
         install(promotions.single()) { instance, args ->
             if (!enabled(MarketingPopup.TRANSFER_LIMIT) || args[1] != false) return@install false
-            // hideBuyBtn=true is the existing-coupon path. Leave its confirmation and quota unchanged.
+            // hideBuyBtn=true 表示已有优惠券，保留其确认流程和额度。
             val activity = activityField.get(instance) as? Activity ?: return@install false
             showFailure(activity, "save_file_over_limit", "本次保存文件数超过上限，减少些文件再试试吧") {
                 if (args[2] == true) finish(activity)
@@ -200,7 +198,7 @@ internal object MarketingSearchTransferBlockHook {
             if (!MarketingSearchTransferRules.isOldLimitUpgrade(state.errno, state.count, newGuide)) {
                 return@install false
             }
-            // The old -33 branch has no coupon choice; its Cancel action finishes the save container.
+            // 旧版 -33 分支没有选券流程，取消操作会结束转存容器。
             showFailure(activity, "save_file_over_limit", "本次保存文件数超过上限，减少些文件再试试吧") {
                 finish(activity)
             }

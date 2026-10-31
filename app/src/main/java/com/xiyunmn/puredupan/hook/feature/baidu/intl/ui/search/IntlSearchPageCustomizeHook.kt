@@ -22,7 +22,7 @@ internal object IntlSearchPageCustomizeHook {
     fun hook(cl: ClassLoader) {
         if (!isEnabled()) return
         val mod = XposedCompat.module ?: return
-        // Pigeon hydrates Flutter preferences when the engine starts, before the search route opens.
+        // Pigeon 在引擎启动时读取偏好，早于搜索页面打开。
         var installed = hookSearchStorage(cl) + hookSearchPlaceholder(cl) + hookAdvancedSearchBannerExperiment(cl)
         val activityClass = XposedCompat.findClassOrNull(BaiduIntlSearchHookPoints.FLUTTER_BUSINESS_ACTIVITY, cl)
         if (activityClass != null && HookSettings.isSearchPageRecommendHidden) {
@@ -66,8 +66,8 @@ internal object IntlSearchPageCustomizeHook {
         val mod = XposedCompat.module ?: return 0
         val fragmentClass = XposedCompat.findClassOrNull(BaiduIntlSearchHookPoints.FLUTTER_BUSINESS_FRAGMENT, cl)
             ?: return 0
-        // The public getters are inherited from FlutterBoostFragment in 13.11.13.
-        // Filter the final route arguments, after both Bundle and JSON parameters have merged.
+        // 通过继承的公开 getter 读取最终路由参数。
+        // 在 Bundle 和 JSON 合并后过滤搜索参数。
         val routeGetter = runCatching {
             fragmentClass.getMethod(BaiduIntlSearchHookPoints.FLUTTER_ROUTE_METHOD)
         }.getOrNull() ?: return 0

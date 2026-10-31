@@ -24,9 +24,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Shared storage hook. Domestic and international variants differ only in symbol resolution. */
+/** 共享存储重定向逻辑，按宿主解析不同符号。 */
 object StorageRedirectHook {
-    // 拒绝下载/路径创建的入口必须使用 PASSTHROUGH，防止框架保护模式吞掉拒绝异常后执行原方法。
+    // 使用 PASSTHROUGH 传递拒绝异常，阻止无效下载回退到原路径。
     private const val TAG = "StorageRedirectHook"
     private val installState = HookState()
     private val rootGuardInstalled = AtomicBoolean(false)
@@ -242,8 +242,7 @@ object StorageRedirectHook {
                     sourceDirPath,
                     HookSettings.isStorageRemoveOuterPathEnabled,
                 )
-                // Smooth-video/old branches bypass createDownloadUriStr. Preflight those branches
-                // before the original method can materialize a public default path.
+                // 部分下载分支绕过 URI 创建入口，需在原方法落盘前预检目标目录。
                 if (context != null && fileName != null && chain.args.any { it is Boolean && it }) {
                     when (val destination = resolver(context).resolve(effectiveParent, fileName, isDirectory)) {
                         is StorageDestination.ReadyDocumentUri -> return@intercept destination.uri
@@ -262,8 +261,7 @@ object StorageRedirectHook {
                     if (previousContext == null) downloadItemContext.remove() else downloadItemContext.set(previousContext)
                 }
                 val original = originalResult as? String ?: return@intercept originalResult
-                // The creator above already redirects new documents. Keep an existing task's URI
-                // when the host reuses it for resume; do not migrate saved downloads implicitly.
+                // 新文件已由创建入口重定向；续传任务保留原 URI。
                 if (original.startsWith("content://") || original.isBlank()) return@intercept original
                 val actualContext = context ?: return@intercept original
                 val actualFileName = fileName ?: original.substringAfterLast('/').takeIf { it.isNotBlank() }
@@ -283,7 +281,7 @@ object StorageRedirectHook {
         return count
     }
 
-    /** Makes SAF task locations readable to the host download list and its location jump action. */
+    /** 为宿主下载列表及目录跳转提供 SAF 任务路径。 */
     private fun hookStoragePathQueries(
         mod: XposedModule,
         cl: ClassLoader,
@@ -438,7 +436,7 @@ object StorageRedirectHook {
                         "目录任务 ContentResolver 不可用"
                     }
                     val folderInfo = checkNotNull(chain.args.getOrNull(2)) { "目录任务信息不可用" }
-                    // 根目录父路径可为空；反射失败不能冒充合法空父路径。
+                    // 空父路径表示根目录；getter 异常按路径读取失败处理。
                     val transferParent = (parentGetter.invoke(folderInfo) as String?).orEmpty()
                     val name = StoragePathRules.validateName(nameGetter.invoke(folderInfo) as String?)
                     val relative = StoragePathRules.join(transferParent, name)
@@ -492,7 +490,7 @@ object StorageRedirectHook {
             val namespace = StoragePathRules.normalizeRelativePath(chain.args[1] as? String)
             val child = StoragePathRules.normalizeRelativePath(chain.args[0] as? String)
             val root = File(context.filesDir, "sdk/baidu/$namespace")
-            // The SDK creates only its root here; callers own creation of the returned child.
+            // 此处创建 SDK 根目录，子目录由调用方创建。
             if (!root.isDirectory && !root.mkdirs()) null else File(root, child)
         }
         XposedCompat.logD("[$TAG] SDK public directory hooked: ${clazz.name}.${method.name}")

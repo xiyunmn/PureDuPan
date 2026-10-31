@@ -8,7 +8,7 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduHomeCardHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
-/** Preserve native initialization and preferences; only hide the Home25 recommendation section. */
+/** 隐藏首页推荐板块，保留宿主初始化和推荐偏好。 */
 internal object HomeRecommendSectionHideHook {
     private val installedMethods = mutableSetOf<Method>()
 
@@ -19,7 +19,7 @@ internal object HomeRecommendSectionHideHook {
         var installed = 0
         BaiduFeatureRuntime.currentHomeCustomizeHookPoints().feedFragmentClassNames.forEach feedClass@ { name ->
             val clazz = XposedCompat.findClassOrNull(name, cl) ?: return@feedClass
-            // These two fields and the native state handlers identify the owning feed fragment.
+            // 通过两个视图字段和状态处理方法确认所属首页 Fragment。
             val fields = listOf("feedSettingTipViewHeader", "erroViewHeader").map { fieldName ->
                 runCatching { clazz.getDeclaredField(fieldName) }.getOrNull()
                     ?.takeIf { View::class.java.isAssignableFrom(it.type) }

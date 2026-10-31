@@ -37,11 +37,7 @@ internal object BaiduSearchPageHookPoints {
         "isVisiable",
     )
 
-    /**
-     * VoiceSearch's Compose root signature before and after SearchResultVM was
-     * added. Keep these definitions shared by DexKit discovery and reflection
-     * validation so both paths always accept the same host variants.
-     */
+    /** 定义语音搜索的两种 Compose 签名，供 DexKit 扫描与反射校验共同使用。 */
     val voiceSearchMethodParamTypeNames = listOf(
         listOf(
             MAIN_SEARCH_VM,

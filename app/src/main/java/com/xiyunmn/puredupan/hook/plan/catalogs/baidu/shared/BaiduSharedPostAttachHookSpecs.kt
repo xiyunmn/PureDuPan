@@ -153,8 +153,7 @@ internal object BaiduSharedPostAttachHookSpecs {
     )
 
     val postMemberLead = listOf(
-        // 国内/三星走数据层 AddUseCase 短路；国际版 13.11.9 R8 剥离 @Metadata，AddUseCase
-        // 无静态存活锚点，改由 IntlAlbumBackupBarBlockHook 走渲染入口，故此处排除 intl。
+        // 国内系使用 AddUseCase 数据入口，国际版由独立渲染 Hook 处理。
         HookSpec("AlbumBackupBarBlockHook", { context, settings, _ ->
             context.isMain &&
                 context.hostId != HostIds.BAIDU_INTL &&

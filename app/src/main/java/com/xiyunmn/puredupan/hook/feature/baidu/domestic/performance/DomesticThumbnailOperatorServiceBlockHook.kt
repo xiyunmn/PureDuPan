@@ -7,9 +7,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticThumbnailOperatorResolver
 import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 
-/**
- * Blocks the client-compute thumbnail operator before it starts the operator process.
- */
+/** 在缩略图计算服务启动工作进程前拦截。 */
 object DomesticThumbnailOperatorServiceBlockHook {
     private val hookState = HookState()
 

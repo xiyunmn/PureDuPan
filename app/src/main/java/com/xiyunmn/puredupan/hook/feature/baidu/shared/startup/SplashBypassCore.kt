@@ -20,7 +20,7 @@ object SplashBypassCore {
 
         var installed = 0
         try {
-            // 核心: 重定向到无广告分支
+            // 切换到宿主无广告启动分支。
             installed += hookSetupSplashAdViewSkip(cl)
         } catch (e: Exception) {
             XposedCompat.log("[SplashBypassCore] Installation error: ${e.message}")
@@ -63,7 +63,7 @@ object SplashBypassCore {
                 val activity = chain.thisObject as? Activity
                 if (activity != null) {
                     try {
-                        // 直接调用宿主的无广告分支
+                        // 调用宿主无广告分支。
                         XposedCompat.callMethod(activity, "skipSplashAd")
                         XposedCompat.logD("[SplashBypassCore] setupSplashAdView → skipSplashAd")
                         return@intercept null

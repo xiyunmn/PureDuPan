@@ -78,7 +78,7 @@ internal object MarketingGuidanceBlockHook {
         if (booleans.size > 1) return
         val eventType = serializedField(model, Points.EVENT_TYPE, Int::class.javaObjectType)
         val eventName = serializedField(model, Points.EVENT_NAME, String::class.java)
-        // International 13.11.13 has neither field; current domestic models have both.
+        // 校验国内系数据模型的两个字段，缺失时跳过该分支。
         if ((eventType == null) != (eventName == null)) return
         val binding = SceneBinding(
             sceneField,
@@ -96,7 +96,7 @@ internal object MarketingGuidanceBlockHook {
             val instance = chain.thisObject
             val block = instance != null && onMainThread() && HookSettings.isMarketingPopupBlocked(option) &&
                 binding.isMarketing(instance, guide)
-            // Native show installs its queue callback and float timer; native dismiss completes both.
+            // 原生显示负责注册队列回调和计时器，关闭流程负责清理。
             val result = chain.proceed()
             if (block) attempt("dismiss $name") { binding.dismiss.invoke(instance) }
             result
@@ -129,7 +129,7 @@ internal object MarketingGuidanceBlockHook {
         }
 
         fun remove(manager: Any?, activity: Activity?) {
-            // closeAll=false leaves other pages and the saved native switch untouched.
+            // closeAll=false 将关闭范围限制在当前页面，并保留宿主开关。
             attempt("remove free float") { remove.invoke(manager, activity, false) }
         }
     }

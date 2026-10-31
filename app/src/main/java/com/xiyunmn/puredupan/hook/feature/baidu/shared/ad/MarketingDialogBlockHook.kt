@@ -111,8 +111,8 @@ internal object MarketingDialogBlockHook {
             val show = MarketingDialogBindings.noArgVoid(clazz, "show") ?: return
             val cleanup = MarketingDialogBindings.noArgVoid(clazz, cleanupName) ?: return
             install(show, Binding(clazz, option, true) { instance ->
-                // The host cleanup deletes priority 107/111 and preserves its close callback.
-                // Do not invoke a button: some close buttons launch another promotion.
+                // 调用宿主清理入口，移除优先级 107、111 的任务并执行关闭回调。
+                // 避免触发按钮事件，部分关闭按钮会打开另一推广页。
                 cleanup.invoke(instance)
                 if (cleanupName == "deletePriority") (instance as Dialog).dismiss()
             })
@@ -159,8 +159,7 @@ internal object MarketingDialogBlockHook {
         try {
             close()
         } finally {
-            // Dialog dismissal detaches its window synchronously, including DialogFragment's
-            // dismissAllowingStateLoss. Preserve the view state if the host reuses the instance.
+            // 宿主关闭弹窗时会同步移除窗口，保留视图状态以支持实例复用。
             if (originalAlpha != null) decor?.alpha = originalAlpha
         }
     }
@@ -187,7 +186,7 @@ internal object MarketingDialogBlockHook {
                     if (!HookSettings.isMarketingPopupBlocked(MarketingPopup.MY_PAGE_OFFER) ||
                         !MarketingPopupContext.isMainPage(activity)
                     ) return@intercept chain.proceed()
-                    // Match the host's disabled branch, so the page observer does not keep waiting.
+                    // 沿用宿主禁用分支，让页面观察者结束等待。
                     val declined = runCatching {
                         val liveData = state.get(chain.thisObject) ?: return@runCatching false
                         setValue.invoke(liveData, false)

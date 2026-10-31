@@ -15,7 +15,7 @@ import java.lang.ref.WeakReference
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 
-/** Restores the host's selected bottom-tab visual after a completed skin change. */
+/** 宿主换肤完成后恢复底栏选中样式。 */
 internal class BaiduBottomBarThemeRefreshCompat(
     private val logTag: String,
     private val homeFoldedFieldNames: List<String>,
@@ -244,7 +244,7 @@ internal class BaiduBottomBarThemeRefreshCompat(
         if (activity.isFinishing || activity.isDestroyed) return
 
         try {
-            // setFolder replaces each tab's image delegate, which captures the skin asset directory.
+            // setFolder 会替换持有皮肤资源目录的图片代理。
             resolved.refreshTabFolder.invoke(activity)
             replaySelectedVisual(activity, selectedTab, resolved)
             finishSelectedAnimation(selectedTab, resolved)

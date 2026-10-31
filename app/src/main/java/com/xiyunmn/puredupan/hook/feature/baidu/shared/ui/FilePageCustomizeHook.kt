@@ -7,13 +7,7 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduFilePageHookPoints
 
-/**
- * 文件页定制 Hook。
- *
- * ListView 初始化及专用 RecyclerView 添加 footer 后，仅将其中的安全提示设为 INVISIBLE。
- * 保留原生 footer、测量尺寸及列表位置：快速滑条按 item 定位，padding 不能替代 footer。
- * 分类页仍可访问 mBottomSafety 并更新提示文案，不拦截初始化或原生展示条件。
- */
+/** 隐藏文件列表的安全提示，保留原生 footer 对象和尺寸，供分类页与快速滚动使用。 */
 internal object FilePageCustomizeHook {
 
     private val hookState = HookState()
@@ -65,8 +59,7 @@ internal object FilePageCustomizeHook {
             return 0
         }
         mod.hook(method).intercept { chain ->
-            // VideoAllFragment 在 super 返回后直接访问 mBottomSafety；音频/文档页也会
-            // 在空列表和筛选状态更新时访问它。保留原生对象及已添加的列表条目。
+            // 视频、音频和文档页仍会更新安全提示，需保留原生对象和列表条目。
             val result = chain.proceed()
             if (isEnabled()) {
                 runCatching {
@@ -132,8 +125,8 @@ internal object FilePageCustomizeHook {
                 it.javaClass.name == BaiduFilePageHookPoints.SAFETY_INSTRUCTIONS_VIEW
             } ?: return
         }
-        // INVISIBLE 保留原生尺寸、上下间距和 footer 位置，同时阻止隐藏内容接收触摸。
-        // 后续 title/setTextClickable 只更新子控件，不会改变此提示容器的可见性。
+        // INVISIBLE 保留 footer 尺寸和位置，同时禁止提示区域接收触摸。
+        // 后续文字更新不会恢复提示容器的可见性。
         safety.visibility = View.INVISIBLE
         safety.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
     }

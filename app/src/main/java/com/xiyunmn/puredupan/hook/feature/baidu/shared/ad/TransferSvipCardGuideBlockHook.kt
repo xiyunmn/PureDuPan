@@ -6,13 +6,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduTransferHookPoints
 import java.lang.reflect.Method
 
-/**
- * 屏蔽转存成功弹窗下方的 SVIP 优惠广告卡片。
- *
- * Rubik 的 GuideContext 是国内版、国际版和三星版共用的稳定业务入口。
- * 这里同时拦截静态桥接方法和 Companion 实例方法，让广告卡片不进入创建流程，
- * 避免依赖资源 ID 或在弹窗 View 树中做兼容扫描。
- */
+/** 拦截 GuideContext 的静态桥接和实例入口，阻止创建转存成功后的 SVIP 推广卡片。 */
 internal object TransferSvipCardGuideBlockHook {
     private val hookState = HookState()
 

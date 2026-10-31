@@ -8,9 +8,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRunti
 import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
 import com.xiyunmn.puredupan.hook.ui.settings.ModuleSettingsBackupActions
 
-/**
- * Receives document and image picker results launched from module settings entry points.
- */
+/** 接收模块设置发起的目录与图片选择结果。 */
 object SettingsImagePickerResultHook {
     private val hookState = HookState()
 

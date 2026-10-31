@@ -6,9 +6,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 import java.lang.reflect.Method
 
-/**
- * Blocks only AIGC widget background refresh and startup resource unzip routes.
- */
+/** 拦截 AIGC 组件的后台刷新和启动资源解压。 */
 object DomesticAigcBackgroundComponentBlockHook {
     private val hookState = HookState()
 

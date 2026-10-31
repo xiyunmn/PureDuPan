@@ -8,11 +8,7 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 
-/**
- * 游戏中心移除 Hook。
- *
- * 受 [HookSettings.isGameCenterRemoved] 控制，默认开启。
- */
+/** 按游戏中心隐藏开关移除入口。 */
 internal object DomesticGameCenterRemoveHook {
     private val hookState = HookState()
 

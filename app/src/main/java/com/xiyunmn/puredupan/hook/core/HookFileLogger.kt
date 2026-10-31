@@ -52,7 +52,7 @@ internal object HookFileLogger {
             }
             logDir = targetDir
 
-            // Write header once
+            // 首次写入日志头。
             if (!headerWritten) {
                 writeHeaderLocked(appCtx)
                 headerWritten = true
@@ -75,7 +75,7 @@ internal object HookFileLogger {
             }
             appendLineLocked(line)
 
-            // Also write ERROR/WARN to separate error log
+            // 将警告和错误同时写入独立日志。
             if (priority >= android.util.Log.WARN) {
                 appendToErrorLogLocked(line)
             }

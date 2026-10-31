@@ -8,7 +8,7 @@ import java.nio.file.AccessDeniedException
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-/** Narrow guard for new direct children of shared-storage root. It never intercepts file I/O. */
+/** 拦截公共存储根目录下新建的直接子目录，保留普通文件读写。 */
 object StorageRootGuard {
     private val allowedRoots = setOf(
         "android", "alarms", "audiobooks", "dcim", "documents", "download", "movies",
@@ -25,7 +25,7 @@ object StorageRootGuard {
         if (parsed.first.lowercase(Locale.ROOT) in allowedRoots) return false
         val targetFirst = authorizedTargetFirstSegment(snapshot.downloadTreeUri)
         if (targetFirst != null && parsed.first.equals(targetFirst, ignoreCase = true)) return false
-        // mkdirs on an existing historical root is harmless; only reject a genuinely new child.
+        // 允许 mkdirs 访问已有目录，拦截新建的根目录子项。
         val direct = File(parsed.second)
         if (direct.exists()) return false
         logBlocked(path, snapshot.hostPackageName)

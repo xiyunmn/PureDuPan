@@ -7,7 +7,7 @@ import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
-/** 国内、三星及国际版共用的运营/商业广告双数据源，不依赖混淆方法名。 */
+/** 按方法签名定位三个宿主的顶部运营和商业广告数据源。 */
 internal object HomeTopPromotionBindingsResolver {
     data class Bindings(val requests: List<Method>, val emptySource: Constructor<*>)
 
@@ -33,7 +33,7 @@ internal object HomeTopPromotionBindingsResolver {
             !Modifier.isStatic(it.modifiers) && !it.isSynthetic && !it.isBridge &&
                 it.parameterCount == 0 && it.returnType == liveData
         }
-        // 已核对两个入口分别只加载顶部运营位与商业广告；结构变化时不扩大拦截范围。
+        // 校验顶部广告的两个数据入口，结构不符时放弃匹配。
         if (requests.size != 2) {
             XposedCompat.log("[HomeTopPromotionBindingsResolver] $name ambiguous sources: ${requests.size}")
             return null

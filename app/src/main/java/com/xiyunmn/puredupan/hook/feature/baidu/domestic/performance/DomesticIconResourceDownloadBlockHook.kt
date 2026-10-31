@@ -4,9 +4,7 @@ import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 
-/**
- * Blocks only the startup async icon resource background download.
- */
+/** 阻止启动阶段后台下载图标资源。 */
 object DomesticIconResourceDownloadBlockHook {
     private val hookState = HookState()
 

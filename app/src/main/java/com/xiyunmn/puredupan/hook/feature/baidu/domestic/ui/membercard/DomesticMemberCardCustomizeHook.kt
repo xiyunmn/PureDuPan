@@ -43,9 +43,7 @@ import java.util.Collections
 import java.util.WeakHashMap
 import kotlin.math.max
 
-/**
- * Customizes only the VIP card area in AboutMeTopFragmentHeteromo.
- */
+/** 定制国内系 AboutMeTopFragmentHeteromo 会员卡区域。 */
 internal object DomesticMemberCardCustomizeHook {
     private const val MEMBER_CARD_ACTIVITY_CONTAINER_ID = "about_me_top"
     private const val MEMBER_CARD_ROOT_ID = "cl_aboutme_top"
@@ -102,12 +100,7 @@ internal object DomesticMemberCardCustomizeHook {
         }
     }
 
-    /**
-     * B 类运营位隐藏（逻辑层，零 View 触碰）。
-     *
-     * hook myCardHasOperation(PopupResponse):boolean，命中隐藏开关时返回 false。
-     * operationData 变 null 后，宿主 setXxxTheme 自身执行 operationLayout.GONE + ivBgOperation.GONE。
-     */
+    /** 让 myCardHasOperation 返回 false，由宿主隐藏会员卡运营位及背景。 */
     private fun hookOperationLogicGate(fragmentClass: Class<*>) {
         val mod = XposedCompat.module ?: return
         if (!HookSettings.memberCardSnapshot().isMemberCardOperationHidden) return
@@ -130,13 +123,7 @@ internal object DomesticMemberCardCustomizeHook {
         )
     }
 
-    /**
-     * 首帧占位修正。
-     *
-     * Heteromo.onCreateView 直接返回 binding.root；会员数据渲染入口 setCardUi 之前，
-     * rl_root 内的 tv_title/cl_title_root 可能短暂露出默认或上一态内容。这里仅在 SVIP 等级隐藏
-     * 开启时，对 onCreateView 返回的 root 做固定资源 ID 隐藏，不监听、不递归、不按文案匹配。
-     */
+    /** 开启等级隐藏时，在会员卡数据渲染前隐藏默认标题，避免首帧闪现。 */
     private fun hookInitialRenderEntry(fragmentClass: Class<*>) {
         val mod = XposedCompat.module ?: return
         if (!hasInitialRenderOption(HookSettings.memberCardSnapshot())) return
@@ -163,14 +150,7 @@ internal object DomesticMemberCardCustomizeHook {
         )
     }
 
-    /**
-     * A + C 类渲染入口。
-     *
-     * hook setCardUi(CenterConfig, PopupResponse)：宿主在其中先跑 setCardText（tvEnter/
-     * tvDurationContent/tvVipNumber/权益卡/clAboutmeTop 点击），再设 ivVipImage、ivBg 主题。
-     * 因此 proceed() 后所有 binding 就绪，单次按明文资源 ID 套用：隐藏权益/SVIP/状态/续费（C），
-     * 重套尺寸/点击（A）；背景合并到布局完成后的单次 pre-draw，使用真实尺寸生成裁剪图。
-     */
+    /** 宿主渲染后应用隐藏、尺寸和点击设置；背景等待布局完成后按实际尺寸裁剪。 */
     private fun hookCardRenderEntry(fragmentClass: Class<*>) {
         val mod = XposedCompat.module ?: return
         if (!hasViewRenderOption(HookSettings.memberCardSnapshot())) return
@@ -330,13 +310,13 @@ internal object DomesticMemberCardCustomizeHook {
             )
     }
 
-    /** 仅首帧占位需要的固定入口选项。 */
+    /** 判断是否需要隐藏首帧占位内容。 */
     private fun hasInitialRenderOption(snapshot: SettingsSnapshot): Boolean {
         return snapshot.isMemberCardCustomizeEnabled &&
             snapshot.isMemberCardSvipLevelHidden
     }
 
-    /** 需要渲染入口 View 操作的选项（A + C），运营位（B）走逻辑门不在此列。 */
+    /** 判断是否需要调整会员卡视图；运营位由数据层开关处理。 */
     private fun hasViewRenderOption(snapshot: SettingsSnapshot): Boolean {
         return snapshot.isMemberCardCustomizeEnabled &&
             (
@@ -574,7 +554,7 @@ internal object DomesticMemberCardCustomizeHook {
         val applied = appliedBackgrounds[background]
         val currentBitmap = (background.drawable as? BitmapDrawable)?.bitmap
         if (applied != null && applied.key == key && currentBitmap === applied.bitmap) {
-            // The host may reset the scale type while retaining our bitmap.
+            // 宿主可能保留位图并重置缩放方式，需要重新设置。
             background.alpha = 1f
             background.scaleType = ImageView.ScaleType.FIT_XY
             return

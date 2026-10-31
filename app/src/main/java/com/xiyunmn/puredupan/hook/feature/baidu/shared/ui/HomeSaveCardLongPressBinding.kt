@@ -4,7 +4,7 @@ import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
-/** Native menu contracts shared by the registered Home25/newfeedhome save cards. */
+/** 定义首页转存卡片共用的原生长按菜单接口。 */
 internal class HomeSaveCardLongPressBinding private constructor(
     val onLongClick: Method,
     val popupCallback: Method,

@@ -94,8 +94,7 @@ internal object IntlFeedPreloadDelayHook {
     }
 
     private fun resolvePreloadFeedDataMethod(cl: ClassLoader): ResolvedPreloadMethod? {
-        // The intl host is heavily obfuscated. Keep the hook on Rubik's generated
-        // @Keep context instead of the obfuscated feed manager implementation.
+        // 通过 Rubik 保留的业务入口挂钩，避免依赖首页管理器的混淆名。
         val companionClass = XposedCompat.findClassOrNull(NEW_FEED_HOME_COMPANION_CLASS_NAME, cl)
         val contextClass = XposedCompat.findClassOrNull(NEW_FEED_HOME_CONTEXT_CLASS_NAME, cl)
         if (companionClass != null && contextClass != null) {

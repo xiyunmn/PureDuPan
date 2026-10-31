@@ -15,9 +15,7 @@ import org.luckypray.dexkit.query.matchers.AnnotationMatcher
 import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
-/**
- * Locates BaseMiddleViewHolder.bind(MiddleNode, boolean), the render entry for my-page middle rows.
- */
+/** 定位“我的”页中部条目的 bind(MiddleNode, boolean) 渲染入口。 */
 internal object AboutMeMiddleViewHolderDexKitResolver {
     const val CACHE_ID = "shared_aboutme_middle_view_holder_bind_v1"
 

@@ -68,8 +68,7 @@ internal object IntlOfflinePackageInitBlockHook {
     }
 
     private fun resolveStartSyncMethod(cl: ClassLoader): Method? {
-        // Rubik generated context keeps a semantic class and method name; the provider
-        // implementation behind it is obfuscated and should not be hooked directly.
+        // 使用 Rubik 生成的稳定入口定位离线包初始化。
         val contextClass = XposedCompat.findClassOrNull(DYNAMIC_CONTEXT_CLASS_NAME, cl)
         return contextClass?.let {
             XposedCompat.findMethodOrNull(it, START_SYNC_METHOD_NAME)

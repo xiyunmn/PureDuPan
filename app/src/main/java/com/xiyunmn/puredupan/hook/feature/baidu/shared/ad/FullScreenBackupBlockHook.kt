@@ -8,10 +8,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduDialogHookPoints
 import java.lang.reflect.Modifier
 
-/**
- * Declines the backup-guide launch before the caller starts waiting for an Activity result.
- * Activity closing remains a fallback for independent entry points.
- */
+/** 在调用方等待 Activity 结果前阻止备份引导启动，并为独立入口保留关闭处理。 */
 internal object FullScreenBackupBlockHook {
     private const val TAG = "FullScreenBackupBlockHook"
     private val hookState = HookState()
@@ -115,8 +112,7 @@ internal object FullScreenBackupBlockHook {
         } ?: return 0
         method.isAccessible = true
         mod.hook(method).intercept { chain ->
-            // can-show=false alone is insufficient: the host's cover-install/backup
-            // condition can override it. Returning false here also preserves routing.
+            // 宿主覆盖安装和备份条件可能重新允许弹窗，此处直接阻止引导启动。
             if (HookSettings.isFullScreenBackupBlocked) false else chain.proceed()
         }
         XposedCompat.log("[$TAG] hook INSTALLED: NewQuickSettingsActivity.startNewQuickSettingsActivity")
@@ -166,7 +162,7 @@ internal object FullScreenBackupBlockHook {
             @Suppress("DEPRECATION")
             activity.overridePendingTransition(0, 0)
         } catch (_: Throwable) {
-            // Optional visual polish only.
+            // 尽力恢复窗口外观，失败时保留原流程。
         }
     }
 }

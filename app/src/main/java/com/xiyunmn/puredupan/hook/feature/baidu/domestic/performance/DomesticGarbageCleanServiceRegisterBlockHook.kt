@@ -6,9 +6,7 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 
-/**
- * Blocks only the startup-time garbage clean component service registration.
- */
+/** 阻止启动阶段注册垃圾清理服务。 */
 object DomesticGarbageCleanServiceRegisterBlockHook {
     private val hookState = HookState()
 

@@ -9,7 +9,7 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduHomeCardHookPoints
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 
-/** 仅适配首页实例；测量、fling、nested scroll 和 unconsumed 仍由宿主执行。 */
+/** 调整首页滚动范围，测量、惯性滚动和嵌套滚动继续交由宿主处理。 */
 internal class HomeFeedScrollCompat private constructor(
     private val layoutClass: Class<*>,
     private val contentField: Field,
@@ -51,7 +51,7 @@ internal class HomeFeedScrollCompat private constructor(
         runCatching {
             val content = contentField.get(layout) as? FrameLayout ?: return
             if (content is ContentFrame || content.parent !== layout) return
-            // 验证 binding 指向的原始容器。保留其 id、可见性及 Fragment 管理关系。
+            // 确认 binding 对应原始容器，保留标识、可见性和 Fragment 关系。
             if (content !== findView(root, "stickyContentView")) return
             val head = findView(root, "stickyHeadView") ?: return
             if (head.parent !== layout) return
@@ -87,8 +87,8 @@ internal class HomeFeedScrollCompat private constructor(
             if (content.visibility == VISIBLE || !layout.getGlobalVisibleRect(visibleBounds)) {
                 return original
             }
-            // ComboScrollLayout 会平移整个 feed；measuredHeight 并不等于屏幕内可见高度。
-            // 头部由原生 UNSPECIFIED 测量，包含最近列表和当前 Tab 的全部自然高度行。
+            // 根据整体平移计算 feed 的可见高度。
+            // 头部沿用原生自然高度测量，包含最近列表和当前标签的完整行。
             val navHeight = nav?.takeIf { it.visibility != GONE }?.height ?: 0
             val viewport = visibleBounds.height() - layout.paddingTop - layout.paddingBottom
             return HomeCardLayoutRules.hiddenFeedStickyOffset(head.measuredHeight, viewport, navHeight)
@@ -96,7 +96,7 @@ internal class HomeFeedScrollCompat private constructor(
 
         override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
             super.onLayout(changed, left, top, right, bottom)
-            // Tab 切换、折叠或数据变少时，通过同一个原生入口收回旧滚动位置。
+            // 标签切换、折叠或数据减少时，通过原生入口收回多余滚动距离。
             val offset = offsetGetter.invoke(layout) as Int
             if (layout.scrollY > (head.measuredHeight - offset).coerceAtLeast(0)) {
                 scrollBy.invoke(layout, 0, 0, null)

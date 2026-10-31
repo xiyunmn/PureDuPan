@@ -8,9 +8,7 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 
-/**
- * Hides static bottom tabs at MainActivity's fixed render entry.
- */
+/** 在 MainActivity 的固定渲染入口隐藏底栏标签。 */
 internal object BottomBarStaticTabHideHook {
     private const val INIT_VIEW_METHOD = "initView"
     private const val INIT_TABS_METHOD = "initTabs"

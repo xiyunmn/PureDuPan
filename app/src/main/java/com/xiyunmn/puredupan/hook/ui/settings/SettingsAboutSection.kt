@@ -235,7 +235,7 @@ internal object SettingsAboutSection {
         view.setOnLongClickListener {
             view.setTextIsSelectable(true)
             view.requestFocus()
-            // 交给 TextView 原生长按选词；若选择未启动，也恢复连续点击入口。
+            // 使用原生长按选词，选择未启动时恢复连续点击。
             view.post { if (!view.hasSelection()) resetSelection() }
             false
         }

@@ -227,7 +227,7 @@ internal object IntlStoryDouyinInitBlockHook {
 
     private fun resolveStoryInitRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
         val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
-        // @Metadata 存在时保持严格 token 校验；被 R8 剥离后由调用 owner/签名打分兜底。
+        // 存在 Metadata 时校验标识，缺失时按调用类和方法签名定位。
         if (!metadataContainsAllOrAbsent(clazz, storySemanticTokens)) return null
         return clazz.declaredMethods.firstOrNull { method ->
             method.name == ref.methodName &&
@@ -294,10 +294,7 @@ internal object IntlStoryDouyinInitBlockHook {
         }
     }
 
-    /**
-     * @Metadata 存在时等价 [metadataContainsAll]；被 R8 全局剥离（intl 13.11.9）时放行，
-     * 让调用方回退到明文类名 + 方法名 + 签名形状验证。保留 @Metadata 的样本行为不变。
-     */
+    /** 存在 Metadata 时校验全部标识，缺失时由调用方校验类名和方法签名。 */
     private fun metadataContainsAllOrAbsent(clazz: Class<*>, tokens: Collection<String>): Boolean {
         if (metadataTokens(clazz).isEmpty()) return true
         return metadataContainsAll(clazz, tokens)

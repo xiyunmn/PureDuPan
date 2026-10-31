@@ -1,11 +1,6 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.shared
 
-/**
- * Stable anchors for unlocking online video playback speed.
- *
- * Privilege entry and Present class names stay readable across weak/strong
- * domestic builds and the intl host; Present method names may be obfuscated.
- */
+/** 客户端倍速权限的定位符号，兼容播放器方法名混淆。 */
 internal object BaiduVideoSpeedHookPoints {
     const val MEMBER_PRIVILEGE_CONTEXT =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_platform_business_member_privilege.MemberPrivilegeContext"

@@ -35,12 +35,7 @@ internal data class BaiduSystemNightModeHookPoints(
     val gateColdStartBottomBar: Boolean = false,
 )
 
-/**
- * Syncs Baidu Netdisk host skin with system night mode.
- *
- * All hosts use the native changeSkin transaction, resolved by call structure when obfuscated.
- * The bottom avatar is refreshed through MainActivity.refreshAboutmeTabImage().
- */
+/** 通过宿主原生换肤流程跟随系统主题，并刷新底栏头像。 */
 internal class BaiduSystemNightModeSyncHook(
     private val logTag: String,
     private val hookPoints: BaiduSystemNightModeHookPoints,
@@ -301,8 +296,8 @@ internal class BaiduSystemNightModeSyncHook(
             XposedCompat.findMethodOrNull(skinManagerClass, "notifySkinUpdate")?.let { method ->
                 mod.hook(method).intercept { chain ->
                     val result = chain.proceed()
-                    // Both restoreDefaultTheme and the asynchronous dark-skin loader finish here.
-                    // The light branch never invokes SkinLoaderListener.onSuccess.
+                    // 在浅色恢复和异步深色加载的共同结束点刷新界面。
+                    // 浅色分支不会触发 SkinLoaderListener.onSuccess。
                     mainHandler.post { requestFlutterSearchRefresh(cl) }
                     result
                 }

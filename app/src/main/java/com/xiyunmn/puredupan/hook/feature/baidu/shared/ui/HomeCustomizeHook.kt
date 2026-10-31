@@ -29,11 +29,7 @@ import java.util.Collections
 import java.util.WeakHashMap
 import org.xmlpull.v1.XmlPullParser
 
-/**
- * 顶部 AI 控件移除 Hook。
- *
- * 受首页定制配置控制，默认隐藏顶部动态推广。
- */
+/** 按首页定制设置处理顶部控件、内容板块及列表布局。 */
 object HomeCustomizeHook {
     private const val SET_SEARCH_TEXT_METHOD = "setSearchText"
     private const val SEARCH_PLACEHOLDER_BINDING_FIELD = "titleBarSearchPlaceHolderText"
@@ -122,8 +118,8 @@ object HomeCustomizeHook {
                     if (method in topPromotionRequestHooks) continue
                     mod.hook(method).intercept { chain ->
                         if (isTopPromotionHidden()) {
-                            // 必须发送一次空值：宿主将两个源归为空列表并正常结束加载。
-                            // 每次使用独立 LiveData，避免 MediatorLiveData 重复绑定同一源。
+                            // 发送一次空值，让宿主合并为空列表并结束加载。
+                            // 每次创建独立 LiveData，避免重复绑定同一数据源。
                             bindings.emptySource.newInstance(*arrayOfNulls<Any>(1))
                         } else {
                             chain.proceed()
@@ -198,8 +194,8 @@ object HomeCustomizeHook {
             }
             mod.hook(method).intercept { chain ->
                 if (isSearchPlaceholderHidden()) {
-                    // 渲染入口 no-op：阻断 TextFlipper 文案与右侧 Drawable 写入。
-                    // 布局默认文案由 onViewCreated 一次性折叠处理，不再在每次 setSearchText 后做 View 兜底。
+                    // 阻止 TextFlipper 写入提示词和右侧图标。
+                    // 布局中的默认提示词在 onViewCreated 中统一隐藏。
                     XposedCompat.logD("[HomeCustomizeHook] $className.$SET_SEARCH_TEXT_METHOD blocked")
                     null
                 } else {
@@ -410,8 +406,8 @@ object HomeCustomizeHook {
             if (!HookSettings.isHomeCustomizeEnabled || !HookSettings.isHomeSearchAigcIconHidden) {
                 chain.proceed()
             } else {
-                // 动画入口 no-op：不加载 mp4、不 play、不触发 border/icon 动画。
-                // 布局默认可见的 searchbox_aigc_icon 由 onViewCreated 一次性折叠，不再在此做 View 兜底。
+                // 拦截动画入口，阻止视频加载及边框、图标动画。
+                // 布局中的默认 AIGC 图标在 onViewCreated 中隐藏。
                 XposedCompat.logD("[HomeCustomizeHook] HomeSearchboxFragment.startSearchBoxAnim blocked")
                 getBindingObject(chain.thisObject)
             }
@@ -763,9 +759,8 @@ object HomeCustomizeHook {
                 }
                 result
             }
-            // The card's Context/AttributeSet constructor owns initView + initObserver.
-            // Reapply after construction as well: an optimized private initView call must
-            // not be the only opportunity to restructure the native rows.
+            // 构造器会执行视图和观察者初始化，完成后再次应用纵向布局。
+            // 此入口补充可能被优化的私有 initView 调用。
             clazz.declaredConstructors.firstOrNull { constructor ->
                 constructor.parameterTypes.contentEquals(
                     arrayOf(Context::class.java, android.util.AttributeSet::class.java),
@@ -826,7 +821,7 @@ object HomeCustomizeHook {
         cl: ClassLoader,
         cardClass: Class<*>,
     ): Int {
-        // 同一次状态回调内完成原生前三行与扩展行的绑定；typed emit 本身也可能被混淆。
+        // 在同一次状态回调中绑定原生行和扩展行，兼容 emit 方法名混淆。
         for (suffix in BaiduHomeCardHookPoints.SAVE_STATE_COLLECTOR_SUFFIXES) {
             val collector = XposedCompat.findClassOrNull(cardClass.name + suffix, cl) ?: continue
             val callback = HomeSaveCardBindingResolver.stateCollector(collector, cardClass) ?: continue
@@ -839,7 +834,7 @@ object HomeCustomizeHook {
             }
             return 1
         }
-        // collector 失配时仍同步处理已验证的 State 渲染入口。
+        // collector 定位失败时使用已验证的状态渲染入口。
         val methods = cardClass.declaredMethods.filter(::isSaveCardStateRenderMethod)
         methods.forEach { method ->
             method.isAccessible = true
@@ -872,8 +867,8 @@ object HomeCustomizeHook {
                 "com.google.android.material.tabs.TabLayout\$Tab", cardClass.classLoader ?: return,
             ) ?: return
             val listeners = listenersField.get(tabs) as? List<*> ?: return
-            // TabLayout 逆序通知监听器，额外添加监听器会早于宿主回写高度。
-            // 仅挂钩这张卡片实际注册且捕获卡片实例的原生回调，不保留 View 引用。
+            // TabLayout 逆序通知监听器，需在宿主回调后恢复高度。
+            // 匹配卡片实际注册的回调，避免长期持有视图。
             listeners.filterNotNull().forEach { listener ->
                 val callback = HomeSaveCardBindingResolver.tabSelectionCallback(
                     listener.javaClass, cardClass, tabClass,
@@ -963,7 +958,7 @@ object HomeCustomizeHook {
             mod.hook(copy).intercept { chain ->
                 val batch = subscriptionItemsForCall.get()
                 val state = chain.args[0] as? Enum<*>
-                // 只扩展本次订阅响应创建的 LINK_UPDATE_DATA，保留推荐/错误状态及其他副作用。
+                // 扩展当前订阅响应的 LINK_UPDATE_DATA，保留其它状态处理。
                 if (batch?.first == stateClass && state?.name == "LINK_UPDATE_DATA") {
                     val args = chain.args.toTypedArray()
                     args[2] = batch.second
@@ -1056,7 +1051,7 @@ object HomeCustomizeHook {
                 card, if (subscription) "linkHorizontalScrollView" else "horizontalScrollView",
             ) ?: continue
             val wrapper = group.getChildAt(0) as? VerticalSaveRows ?: continue
-            // 构造函数的 initView 返回后、initObserver 首次收集前预建，隐藏行不占高度。
+            // 在首次状态收集前预建额外行，隐藏行无需占用高度。
             for (index in 3 until limit) {
                 if (obtainExtraSaveRow(card, wrapper, index, subscription) == null) break
             }
@@ -1111,8 +1106,8 @@ object HomeCustomizeHook {
             wrapper.getChildAt(index).visibility = if (index < visibleCount) View.VISIBLE else View.GONE
         }
 
-        // 行由 wrapper 持有，随宿主 View 树释放；缩短列表只隐藏，恢复时复用。
-        // 不在 WeakHashMap 的 value 内持有子 View，以免经 parent 反向强引用 key。
+        // 额外行由 wrapper 管理，列表缩短时隐藏以便复用。
+        // 弱映射的值避免持有子视图，防止经 parent 强引用键对象。
         for (index in 3 until visibleCount) {
             val item = items[index] ?: continue
             val holder = obtainExtraSaveRow(cardView, wrapper, index, isSubscription) ?: return
@@ -1165,8 +1160,8 @@ object HomeCustomizeHook {
                     if (parser.eventType != XmlPullParser.START_TAG ||
                         parser.getAttributeResourceValue("http://schemas.android.com/apk/res/android", "id", 0) != groupId
                     ) continue
-                    // LayoutInflater 从 next START_TAG 开始：停在横向容器起始标签，
-                    // 只 inflate 其第一个原生行（包括订阅的 include），不创建整张卡片。
+                    // 将解析器停在横向容器起点，从下一标签加载首个原生行。
+                    // 订阅行中的 include 由 LayoutInflater 处理。
                     val row = LayoutInflater.from(cardView.context).inflate(parser, wrapper, false)
                     return@use row.takeIf { it.id == rowId }
                 }
@@ -1318,8 +1313,8 @@ object HomeCustomizeHook {
                 result
             }
             count++
-            // cacheHomeSaveCard 在 initView 内、首个 collector 启动前执行。
-            // homeSaveCardInfo 是账号/首页稍后才就绪时的数据层兜底，不依赖任何渲染回调。
+            // cacheHomeSaveCard 在首次状态收集前提供缓存入口。
+            // homeSaveCardInfo 在账号或首页数据稍后就绪时补充加载。
             listOf("cacheHomeSaveCard", "homeSaveCardInfo").forEach { methodName ->
                 val method = XposedCompat.findMethodOrNull(clazz, methodName) ?: return@forEach
                 mod.hook(method).intercept { chain ->
@@ -1363,7 +1358,7 @@ object HomeCustomizeHook {
         if (expanded != null) {
             saveHistorySnapshot(session, expanded)
         } else if (session.request.phase == SavedHistoryRetryState.Phase.COMPLETE) {
-            // 原生新记录与已完成请求的前缀不同，下一次原生刷新可重新取完整列表。
+            // 原生记录前缀变化后，允许下次刷新重新获取完整列表。
             session.request = SavedHistoryRetryState()
         }
         return expanded
@@ -1386,7 +1381,7 @@ object HomeCustomizeHook {
             val delayMillis = synchronized(requestState) { requestState.scheduleNext() } ?: return
             postSavedHistoryAttempt(viewModel, cl, session, requestState, delayMillis)
         }.onFailure {
-            // 账号未就绪时交由后续原生加载入口重试；不从 render 路径轮询。
+            // 账号未就绪时等待后续原生加载入口重试。
             XposedCompat.logD(
                 "[HomeCustomizeHook] early saved history unavailable: ${it.javaClass.simpleName}",
             )
@@ -1548,7 +1543,7 @@ object HomeCustomizeHook {
                         val mapped = source.mapNotNull { item ->
                             item?.let { mapSavedHistoryItem(it, session.itemClass) }
                         }
-                        // 不能把部分映射成功误当成完整列表，也不让旧账号回调写入当前状态。
+                        // 拒绝部分映射结果和旧账号回调，保持列表与账号状态一致。
                         if (mapped.size != source.size) return@runCatching
                         session.items = mapped
                         session.needsSnapshot = true
@@ -1766,7 +1761,7 @@ object HomeCustomizeHook {
                 !Modifier.isStatic(it.modifiers) && it.type == Boolean::class.javaPrimitiveType
             }?.apply { isAccessible = true }?.getBoolean(current) ?: return
             val setList = HomeSaveCardBindingResolver.listWriter(viewModel.javaClass) ?: return
-            // 走宿主 DATA 状态及去重逻辑，确保首三行也绑定新数据；不把上一种状态直接复制发布。
+            // 通过宿主 DATA 状态及去重逻辑发布，让原生前三行同步绑定新数据。
             val previous = publishingSavedHistory.get()
             publishingSavedHistory.set(viewModel)
             try {
@@ -1807,7 +1802,7 @@ object HomeCustomizeHook {
     ) {
         if (group == null) return
         if (verticalSaveGroups.containsKey(group)) {
-            // 原生重新绑定或切换 Tab 后仍恢复前三行的宽度与容器的自然高度。
+            // 原生重新绑定或切换标签后，恢复前三行宽度和容器自然高度。
             for (rowId in rowIdNames) {
                 val row = findHostView<View>(group, rowId) ?: continue
                 for (innerId in innerIdNames) {
@@ -1824,7 +1819,7 @@ object HomeCustomizeHook {
         }
         val rows = rowIdNames.mapNotNull { idName -> findHostView<View>(group, idName) }
         if (rows.isEmpty()) return
-        // 新布局的行和容器均可为 WRAP_CONTENT。只给旧 MATCH_PARENT 行补原容器高度。
+        // 新布局保留 WRAP_CONTENT，旧 MATCH_PARENT 行沿用原容器高度。
         val originalGroupHeight = group.layoutParams?.height ?: ViewGroup.LayoutParams.WRAP_CONTENT
         val wrapper = VerticalSaveRows(group.context, originalGroupHeight)
 
@@ -1865,7 +1860,7 @@ object HomeCustomizeHook {
         verticalSaveHeightGuards[contentArea] = true
         val saveReference = WeakReference(saveGroup)
         val subscribeReference = WeakReference(subscribeGroup)
-        // 固定容器仍保留布局守护，处理状态更新等路径的异步高度回写。
+        // 监听固定容器的布局变化，修正异步写回的高度。
         contentArea.addOnLayoutChangeListener(
             View.OnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
                 if (!isSaveCardVerticalLayoutEnabled() || HookSettings.isHomeSaveSectionHidden) {
@@ -2024,14 +2019,7 @@ object HomeCustomizeHook {
         }.getOrNull()
     }
 
-    /**
-     * Feed tip 是「开启推荐」提示条，不是推荐本身。
-     *
-     * 宿主只在 [initFeedSettingTipHeader] 里 inflate binding 并写入
-     * [feedSettingTipViewHeader]；[hideFeedList] 仅在该字段非空时 show/gone。
-     * 因此渲染入口 no-op 即可阻止提示条创建，无需字段级 View 隐藏，
-     * 也不会改写 [KEY_HOME_PAGE_SHOW_RECOMMENDED] 配置。
-     */
+    /** 隐藏首页工具栏后重新计算内容偏移，并在布局队列中补充调整。 */
     private fun adjustHomeToolbarRootLayout(root: View?) {
         if (!isHomeToolbarHidden() || root == null) return
         adjustHomeToolbarRootLayoutNow(root)

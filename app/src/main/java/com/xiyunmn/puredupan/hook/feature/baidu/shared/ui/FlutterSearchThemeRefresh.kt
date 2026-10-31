@@ -14,7 +14,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduThemeHookPoints
 import java.lang.reflect.Method
 
-/** Keeps the existing search window visible while its Flutter route reloads the host skin. */
+/** 在 Flutter 搜索路由重新加载皮肤时保持原窗口内容可见。 */
 internal object FlutterSearchThemeRefresh {
     private val handler = Handler(Looper.getMainLooper())
     private val installed = mutableSetOf<Method>()
@@ -34,7 +34,7 @@ internal object FlutterSearchThemeRefresh {
         mod.hook(displayed).intercept { chain ->
             val result = chain.proceed()
             transitions.entries.firstOrNull { it.value.fragment === chain.thisObject }?.let { (activity, state) ->
-                // Let the new texture reach the window compositor before uncovering it.
+                // 等待新纹理提交到窗口后再移除遮罩。
                 state.decor.postOnAnimation { state.decor.postOnAnimation { finish(activity, state) } }
             }
             result
@@ -91,8 +91,7 @@ internal object FlutterSearchThemeRefresh {
                     val decorLocation = IntArray(2).also(decor::getLocationInWindow)
                     cover.x = (rect.left - decorLocation[0]).toFloat()
                     cover.y = (rect.top - decorLocation[1]).toFloat()
-                    // This Activity is transparent by design. Keep an opaque window backdrop
-                    // after replacement too, so an empty Flutter frame cannot expose MainActivity.
+                    // 为透明 Activity 保留不透明背景，避免 Flutter 空帧露出底层主页。
                     activity.window.setBackgroundDrawable(ColorDrawable(bitmap.getPixel(bitmap.width / 2, 0) or (0xff shl 24)))
                     val fragment = initFragment.invoke(activity) ?: error("search fragment unavailable")
                     state.fragment = fragment
@@ -120,7 +119,7 @@ internal object FlutterSearchThemeRefresh {
         state.cleanup?.let(handler::removeCallbacks)
         (state.cover.parent as? ViewGroup)?.removeView(state.cover)
         state.cover.setImageDrawable(null)
-        // PixelCopy may still own the buffer until its callback; let GC reclaim it safely.
+        // PixelCopy 回调前可能仍占用缓冲区，交由 GC 回收。
         state.completed(state.rebuilt)
     }
 }

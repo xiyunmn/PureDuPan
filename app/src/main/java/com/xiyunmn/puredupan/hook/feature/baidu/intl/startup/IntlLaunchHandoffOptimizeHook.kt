@@ -18,7 +18,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
 
-/** Cold-ad bypass and window continuity for the two international launcher shells. */
+/** 跳过国际版冷启动广告，并保持两个启动壳之间的窗口衔接。 */
 internal object IntlLaunchHandoffOptimizeHook {
     private const val TAG = "IntlLaunchHandoffOptimizeHook"
     private val windowState = HookState()
@@ -37,7 +37,7 @@ internal object IntlLaunchHandoffOptimizeHook {
 
     fun hook(cl: ClassLoader) {
         if (!HookSettings.isIntlSplashStartupAccelerateEnabled) return
-        // Independent installation: a cold cache miss must not prevent the window repair.
+        // 窗口修复独立安装，避免受广告定位结果影响。
         runCatching { hookColdGate(cl) }.onFailure {
             XposedCompat.logW("[$TAG] cold gate unavailable: ${it.message}")
         }
@@ -69,8 +69,8 @@ internal object IntlLaunchHandoffOptimizeHook {
                     activity?.javaClass?.name != BaiduIntlHookPoints.NAVIGATE_ACTIVITY
                 ) return@intercept chain.proceed()
                 val original = activity.intent
-                // The native push-entry protocol skips cold ads even before DexKit warm-up.
-                // Never mutate the caller's Intent or carry this flag into native routing.
+                // 借用宿主推送入口协议跳过冷广告，兼容缓存尚未就绪的启动。
+                // 临时标记写入 Intent 副本，并在宿主路由前恢复原 Intent。
                 val filtered = if (!coldGateState.isInstalled() && original != null) {
                     Intent(original).putExtra(BaiduIntlHookPoints.COLD_SPLASH_FILTER_AD_EXTRA, "1")
                 } else null
@@ -98,8 +98,8 @@ internal object IntlLaunchHandoffOptimizeHook {
                 activity.javaClass.name == BaiduIntlHookPoints.NAVIGATE_ACTIVITY &&
                 chain.args.firstOrNull() === activity
             ) {
-                // Native no-ad dispatch still owns login, guides and external/teen/enterprise
-                // routes. A synchronous fake ad callback would race the caller's setSplash(true).
+                // 返回无广告决策，由宿主继续处理登录、引导及各类跳转。
+                // 同步伪造广告回调会与宿主 setSplash(true) 发生时序冲突。
                 false
             } else {
                 chain.proceed()
@@ -126,8 +126,7 @@ internal object IntlLaunchHandoffOptimizeHook {
                 if (isEnabledShell(activity)) {
                     val shell = activity!!
                     safely {
-                        // Before decor creation: painting an opaque View does not change the
-                        // system's translucent-window occlusion state.
+                        // 在窗口内容创建前修改透明属性，使系统正确处理窗口遮挡。
                         if (shell.javaClass.name == BaiduIntlHookPoints.NAVIGATE_ACTIVITY) makeOpaque(shell)
                         prepareShellWindow(shell)
                         suppressTransition(shell)
@@ -159,8 +158,7 @@ internal object IntlLaunchHandoffOptimizeHook {
                 result
             }
         }
-        // Both startActivity overloads delegate here. Keep the native lifetime of each shell;
-        // no global pending activity, focus-based finish or delayed main-window rewrites.
+        // 两个 startActivity 重载均经过此入口，启动壳的生命周期继续由宿主管理。
         mod.hook(start).intercept { chain ->
             val activity = chain.thisObject as? Activity
             val intent = chain.args.firstOrNull() as? Intent
@@ -176,7 +174,7 @@ internal object IntlLaunchHandoffOptimizeHook {
 
     @Suppress("DEPRECATION")
     private fun makeOpaque(activity: Activity) {
-        // Reuse the host's locale-aware welcome theme, without numeric resource IDs.
+        // 按资源名复用宿主随语言切换的欢迎主题。
         val themeId = activity.packageManager.getActivityInfo(
             ComponentName(activity.packageName, BaiduIntlHookPoints.DEFAULT_MAIN_ACTIVITY), 0,
         ).theme
@@ -186,11 +184,9 @@ internal object IntlLaunchHandoffOptimizeHook {
         val opaque = try { !attrs.getBoolean(0, false) && !attrs.getBoolean(1, false) } finally { attrs.recycle() }
         if (!opaque) return
         activity.setTheme(themeId)
-        // setTheme applies an overlay and may retain windowIsTranslucent from Navigate.
-        // Replace the theme contents as well, so PhoneWindow sees the opaque base theme.
+        // setTheme 可能保留透明窗口属性，需要同时替换主题内容。
         activity.theme.setTo(theme)
-        // Manifest translucency is also held by system_server. Update it through the public
-        // API; on older releases keep the host's conservative delayed cleanup.
+        // 通过公开 API 同步系统侧的窗口透明属性；旧系统保留宿主延后清理流程。
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) activity.setTranslucent(false)
     }
 
@@ -241,7 +237,7 @@ internal object IntlLaunchHandoffOptimizeHook {
         ) ?: return
         mod.hook(hide).intercept { chain ->
             if (isEnabledShell(shellInit.get())) {
-                // Compat systemBars mask is status/navigation/caption on supported releases.
+                // 系统栏掩码包含状态栏、导航栏和标题栏。
                 val types = (chain.args[0] as Int) and 7.inv()
                 if (types == 0) null else chain.proceed(arrayOf(types))
             } else chain.proceed()

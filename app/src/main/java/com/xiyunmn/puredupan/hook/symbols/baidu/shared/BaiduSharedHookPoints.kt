@@ -1,8 +1,6 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.shared
 
-/**
- * Stable hook points shared by Baidu Netdisk host flavors.
- */
+/** 各网盘宿主共用的入口符号。 */
 internal object BaiduSharedHookPoints {
     const val MAIN_ACTIVITY = "com.baidu.netdisk.ui.MainActivity"
     const val HOME_ACTIVITY = "com.baidu.netdisk.homepage.HomeActivity"

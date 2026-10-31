@@ -133,11 +133,11 @@ private object BaiduDeviceFingerprintCollector {
         val cached = (readStaticField(context, className, fieldName).getOrNull() as? String)
             ?.takeIf { it.isNotBlank() }
             ?: (readPersonalConfigString(context, key, international).getOrNull() as? String)
-        // A failure sentinel in the live field must not resurrect an older preference value.
+        // 当前字段返回失败标记时，保留失败结果，避免读取旧缓存标识。
         return originalOaid(cached)
     }
 
-    /** Helios stores A10-Base32(UTF-8 OAID)-BDCC; only the middle segment contains the ID. */
+    /** Helios 格式为 A10-Base32(UTF-8 OAID)-BDCC，读取中间段获取标识。 */
     private fun originalOaid(cached: String?): String? {
         val value = cached?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         val original = if (value.startsWith("A10-")) {

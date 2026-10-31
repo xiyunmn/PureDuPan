@@ -105,9 +105,7 @@ internal object BaiduIntlPostAttachHookSpecs {
     )
 
     val bottomBar = listOf(
-        // 国际版相册备份栏走渲染入口（工厂 new AlbumBackupBarView → 返回 null）；国内/三星
-        // 走共享数据层 AddUseCase 短路（见 BaiduSharedPostAttachHookSpecs.postMemberLead，
-        // 已排除 intl）。intl 13.11.9 R8 剥离 @Metadata，AddUseCase 无静态存活锚点。
+        // 国际版在工厂返回时过滤相册备份栏，国内系通过 AddUseCase 拦截。
         HookSpec("IntlAlbumBackupBarBlockHook", { context, settings, _ ->
             context.isMain && settings.isAlbumBackupBarBlocked
         }, featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR) { cl ->

@@ -7,9 +7,9 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import java.lang.ref.WeakReference
 import java.util.WeakHashMap
 
-/** Coalesces card updates after layout, before drawing, without blocking the host's frame. */
+/** 布局完成后、绘制前合并会员卡背景更新。 */
 internal object MemberCardBackgroundLayout {
-    // Values must also be weak: a pending observer can otherwise retain its whole view tree.
+    // 映射值也使用弱引用，避免待执行观察者持有整棵视图树。
     private val bindings = WeakHashMap<ImageView, WeakReference<Binding>>()
 
     fun apply(view: ImageView, render: (ImageView) -> Unit) {

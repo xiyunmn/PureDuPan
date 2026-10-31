@@ -10,14 +10,14 @@ import com.xiyunmn.puredupan.hook.config.ConfigManager
 import java.io.File
 import java.util.Locale
 
-/** Resolves a cloud-relative path into a SAF document without ever falling back silently. */
+/** 在授权目录内解析下载目标，失败时返回明确原因。 */
 class StorageDestinationResolver(
     private val context: Context,
     val snapshot: StorageRedirectSnapshot,
 ) {
     private val resolver = context.contentResolver
 
-    /** Returns a primary-storage-relative path for a SAF document URI when the provider exposes one. */
+    /** 从文档 URI 提取主存储相对路径，提供方不支持时返回 null。 */
     fun relativePathForDocumentUri(uriString: String?): String? {
         val uri = uriString?.takeIf { it.isNotBlank() }?.let { runCatching { Uri.parse(it) }.getOrNull() }
             ?: return null
@@ -88,7 +88,7 @@ class StorageDestinationResolver(
 
     fun resolveDirectory(relativePath: String?): StorageDestination = resolve(relativePath, null)
 
-    /** Native BT/P2P code needs a real path; only primary external storage is safe to expose. */
+    /** 为 BT/P2P 提供主存储真实路径，不支持转换的目录返回失败。 */
     fun resolveLegacyAbsolutePath(relativePath: String?): StorageDestination {
         if (!snapshot.enabled || !snapshot.downloadRedirectEnabled) return StorageDestination.Disabled
         val tree = snapshot.downloadTreeUri?.takeIf { it.isNotBlank() }
@@ -233,7 +233,7 @@ class StorageDestinationResolver(
             return StorageDestinationResolver(context, snapshotFor(context.packageName, prefs))
         }
 
-        /** Human-readable path for a tree selected from the primary shared storage. */
+        /** 生成主共享存储目录的可读路径。 */
         fun displayPathForTreeUri(context: Context, uriString: String?): String? {
             return StorageDestinationResolver(
                 context,

@@ -74,7 +74,7 @@ object FeatureKeys {
     const val KEY_HIDE_SEARCH_PAGE_RECOMMEND = "hide_search_page_recommend"
     const val KEY_HIDE_INTL_SEARCH_PAGE_SVIP_BANNER = "hide_intl_search_page_svip_banner"
     const val KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH = "hide_search_page_voice_search"
-    // Storage destination management (disabled by default; host-scoped preferences)
+    // 存储设置按宿主隔离，默认关闭。
     const val KEY_STORAGE_REDIRECT_ENABLED = "storage_redirect_enabled"
     const val KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED = "storage_download_redirect_enabled"
     const val KEY_STORAGE_DOWNLOAD_TREE_URI = "storage_download_tree_uri"

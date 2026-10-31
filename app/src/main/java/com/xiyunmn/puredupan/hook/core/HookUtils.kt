@@ -1,13 +1,8 @@
 package com.xiyunmn.puredupan.hook.core
 
-/**
- * Hook utilities for common operations.
- */
+/** 提供 Hook 通用工具。 */
 object HookUtils {
-    /**
-     * Returns the default value for a given primitive type or null for reference types.
-     * Used when a hooked method needs to return early with a safe default value.
-     */
+    /** 返回基本类型的默认值，引用类型返回 null。 */
     @JvmStatic
     fun getDefaultReturnValue(type: Class<*>): Any? {
         return when (type) {

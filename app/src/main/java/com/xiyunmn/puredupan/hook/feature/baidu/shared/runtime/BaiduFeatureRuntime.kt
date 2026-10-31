@@ -57,8 +57,7 @@ internal object BaiduFeatureRuntime {
         }
     }
 
-    // 无 context 的当前宿主判定（DexKit resolver 层用）：基于当前进程包名规范化。
-    // 供 shared resolver 隔离 intl 专属锚点，避免 feature 层直接 import host 层。
+    // 通过规范化进程包名判断宿主，供无 Context 的解析器使用。
     fun isCurrentIntlHost(): Boolean =
         XposedCompat.currentPackageName()
             ?.let { HostRuntimeState.canonicalPackageNameOrSelf(it) == HostPackages.BAIDU_INTL }

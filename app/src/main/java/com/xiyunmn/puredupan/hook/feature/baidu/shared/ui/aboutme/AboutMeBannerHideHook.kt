@@ -6,13 +6,7 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAboutMeHookPoints
 
-/**
- * Removes the about-me bottom banner from the bottom fragment render/data entries.
- *
- * The bottom banner has both operation data and feed-ad paths. Blocking the bottom fragment loaders
- * avoids requesting new banner content, while the render-entry hide keeps stale or externally pushed
- * updates from making the container visible again.
- */
+/** 阻止“我的”页底部横幅请求，并在渲染入口隐藏缓存或外部推送内容。 */
 object AboutMeBannerHideHook {
     private const val TAG = "AboutMeBannerHideHook"
     private const val BANNER_ID = "aboutme_banner"

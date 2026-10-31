@@ -14,7 +14,7 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 
-/** Only user choices travel between hosts; local resources and runtime state never do. */
+/** 跨宿主备份用户选项，排除本地资源和运行状态。 */
 internal object ModuleSettingsBackup {
     private const val FORMAT = "PureDuPan.settings"
     private const val VERSION = 1
@@ -141,7 +141,7 @@ internal object ModuleSettingsBackup {
         val values = linkedMapOf<String, Any>()
         entries.keys().forEach { key ->
             require(key in scope) { "设置值不在备份范围内" }
-            // Unknown future keys are ignored; known keys must have their real preference type.
+            // 忽略未知配置键，并校验已知键的值类型。
             if (key in HostRegistry.supportedFeatureKeys) {
                 values[key] = checkedValue(key, entries.getJSONObject(key))
             }
@@ -152,7 +152,7 @@ internal object ModuleSettingsBackup {
 
     fun restore(context: Context, preview: ImportPreview): Boolean {
         val editor = ConfigManager.getPrefs(context).edit()
-        // Replace all portable choices, including options absent from an older backup.
+        // 整体替换可迁移选项，清除备份中缺失的旧值。
         portableKeys(context.packageName).forEach(editor::remove)
         preview.values.forEach { (key, value) ->
             when (value) {

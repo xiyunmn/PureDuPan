@@ -2,7 +2,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.search
 
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlSearchHookPoints
 
-/** Filters the Pigeon read response without mutating the plugin map or persisted preferences. */
+/** 过滤 Pigeon 返回的偏好副本，保留插件原数据和持久配置。 */
 internal object IntlSearchStorageRules {
     fun sanitize(value: Map<*, *>, hideHistory: Boolean, hideRecommend: Boolean): Map<*, *> {
         fun shouldHide(key: Any?): Boolean {

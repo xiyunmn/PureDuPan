@@ -4,19 +4,7 @@ import android.content.Context
 import io.github.libxposed.api.XposedModule
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Holds the API 101 module lifecycle reference and common hook utilities.
- *
- * Feature hooks install through [module], for example:
- * ```
- * XposedCompat.module?.hook(method)?.intercept { chain ->
- *     // chain.thisObject, chain.args, chain.proceed(args)
- * }
- * ```
- *
- * This object provides module reference management, structured logging, and
- * reflection helpers for classes, methods, constructors, and fields.
- */
+/** 管理 API 101 模块引用，提供日志、反射和 Hook 查找工具。 */
 object XposedCompat {
     private const val LOG_TAG = "WangPanHook"
 
@@ -65,14 +53,14 @@ object XposedCompat {
         HookFileLogger.exportLogs(context, output)
     }
 
-    // Logging
+    // 日志
     fun log(msg: String) {
-        // Deduplication for hook install logs
+        // 去重安装成功日志。
         if (isSuccessfulHookInstallLog(msg)) {
             if (!installInfoOnce.add(msg)) return
         }
 
-        // Choose priority based on detailed logging setting
+        // 根据详细日志开关选择日志级别。
         val priority = if (shouldOutputDetailedLogs()) {
             android.util.Log.DEBUG
         } else {
@@ -112,16 +100,16 @@ object XposedCompat {
         val summary = "${t.javaClass.simpleName}: ${t.message.orEmpty()}"
         val stackTrace = android.util.Log.getStackTraceString(t)
 
-        // Always output summary
+        // 输出异常摘要。
         android.util.Log.e(LOG_TAG, summary)
         module?.log(android.util.Log.ERROR, LOG_TAG, summary)
         writeFileLogIfEnabled(android.util.Log.ERROR, summary)
 
-        // Always output stack trace (truncated in release mode)
+        // 输出异常堆栈，发布版截断长度。
         val truncated = if (shouldOutputDetailedLogs()) {
-            stackTrace  // Full stack trace
+            stackTrace  // 保留完整堆栈。
         } else {
-            stackTrace.lines().take(10).joinToString("\n")  // First 10 lines
+            stackTrace.lines().take(10).joinToString("\n")  // 保留前十行堆栈。
         }
 
         android.util.Log.e(LOG_TAG, truncated)
@@ -148,11 +136,11 @@ object XposedCompat {
             msg.contains("hooks INSTALLED", ignoreCase = true)
     }
 
-    // Class lookup
+    // 类查找
     fun findClassOrNull(name: String, cl: ClassLoader): Class<*>? =
         try { Class.forName(name, false, cl) } catch (_: ClassNotFoundException) { null }
 
-    // Reflection helpers
+    // 反射工具
     fun findField(clazz: Class<*>, fieldName: String): java.lang.reflect.Field {
         var current: Class<*>? = clazz
         while (current != null) {
@@ -182,7 +170,7 @@ object XposedCompat {
         throw NoSuchMethodError(methodName)
     }
 
-    // Method and constructor lookup
+    // 方法与构造器查找
     fun findMethodOrNull(
         className: String, cl: ClassLoader,
         methodName: String, vararg paramTypes: Class<*>,

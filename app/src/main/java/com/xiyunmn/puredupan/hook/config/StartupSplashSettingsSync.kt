@@ -12,7 +12,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.host.HostPackages
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Only the splash switch crosses processes; the host keeps ownership of all user settings. */
+/** 跨进程同步启动图开关，用户设置由各宿主保存。 */
 internal object StartupSplashSettingsSync {
     private const val ACTION = "com.xiyunmn.puredupan.hook.SYNC_STARTUP_SPLASH"
     private const val IDENTITY_ACTION = "com.xiyunmn.puredupan.hook.STARTUP_SPLASH_IDENTITY"
@@ -53,7 +53,7 @@ internal object StartupSplashSettingsSync {
                     } else intent.getParcelableExtra<PendingIntent>(IDENTITY)
                     val packageName = identity?.creatorPackage ?: return
                     if (packageName !in HostPackages.baiduPackages || !intent.hasExtra(ENABLED)) return
-                    // Creator identity is supplied by Android, not by a caller-controlled package extra.
+                    // 通过 Android 提供的 PendingIntent 创建者身份校验来源。
                     val key = key(identity.creatorUid, packageName)
                     val enabled = intent.getBooleanExtra(ENABLED, false)
                     if ((key in enabledHosts) == enabled) return

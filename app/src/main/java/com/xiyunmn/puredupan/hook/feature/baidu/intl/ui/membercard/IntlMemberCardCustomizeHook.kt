@@ -43,18 +43,7 @@ import java.util.Collections
 import java.util.WeakHashMap
 import kotlin.math.max
 
-/**
- * 国际版会员卡（benefit-slot，AboutMeTopFragment）定制。
- *
- * 全部子功能挂 setCardUi(CenterConfig) 渲染入口：宿主在其中先设 ivVipImage + 主题，
- * 最后调 setCardText 写权益/续费/svip 文案，proceed() 后所有 binding 就绪。单次按明文资源 ID：
- * 隐藏权益/SVIP等级/续费（C），重套背景/尺寸/点击（A）。宿主每次数据变化重渲染即触发一次，
- * 仅背景使用布局后的单次 pre-draw，不阻止绘制，不按文案全树递归。
- *
- * 国际版 combinedLiveData 为 Pair<IdentityBean, CenterConfig>（无 PopupResponse 运营位），
- * 无 myCardHasOperation 逻辑门；operation 相关隐藏为 null-safe no-op（benefit-slot 布局无运营位）。
- * binding 字段名混淆，故隐藏一律用明文资源 ID，不用 binding 字段。
- */
+/** 在国际版会员卡渲染后按资源名应用隐藏、尺寸和点击设置，背景在布局完成后更新。 */
 internal object IntlMemberCardCustomizeHook {
     private const val MEMBER_CARD_ACTIVITY_CONTAINER_ID = "about_me_top"
     private const val MEMBER_CARD_ROOT_ID = "cl_aboutme_top"
@@ -187,10 +176,7 @@ internal object IntlMemberCardCustomizeHook {
         }
     }
 
-    /**
-     * 渲染入口：hook setCardUi(CenterConfig)，proceed() 后取 fragment.getView()，
-     * 按资源 ID 套用隐藏/尺寸/点击；背景合并到布局后的单次 pre-draw，避免用旧尺寸裁剪。
-     */
+    /** 宿主渲染完成后修改卡片控件，背景等待实际尺寸就绪再裁剪。 */
     private fun hookCardRenderEntry(method: java.lang.reflect.Method) {
         val mod = XposedCompat.module ?: return
         mod.hook(method).intercept { chain ->
@@ -668,7 +654,7 @@ internal object IntlMemberCardCustomizeHook {
         val applied = appliedBackgrounds[background]
         val currentBitmap = (background.drawable as? BitmapDrawable)?.bitmap
         if (applied != null && applied.key == key && currentBitmap === applied.bitmap) {
-            // The host may reset the scale type while retaining our bitmap.
+            // 宿主可能保留位图并重置缩放方式，需要重新设置。
             background.alpha = 1f
             background.scaleType = ImageView.ScaleType.FIT_XY
             return

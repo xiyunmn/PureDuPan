@@ -6,9 +6,7 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticVideoAdPreloadDexKitResolver
 import java.lang.reflect.Method
 
-/**
- * Blocks only foreground-resume video front ad material preloading.
- */
+/** 阻止应用回到前台时预加载视频贴片广告。 */
 object DomesticVideoAdPreloadBlockHook {
     private val hookState = HookState()
 

@@ -47,7 +47,7 @@ internal object DefaultStartupTabHook {
                 runCatching {
                     val containerId = activity.resources.getIdentifier("rg_tabs", "id", activity.packageName)
                     val container = activity.findViewById<ViewGroup>(containerId) ?: return@runCatching
-                    // Only the native page tabs are candidates; action buttons are not pages.
+                    // 启动页候选限定为原生页面标签，排除操作按钮。
                     val tabs = (0 until container.childCount).mapNotNull { index ->
                         val view = container.getChildAt(index)
                         if (!tabClass.isInstance(view) || view.visibility != View.VISIBLE || !view.isEnabled) {

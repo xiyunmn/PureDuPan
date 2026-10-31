@@ -10,7 +10,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRunti
 import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 import java.lang.reflect.Method
 
-/** Keep the complete native no-ad path, including routing, guides and delayed initialization. */
+/** 使用宿主无广告启动分支，保留路由、引导和延后初始化。 */
 internal object DomesticColdStartNoAdHook {
     private const val TAG = "DomesticColdStartNoAdHook"
     private val policy = ColdStartAdPolicy()
@@ -25,7 +25,7 @@ internal object DomesticColdStartNoAdHook {
         val entries = listOf(BaiduDomesticHookPoints.NAVIGATE_ACTIVITY, mainClass).map { name ->
             XposedCompat.findMethodOrNull(name, cl, "onCreate", Bundle::class.java) ?: return
         }
-        // Freeze the process mode at its first entry even if a required host method is missing.
+        // 首次进入时固定进程模式，方法缺失时沿用原生模式。
         entries.forEach { method ->
             if (method !in installed) {
                 mod.hook(method).intercept { chain ->
@@ -74,7 +74,7 @@ internal object DomesticColdStartNoAdHook {
             }
             installed += mode
         }
-        // Publish only after both decisions and their scope are installed successfully.
+        // 两个决策入口及其作用域安装完成后标记就绪。
         policy.markReady()
         XposedCompat.log("[$TAG] hooks INSTALLED: native non-parallel mode + scoped cold-ad gate")
     }
@@ -97,9 +97,7 @@ internal object DomesticColdStartNoAdHook {
             } else if (activity.javaClass.name == mainClass &&
                 windowPolicy.consumeMain(activity.taskId, restored, nativeNoAd)
             ) {
-                // Home25 initializes its transparent status bar asynchronously. Main can
-                // draw its default black bar first. Set the initial color before decor
-                // inflation; the host still owns layout, icon appearance and later colors.
+                // 在窗口内容创建前将状态栏设为透明，避免首帧闪黑。
                 activity.window.statusBarColor = Color.TRANSPARENT
             }
         }.onFailure { error ->

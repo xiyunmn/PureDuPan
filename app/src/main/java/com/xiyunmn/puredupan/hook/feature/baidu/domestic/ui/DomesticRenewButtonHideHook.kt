@@ -9,17 +9,7 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import java.lang.reflect.Method
 
-/**
- * 隐藏我的页顶部工具栏的续费入口（tvToolbarVipEntrance）。
- *
- * 迁移到渲染入口层：hook AboutMeActivity.setTopButtonText(CenterConfig)，宿主在该方法内
- * 对 tvToolbarVipEntrance 设置文案和点击跳转。proceed() 后按稳定资源名
- * tv_toolbar_vip_entrance 单次 findViewById 定位并设为 GONE。资源名三端明文，
- * setTopButtonText 方法名三端稳定未混淆，不纳入 DexKit。
- *
- * 已删除旧 View 树路径：AboutMeActivity DecorView 的 OnGlobalLayoutListener、
- * decorView.post、全树递归 hideRenewButtons、文案「去续费/续费」匹配和 WeakHashMap 去重。
- */
+/** 在顶部按钮渲染后，按资源名隐藏续费入口。 */
 internal object DomesticRenewButtonHideHook {
     private const val TAG = "DomesticRenewButtonHideHook"
     private const val SET_TOP_BUTTON_TEXT_METHOD = "setTopButtonText"

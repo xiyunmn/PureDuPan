@@ -7,23 +7,7 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduVideoQualityHookPoin
 import io.github.libxposed.api.XposedModule
 import java.lang.reflect.Method
 
-/**
- * Unlocks online video quality selection gates for non-VIP users.
- *
- * Safety scope:
- * - Only video-play quality privileges (HD / FHD / Original)
- * - No global SVIP identity rewrite
- * - No high-speed / ad-skip / export privilege rewrite
- * - Does not forge account cookies or server identity
- *
- * Resolution convention:
- * - DexKit first for VideoPrivilege quality methods
- * - Stable class/method names only as verified fallback
- *
- * Note: opening client gates only removes VIP dialogs and allows requesting
- * higher-quality streams. Ordinary 1080 (`M3U8_AUTO_1080`) may still fail if
- * the server rejects the stream; AI path (`M3U8_HQ_1080`) is separate.
- */
+/** 开放非会员的客户端画质选择入口，保留账号身份和其它权限。实际播放仍受服务端限制，普通与 AI 高清使用不同请求路径。 */
 object BaiduVideoQualityUnlockHook {
     private const val TAG = "BaiduVideoQualityUnlockHook"
     private val memberPrivilegeHookState = HookState()

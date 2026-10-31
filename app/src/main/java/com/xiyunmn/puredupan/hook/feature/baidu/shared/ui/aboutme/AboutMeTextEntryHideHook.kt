@@ -11,9 +11,7 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Hides about-me entries only from stable render entries and fixed resource ids.
- */
+/** 在固定渲染入口按资源名隐藏“我的”页条目。 */
 object AboutMeTextEntryHideHook {
     private const val TAG = "AboutMeTextEntryHideHook"
 

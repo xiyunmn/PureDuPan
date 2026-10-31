@@ -8,9 +8,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticSwanPreloadResolver
 
-/**
- * Blocks Swan mini-program runtime preloading without disabling user-initiated Swan launches.
- */
+/** 阻止小程序运行时预加载，保留用户主动打开入口。 */
 object DomesticSwanPreloadBlockHook {
     private val hookState = HookState()
 

@@ -904,7 +904,7 @@ object ConfigManager {
         FeatureAvailabilityRuntime.apply(featureStatusMap)
     }
 
-    // ── 底栏Tab定制 (Bottom Bar Simplify) ───────────────────────────────────
+    // 底栏定制
 
     const val KEY_CUSTOM_BOTTOM_BAR = FeatureKeys.KEY_CUSTOM_BOTTOM_BAR
     const val KEY_HIDE_TAB_FILE = FeatureKeys.KEY_HIDE_TAB_FILE
@@ -930,7 +930,7 @@ object ConfigManager {
         val hideHome: Boolean = false,
         val hideMine: Boolean = false,
     ) {
-        /** 可见 Tab 数量 = 总数 - 隐藏数，至少保留 1 个 */
+        /** 计算可见标签数量，至少保留一个。 */
         val visibleCount: Int get() = 6 - listOf(hideFile, hideShare, hideVip, hideAigc, hideHome, hideMine).count { it }
 
         fun hasVisibleTab(): Boolean = visibleCount >= 1
@@ -938,7 +938,7 @@ object ConfigManager {
 
     fun normalizeBottomBarSelection(selection: BottomBarTabSelection): BottomBarTabSelection {
         if (selection.hasVisibleTab()) return selection
-        // 全部隐藏时恢复默认：只显示首页
+        // 全部隐藏时保留首页。
         return BottomBarTabSelection(
             hideFile = true, hideShare = true, hideVip = true, hideAigc = true,
             hideHome = false, hideMine = true,

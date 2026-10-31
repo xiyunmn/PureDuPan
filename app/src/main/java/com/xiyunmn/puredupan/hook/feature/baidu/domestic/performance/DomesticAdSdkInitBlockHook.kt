@@ -6,9 +6,7 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 
-/**
- * Blocks ad SDK download services before they initialize large runtime delegates.
- */
+/** 在广告 SDK 下载服务初始化大型代理对象前拦截。 */
 object DomesticAdSdkInitBlockHook {
     private val hookState = HookState()
 

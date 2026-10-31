@@ -2,7 +2,7 @@ package com.xiyunmn.puredupan.hook.symbols.baidu.shared
 
 import com.xiyunmn.puredupan.hook.host.HomeCustomizeHookPoints
 
-/** Home25 contracts verified in mainland, Samsung and international 13.11.13. */
+/** 三个宿主共用的 Home25 界面入口。 */
 internal object BaiduHomeUiHookPoints {
     val home25 = HomeCustomizeHookPoints(
         searchboxFragmentClassName = BaiduSharedHookPoints.HOME_SEARCHBOX_FRAGMENT,

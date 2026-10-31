@@ -7,12 +7,7 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduBottomBarHookPoints
 
-/**
- * Blocks bottom-tab red-dot/text badges.
- *
- * Primary source: MainActivity.showOrHideNewTips().
- * Secondary source: MainActivityPresenter.drawUpdateIndicator().
- */
+/** 在 MainActivity 提示更新和 Presenter 指示器绘制入口屏蔽底栏角标。 */
 object BottomBarBadgeBlockHook {
     private const val MAIN_ACTIVITY_SHOW_OR_HIDE_NEW_TIPS_METHOD = "showOrHideNewTips"
     private const val MAIN_ACTIVITY_PRESENTER_DRAW_UPDATE_INDICATOR_METHOD = "drawUpdateIndicator"

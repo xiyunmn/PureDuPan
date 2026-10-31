@@ -1,11 +1,6 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.shared
 
-/**
- * Stable anchors for unlocking online video quality client gates.
- *
- * Scope is intentionally limited to video-play quality privileges only.
- * Do not use global SVIP identity hooks here.
- */
+/** 客户端视频画质权限的定位符号。 */
 internal object BaiduVideoQualityHookPoints {
     const val MEMBER_PRIVILEGE_CONTEXT =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_platform_business_member_privilege.MemberPrivilegeContext"

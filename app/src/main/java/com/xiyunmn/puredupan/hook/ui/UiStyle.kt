@@ -21,14 +21,7 @@ import android.widget.ImageButton
 import android.widget.TextView
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 
-/**
- * Central styling entry for light/dark palettes, dialog card backgrounds,
- * progress bars, and lightweight UI animations.
- *
- * These helpers run on UI event paths such as dialog show, click, or scan
- * completion. They are not part of host hook callbacks. Tokens are resolved
- * from the host skin rather than the system configuration.
- */
+/** 统一管理跟随宿主皮肤的配色、对话框样式和界面动画。 */
 internal object UiStyle {
     private const val CARD_CORNER_DP = 22f
     private const val CARD_INSET_DP = 14f
@@ -89,7 +82,7 @@ internal object UiStyle {
         cachedHostNightAtMs = 0L
     }
 
-    /** Repaint attached module controls without recreating their state or listeners. */
+    /** 重绘已挂载的模块控件，保留状态和监听器。 */
     internal fun <T : View> bindTheme(view: T, paint: T.(Tokens) -> Unit) {
         fun repaint() = view.paint(tokens(view.context))
         var unregister: (() -> Unit)? = null
@@ -118,7 +111,7 @@ internal object UiStyle {
             lastKnownHostNight = resolved
             cachedHostNightAtMs = now
         }
-        // A transient host lookup failure must not switch the dialog to the system theme.
+        // 宿主皮肤暂时读取失败时沿用上次主题。
         return resolved ?: lastKnownHostNight ?: false
     }
 
@@ -389,9 +382,7 @@ internal object UiStyle {
             .start()
     }
 
-    /**
-     * Briefly pulses a switch row with the accent color after it changes.
-     */
+    /** 开关变化后，短暂使用主题色突出该行。 */
     internal fun animateSwitchPulse(row: View, tokens: Tokens) {
         val from = 0x00000000
         val peak = tokens.accentSoft
@@ -405,9 +396,7 @@ internal object UiStyle {
         animator.start()
     }
 
-    /**
-     * Scales a button in when it becomes enabled.
-     */
+    /** 按钮启用时播放缩放动画。 */
     internal fun animateButtonEnable(button: View) {
         button.scaleX = 0.88f
         button.scaleY = 0.88f
@@ -421,9 +410,7 @@ internal object UiStyle {
             .start()
     }
 
-    /**
-     * Staggers list item entry for sub-dialog switch rows.
-     */
+    /** 为子对话框的开关行依次播放入场动画。 */
     internal fun animateListItemsStagger(items: List<View>, density: Float) {
         if (items.isEmpty()) return
         val interp = DecelerateInterpolator(1.4f)
@@ -440,9 +427,7 @@ internal object UiStyle {
         }
     }
 
-    /**
-     * Brightness pulse used when a progress bar completes.
-     */
+    /** 进度完成时播放亮度脉冲。 */
     internal fun animateProgressComplete(progressView: View) {
         progressView.animate()
             .alpha(0.5f)
@@ -481,9 +466,7 @@ internal object UiStyle {
             .start()
     }
 
-    /**
-     * Dialog exit animation: shrink slightly and fade out.
-     */
+    /** 对话框退出时轻微缩小并淡出。 */
     internal fun animateDialogExit(root: View, density: Float, onEnd: () -> Unit) {
         root.animate()
             .alpha(0f)
@@ -496,9 +479,7 @@ internal object UiStyle {
             .start()
     }
 
-    /**
-     * One-shot fade-in for the brand tag in the title area.
-     */
+    /** 标题品牌标记首次显示时淡入。 */
     internal fun animateBrandTagShimmer(view: View) {
         view.alpha = 0f
         view.animate()
@@ -509,9 +490,7 @@ internal object UiStyle {
             .start()
     }
 
-    /**
-     * Press-scale feedback for compact action icons.
-     */
+    /** 为小型操作图标提供按压缩放反馈。 */
     internal fun animateActionPress(view: View) {
         view.animate().cancel()
         view.scaleX = 0.82f
@@ -524,9 +503,7 @@ internal object UiStyle {
             .start()
     }
 
-    /**
-     * Rotates the expand/collapse arrow between 0 and 180 degrees.
-     */
+    /** 在展开和折叠状态间旋转箭头。 */
     internal fun animateExpandArrow(view: View, expanding: Boolean) {
         val target = if (expanding) 180f else 0f
         view.animate()
@@ -536,9 +513,7 @@ internal object UiStyle {
             .start()
     }
 
-    /**
-     * Card expand animation from transparent and slightly compressed state.
-     */
+    /** 卡片展开时从透明压缩状态过渡到完整显示。 */
     internal fun animateCardExpand(view: View) {
         view.visibility = View.VISIBLE
         view.alpha = 0f
@@ -552,9 +527,7 @@ internal object UiStyle {
             .start()
     }
 
-    /**
-     * Card collapse animation that fades and hides the view.
-     */
+    /** 卡片收起时淡出并隐藏。 */
     internal fun animateCardCollapse(view: View) {
         view.pivotY = 0f
         view.animate()

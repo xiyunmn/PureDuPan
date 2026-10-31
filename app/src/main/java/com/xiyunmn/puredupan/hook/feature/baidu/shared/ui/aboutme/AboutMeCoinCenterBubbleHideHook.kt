@@ -7,19 +7,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAboutMeHookPoints
 
-/**
- * 隐藏我的页金币中心气泡（v_bubble），三星版额外隐藏余额（iv_icon/tv_money/tv_yuan）。
- *
- * 迁移到渲染入口层：金币中心由运营模块 fragment NewAboutMeCoinCenterV2Fragment.initViews(CoinCenterTagData)
- * 填充（binding.vBubble 等）。hook 该渲染入口，proceed() 后在 fragment.getView() 内按明文资源名单次
- * findViewById 隐藏，宿主每次数据刷新重填即触发一次。
- *
- * 运营模块（Rubik）类名与 initViews 方法名三样本（国内 13.28.9、三星 13.27.8、国际 13.11.8）均明文，
- * 走稳定直连，不纳入 DexKit。资源名 v_bubble 明文；隐藏用 getIdentifier，抗 binding 字段混淆。
- *
- * 属共享「我的页定制」域（KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE，baiduSharedMyPageCustomize，三端可见）。
- * 已从旧 activity 根监听 + findCoinCenterRoot 全树递归中移除本项。
- */
+/** 在金币中心渲染后按资源名隐藏气泡，三星版同时隐藏余额区域。 */
 object AboutMeCoinCenterBubbleHideHook {
     private const val TAG = "AboutMeCoinCenterBubbleHideHook"
     private const val INIT_VIEWS_METHOD = "initViews"

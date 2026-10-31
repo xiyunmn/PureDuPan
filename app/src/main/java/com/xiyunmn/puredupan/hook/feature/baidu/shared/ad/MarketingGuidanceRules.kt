@@ -3,7 +3,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.ad
 import java.net.URI
 import java.net.URLDecoder
 
-/** Only destinations whose host implementation opens a membership purchase or ad-reward page. */
+/** 识别宿主已确认的会员购买页和广告奖励页。 */
 internal object MarketingGuidanceRules {
     data class Payload(
         val guideType: Int?,
@@ -31,7 +31,7 @@ internal object MarketingGuidanceRules {
     fun shouldBlockGuidance(onMainPage: Boolean, expectedGuideType: Int, payload: Payload): Boolean {
         if (!onMainPage || expectedGuideType !in 1..2 || payload.guideType != expectedGuideType) return false
         if (payload.scene !in mainScenes || payload.generativePush) return false
-        // The host treats these as backup notices and KMP search results respectively.
+        // 保留备份通知和 KMP 搜索结果。
         if (payload.feature == 14 || payload.feature == 31) return false
         if (payload.eventType != null && payload.eventType !in 1..2) return false
         if (payload.eventType == 2 && payload.eventName !in realtimeEvents) return false
@@ -65,7 +65,7 @@ internal object MarketingGuidanceRules {
                 else URLDecoder.decode(pair[1], "UTF-8")
             }
         }.getOrNull() ?: return false
-        // Do not recursively interpret arbitrary routes, duplicate URLs, or extra decoding layers.
+        // 接受单个目标 URL，并限制为一层路由解码。
         return targets.singleOrNull()?.let(::parse)?.let(::isPurchasePage) == true
     }
 

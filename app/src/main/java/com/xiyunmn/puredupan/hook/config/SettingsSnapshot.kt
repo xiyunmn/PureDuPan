@@ -4,11 +4,11 @@ import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.config.model.MarketingPopup
 
 data class SettingsSnapshot(
-    // Logging
+    // 日志
     val isDetailedLoggingEnabled: Boolean = false,
     val isDexKitSupported: Boolean = false,
 
-    // Splash / interstitial and dialog blocking
+    // 开屏广告与弹窗屏蔽
     val isSplashInterstitialBlockEnabled: Boolean = false,
     val isHotStartSplashRemoveEnabled: Boolean = false,
     val isPopupBlockEnabled: Boolean = false,
@@ -21,7 +21,7 @@ data class SettingsSnapshot(
     val isNonWifiDownloadDialogBlocked: Boolean = false,
     val isNotificationPromptBlocked: Boolean = false,
 
-    // Host UI simplification
+    // 宿主界面定制
     val isBottomAiReplaced: Boolean = false,
     val isHomeCustomizeEnabled: Boolean = false,
     val isHomeTopPromotionHidden: Boolean = false,
@@ -49,7 +49,7 @@ data class SettingsSnapshot(
     val isSearchPageRecommendHidden: Boolean = false,
     val isIntlSearchPageSvipBannerHidden: Boolean = false,
     val isSearchPageVoiceSearchHidden: Boolean = false,
-    // Storage destination management (all opt-in)
+    // 存储重定向，默认关闭
     val isStorageRedirectEnabled: Boolean = false,
     val isStorageDownloadRedirectEnabled: Boolean = false,
     val storageDownloadTreeUri: String? = null,
@@ -109,7 +109,7 @@ data class SettingsSnapshot(
     val isVideoSpeedUnlockEnabled: Boolean = false,
     val isVideoQualityUnlockEnabled: Boolean = false,
 
-    // Performance optimize
+    // 性能优化
     val isPerformanceOptimizeEnabled: Boolean = false,
     val isIntlSplashStartupAccelerateEnabled: Boolean = false,
     val isGarbageCleanServiceRegisterDisabled: Boolean = false,
@@ -135,7 +135,7 @@ data class SettingsSnapshot(
     val isIntlAigcWidgetBackgroundBlocked: Boolean = false,
     val isIntlAlbumAiInitBlocked: Boolean = false,
 
-    // Bottom bar customization
+    // 底栏定制
     val isBottomBarCustomEnabled: Boolean = false,
     val isBottomBarTabFileHidden: Boolean = false,
     val isBottomBarTabShareHidden: Boolean = false,
@@ -144,7 +144,7 @@ data class SettingsSnapshot(
     val isBottomBarTabHomeHidden: Boolean = false,
     val isBottomBarTabMineHidden: Boolean = false,
 
-    // Restricted features
+    // 高级功能
     val areRestrictedFeaturesUnlocked: Boolean = false,
 ) {
     fun isDexKitTargetFeatureEnabled(featureKey: String?): Boolean {

@@ -7,13 +7,7 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduVideoSpeedHookPoints
 import io.github.libxposed.api.XposedModule
 import java.lang.reflect.Method
 
-/**
- * Unlocks online video playback speed for non-VIP users.
- *
- * Primary gate: MemberPrivilegeContext.privilegeMediaSpeedEnable (stable across hosts).
- * Insurance gates: VideoSpeedUpPresent / VideoPrivilege boolean methods, resolved via
- * DexKit first with stable-name fallback.
- */
+/** 开放非会员的客户端倍速入口，同时处理业务权限接口和播放器局部判断。 */
 object BaiduVideoSpeedUnlockHook {
     private const val TAG = "BaiduVideoSpeedUnlockHook"
     private val hookState = HookState()

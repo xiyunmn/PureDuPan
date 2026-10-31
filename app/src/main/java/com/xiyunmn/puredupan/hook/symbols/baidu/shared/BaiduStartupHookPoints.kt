@@ -1,8 +1,6 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.shared
 
-/**
- * Startup-ad hook points shared by domestic Baidu Netdisk host flavors.
- */
+/** 国内系共用的启动广告入口符号。 */
 internal object BaiduStartupHookPoints {
     const val SPLASH_AD_ACTIVITY = "com.baidu.netdisk.advertise.ui.SplashAdActivity"
     const val DOMESTIC_HOT_START_MANAGER_STABLE =

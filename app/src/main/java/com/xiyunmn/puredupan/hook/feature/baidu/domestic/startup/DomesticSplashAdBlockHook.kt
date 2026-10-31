@@ -13,7 +13,7 @@ internal object DomesticSplashAdBlockHook {
             return
         }
         if (XposedCompat.module == null) return
-        // Each capability owns its installation state and can retry after DexKit warm-up.
+        // 各功能独立记录安装状态，失败后可单独重试。
         install("cold startup") { DomesticColdStartNoAdHook.hook(cl) }
         install("hot startup") { DomesticHotStartSplashBlocker.hookHotStartManager(cl, TAG) }
         install("ad activity fallback") { DomesticHotStartSplashBlocker.hookSplashAdActivityFallback(cl, TAG) }

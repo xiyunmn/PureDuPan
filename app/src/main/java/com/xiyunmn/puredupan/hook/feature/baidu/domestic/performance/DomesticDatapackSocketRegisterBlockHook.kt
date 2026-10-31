@@ -5,9 +5,7 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 
-/**
- * Blocks only the DataPack module socket registration.
- */
+/** 阻止 DataPack 模块注册套接字服务。 */
 object DomesticDatapackSocketRegisterBlockHook {
     private val hookState = HookState()
 

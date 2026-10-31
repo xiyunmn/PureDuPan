@@ -39,9 +39,7 @@ internal object SearchPageVoiceSearchDexKitResolver {
 
         val candidates = DexKitCompat.withBridge(TAG, cl, resolverId = CACHE_ID) { bridge ->
             bridge.setThreadNum(1)
-            // VoiceSearch gained a SearchResultVM parameter in newer releases. Keep
-            // both narrow signatures so the resolver remains compatible with old
-            // and new domestic/Samsung hosts without falling back to broad scans.
+            // 保留带 SearchResultVM 参数和旧版无此参数的两种语音搜索签名。
             BaiduSearchPageHookPoints.voiceSearchMethodParamTypeNames.flatMap { parameterTypes ->
                 bridge.findMethod(
                     FindMethod.create()

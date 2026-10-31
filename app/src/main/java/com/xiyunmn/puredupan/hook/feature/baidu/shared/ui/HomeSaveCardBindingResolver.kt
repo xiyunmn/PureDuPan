@@ -4,7 +4,7 @@ import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
-/** Reflection stays within registered save cards and their directly owned callbacks/bindings. */
+/** 在已登记的转存卡片及其回调、binding 内解析成员。 */
 internal object HomeSaveCardBindingResolver {
     private val writers = mutableMapOf<Class<*>, Method?>()
 

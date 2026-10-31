@@ -36,7 +36,7 @@ internal object DownloadOpenWithHook {
         try {
             val base = Class.forName(BaiduTransferHookPoints.DOWNLOAD_LIST_BASE_FRAGMENT, false, cl)
             val transmission = Class.forName(BaiduTransferHookPoints.TRANSMISSION_DOWNLOAD_FRAGMENT, false, cl)
-            // Hidden tabs also resume, but only the current tab owns the shared toolbar selection.
+            // 隐藏页也会触发 onResume，共用工具栏应使用当前页的选择状态。
             val currentFragment = transmission.getDeclaredField("mCurFragment").apply { isAccessible = true }
             val getActivity = base.getMethod("getActivity")
             val getView = base.getMethod("getView")
@@ -87,7 +87,7 @@ internal object DownloadOpenWithHook {
                 val paths = models.orEmpty().mapNotNull { model ->
                     model?.let { bindings.path.invoke(it) as? String }?.takeIf { it.isNotBlank() }
                 }.distinct()
-                // Selecting an expanded directory also selects its child rows.
+                // 选中展开的目录时，宿主会同时选中其子项。
                 val path = paths.singleOrNull() ?: paths.singleOrNull { parent ->
                     !parent.startsWith("content://") && localFile(parent).isDirectory &&
                         paths.all { it == parent || it.startsWith(parent.trimEnd('/') + "/") }
@@ -189,8 +189,7 @@ internal object DownloadOpenWithHook {
                     .setDataAndType(target, "resource/folder")
             }
         }
-        // A document URI lets file managers recognize a public directory. The host's own
-        // FileProvider is also offered for handlers that accept granted content URIs.
+        // 提供文档 URI 和宿主 FileProvider URI，兼容不同文件管理器的目录打开方式。
         if (isDirectory && file != null) externalDirectoryUri(activity, file)?.let { addViews(it, false) }
         addViews(uri, true)
         val excluded = linkedSetOf<ComponentName>()
@@ -210,8 +209,7 @@ internal object DownloadOpenWithHook {
             return
         }
         val chooser = Intent.createChooser(intents.first(), UiText.Settings.OPEN_WITH)
-        // Alternate intents let Android resolve the whole app list for each supported
-        // directory contract; initial explicit targets are capped by the system chooser.
+        // 通过备选 Intent 合并各目录协议的处理应用，避免显式候选数量受限。
         if (intents.size > 1) chooser.putExtra(Intent.EXTRA_ALTERNATE_INTENTS, intents.drop(1).toTypedArray())
         chooser.putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS, excluded.toTypedArray())
         chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

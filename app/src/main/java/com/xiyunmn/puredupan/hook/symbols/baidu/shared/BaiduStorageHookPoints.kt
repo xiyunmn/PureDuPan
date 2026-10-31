@@ -3,7 +3,7 @@ package com.xiyunmn.puredupan.hook.symbols.baidu.shared
 internal object BaiduStorageHookPoints {
     const val DOMESTIC_DOWNLOAD_EXTENSION = "com.baidu.netdisk.util.DownloadExtensionKt"
     const val DOMESTIC_TARGET30_STORAGE = "com.baidu.netdisk.partition.Target30StorageKt"
-    // Verified raw DEX owners in international 13.11.14 / 13.11.15.
+    // 国际版下载扩展类，已核对对应 APK 的原始 DEX。
     val INTL_DOWNLOAD_EXTENSIONS = listOf("k01.s", "j01.s")
     const val INTL_TARGET30_STORAGE = "com.baidu.netdisk.partition.q"
     const val DEFAULT_SETTING = "com.baidu.netdisk.base.storage.config.Setting"

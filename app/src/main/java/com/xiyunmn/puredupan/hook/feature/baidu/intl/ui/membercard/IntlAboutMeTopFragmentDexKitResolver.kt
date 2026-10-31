@@ -13,16 +13,7 @@ import org.luckypray.dexkit.query.matchers.AnnotationMatcher
 import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
-/**
- * 定位国际版会员卡 AboutMeTopFragment.setCardUi(CenterConfig)（benefit-slot 渲染入口）。
- *
- * setCardUi 内部先设 ivVipImage + 主题，最后调 setCardText 写权益/续费/svip 文案，
- * proceed() 后所有 binding 就绪，是唯一渲染入口。
- *
- * setCardUi 与 setCardText 同签名 (CenterConfig)->void，用「setCardUi 内部 invoke 另一个
- * (CenterConfig)->void（即 setCardText）」判别，抗方法名混淆；类用 Kotlin @Metadata d2 明文锚点定位，
- * 抗类名混淆。弱/未混淆分支走明文类名 + 明文方法名 fallback。
- */
+/** 定位国际版会员卡渲染入口 setCardUi，通过其对 setCardText 的调用区分同签名方法。 */
 internal object IntlAboutMeTopFragmentDexKitResolver {
     const val CACHE_ID = "intl_aboutme_top_fragment_set_card_ui_v1"
 
@@ -51,7 +42,7 @@ internal object IntlAboutMeTopFragmentDexKitResolver {
         return resolve(cl) != null
     }
 
-    /** 返回 AboutMeTopFragment.setCardUi(CenterConfig) 方法，供 hook 挂渲染入口。 */
+    /** 返回国际版会员卡的 setCardUi 渲染方法。 */
     fun resolve(cl: ClassLoader): Method? {
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateRef(cl, ref)
@@ -182,10 +173,7 @@ internal object IntlAboutMeTopFragmentDexKitResolver {
             .addMethod(setCardUiMatcher())
     }
 
-    /**
-     * setCardUi = (CenterConfig)->void 且内部 invoke 另一个 (CenterConfig)->void（setCardText）。
-     * 该 invoke 判别把 setCardUi 与同签名的 setCardText 区分开，抗方法名混淆。
-     */
+    /** 根据对另一同签名方法的调用，区分 setCardUi 与 setCardText。 */
     private fun setCardUiMatcher(): MethodMatcher {
         return MethodMatcher.create()
             .returnType(Void.TYPE)

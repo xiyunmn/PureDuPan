@@ -8,7 +8,7 @@ import java.lang.reflect.Modifier
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
-/** Resolve the cold-ad decision called by Navigate, without depending on obfuscated names. */
+/** 沿 Navigate 的调用关系定位冷启动广告决策。 */
 internal object IntlColdStartSplashDexKitResolver {
     const val CACHE_ID = "intl_cold_start_splash_gate_v1"
     private const val TAG = "IntlColdStartSplashDexKitResolver"
@@ -25,7 +25,7 @@ internal object IntlColdStartSplashDexKitResolver {
             DexKitCompat.CachedResult.NotFound -> return null
             DexKitCompat.CachedResult.Miss -> Unit
         }
-        // A null bridge means scanning is unavailable/deferred, not a negative resolution.
+        // bridge 为空表示扫描暂不可用，应保留后续重试机会。
         val candidates = DexKitCompat.withBridge(TAG, cl, resolverId = CACHE_ID) { bridge ->
             bridge.setThreadNum(1)
             val entry = bridge.findMethod(
@@ -41,7 +41,7 @@ internal object IntlColdStartSplashDexKitResolver {
             calls.filter { gate ->
                 !gate.isConstructor && !Modifier.isStatic(gate.modifiers) &&
                     gate.returnTypeName == "boolean" && gate.paramTypeNames == listOf(FRAGMENT_ACTIVITY) &&
-                    // Same manager starts the cold strategy and records ColdAdCloseType reasons.
+                    // 广告管理器同时负责启动策略和记录 ColdAdCloseType 关闭原因。
                     calls.any { load ->
                         load.className == gate.className && load.returnTypeName == "void" &&
                             load.paramTypeNames == loadParams && load.invokes.any {
@@ -54,7 +54,7 @@ internal object IntlColdStartSplashDexKitResolver {
             }.map { DexKitCompat.MethodRef(it.className, it.name) }.distinct()
         } ?: return null
 
-        // Refuse ambiguous matches; never pick the first similarly shaped boolean method.
+        // 存在多个候选时放弃匹配。
         val method = candidates.singleOrNull()?.let { validateRef(cl, it) }
         if (method == null) {
             DexKitCompat.markTargetScanMiss(TAG, CACHE_ID, "cold gate candidates=${candidates.size}")

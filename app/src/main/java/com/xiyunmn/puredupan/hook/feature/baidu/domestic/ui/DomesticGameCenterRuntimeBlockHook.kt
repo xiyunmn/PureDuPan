@@ -5,9 +5,7 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 
-/**
- * Blocks only game center display decisions and config requests from About Me.
- */
+/** 拦截“我的”页游戏中心的展示决策和配置请求。 */
 internal object DomesticGameCenterRuntimeBlockHook {
     private val hookState = HookState()
 

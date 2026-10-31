@@ -2,7 +2,7 @@ package com.xiyunmn.puredupan.hook.storage
 
 import java.util.Locale
 
-/** Pure path policy; kept free of Android APIs so it can be unit-tested on the JVM. */
+/** 统一处理路径规范化、名称校验和父目录选择。 */
 object StoragePathRules {
     private const val MAX_PATH_LENGTH = 1024
     private val illegalFileName = Regex("[\\u0000-\\u001f<>:\"/\\\\|?*]")
@@ -38,7 +38,7 @@ object StoragePathRules {
         return value
     }
 
-    /** Removes the host's legacy public prefix while preserving cloud parent folders. */
+    /** 去除宿主默认公共目录前缀，保留网盘父目录层级。 */
     fun stripDefaultPublicPrefix(raw: String?): String {
         val normalized = normalizeRelativePath(raw)
         if (normalized.isEmpty()) return normalized
@@ -54,7 +54,7 @@ object StoragePathRules {
             ?: normalized
     }
 
-    /** Uses the host-provided task-relative parent when outer folders are removed. */
+    /** 移除外层目录时，优先使用宿主提供的任务相对父路径。 */
     fun selectDownloadParent(
         hostParent: String?,
         taskRelativeParent: String?,

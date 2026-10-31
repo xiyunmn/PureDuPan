@@ -4,11 +4,7 @@ import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 
-/**
- * 底栏 AI Tab 模式 Hook。
- *
- * 通过宿主 AIGC tab mode provider 将底栏 AI 入口切换为会员入口。
- */
+/** 通过宿主底栏模式配置，将 AI 入口替换为会员入口。 */
 internal object DomesticBottomAiTabReplaceHook {
     private val hookState = HookState()
 

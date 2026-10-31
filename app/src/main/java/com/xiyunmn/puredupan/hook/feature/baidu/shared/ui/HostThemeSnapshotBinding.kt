@@ -3,7 +3,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
-/** Uses the host Compose runtime so reads participate in its snapshot observer. */
+/** 使用宿主 Compose 状态，让皮肤读取参与快照观察。 */
 internal class HostThemeSnapshotBinding private constructor(
     private val create: Method,
     private val policy: Any,

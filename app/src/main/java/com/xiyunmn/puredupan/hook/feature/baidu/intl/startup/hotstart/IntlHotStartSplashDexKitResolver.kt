@@ -187,12 +187,7 @@ internal object IntlHotStartSplashDexKitResolver {
         }
     }
 
-    /**
-     * Softened metadata gate: strict when @Metadata is present (cn / samsung),
-     * but degrades to "pass" when R8 has stripped @Metadata (intl 13.11.9) so
-     * the static-boolean(Activity) shape + usingStrings body-hint scoring takes
-     * over as the trust anchor.
-     */
+    /** 存在 Metadata 时严格校验；缺失时通过静态 boolean(Activity) 签名和方法字符串定位。 */
     private fun metadataContainsAllOrAbsent(clazz: Class<*>, tokens: Collection<String>): Boolean {
         if (metadataTokens(clazz).isEmpty()) return true
         return metadataContainsAll(clazz, tokens)

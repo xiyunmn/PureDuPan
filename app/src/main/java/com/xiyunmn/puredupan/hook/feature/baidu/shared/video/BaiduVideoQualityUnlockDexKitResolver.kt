@@ -15,11 +15,7 @@ import org.luckypray.dexkit.query.matchers.AnnotationMatcher
 import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
-/**
- * 国内系保留已知类内的方法混淆定位；国际版另支持混淆 VideoPrivilege 类定位。
- *
- * Only quality-related methods are resolved; SVIP / high-speed / ad-skip stay out of scope.
- */
+/** 定位视频画质权限方法；国内系使用已知类，国际版额外解析混淆类。 */
 internal object BaiduVideoQualityUnlockDexKitResolver {
     const val VIDEO_PRIVILEGE_OWNER_CACHE_ID = "baidu_video_quality_privilege_owner_v1"
     const val VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID = "baidu_video_quality_privilege_methods_v2"
@@ -29,10 +25,10 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
     private const val OWNER_SENTINEL_METHOD = "<owner>"
     private const val MAX_DIAGNOSTIC_CANDIDATES = 5
 
-    // intl 13.11.9 R8 剥离 @Metadata 后改用 SpeedPanelUIState 方法形状扫描 owner。
+    // 国际版 Metadata 缺失时，通过 SpeedPanelUIState 参数定位权限类。
     private fun isIntlHost(): Boolean = BaiduFeatureRuntime.isCurrentIntlHost()
 
-    // fallback 只允许跨版本明文类；混淆 owner 必须由 DexKit 动态发现。
+    // 明文类可直接验证，混淆类通过 DexKit 定位。
     private fun videoPrivilegeClassCandidates(): List<String> =
         listOf(BaiduVideoQualityHookPoints.VIDEO_PRIVILEGE)
 
@@ -159,8 +155,7 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             return markStableQualityMethodsFallback(owner)
         }
 
-        // DexKit path: scan no-arg boolean methods on the owner and keep those that
-        // invoke quality privilege tokens (covers both weak names and strong short names).
+        // 在权限类内筛选调用画质权限接口的无参布尔方法。
         val candidates = DexKitCompat.withBridge(
             TAG,
             cl,
@@ -194,7 +189,7 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             if (candidate.returnTypeName != "boolean" && candidate.returnTypeName != "java.lang.Boolean") {
                 return@mapNotNull null
             }
-            // Accept either stable quality names or invoke-shape quality gates.
+            // 根据稳定方法名或权限调用关系确认画质入口。
             val isNamedQuality = candidate.methodName in QUALITY_METHOD_NAMES
             val isInvokeQuality = candidate.invokesQualityPrivilege() &&
                 !candidate.invokesNonQualityPrivilege()
@@ -306,7 +301,7 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
     }
 
     private fun resolveDirectVideoPrivilegeOwner(cl: ClassLoader): Class<*>? {
-        // 仅允许明文 VideoPrivilege fallback；混淆 owner 由 DexKit 形状扫描。
+        // 直接路径使用明文 VideoPrivilege，混淆类通过方法结构定位。
         for (className in videoPrivilegeClassCandidates()) {
             val clazz = XposedCompat.findClassOrNull(className, cl) ?: continue
             if (isVideoPrivilegeOwner(clazz)) return clazz
@@ -356,9 +351,7 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
     }
 
     private fun videoPrivilegeOwnerMatcher(): ClassMatcher {
-        // intl 13.11.9 R8 剥离 @Metadata、类名混淆为 sz0.a：改用 `boolean X(SpeedPanelUIState)`
-        // 形状锚（intl 全 APK 仅 VideoPrivilege 等价类声明此形状，与倍速 owner 同类）。
-        // cn/samsung 保留明文 VideoPrivilege + @Metadata d2 原路径，不受影响。
+        // 通过 boolean(SpeedPanelUIState) 签名定位国际版视频权限类。
         if (isIntlHost()) {
             return ClassMatcher.create()
                 .addMethod(

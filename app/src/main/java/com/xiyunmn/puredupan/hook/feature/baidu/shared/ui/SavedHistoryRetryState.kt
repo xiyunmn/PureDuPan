@@ -1,6 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
-/** Starts with no artificial delay; bounds readiness retries and coalesces native loading callbacks. */
+/** 立即开始加载，合并原生回调，并限制就绪状态的重试次数。 */
 internal class SavedHistoryRetryState(
     private val delaysMillis: LongArray = longArrayOf(0L, 1_500L, 4_000L),
 ) {

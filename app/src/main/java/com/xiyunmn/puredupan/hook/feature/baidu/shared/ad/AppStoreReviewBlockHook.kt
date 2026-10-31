@@ -9,9 +9,7 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduDialogHookPoints
 import java.lang.reflect.Method
 import java.util.List as JavaList
 
-/**
- * Blocks the app-store review guide dialog shown when switching to the file tab.
- */
+/** 屏蔽切换到文件页时出现的应用评分引导。 */
 internal object AppStoreReviewBlockHook {
     private val hookState = HookState()
 

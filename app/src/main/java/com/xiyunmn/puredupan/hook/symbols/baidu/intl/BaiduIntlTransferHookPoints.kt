@@ -1,8 +1,6 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.intl
 
-/**
- * Stable transfer hook points verified against Baidu Netdisk international host.
- */
+/** 已核对的国际版传输入口符号。 */
 internal object BaiduIntlTransferHookPoints {
     const val TRANSFER_CONTEXT_COMPANION =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_transfer.TransferContext\$Companion"

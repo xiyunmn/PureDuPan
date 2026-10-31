@@ -14,9 +14,7 @@ import org.luckypray.dexkit.query.matchers.AnnotationMatcher
 import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
-/**
- * 国内系按固定 PopupResponseHelper 类定位，国际版保留 Metadata 类定位。
- */
+/** 国内系使用固定 PopupResponseHelper 类，国际版保留 Metadata 类定位。 */
 internal object AboutMePopupResponseHelperDexKitResolver {
     const val CACHE_ID = "shared_aboutme_popup_response_helper_refresh_v1"
 

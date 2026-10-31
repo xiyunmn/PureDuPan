@@ -20,7 +20,7 @@ import java.lang.reflect.Method
 import java.util.Collections
 import java.util.WeakHashMap
 
-/** Keeps the host content and native collapsing scroll range aligned with the member card. */
+/** 使“我的”页内容位置和原生折叠滚动范围跟随会员卡尺寸。 */
 internal object AboutMeBottomContentPositionHook {
     private const val TAG = "AboutMeBottomContentPositionHook"
     private const val SCROLL_VIEW_ID = "scroll_view"
@@ -49,8 +49,7 @@ internal object AboutMeBottomContentPositionHook {
         Collections.synchronizedMap(WeakHashMap())
     private val headerLayoutCache: MutableMap<View, HeaderLayoutCache> =
         Collections.synchronizedMap(WeakHashMap())
-    // The tab's views are reparented out of its Activity window. Keep the calibrated root,
-    // using a weak value as well as a weak key because the view's context holds the Activity.
+    // 保存重新挂载后的校准根视图，键和值均使用弱引用以允许 Activity 回收。
     private val calibratedRoots: MutableMap<Activity, WeakReference<View>> =
         Collections.synchronizedMap(WeakHashMap())
     private val installedHeightRefreshMethods = mutableSetOf<Method>()
@@ -136,8 +135,7 @@ internal object AboutMeBottomContentPositionHook {
                     root?.isAttachedToWindow == true && isEnabled(snapshot) &&
                     snapshot.isMyPageContentAutoFollowMemberCardEnabled
                 ) {
-                    // The host has requested layout but has not measured/drawn the reset height.
-                    // Reuse the original baseline, including when the same response is replayed.
+                    // 宿主布局尚未重测时沿用原始基准，避免重复响应累积偏移。
                     applyPosition(root, "native-height-refresh", allowCalibration = true)
                 }
                 result
@@ -146,11 +144,7 @@ internal object AboutMeBottomContentPositionHook {
         }
     }
 
-    /**
-     * The hosts asynchronously restore the collapsing header after the cached position has
-     * been applied. Keep the cached target stable before drawing until host initialization ends,
-     * so the intermediate host height never becomes a visible frame.
-     */
+    /** 宿主初始化期间，在绘制前维持缓存目标高度，避免异步恢复造成闪动。 */
     private fun scheduleCachedPositionApply(root: View) {
         lateinit var listener: ViewTreeObserver.OnPreDrawListener
         listener = ViewTreeObserver.OnPreDrawListener {
@@ -204,7 +198,7 @@ internal object AboutMeBottomContentPositionHook {
             )
             return
         }
-        // Repeated application is safe because both paths derive from cached host baselines.
+        // 两条调整路径都从缓存基准计算，可安全重复应用。
         val cached = positionCache.getOrPut(scrollView) {
             PositionCache(scrollView.translationY)
         }
@@ -236,11 +230,7 @@ internal object AboutMeBottomContentPositionHook {
         )
     }
 
-    /**
-     * The host keeps the member card beside a fixed-height CollapsingToolbarLayout and places
-     * scroll_view below its AppBar. Growing that header by the card delta lets CoordinatorLayout
-     * recalculate both the content position and the AppBar's native nested-scroll range.
-     */
+    /** 按会员卡高度差调整折叠头部，让 CoordinatorLayout 同步更新内容位置和滚动范围。 */
     private fun applyNativeCollapsingHeight(root: View, scrollView: View, offsetPx: Int): Boolean {
         val header = findCollapsingHeader(root, scrollView) ?: run {
             XposedCompat.logD("[$TAG] native collapsing header not found; using translation fallback")

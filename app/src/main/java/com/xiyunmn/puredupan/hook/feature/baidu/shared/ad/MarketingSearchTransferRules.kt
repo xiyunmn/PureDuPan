@@ -5,7 +5,7 @@ import java.lang.reflect.Modifier
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal object MarketingSearchTransferRules {
-    // The Dart caller considers only "1" a completed purchase; its own fallback is "".
+    // Dart 将“1”识别为购买完成，空字符串沿用其取消结果。
     const val SEARCH_CANCEL_RESULT = ""
 
     fun isSearchPurchase(method: Any?, sid: Any?): Boolean =

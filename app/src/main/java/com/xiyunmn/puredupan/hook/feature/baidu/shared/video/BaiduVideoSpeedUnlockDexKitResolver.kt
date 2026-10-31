@@ -15,9 +15,7 @@ import org.luckypray.dexkit.query.matchers.AnnotationMatcher
 import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
-/**
- * 国内系保留已知类内的方法混淆定位；国际版另支持混淆 VideoPrivilege 类定位。
- */
+/** 定位视频倍速权限方法；国内系使用已知类，国际版额外解析混淆类。 */
 internal object BaiduVideoSpeedUnlockDexKitResolver {
     const val ONLINE_ENABLE_CACHE_ID = "baidu_video_speed_online_enable_v2"
     const val HAS_PRIVILEGE_CACHE_ID = "baidu_video_speed_has_privilege_v2"
@@ -29,11 +27,11 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
     private const val KOTLIN_METADATA = "kotlin.Metadata"
     private val BOOLEAN_INVOKE_PATTERN = Regex("""->.+\(Z\)Z""")
 
-    // intl 13.11.9 R8 剥离 @Metadata 后改用 SpeedPanelUIState 方法形状扫描 owner。
-    // 经 facade 判宿主，避免 feature 层直接 import host 层（架构守卫要求）。
+    // 国际版 Metadata 缺失时，通过 SpeedPanelUIState 参数定位权限类。
+    // 通过宿主运行时接口区分国际版解析规则。
     private fun isIntlHost(): Boolean = BaiduFeatureRuntime.isCurrentIntlHost()
 
-    // fallback 只允许跨版本明文类；混淆 owner 必须由 DexKit 动态发现。
+    // 明文类可直接验证，混淆类通过 DexKit 定位。
     private fun videoPrivilegeClassCandidates(): List<String> =
         listOf(BaiduVideoSpeedHookPoints.VIDEO_PRIVILEGE)
 
@@ -156,7 +154,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
         paramCount: Int,
         firstParamBoolean: Boolean,
     ): Method? {
-        // 国内系只使用明文 VideoPrivilege 类；国际混淆 owner 由独立扫描路径恢复。
+        // 国内系使用明文 VideoPrivilege 类，国际版通过独立扫描定位混淆类。
         for (className in videoPrivilegeClassCandidates()) {
             val clazz = XposedCompat.findClassOrNull(className, cl) ?: continue
             if (!isVideoPrivilegeOwner(clazz)) continue
@@ -212,7 +210,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
                 if (!isVideoPrivilegeBooleanMethod(method, paramCount, firstParamBoolean)) {
                     return@mapNotNull null
                 }
-                // Prefer the stable method name when available on this owner.
+                // 同一类内优先使用已验证的稳定方法名。
                 if (label == "onLineSpeedEnable" &&
                     method.name != BaiduVideoSpeedHookPoints.ONLINE_SPEED_ENABLE_METHOD &&
                     clazz.declaredMethods.any {
@@ -436,7 +434,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
 
     private fun DexMethodCandidate.looksLikeHasSpeedPrivilege(): Boolean {
         if (methodName == BaiduVideoSpeedHookPoints.HAS_SPEED_PRIVILEGE_METHOD) return true
-        // Strong/intl: calls VideoPrivilege.onLineSpeedEnable(boolean) or enterprise hasPrivilege(int).
+        // 匹配对 onLineSpeedEnable(boolean) 或企业权限 hasPrivilege(int) 的调用。
         val invokesBooleanGate = invokeDescriptors.any { descriptor ->
             BOOLEAN_INVOKE_PATTERN.containsMatchIn(descriptor)
         }
@@ -466,7 +464,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
         return if (firstParamBoolean) {
             first == Boolean::class.javaPrimitiveType || first == Boolean::class.javaObjectType
         } else {
-            // speedEnable(SpeedPanelUIState)
+            // 匹配 speedEnable(SpeedPanelUIState) 参数签名。
             first.name == BaiduVideoSpeedHookPoints.SPEED_PANEL_UI_STATE ||
                 first.simpleName == BaiduVideoSpeedHookPoints.SPEED_PANEL_UI_STATE_SIMPLE_NAME
         }
@@ -479,10 +477,8 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
     }
 
     private fun videoPrivilegeOwnerMatcher(): ClassMatcher {
-        // intl 13.11.9 R8 剥离 @Metadata 且类名混淆为 sz0.a，改用
-        // `boolean X(SpeedPanelUIState)` 方法形状锚（intl 全 APK 仅 sz0.a 声明此形状）。
-        // cn/samsung 保留明文类 + 完整 @Metadata，恢复原 d2 token 锚以收窄候选集，
-        // 避免形状锚在弱混淆样本上放宽匹配。
+        // 国际版通过 boolean(SpeedPanelUIState) 签名定位混淆权限类。
+        // 保留 Metadata 的分支继续校验 d2 标识以收窄候选。
         if (isIntlHost()) {
             return ClassMatcher.create()
                 .addMethod(

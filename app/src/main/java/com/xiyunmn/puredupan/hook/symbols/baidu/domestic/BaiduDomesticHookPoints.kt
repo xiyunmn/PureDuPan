@@ -1,8 +1,6 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.domestic
 
-/**
- * Stable hook points shared by mainland and Samsung Baidu Netdisk builds.
- */
+/** 国内版与三星版共用的宿主入口符号。 */
 internal object BaiduDomesticHookPoints {
     const val NAVIGATE_ACTIVITY = "com.baidu.netdisk.ui.Navigate"
     const val NAVIGATE_SHOW_FLASH_SCREEN = "showFlashScreen"

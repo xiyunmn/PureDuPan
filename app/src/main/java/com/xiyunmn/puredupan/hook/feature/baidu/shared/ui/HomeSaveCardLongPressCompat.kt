@@ -7,7 +7,7 @@ import java.lang.ref.WeakReference
 import java.lang.reflect.Method
 import java.util.WeakHashMap
 
-/** Binds only rows created/reparented by the vertical save-card layout. All calls run on the UI thread. */
+/** 在主线程为纵向布局创建或移动的行绑定长按菜单。 */
 internal object HomeSaveCardLongPressCompat {
     private val bindings = mutableMapOf<Pair<Class<*>, Class<*>>, HomeSaveCardLongPressBinding?>()
     private val installed = mutableSetOf<Method>()
@@ -31,7 +31,7 @@ internal object HomeSaveCardLongPressCompat {
         val contentName = if (subscription) "update_root" else when (index) {
             1 -> "fh_cl_two"
             2 -> "fh_cl_three"
-            else -> "fh_cl_one" // Extra rows are inflated from the first native row layout.
+            else -> "fh_cl_one" // 扩展行复用首个原生行布局。
         }
         val id = row.resources.getIdentifier(contentName, "id", row.context.packageName)
         val content = row.findViewById<View>(id) ?: return
@@ -56,7 +56,7 @@ internal object HomeSaveCardLongPressCompat {
 
     private fun install(binding: HomeSaveCardLongPressBinding) {
         val mod = XposedCompat.module ?: return
-        // Install cleanup first so a partially installed long-click hook cannot leave a highlighted row.
+        // 先安装清理回调，避免后续安装失败时遗留选中高亮。
         if (binding.popupCallback !in installed) {
             mod.hook(binding.popupCallback).intercept { chain ->
                 val card = chain.thisObject ?: return@intercept chain.proceed()
@@ -80,8 +80,8 @@ internal object HomeSaveCardLongPressCompat {
                 val previous = pendingPopup.get()
                 pendingPopup.set(card to target)
                 try {
-                    // The native method validates row.tag, then captures the actual item/index in its menu data.
-                    // Restore carousel state immediately; delayed dismiss callbacks use activePopups instead.
+                    // 宿主校验行标记后，将实际条目和索引写入菜单数据。
+                    // 调用结束即恢复轮播索引，延迟关闭回调通过 activePopups 查找目标。
                     target.binding.withRowIndex(card, target.index, target.subscription) { chain.proceed() }
                 } catch (error: Throwable) {
                     dismiss(card)
@@ -94,13 +94,13 @@ internal object HomeSaveCardLongPressCompat {
         }
     }
 
-    /** Data rebinding must close a menu that still refers to the previous item at this row index. */
+    /** 数据重新绑定前关闭旧菜单，避免操作同一位置的旧条目。 */
     fun dismiss(card: Any) {
         activePopups[card]?.let { updatePopup(card, it, true) }
     }
 
     private fun updatePopup(card: Any, target: Row, remove: Boolean) {
-        if (target.clearing) return // Native dismissal can synchronously re-enter its cleanup callback.
+        if (target.clearing) return // 原生关闭菜单可能同步触发清理回调。
         val row = target.view.get()
         val content = target.content.get()
         if (row == null || content == null) {

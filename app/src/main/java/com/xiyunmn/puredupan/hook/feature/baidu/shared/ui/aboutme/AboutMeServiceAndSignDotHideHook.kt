@@ -11,16 +11,7 @@ import java.lang.reflect.Field
 import java.lang.reflect.Modifier
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Hides "My service" and the sign-in entry red dot from their render entries.
- *
- * My service is rendered by about-me middle/bottom fragments after service node updates. The synthetic
- * lambda suffix changes between host builds, so install by stable prefix and hide the resource from
- * the fragment root after the host callback finishes.
- *
- * The sign-in red dot belongs to the about-me activity top bar, so it stays at activity render
- * points with finite scheduling only; it no longer needs activity-wide global/pre-draw listeners.
- */
+/** 在服务节点刷新后隐藏服务入口，在 Activity 顶栏渲染后隐藏签到红点。 */
 object AboutMeServiceAndSignDotHideHook {
     private const val TAG = "AboutMeServiceAndSignDotHideHook"
     private const val INIT_MY_SERVICE_LAMBDA_PREFIX = "initMyService\$lambda"
@@ -150,9 +141,7 @@ object AboutMeServiceAndSignDotHideHook {
     }
 
     private fun hookPopupResponseHelperRefresh(cl: ClassLoader): Int {
-        // 国际版无该 PopupResponseHelper 签到红点入口（13.11.9 R8 剥离 @Metadata，该 helper 亦无
-        // 静态存活锚点，功能本身在国际版缺失）。跳过 DexKit 解析，避免徒劳扫描与 double-failure；
-        // 签到红点的其余明文 activity 渲染入口不受本守卫影响，国内/三星路径不变。
+        // 国际版通过 Activity 渲染入口处理签到红点，跳过缺失的 PopupResponseHelper 路径。
         if (BaiduFeatureRuntime.isCurrentIntlHost()) {
             XposedCompat.logD("[$TAG] PopupResponseHelper refresh skipped: intl host has no such helper")
             return 0

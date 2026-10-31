@@ -5,9 +5,7 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 
-/**
- * Blocks only startup-time B2F guidance dialog data prefetch.
- */
+/** 阻止启动阶段预取 B2F 回流引导数据。 */
 object DomesticB2fGuidancePrefetchBlockHook {
     private val hookState = HookState()
 

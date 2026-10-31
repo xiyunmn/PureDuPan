@@ -18,7 +18,7 @@ import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.ui.UiText
 
-/** Secondary storage settings page opened from 设置 > 拓展功能. */
+/** 从“设置 → 拓展功能”打开的存储管理页面。 */
 internal object StoragePathSettingsDialog {
     fun show(context: Context, prefs: SharedPreferences, isSamsungHost: Boolean) {
         val density = context.resources.displayMetrics.density

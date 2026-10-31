@@ -10,7 +10,7 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.WeakHashMap
 
-/** Rebinds file source/type chips after skin XML has overwritten their selection-dependent colors. */
+/** 换肤后重新绑定文件筛选标签，恢复与选中状态对应的颜色。 */
 internal object FileFilterThemeCompat {
     private const val TAG = "FileFilterThemeCompat"
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -35,7 +35,7 @@ internal object FileFilterThemeCompat {
             val header = XposedCompat.findClassOrNull(BaiduFilePageHookPoints.FILE_LIST_TOOLBAR_HEADER, cl)
                 ?: return
             val headerView = XposedCompat.findClassOrNull(BaiduFilePageHookPoints.FILE_LIST_TOOLBAR_HEADER_VIEW, cl)
-            // The international build obfuscates this nested adapter name; its owner and base type survive.
+            // 通过外部类和基类定位国际版混淆的嵌套适配器。
             val sourceAdapter = headerView?.declaredClasses?.singleOrNull {
                 adapterBase.isAssignableFrom(it) && !Modifier.isAbstract(it.modifiers)
             }
@@ -50,8 +50,7 @@ internal object FileFilterThemeCompat {
             if (!skinHooked) {
                 mod.hook(skinUpdate).intercept { chain ->
                     val result = chain.proceed()
-                    // Wait until ALL native skin observers finish. Posting also avoids notifying a
-                    // RecyclerView during layout; repeated skin notifications coalesce into one rebind.
+                    // 等待宿主换肤通知结束后合并刷新，避开 RecyclerView 布局期间的更新。
                     mainHandler.removeCallbacks(refresh)
                     mainHandler.post(refresh)
                     result
@@ -65,7 +64,7 @@ internal object FileFilterThemeCompat {
                     mod.hook(constructor).intercept { chain ->
                         val result = chain.proceed()
                         chain.thisObject?.let { adapter ->
-                            // Values contain no View/adapter references, so an old page can be collected.
+                            // 映射值避免持有视图或适配器，允许旧页面回收。
                             synchronized(adapters) { adapters[adapter] = notifyChanged }
                         }
                         result

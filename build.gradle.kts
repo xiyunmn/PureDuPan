@@ -1,4 +1,4 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
+// 各模块共用的 Gradle 构建配置。
 plugins {
     alias(libs.plugins.android.application) apply false
 }

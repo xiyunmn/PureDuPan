@@ -87,7 +87,7 @@ internal object SettingsDialogWindows {
             try {
                 dialog.window?.decorView?.alpha = 1f
             } catch (_: Throwable) {
-                // Best-effort visual recovery only.
+                // 尝试恢复窗口外观，失败时保留原状态。
             }
         }
     }

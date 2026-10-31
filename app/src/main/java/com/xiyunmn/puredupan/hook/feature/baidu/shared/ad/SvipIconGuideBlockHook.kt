@@ -6,9 +6,7 @@ import com.xiyunmn.puredupan.hook.core.HookUtils
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduDialogHookPoints
 
-/**
- * Blocks the full-screen SVIP exclusive icon guide shown from the user-center page.
- */
+/** 屏蔽用户中心的 SVIP 专属图标全屏引导。 */
 internal object SvipIconGuideBlockHook {
     private val hookState = HookState()
 
