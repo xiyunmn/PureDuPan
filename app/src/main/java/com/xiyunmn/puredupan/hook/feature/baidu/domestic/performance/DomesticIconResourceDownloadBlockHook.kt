@@ -19,7 +19,7 @@ object DomesticIconResourceDownloadBlockHook {
         if (!hookState.markInstalled()) return
 
         try {
-            val method = DomesticIconResourceDownloadDexKitResolver.resolve(cl) ?: run {
+            val method = DomesticIconResourceDownloadResolver.resolve(cl) ?: run {
                 XposedCompat.log("[DomesticIconResourceDownloadBlockHook] startDownload equivalent NOT FOUND")
                 hookState.reset()
                 return

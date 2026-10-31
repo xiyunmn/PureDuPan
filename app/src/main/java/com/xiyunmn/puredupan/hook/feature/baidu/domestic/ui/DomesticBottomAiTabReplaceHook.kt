@@ -40,7 +40,7 @@ internal object DomesticBottomAiTabReplaceHook {
     }
 
     private fun resolveAiCloudTabModeMethod(cl: ClassLoader) =
-        BottomAiTabDexKitResolver.resolve(cl)
+        BottomAiTabResolver.resolve(cl)
 
     private fun isEnabled(): Boolean =
         HookSettings.isBottomBarCustomEnabled &&

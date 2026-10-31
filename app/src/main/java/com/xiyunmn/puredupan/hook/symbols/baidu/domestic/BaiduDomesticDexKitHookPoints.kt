@@ -16,24 +16,17 @@ internal object BaiduDomesticDexKitHookPoints {
     const val SWAN_PREFETCH_ENV_CONTROLLER = "com.baidu.swan.apps.core.prefetch.PrefetchEnvController"
     const val SWAN_CLIENT_PUPPET = "com.baidu.swan.apps.process.messaging.service.SwanClientPuppet"
 
-    const val CLIENT_COMPUTE_MANAGER_METADATA_CLASS =
-        "Lcom/baidu/netdisk/service/ClientComputeManager;"
     const val CLIENT_COMPUTE_MANAGER_STABLE_CLASS =
         "com.baidu.netdisk.service.ClientComputeManager"
     const val CLIENT_COMPUTE_MANAGER_INIT_METHOD = "init"
-    const val CLIENT_COMPUTE_MANAGER_SERVER_CONFIG_METHOD = "serverConfig"
 
     const val THUMBNAIL_OPERATOR_UTIL =
         "com.baidu.netdisk.terminalcalc.compress.service.operator.ThumbnailOperatorUtil"
     const val CONFIG_COMPRESS_IMAGE =
         "com.baidu.netdisk.base.storage.config.ConfigCompressImage"
 
-    const val FLOAT_VIEW_STARTUP_TASK_NAME = "FloatViewStartupTask"
     const val FLOAT_VIEW_STARTUP_TASK_STABLE_CLASS = "com.baidu.netdisk.startup.task.FloatViewStartupTask"
     const val FLOAT_VIEW_STARTUP_TASK_INIT_AUDIO_CIRCLE_VIEW_STABLE_METHOD = "initAudioCircleView"
-
-    const val AUDIO_API_SHOW_AUDIO_CIRCLE_METHOD = "showAudioCircleViewManagerAudio"
-    const val AUDIO_API_INIT_AUDIO_CIRCLE_METHOD = "audioCircleViewInit"
 
     const val DYNAMIC_PLUGIN_HELPER = "com.baidu.netdisk.dynamic.IDynamicPluginHelper"
     const val DYNAMIC_PLUGIN_HELPER_STABLE_CLASS = "com.baidu.netdisk.dynamic.DynamicPluginHelper"

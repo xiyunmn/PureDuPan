@@ -25,8 +25,7 @@ internal object DomesticColdStartNoAdHook {
         val entries = listOf(BaiduDomesticHookPoints.NAVIGATE_ACTIVITY, mainClass).map { name ->
             XposedCompat.findMethodOrNull(name, cl, "onCreate", Bundle::class.java) ?: return
         }
-        // Install these even if resolution is deferred. A late warm-up cannot switch an
-        // already-started process from parallel to serial halfway through its callbacks.
+        // Freeze the process mode at its first entry even if a required host method is missing.
         entries.forEach { method ->
             if (method !in installed) {
                 mod.hook(method).intercept { chain ->
@@ -40,8 +39,8 @@ internal object DomesticColdStartNoAdHook {
             }
         }
 
-        val mode = DomesticColdStartModeDexKitResolver.resolve(cl) ?: return
-        val gate = DomesticColdStartSplashDexKitResolver.resolve(cl) ?: return
+        val mode = DomesticColdStartModeResolver.resolve(cl) ?: return
+        val gate = DomesticColdStartSplashResolver.resolve(cl) ?: return
         val entry = XposedCompat.findMethodOrNull(
             BaiduDomesticHookPoints.NAVIGATE_ACTIVITY, cl, BaiduDomesticHookPoints.NAVIGATE_SHOW_FLASH_SCREEN,
         ) ?: return

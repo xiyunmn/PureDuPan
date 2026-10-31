@@ -263,11 +263,11 @@ internal object DomesticAutoDailySignInHook {
             }
 
             private fun resolveByDexKitCache(cl: ClassLoader): DomesticCookieAccess? {
-                val probe = DomesticCookieByBdussDexKitResolver.cookieFor(cl, PROBE_BDUSS)
+                val probe = DomesticCookieByBdussResolver.cookieFor(cl, PROBE_BDUSS)
                 if (!probe.looksLikeBdussCookie(PROBE_BDUSS)) return null
                 XposedCompat.logD("[$TAG] cookie helper resolved: DexKit cache")
                 return DomesticCookieAccess("DexKit") { bduss ->
-                    DomesticCookieByBdussDexKitResolver.cookieFor(cl, bduss)
+                    DomesticCookieByBdussResolver.cookieFor(cl, bduss)
                 }
             }
 

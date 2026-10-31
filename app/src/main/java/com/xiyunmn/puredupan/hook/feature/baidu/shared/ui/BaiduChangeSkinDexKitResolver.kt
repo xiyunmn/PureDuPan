@@ -81,6 +81,7 @@ internal object BaiduChangeSkinDexKitResolver {
         cl: ClassLoader,
         ref: DexKitCompat.MethodRef,
     ): Method? {
+        if (!BaiduFeatureRuntime.isCurrentIntlHost() && ref.className != BaiduThemeHookPoints.CHANGE_SKIN_KT) return null
         val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
         val listenerClass = XposedCompat.findClassOrNull(BaiduThemeHookPoints.SKIN_LOADER_LISTENER, cl)
             ?: return null
@@ -125,7 +126,11 @@ internal object BaiduChangeSkinDexKitResolver {
             val candidates = bridge.findMethod(
                 FindMethod.create()
                     .matcher(
-                        MethodMatcher.create()
+                        MethodMatcher.create().apply {
+                            if (!BaiduFeatureRuntime.isCurrentIntlHost()) {
+                                declaredClass(BaiduThemeHookPoints.CHANGE_SKIN_KT)
+                            }
+                        }
                             .modifiers(Modifier.STATIC)
                             .returnType("void")
                             .paramTypes(

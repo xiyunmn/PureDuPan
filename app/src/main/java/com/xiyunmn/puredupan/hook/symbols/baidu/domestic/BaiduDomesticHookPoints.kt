@@ -32,7 +32,6 @@ internal object BaiduDomesticHookPoints {
 
     const val VERSION_UPDATE_HELPER = "com.baidu.netdisk.ui.versionupdate.VersionUpdateHelper"
     const val VERSION_UPDATE_HELPER_SHOW_LC_VERSION_DIALOG_METHOD = "showLCVersionDialog"
-    const val ILC_UPDATE_HELPER = "com.baidu.netdisk.ui.versionupdate.ILCUpdateHelper"
     const val UPDATE_INFO = "com.baidu.netdisk.ui.versionupdate.UpdateInfo"
     const val PRIORITY_DIALOG_INFO = "com.baidu.netdisk.prioritydialog.model.PriorityDialogInfo"
 

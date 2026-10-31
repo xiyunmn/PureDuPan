@@ -11,8 +11,7 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
  * 短路返回 true 且不把 AlbumBackupBar put 进 viewModel.bottomBars。备份栏根本不进入
  * bottomBars，FloatingBarManager 不会创建 AlbumBackupBarView，无 View 生成。
  *
- * 三端落点由 [AlbumBackupBarAddUseCaseDexKitResolver] 统一解析：国内稳定直连，
- * 三星/国际经 DexKit（Kotlin @Metadata d2 明文锚点）。
+ * 国内、三星由 [AlbumBackupBarAddUseCaseResolver] 定位；国际版使用独立 Hook。
  *
  * 已删除旧 View 树路径：FileTabBottomBarFactory.create 返回后的 collapseAlbumBackupViews
  * 递归、AlbumBackupBarView 构造器 / initUI 折叠，以及 album_backup_layout /
@@ -30,7 +29,7 @@ internal object AlbumBackupBarBlockHook {
         if (!hookState.markInstalled()) return
 
         try {
-            val method = AlbumBackupBarAddUseCaseDexKitResolver.resolve(cl) ?: run {
+            val method = AlbumBackupBarAddUseCaseResolver.resolve(cl) ?: run {
                 hookState.reset()
                 XposedCompat.log("[AlbumBackupBarBlockHook] AlbumBackupBarAddUseCase.realExecute NOT RESOLVED")
                 return

@@ -16,12 +16,7 @@ import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 /**
- * Resolves video-speed privilege gates under weak and strong obfuscation.
- *
- * Strategy (project convention):
- * 1. DexKit cache / scan first.
- * 2. Stable class/method names only as verified fallback.
- * 3. Resolve obfuscated [VideoPrivilege] via Kotlin Metadata when needed.
+ * 国内系保留已知类内的方法混淆定位；国际版另支持混淆 VideoPrivilege 类定位。
  */
 internal object BaiduVideoSpeedUnlockDexKitResolver {
     const val ONLINE_ENABLE_CACHE_ID = "baidu_video_speed_online_enable_v2"
@@ -161,8 +156,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
         paramCount: Int,
         firstParamBoolean: Boolean,
     ): Method? {
-        // Weak/domestic builds keep the plaintext VideoPrivilege class. Strongly
-        // obfuscated owners are deliberately excluded here and resolved by DexKit.
+        // 国内系只使用明文 VideoPrivilege 类；国际混淆 owner 由独立扫描路径恢复。
         for (className in videoPrivilegeClassCandidates()) {
             val clazz = XposedCompat.findClassOrNull(className, cl) ?: continue
             if (!isVideoPrivilegeOwner(clazz)) continue
@@ -188,7 +182,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
         stableFallback: () -> Method?,
     ): Method? {
         if (!isIntlHost()) {
-            markStableFallback(cacheId, stableFallback)?.let { return it }
+            return stableFallback()
         }
         when (
             val cached = DexKitCompat.getCachedMethod(TAG, cacheId) { ref ->
@@ -372,6 +366,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
     }
 
     private fun validatePresentRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
+        if (!isIntlHost() && ref.className != BaiduVideoSpeedHookPoints.VIDEO_SPEED_UP_PRESENT) return null
         val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
         if (!isPresentOwner(clazz)) return null
         return clazz.declaredMethods.firstOrNull { method ->

@@ -16,12 +16,9 @@ import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 /**
- * Resolves video-quality privilege gates under weak and strong obfuscation.
+ * 国内系保留已知类内的方法混淆定位；国际版另支持混淆 VideoPrivilege 类定位。
  *
- * Strategy (project convention):
- * 1. DexKit cache / scan first.
- * 2. Stable class/method names only as verified fallback.
- * 3. Only quality-related methods are resolved; SVIP / high-speed / ad-skip stay out of scope.
+ * Only quality-related methods are resolved; SVIP / high-speed / ad-skip stay out of scope.
  */
 internal object BaiduVideoQualityUnlockDexKitResolver {
     const val VIDEO_PRIVILEGE_OWNER_CACHE_ID = "baidu_video_quality_privilege_owner_v1"
@@ -73,7 +70,7 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
 
     fun resolveVideoPrivilegeOwner(cl: ClassLoader): Class<*>? {
         if (!isIntlHost()) {
-            markStableOwnerFallback { resolveDirectVideoPrivilegeOwner(cl) }?.let { return it }
+            return resolveDirectVideoPrivilegeOwner(cl)
         }
         when (
             val cached = DexKitCompat.getCachedMethod(TAG, VIDEO_PRIVILEGE_OWNER_CACHE_ID) { ref ->

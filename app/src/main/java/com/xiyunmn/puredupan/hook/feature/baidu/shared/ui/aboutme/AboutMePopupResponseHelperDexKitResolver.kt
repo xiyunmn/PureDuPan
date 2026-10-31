@@ -15,7 +15,7 @@ import org.luckypray.dexkit.query.matchers.ClassMatcher
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 /**
- * Locates PopupResponseHelper.refresh(PopupResponse) across weak/strong obfuscation.
+ * 国内系按固定 PopupResponseHelper 类定位，国际版保留 Metadata 类定位。
  */
 internal object AboutMePopupResponseHelperDexKitResolver {
     const val CACHE_ID = "shared_aboutme_popup_response_helper_refresh_v1"
@@ -46,7 +46,7 @@ internal object AboutMePopupResponseHelperDexKitResolver {
 
     fun resolve(cl: ClassLoader): Method? {
         if (!BaiduFeatureRuntime.isCurrentIntlHost()) {
-            resolveStableFallback(cl)?.let { return it }
+            return resolveStableFallback(cl)
         }
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateRef(cl, ref)
@@ -114,6 +114,7 @@ internal object AboutMePopupResponseHelperDexKitResolver {
         ) ?: return null
         if (!isHelperOwner(clazz)) return null
         val method = findRefreshMethod(clazz) ?: return null
+        if (!BaiduFeatureRuntime.isCurrentIntlHost()) return method
         DexKitCompat.putCachedMethod(
             TAG,
             CACHE_ID,

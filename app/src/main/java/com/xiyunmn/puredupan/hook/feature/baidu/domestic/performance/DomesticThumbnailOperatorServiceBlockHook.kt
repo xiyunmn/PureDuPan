@@ -4,7 +4,7 @@ import android.content.Context
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticThumbnailOperatorDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticThumbnailOperatorResolver
 import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 
 /**
@@ -128,7 +128,7 @@ object DomesticThumbnailOperatorServiceBlockHook {
 
     private fun hookDexKitClientComputeInit(cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
-        val method = DomesticThumbnailOperatorDexKitResolver.resolveClientComputeInit(cl) ?: run {
+        val method = DomesticThumbnailOperatorResolver.resolveClientComputeInit(cl) ?: run {
             XposedCompat.log("[DomesticThumbnailOperatorServiceBlockHook] DexKit ClientComputeManager.init NOT FOUND")
             return 0
         }
@@ -147,7 +147,7 @@ object DomesticThumbnailOperatorServiceBlockHook {
 
     private fun hookDexKitAddJob(cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
-        val method = DomesticThumbnailOperatorDexKitResolver.resolveThumbnailAddJob(cl) ?: run {
+        val method = DomesticThumbnailOperatorResolver.resolveThumbnailAddJob(cl) ?: run {
             XposedCompat.log("[DomesticThumbnailOperatorServiceBlockHook] DexKit ThumbnailOperatorUtil.addJob NOT FOUND")
             return 0
         }

@@ -10,24 +10,11 @@ import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
-    const val AUTO_DOWNLOAD_FACTORY_CACHE_ID = "domestic_dynamic_plugin_auto_download_factory"
-    const val AUTO_INSTALL_FACTORY_CACHE_ID = "domestic_dynamic_plugin_auto_install_factory"
     const val AUTO_INSTALL_DECISION_CACHE_ID = "domestic_dynamic_plugin_auto_install_decision"
 
     private const val TAG = "DomesticDynamicPluginAutoDecisionDexKitResolver"
     private const val MAX_DIAGNOSTIC_CANDIDATES = 5
     private val installedDecisionHooks = ConcurrentHashMap.newKeySet<String>()
-
-    private data class DexMethodCandidate(
-        val className: String,
-        val methodName: String,
-        val returnTypeName: String,
-        val paramTypeNames: List<String>,
-        val isConstructor: Boolean,
-        val modifiers: Int,
-    ) {
-        fun memberName(): String = "$className.$methodName"
-    }
 
     private data class DexCallSiteCandidate(
         val className: String,
@@ -36,21 +23,6 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
         val invokeDescriptors: Set<String>,
     ) {
         fun memberName(): String = "$className.$methodName"
-    }
-
-    fun warmUpDexKitCache(cl: ClassLoader): Boolean {
-        val download = resolveAutoDownloadFactory(cl) != null
-        val install = resolveAutoInstallFactory(cl) != null
-        val installDecision = warmUpAutoInstallDecisionCache(cl)
-        return download || install || installDecision
-    }
-
-    fun warmUpAutoDownloadFactoryCache(cl: ClassLoader): Boolean {
-        return resolveAutoDownloadFactory(cl) != null
-    }
-
-    fun warmUpAutoInstallFactoryCache(cl: ClassLoader): Boolean {
-        return resolveAutoInstallFactory(cl) != null
     }
 
     fun warmUpAutoInstallDecisionCache(cl: ClassLoader): Boolean {
@@ -127,10 +99,8 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
     private fun resolveAutoDownloadFactory(cl: ClassLoader): Method? {
         return resolveFactory(
             cl = cl,
-            cacheId = AUTO_DOWNLOAD_FACTORY_CACHE_ID,
             returnTypeName = BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_SUB_DOWNLOADER,
             stableMethodName = "getDownloader",
-            label = "autoDownloadFactory",
         )
     }
 
@@ -168,86 +138,30 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
     private fun resolveAutoInstallFactory(cl: ClassLoader): Method? {
         return resolveFactory(
             cl = cl,
-            cacheId = AUTO_INSTALL_FACTORY_CACHE_ID,
             returnTypeName = BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_SUB_EXECUTOR,
             stableMethodName = "getExecutor",
-            label = "autoInstallFactory",
         )
     }
 
     private fun resolveFactory(
         cl: ClassLoader,
-        cacheId: String,
         returnTypeName: String,
         stableMethodName: String,
-        label: String,
     ): Method? {
-        val directRef = DexKitCompat.MethodRef(
-            BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_HELPER_STABLE_CLASS,
-            stableMethodName,
-        )
-        validateFactoryRef(cl, directRef, returnTypeName)?.let { method ->
-            DexKitCompat.putCachedMethod(TAG, cacheId, directRef)
-            DexKitCompat.markTargetSuccess(TAG, cacheId, "direct:${directRef.className}.${directRef.methodName}")
-            return method
+        val owner = XposedCompat.findClassOrNull(BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_HELPER_STABLE_CLASS, cl)
+            ?: return null
+        val helper = XposedCompat.findClassOrNull(BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_HELPER, cl)
+            ?: return null
+        val plugin = XposedCompat.findClassOrNull(BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_MODEL, cl)
+            ?: return null
+        val result = XposedCompat.findClassOrNull(returnTypeName, cl) ?: return null
+        if (!helper.isAssignableFrom(owner)) return null
+        val matches = owner.declaredMethods.filter {
+            !Modifier.isStatic(it.modifiers) && !it.isBridge &&
+                it.parameterTypes.contentEquals(arrayOf(plugin)) && result.isAssignableFrom(it.returnType)
         }
-        when (val cached = DexKitCompat.getCachedMethod(TAG, cacheId) { ref ->
-            validateFactoryRef(cl, ref, returnTypeName)
-        }) {
-            is DexKitCompat.CachedResult.Found -> return cached.value
-            DexKitCompat.CachedResult.NotFound -> return null
-            DexKitCompat.CachedResult.Miss -> Unit
-        }
-
-        val candidates = DexKitCompat.withBridge(TAG, cl, resolverId = cacheId) { bridge ->
-            bridge.setThreadNum(1)
-            bridge.findMethod(
-                FindMethod.create()
-                    .matcher(
-                        MethodMatcher.create()
-                            .paramTypes(BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_MODEL),
-                    ),
-            ).map { methodData ->
-                DexMethodCandidate(
-                    className = methodData.className,
-                    methodName = methodData.name,
-                    returnTypeName = methodData.returnTypeName,
-                    paramTypeNames = methodData.paramTypeNames,
-                    isConstructor = methodData.isConstructor,
-                    modifiers = methodData.modifiers,
-                )
-            }
-        } ?: return null
-
-        val matches = candidates.mapNotNull { candidate ->
-            if (!candidate.isFactoryShape(returnTypeName)) return@mapNotNull null
-            val method = validateFactoryRef(
-                cl,
-                DexKitCompat.MethodRef(candidate.className, candidate.methodName),
-                returnTypeName,
-            ) ?: return@mapNotNull null
-            candidate to method
-        }.sortedWith(
-            compareBy<Pair<DexMethodCandidate, Method>> { it.first.className }
-                .thenBy { it.first.methodName },
-        )
-
-        val best = matches.singleOrNull()
-        if (best == null) {
-            val diagnostic = buildDiagnostic(label, candidates, matches)
-            DexKitCompat.markTargetScanMiss(TAG, cacheId, diagnostic)
-            DexKitCompat.putCachedMethod(TAG, cacheId, null)
-            return null
-        }
-
-        val method = best.second
-        XposedCompat.log("[$TAG] resolved $label: ${method.declaringClass.name}.${method.name}")
-        DexKitCompat.putCachedMethod(
-            TAG,
-            cacheId,
-            DexKitCompat.MethodRef(method.declaringClass.name, method.name),
-        )
-        return method
+        return (matches.singleOrNull { it.name == stableMethodName } ?: matches.singleOrNull())
+            ?.apply { isAccessible = true }
     }
 
     private fun resolveDecisionInterfaceMethod(
@@ -316,25 +230,6 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
         return method
-    }
-
-    private fun validateFactoryRef(
-        cl: ClassLoader,
-        ref: DexKitCompat.MethodRef,
-        returnTypeName: String,
-    ): Method? {
-        val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
-        val helperClass = XposedCompat.findClassOrNull(BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_HELPER, cl)
-            ?: return null
-        val pluginClass = XposedCompat.findClassOrNull(BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_MODEL, cl)
-            ?: return null
-        val returnClass = XposedCompat.findClassOrNull(returnTypeName, cl) ?: return null
-        if (!helperClass.isAssignableFrom(clazz)) return null
-        return clazz.declaredMethods.singleOrNull { method ->
-            method.name == ref.methodName && !Modifier.isStatic(method.modifiers) && !method.isBridge &&
-                method.parameterTypes.contentEquals(arrayOf(pluginClass)) &&
-                returnClass.isAssignableFrom(method.returnType)
-        }?.apply { isAccessible = true }
     }
 
     private fun validateDecisionInterfaceRef(
@@ -430,12 +325,6 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
         return runCatching { XposedCompat.getObjectField(plugin, "id") as? String }.getOrNull()
     }
 
-    private fun DexMethodCandidate.isFactoryShape(returnTypeName: String): Boolean =
-        !isConstructor &&
-            !Modifier.isStatic(modifiers) &&
-            sameType(this.returnTypeName, returnTypeName) &&
-            paramTypeNames == listOf(BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_MODEL)
-
     private fun DexCallSiteCandidate.invokedDecisionMethodNames(interfaceClassName: String): Set<String> {
         val ownerPrefix = "L${interfaceClassName.replace('.', '/')};->"
         val decisionDescriptor = "(L${BaiduDomesticDexKitHookPoints.DYNAMIC_PLUGIN_MODEL.replace('.', '/')};)Z"
@@ -444,34 +333,6 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
                 return@mapNotNullTo null
             }
             descriptor.substringAfter("->").substringBefore("(").takeIf { it.isNotBlank() }
-        }
-    }
-
-    private fun sameType(left: String, right: String): Boolean {
-        return left == right || left.replace('$', '.') == right.replace('$', '.')
-    }
-
-    private fun buildDiagnostic(
-        label: String,
-        candidates: List<DexMethodCandidate>,
-        matches: List<Pair<DexMethodCandidate, Method>>,
-    ): String {
-        val candidateText = candidates.take(5)
-            .joinToString("\n") { candidate ->
-                "${candidate.memberName()} ${candidate.returnTypeName}(${candidate.paramTypeNames.joinToString()})"
-            }
-            .ifBlank { "-" }
-        val matchText = matches.take(5)
-            .joinToString("\n") { (candidate, method) ->
-                "${candidate.memberName()} -> ${method.declaringClass.name}.${method.name}"
-            }
-            .ifBlank { "-" }
-        return buildString {
-            append("target=").append(label).append('\n')
-            append("candidateCount=").append(candidates.size).append('\n')
-            append("matchCount=").append(matches.size).append('\n')
-            append("candidates=\n").append(candidateText).append('\n')
-            append("matches=\n").append(matchText)
         }
     }
 

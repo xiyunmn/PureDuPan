@@ -71,7 +71,7 @@ internal object DomesticAudioCircleViewAutostartBlockHook {
 
     private fun hookDexKitFloatViewStartupTask(cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
-        val method = DomesticFloatViewStartupDexKitResolver.resolveInitAudioCircleView(cl) ?: run {
+        val method = DomesticFloatViewStartupResolver.resolveInitAudioCircleView(cl) ?: run {
             XposedCompat.log("[$TAG] DexKit initAudioCircleView NOT FOUND")
             return 0
         }

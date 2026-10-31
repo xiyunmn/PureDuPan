@@ -42,7 +42,7 @@ internal object DownloadPagePromotionAdDexKitResolver {
 
     fun resolve(cl: ClassLoader): Method? {
         if (!BaiduFeatureRuntime.isCurrentIntlHost()) {
-            resolveStableFallback(cl)?.let { return it }
+            return resolveStableFallback(cl)
         }
         when (val cached = DexKitCompat.getCachedMethod(TAG, CACHE_ID) { ref ->
             validateRef(cl, ref)
@@ -98,6 +98,7 @@ internal object DownloadPagePromotionAdDexKitResolver {
             ?: return null
         if (!isYouaGuideOwner(clazz)) return null
         val method = findGuideRenderMethod(clazz) ?: return null
+        if (!BaiduFeatureRuntime.isCurrentIntlHost()) return method
         DexKitCompat.putCachedMethod(
             TAG,
             CACHE_ID,

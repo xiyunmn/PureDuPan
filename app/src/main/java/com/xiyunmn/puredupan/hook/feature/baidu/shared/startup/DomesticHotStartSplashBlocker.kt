@@ -17,7 +17,7 @@ internal object DomesticHotStartSplashBlocker {
         val hookState = hotStartHookStates.getOrPut(ownerTag) { HookState() }
         if (!hookState.markInstalled()) return 1
 
-        val resolved = DomesticHotStartSplashDexKitResolver.resolve(cl) ?: run {
+        val resolved = DomesticHotStartSplashResolver.resolve(cl) ?: run {
             hookState.reset()
             XposedCompat.logD("[$ownerTag] domestic hot start manager NOT FOUND")
             return 0
@@ -125,7 +125,7 @@ internal object DomesticHotStartSplashBlocker {
 
     private fun resolveHotStartMethod(
         cl: ClassLoader,
-        result: DomesticHotStartSplashDexKitResolver.ResolveResult,
+        result: DomesticHotStartSplashResolver.ResolveResult,
     ): java.lang.reflect.Method? {
         val clazz = XposedCompat.findClassOrNull(result.className, cl) ?: return null
         val method = XposedCompat.findMethodOrNull(

@@ -6,24 +6,11 @@ import com.xiyunmn.puredupan.hook.dexkit.DexKitHostContext
 import com.xiyunmn.puredupan.hook.dexkit.DexKitTargetDescriptor
 import com.xiyunmn.puredupan.hook.dexkit.DexKitTargetRegistry
 import com.xiyunmn.puredupan.hook.dexkit.DexKitWarmUpTask
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ad.DomesticUpdateDialogDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.BottomAiTabDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPagePromotionAdDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadOpenWithBindingsResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BaiduChangeSkinDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticDynamicPluginAutoDecisionDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticFloatViewStartupDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticIconResourceDownloadDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticSwanPreloadResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticThumbnailOperatorDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticVideoAdPreloadDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.DomesticCookieByBdussDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.startup.DomesticColdStartSplashDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.startup.DomesticColdStartModeDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticHotStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeRecentItemLimitDexKitResolver
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMePopupResponseHelperDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.search.SearchPageVoiceSearchDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoQualityUnlockDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoSpeedUnlockDexKitResolver
@@ -37,88 +24,16 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             featureKey = FeatureKeys.KEY_DOWNLOAD_OPEN_WITH,
         ),
         DexKitTargetDescriptor(
-            id = DomesticColdStartModeDexKitResolver.CACHE_ID,
-            target = "domestic cold-start advertising mode",
-            feature = "splash interstitial block",
-            featureKey = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL,
-        ),
-        DexKitTargetDescriptor(
-            id = DomesticColdStartSplashDexKitResolver.CACHE_ID,
-            target = "domestic cold-start splash resolver",
-            feature = "splash interstitial block",
-            featureKey = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL,
-        ),
-        DexKitTargetDescriptor(
-            id = DomesticHotStartSplashDexKitResolver.CACHE_ID,
-            target = "domestic hot-start splash resolver",
-            feature = "splash interstitial block",
-            featureKey = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL,
-        ),
-        DexKitTargetDescriptor(
-            id = DomesticUpdateDialogDexKitResolver.CACHE_ID,
-            target = "domestic update dialog method",
-            feature = "update dialog block",
-            featureKey = FeatureKeys.KEY_BLOCK_UPDATE_DIALOG,
-        ),
-        DexKitTargetDescriptor(
-            id = BottomAiTabDexKitResolver.CACHE_ID,
-            target = "domestic bottom AI tab mode getter",
-            feature = "bottom AI tab replacement",
-            featureKey = FeatureKeys.KEY_REPLACE_BOTTOM_AI,
-        ),
-        DexKitTargetDescriptor(
             id = BaiduChangeSkinDexKitResolver.CACHE_ID,
             target = "domestic changeSkin method",
             feature = "follow system night mode",
             featureKey = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
         ),
         DexKitTargetDescriptor(
-            id = DomesticThumbnailOperatorDexKitResolver.CLIENT_COMPUTE_INIT_CACHE_ID,
-            target = "domestic client compute init method",
-            feature = "thumbnail operator service block",
-            featureKey = FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE,
-        ),
-        DexKitTargetDescriptor(
-            id = DomesticFloatViewStartupDexKitResolver.CACHE_ID,
-            target = "domestic float-view startup audio method",
-            feature = "audio circle autostart block",
-            featureKey = FeatureKeys.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART,
-        ),
-        DexKitTargetDescriptor(
             id = DomesticVideoAdPreloadDexKitResolver.CACHE_ID,
             target = "domestic video front ad download method",
             feature = "video ad preload block",
             featureKey = FeatureKeys.KEY_DISABLE_VIDEO_AD_PRELOAD,
-        ),
-        DexKitTargetDescriptor(
-            id = DomesticSwanPreloadResolver.PREFETCH_EVENT_CACHE_ID,
-            target = "domestic Swan prefetch event method",
-            feature = "Swan preload block",
-            featureKey = FeatureKeys.KEY_DISABLE_SWAN_PRELOAD,
-        ),
-        DexKitTargetDescriptor(
-            id = DomesticIconResourceDownloadDexKitResolver.CACHE_ID,
-            target = "domestic icon resource download start method",
-            feature = "icon resource download block",
-            featureKey = FeatureKeys.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD,
-        ),
-        DexKitTargetDescriptor(
-            id = DomesticCookieByBdussDexKitResolver.CACHE_ID,
-            target = "domestic cookie by BDUSS method",
-            featureKey = FeatureKeys.KEY_AUTO_DAILY_SIGN_IN,
-            feature = "自动签到",
-        ),
-        DexKitTargetDescriptor(
-            id = DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_DOWNLOAD_FACTORY_CACHE_ID,
-            target = "domestic dynamic plugin auto-download factory",
-            feature = "dynamic plugin auto download block",
-            featureKey = FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD,
-        ),
-        DexKitTargetDescriptor(
-            id = DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_INSTALL_FACTORY_CACHE_ID,
-            target = "domestic dynamic plugin auto-install factory",
-            feature = "dynamic plugin auto download block",
-            featureKey = FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD,
         ),
         DexKitTargetDescriptor(
             id = DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_INSTALL_DECISION_CACHE_ID,
@@ -133,24 +48,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             featureKey = FeatureKeys.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH,
         ),
         DexKitTargetDescriptor(
-            id = AlbumBackupBarAddUseCaseDexKitResolver.CACHE_ID,
-            target = "album backup bar add use case realExecute",
-            feature = "album backup bar block",
-            featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
-        ),
-        DexKitTargetDescriptor(
-            id = DownloadPagePromotionAdDexKitResolver.CACHE_ID,
-            target = "download page YouaGuide render method",
-            feature = "download page promotion ad",
-            featureKey = FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE,
-        ),
-        DexKitTargetDescriptor(
-            id = AboutMePopupResponseHelperDexKitResolver.CACHE_ID,
-            target = "about me PopupResponseHelper refresh method",
-            feature = "my page customize",
-            featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
-        ),
-        DexKitTargetDescriptor(
             id = BaiduVideoSpeedUnlockDexKitResolver.ONLINE_ENABLE_CACHE_ID,
             target = "video speed online enable method",
             feature = "unlock video speed",
@@ -161,24 +58,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             target = "video speed privilege method",
             feature = "unlock video speed",
             featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,
-        ),
-        DexKitTargetDescriptor(
-            id = BaiduVideoSpeedUnlockDexKitResolver.VIDEO_PRIVILEGE_ONLINE_CACHE_ID,
-            target = "video privilege online speed enable method",
-            feature = "unlock video speed",
-            featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,
-        ),
-        DexKitTargetDescriptor(
-            id = BaiduVideoSpeedUnlockDexKitResolver.VIDEO_PRIVILEGE_PANEL_CACHE_ID,
-            target = "video privilege panel speed enable method",
-            feature = "unlock video speed",
-            featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_SPEED,
-        ),
-        DexKitTargetDescriptor(
-            id = BaiduVideoQualityUnlockDexKitResolver.VIDEO_PRIVILEGE_OWNER_CACHE_ID,
-            target = "video quality privilege owner class",
-            feature = "unlock video quality",
-            featureKey = FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY,
         ),
         DexKitTargetDescriptor(
             id = BaiduVideoQualityUnlockDexKitResolver.VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID,
@@ -209,40 +88,9 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             }
         }
 
-        if (available(FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL)) {
-            tasks += DexKitWarmUpTask(DomesticColdStartModeDexKitResolver.CACHE_ID) {
-                DomesticColdStartModeDexKitResolver.resolve(classLoader) != null
-            }
-            tasks += DexKitWarmUpTask(DomesticColdStartSplashDexKitResolver.CACHE_ID) {
-                DomesticColdStartSplashDexKitResolver.resolve(classLoader) != null
-            }
-            tasks += DexKitWarmUpTask(DomesticHotStartSplashDexKitResolver.CACHE_ID) {
-                DomesticHotStartSplashDexKitResolver.resolve(classLoader) != null
-            }
-        }
-        if (available(FeatureKeys.KEY_BLOCK_UPDATE_DIALOG)) {
-            tasks += DexKitWarmUpTask(DomesticUpdateDialogDexKitResolver.CACHE_ID) {
-                DomesticUpdateDialogDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
-        if (available(FeatureKeys.KEY_REPLACE_BOTTOM_AI)) {
-            tasks += DexKitWarmUpTask(BottomAiTabDexKitResolver.CACHE_ID) {
-                BottomAiTabDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
         if (available(FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE)) {
             tasks += DexKitWarmUpTask(BaiduChangeSkinDexKitResolver.CACHE_ID) {
                 BaiduChangeSkinDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
-        if (available(FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE)) {
-            tasks += DexKitWarmUpTask(DomesticThumbnailOperatorDexKitResolver.CLIENT_COMPUTE_INIT_CACHE_ID) {
-                DomesticThumbnailOperatorDexKitResolver.resolveClientComputeInit(classLoader) != null
-            }
-        }
-        if (available(FeatureKeys.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART)) {
-            tasks += DexKitWarmUpTask(DomesticFloatViewStartupDexKitResolver.CACHE_ID) {
-                DomesticFloatViewStartupDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         if (available(FeatureKeys.KEY_DISABLE_VIDEO_AD_PRELOAD)) {
@@ -250,32 +98,7 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
                 DomesticVideoAdPreloadDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
-        if (available(FeatureKeys.KEY_DISABLE_SWAN_PRELOAD)) {
-            tasks += DexKitWarmUpTask(DomesticSwanPreloadResolver.PREFETCH_EVENT_CACHE_ID) {
-                DomesticSwanPreloadResolver.warmUpPrefetchEventCache(classLoader)
-            }
-        }
-        if (available(FeatureKeys.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD)) {
-            tasks += DexKitWarmUpTask(DomesticIconResourceDownloadDexKitResolver.CACHE_ID) {
-                DomesticIconResourceDownloadDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
-        if (available(FeatureKeys.KEY_AUTO_DAILY_SIGN_IN)) {
-            tasks += DexKitWarmUpTask(DomesticCookieByBdussDexKitResolver.CACHE_ID) {
-                DomesticCookieByBdussDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
         if (available(FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD)) {
-            tasks += DexKitWarmUpTask(
-                DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_DOWNLOAD_FACTORY_CACHE_ID,
-            ) {
-                DomesticDynamicPluginAutoDecisionDexKitResolver.warmUpAutoDownloadFactoryCache(classLoader)
-            }
-            tasks += DexKitWarmUpTask(
-                DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_INSTALL_FACTORY_CACHE_ID,
-            ) {
-                DomesticDynamicPluginAutoDecisionDexKitResolver.warmUpAutoInstallFactoryCache(classLoader)
-            }
             tasks += DexKitWarmUpTask(
                 DomesticDynamicPluginAutoDecisionDexKitResolver.AUTO_INSTALL_DECISION_CACHE_ID,
             ) {
@@ -287,11 +110,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
                 SearchPageVoiceSearchDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
-        if (available(FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR)) {
-            tasks += DexKitWarmUpTask(AlbumBackupBarAddUseCaseDexKitResolver.CACHE_ID) {
-                AlbumBackupBarAddUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
         if (available(FeatureKeys.KEY_HOME_RECENT_ITEM_LIMIT)) {
             tasks += DexKitWarmUpTask(
                 id = HomeRecentItemLimitDexKitResolver.STATUS_CACHE_ID,
@@ -301,16 +119,6 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
                 HomeRecentItemLimitDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
-        if (available(FeatureKeys.KEY_DOWNLOAD_PAGE_CUSTOMIZE)) {
-            tasks += DexKitWarmUpTask(DownloadPagePromotionAdDexKitResolver.CACHE_ID) {
-                DownloadPagePromotionAdDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
-        if (available(FeatureKeys.KEY_MY_PAGE_CUSTOMIZE)) {
-            tasks += DexKitWarmUpTask(AboutMePopupResponseHelperDexKitResolver.CACHE_ID) {
-                AboutMePopupResponseHelperDexKitResolver.warmUpDexKitCache(classLoader)
-            }
-        }
         if (available(FeatureKeys.KEY_UNLOCK_VIDEO_SPEED)) {
             tasks += DexKitWarmUpTask(BaiduVideoSpeedUnlockDexKitResolver.ONLINE_ENABLE_CACHE_ID) {
                 BaiduVideoSpeedUnlockDexKitResolver.resolveIsSpeedUpOnlineEnable(classLoader) != null
@@ -318,17 +126,8 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             tasks += DexKitWarmUpTask(BaiduVideoSpeedUnlockDexKitResolver.HAS_PRIVILEGE_CACHE_ID) {
                 BaiduVideoSpeedUnlockDexKitResolver.resolveHasSpeedPrivilege(classLoader) != null
             }
-            tasks += DexKitWarmUpTask(BaiduVideoSpeedUnlockDexKitResolver.VIDEO_PRIVILEGE_ONLINE_CACHE_ID) {
-                BaiduVideoSpeedUnlockDexKitResolver.resolveVideoPrivilegeOnlineSpeedEnable(classLoader) != null
-            }
-            tasks += DexKitWarmUpTask(BaiduVideoSpeedUnlockDexKitResolver.VIDEO_PRIVILEGE_PANEL_CACHE_ID) {
-                BaiduVideoSpeedUnlockDexKitResolver.resolveVideoPrivilegeSpeedEnable(classLoader) != null
-            }
         }
         if (available(FeatureKeys.KEY_UNLOCK_VIDEO_QUALITY)) {
-            tasks += DexKitWarmUpTask(BaiduVideoQualityUnlockDexKitResolver.VIDEO_PRIVILEGE_OWNER_CACHE_ID) {
-                BaiduVideoQualityUnlockDexKitResolver.resolveVideoPrivilegeOwner(classLoader) != null
-            }
             tasks += DexKitWarmUpTask(BaiduVideoQualityUnlockDexKitResolver.VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID) {
                 BaiduVideoQualityUnlockDexKitResolver.resolveVideoPrivilegeQualityMethods(classLoader).isNotEmpty()
             }

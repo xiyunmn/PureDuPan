@@ -25,7 +25,7 @@ internal object DomesticUpdateDialogBlockHook {
 
         try {
             var installed = 0
-            DomesticUpdateDialogDexKitResolver.resolve(cl)?.let { method ->
+            DomesticUpdateDialogResolver.resolve(cl)?.let { method ->
                 installed += hookMethods(listOf(method), "VersionUpdateHelper.showLCVersionDialog")
             }
 
