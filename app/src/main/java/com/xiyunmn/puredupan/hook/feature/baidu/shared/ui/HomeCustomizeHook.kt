@@ -48,6 +48,7 @@ object HomeCustomizeHook {
     private val hookState = HookState()
     private val recentItemLimitHookState = HookState()
     private val recentScrollRangeHookState = HookState()
+    private val topPromotionRequestHooks = mutableSetOf<Method>()
     private val recentLimitForCall = ThreadLocal<List<*>?>()
     private val verticalSaveGroups = Collections.synchronizedMap(WeakHashMap<ViewGroup, Boolean>())
     private val verticalSaveHeightGuards = Collections.synchronizedMap(WeakHashMap<View, Boolean>())
@@ -75,7 +76,7 @@ object HomeCustomizeHook {
             return
         }
         val independentHookCount = hookRecentCardItemLimit(cl) + hookRecentScrollRange(cl) +
-            HomeRecommendSectionHideHook.hook(cl)
+            HomeRecommendSectionHideHook.hook(cl) + hookTopPromotionRequests(cl)
         if (!hookState.markInstalled()) return
 
         try {
@@ -103,6 +104,40 @@ object HomeCustomizeHook {
             hookState.reset()
             XposedCompat.log("[HomeCustomizeHook] FAILED: ${e.message}")
             XposedCompat.log(e)
+        }
+    }
+
+    private fun hookTopPromotionRequests(cl: ClassLoader): Int {
+        if (!isTopPromotionHidden()) return 0
+        val mod = XposedCompat.module ?: return 0
+        return runCatching {
+            val resolved = HomeTopPromotionBindingsResolver.resolve(cl)
+            if (resolved.isEmpty()) {
+                XposedCompat.log("[HomeCustomizeHook] top promotion request bindings NOT FOUND")
+                return 0
+            }
+            var count = 0
+            for (bindings in resolved) {
+                for (method in bindings.requests) {
+                    if (method in topPromotionRequestHooks) continue
+                    mod.hook(method).intercept { chain ->
+                        if (isTopPromotionHidden()) {
+                            // 必须发送一次空值：宿主将两个源归为空列表并正常结束加载。
+                            // 每次使用独立 LiveData，避免 MediatorLiveData 重复绑定同一源。
+                            bindings.emptySource.newInstance(*arrayOfNulls<Any>(1))
+                        } else {
+                            chain.proceed()
+                        }
+                    }
+                    topPromotionRequestHooks += method
+                    count += 1
+                }
+            }
+            if (count > 0) XposedCompat.log("[HomeCustomizeHook] top promotion requests blocked: $count")
+            count
+        }.getOrElse {
+            XposedCompat.log("[HomeCustomizeHook] top promotion request hooks FAILED: ${it.message}")
+            0
         }
     }
 

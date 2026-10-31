@@ -139,6 +139,7 @@ internal object BaiduFeatureSets {
 
     private val baiduSharedHomeCustomize = listOf(
         FeatureKeys.KEY_HOME_CUSTOMIZE,
+        FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION,
         FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER,
         FeatureKeys.KEY_HIDE_HOME_RECOMMEND_SECTION,
         FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION,
@@ -300,7 +301,6 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduDomesticHomeCustomize = listOf(
-        FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION,
         FeatureKeys.KEY_HIDE_HOME_SEARCH_AIGC_ICON,
     )
 
