@@ -28,11 +28,17 @@ internal object SystemStartupSplashHook {
     fun hook(cl: ClassLoader) {
         if (installed || Build.VERSION.SDK_INT < 31) return
         val module = XposedCompat.module ?: return
-        val attach = Application::class.java.getDeclaredMethod("attach", Context::class.java).apply { isAccessible = true }
-        module.hook(attach).intercept { chain ->
-            val result = chain.proceed()
-            safely { StartupSplashSettingsSync.initializeSystemUi(chain.args[0] as Context) }
-            result
+        runCatching {
+            val attach = Application::class.java.getDeclaredMethod("attach", Context::class.java).apply { isAccessible = true }
+            module.hook(attach).intercept { chain ->
+                val result = chain.proceed()
+                safely { StartupSplashSettingsSync.initializeSystemUi(chain.args[0] as Context) }
+                result
+            }
+        }.getOrElse { error ->
+            // 同步入口不可用时不安装后续启动图 Hook，也不阻断 SystemUI 原生初始化。
+            runCatching { XposedCompat.logW("[$TAG] attach install failed: ${error.message}") }
+            return
         }
         installed = true
 

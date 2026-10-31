@@ -5,6 +5,9 @@ import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
 import android.view.Gravity
+import android.view.ActionMode
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
@@ -210,6 +213,34 @@ internal object SettingsAboutSection {
         }
     }
 
+    private fun configureSelection(view: TextView, longPressOnly: Boolean) {
+        if (!longPressOnly) {
+            view.setTextIsSelectable(true)
+            return
+        }
+        fun resetSelection() {
+            view.setTextIsSelectable(false)
+            view.isClickable = view.hasOnClickListeners()
+            view.isLongClickable = true
+        }
+        resetSelection()
+        view.customSelectionActionModeCallback = object : ActionMode.Callback {
+            override fun onCreateActionMode(mode: ActionMode, menu: Menu) = true
+            override fun onPrepareActionMode(mode: ActionMode, menu: Menu) = false
+            override fun onActionItemClicked(mode: ActionMode, item: MenuItem) = false
+            override fun onDestroyActionMode(mode: ActionMode) {
+                view.post { resetSelection() }
+            }
+        }
+        view.setOnLongClickListener {
+            view.setTextIsSelectable(true)
+            view.requestFocus()
+            // 交给 TextView 原生长按选词；若选择未启动，也恢复连续点击入口。
+            view.post { if (!view.hasSelection()) resetSelection() }
+            false
+        }
+    }
+
     private fun createItem(
         context: Context,
         density: Float,
@@ -231,7 +262,7 @@ internal object SettingsAboutSection {
                 gravity = Gravity.CENTER_VERTICAL
                 addView(TextView(context).apply {
                     text = item.title
-                    setTextIsSelectable(true)
+                    configureSelection(this, item.title == UiText.Settings.VERSION)
                     item.onClickListener?.let { setOnClickListener(it) }
                     textSize = 14.5f
                     UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textPrimary) }
@@ -258,7 +289,7 @@ internal object SettingsAboutSection {
 
             val descriptionView = TextView(context).apply {
                 text = item.description
-                setTextIsSelectable(true)
+                configureSelection(this, item.title == UiText.Settings.VERSION)
                 item.onClickListener?.let { setOnClickListener(it) }
                 visibility = if (item.description.isBlank()) View.GONE else View.VISIBLE
                 textSize = 13f
