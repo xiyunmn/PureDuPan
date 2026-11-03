@@ -1,6 +1,25 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.shared
 
+import com.xiyunmn.puredupan.hook.config.model.MarketingPopup
+
 internal object BaiduMarketingTransferHookPoints {
+    val WIDGET_GUIDE_ENTRIES = listOf(
+        Triple(MarketingPopup.SEARCH_WIDGET,
+            "com.baidu.netdisk.appwidget.search.SearchWidgetGuideManagerKt", "showSearchWidgetDialogByGuide"),
+        Triple(MarketingPopup.NOVEL_WIDGET,
+            "com.baidu.netdisk.appwidget.novel.NovelWidgetApiKt", "showAddNovelAppWidgetDialog"),
+        Triple(MarketingPopup.RECENT_WIDGET,
+            "com.baidu.netdisk.appwidget.recent.RecentWidgetApiKt", "showAddRecentCardWidgetDialog"),
+        Triple(MarketingPopup.SHARE_WIDGET,
+            "com.baidu.netdisk.appwidget.share.ShareWidgetGuideManagerKt", "showShareWidgetDialogByGuide"),
+        Triple(MarketingPopup.AIGC_WIDGET,
+            "com.baidu.netdisk.appwidget.aigc.AigcWidgetGuideManagerKt\$aigcWidgetGuideHandler\$1\$1", "showGuideDialog"),
+        Triple(MarketingPopup.STORY_WIDGET,
+            "com.baidu.netdisk.appwidget.story.StoryWidgetGuideManagerKt\$storyWidgetGuideHandler\$1\$1", "showGuideDialog"),
+        Triple(MarketingPopup.LISTEN_NOTE_WIDGET,
+            "com.baidu.netdisk.appwidget.listennote.ListenNoteWidgetGuideManagerKt\$listenNoteWidgetGuideHandler\$1\$1", "showGuideDialog"),
+    )
+
     const val BUSINESS_PROVIDER =
         "com.baidu.netdisk.business.guide.component.provider.BusinessGuideProvider"
     const val SEARCH_GUIDE_METHOD = "showSearchGuideDialog"

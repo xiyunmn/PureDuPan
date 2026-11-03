@@ -22,6 +22,7 @@ internal object MarketingSearchTransferBlockHook {
     private data class LimitState(val activity: WeakReference<Activity>, val errno: Int, val count: Int)
 
     fun hook(cl: ClassLoader) {
+        installWidgetGuides(cl)
         installSearch(cl)
         installCoupon(cl)
         installSpace(cl)
@@ -29,6 +30,27 @@ internal object MarketingSearchTransferBlockHook {
     }
 
     private fun enabled(option: MarketingPopup) = HookSettings.isMarketingPopupBlocked(option)
+
+    private fun installWidgetGuides(cl: ClassLoader) {
+        Points.WIDGET_GUIDE_ENTRIES.forEach { (option, className, methodName) ->
+            if (!enabled(option)) return@forEach
+            attempt("widget guide $option") {
+                val owner = XposedCompat.findClassOrNull(className, cl) ?: return@attempt
+                val function = XposedCompat.findClassOrNull(Points.FUNCTION0, cl) ?: return@attempt
+                val method = owner.getDeclaredMethod(
+                    methodName, android.content.Context::class.java, function, function,
+                )
+                if (method.returnType != Void.TYPE) return@attempt
+                val invoke = function.getMethod("invoke")
+                install(method) { _, args ->
+                    if (!enabled(option)) return@install false
+                    // 执行取消回调，让原页面继续返回流程。
+                    invoke.invoke(args[2])
+                    true
+                }
+            }
+        }
+    }
 
     private fun installSearch(cl: ClassLoader) {
         attempt("search provider") {
