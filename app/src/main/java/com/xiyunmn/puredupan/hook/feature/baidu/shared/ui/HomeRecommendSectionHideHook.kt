@@ -16,7 +16,7 @@ internal object HomeRecommendSectionHideHook {
     fun hook(cl: ClassLoader): Int {
         if (!isEnabled()) return 0
         val mod = XposedCompat.module ?: return 0
-        var installed = 0
+        var installed = hookExpiredFeedRefresh(cl)
         BaiduFeatureRuntime.currentHomeCustomizeHookPoints().feedFragmentClassNames.forEach feedClass@ { name ->
             val clazz = XposedCompat.findClassOrNull(name, cl) ?: return@feedClass
             // 通过两个视图字段和状态处理方法确认所属首页 Fragment。
@@ -61,6 +61,28 @@ internal object HomeRecommendSectionHideHook {
             }
         }
         return installed
+    }
+
+    private fun hookExpiredFeedRefresh(cl: ClassLoader): Int {
+        if (BaiduFeatureRuntime.isCurrentIntlHost()) return 0
+        val mod = XposedCompat.module ?: return 0
+        return runCatching {
+            val clazz = XposedCompat.findClassOrNull(BaiduHomeCardHookPoints.HOME25_FEED_VIEW_MODEL, cl)
+                ?: return 0
+            val method = clazz.getDeclaredMethod("onResume").apply { isAccessible = true }
+            if (method.returnType != Void.TYPE || Modifier.isStatic(method.modifiers)) return 0
+            if (method in installedMethods) return 0
+            mod.hook(method).intercept { chain ->
+                // 推荐隐藏时跳过三小时过期刷新，保留手动下拉入口。
+                if (isEnabled()) null else chain.proceed()
+            }
+            installedMethods += method
+            XposedCompat.log("[HomeRecommendSectionHideHook] expired feed refresh hook installed")
+            1
+        }.getOrElse {
+            XposedCompat.logW("[HomeRecommendSectionHideHook] expired feed refresh hook failed: ${it.message}")
+            0
+        }
     }
 
     private fun isEnabled(): Boolean =

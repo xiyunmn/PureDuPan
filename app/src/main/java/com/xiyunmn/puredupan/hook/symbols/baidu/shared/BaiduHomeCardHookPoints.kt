@@ -12,6 +12,7 @@ internal object BaiduHomeCardHookPoints {
     const val HOME_TOP_SIZE_METHOD = "onTopSizeChanged"
     const val HOME_TOP_SIZE_CALLBACK_PREFIX = "initView\$lambda\$"
     const val HIDE_FEED_LIST_METHOD = "hideFeedList"
+    const val HOME25_FEED_VIEW_MODEL = "com.baidu.netdisk.home25ai.feedhome.ui.viewmodels.FHFeedViewModel"
     const val STICKY_NESTED_LAYOUT = "com.baidu.netdisk.ui.widget.sticknestlayout.StickyNestedLayout"
 
     val SAVE_STATE_COLLECTOR_SUFFIXES = listOf("\$initObserver\$4\$1", "\$initObserver\$4\$_")
