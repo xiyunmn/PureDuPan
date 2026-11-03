@@ -7,6 +7,7 @@ internal object BaiduDomesticHookPoints {
     const val IS_PARALLEL_LOAD_AD = "isParallelLoadAd"
     const val MAIN_PROCESS_INIT_KT = "com.baidu.netdisk.ui.MainProcessDoSomeInitKt"
     const val MAIN_AD_PARALLEL_IS_OPEN = "mainAdParallelIsOpen"
+    const val MAIN_SWITCH_TAB = "switchTab"
 
     const val BASE_ACTIVITY = "com.baidu.netdisk.BaseActivity"
     const val SETTINGS_ACTIVITY = "com.baidu.netdisk.ui.SettingsActivity"

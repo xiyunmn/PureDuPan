@@ -4,10 +4,14 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.view.ViewGroup
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
+import com.xiyunmn.puredupan.hook.host.HostPackages
+import com.xiyunmn.puredupan.hook.host.HostRuntimeState
 import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
+import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduSharedHookPoints
 import java.lang.reflect.Method
 
 /** 使用宿主无广告启动分支，保留路由、引导和延后初始化。 */
@@ -22,6 +26,9 @@ internal object DomesticColdStartNoAdHook {
     fun hook(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
         val mainClass = BaiduFeatureRuntime.currentMainActivityClassName() ?: return
+        val domestic = HostRuntimeState.canonicalPackageNameOrSelf(XposedCompat.currentPackageName().orEmpty()) ==
+            HostPackages.BAIDU_CN
+        if (domestic) hookHomeWindow(cl, mainClass)
         val entries = listOf(BaiduDomesticHookPoints.NAVIGATE_ACTIVITY, mainClass).map { name ->
             XposedCompat.findMethodOrNull(name, cl, "onCreate", Bundle::class.java) ?: return
         }
@@ -30,7 +37,7 @@ internal object DomesticColdStartNoAdHook {
             if (method !in installed) {
                 mod.hook(method).intercept { chain ->
                     val nativeNoAd = useNativeNoAdMode()
-                    (chain.thisObject as? Activity)?.let { activity ->
+                    (chain.thisObject as? Activity)?.takeUnless { domestic }?.let { activity ->
                         prepareColdStartWindow(activity, chain.args.firstOrNull() != null, nativeNoAd, mainClass)
                     }
                     chain.proceed()
@@ -77,6 +84,26 @@ internal object DomesticColdStartNoAdHook {
         // 两个决策入口及其作用域安装完成后标记就绪。
         policy.markReady()
         XposedCompat.log("[$TAG] hooks INSTALLED: native non-parallel mode + scoped cold-ad gate")
+    }
+
+    @Suppress("DEPRECATION")
+    private fun hookHomeWindow(cl: ClassLoader, mainClass: String) {
+        val mod = XposedCompat.module ?: return
+        val method = XposedCompat.findMethodOrNull(
+            mainClass, cl, BaiduDomesticHookPoints.MAIN_SWITCH_TAB,
+            Class::class.java, ViewGroup::class.java, Int::class.javaPrimitiveType!!,
+        ) ?: return
+        if (method.returnType != Void.TYPE || method in installed) return
+        mod.hook(method).intercept { chain ->
+            val destination = chain.args[0] as? Class<*>
+            if (destination?.name == BaiduSharedHookPoints.HOME_ACTIVITY && useNativeNoAdMode()) {
+                // 首页异步创建前补齐初始颜色，覆盖系统回收后的任务恢复。
+                runCatching { (chain.thisObject as Activity).window.statusBarColor = Color.TRANSPARENT }
+                    .onFailure { XposedCompat.logW("[$TAG] home status bar setup failed: ${it.message}") }
+            }
+            chain.proceed()
+        }
+        installed += method
     }
 
     @Suppress("DEPRECATION")
