@@ -18,6 +18,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlTaskScoreRe
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.IntlLaunchHandoffOptimizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashRemoveHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlAlbumBackupBarBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlRenewButtonHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.SystemNightModeSyncHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.entry.IntlAboutMeModuleEntryHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.entry.HomeTitleBarModuleEntryHook
@@ -73,6 +74,12 @@ internal object BaiduIntlPostAttachHookSpecs {
         }, featureKey = FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG) { cl ->
             IntlNonWifiDownloadDialogBlockHook.hook(cl)
         },
+    )
+
+    val myPage = listOf(
+        HookSpec("IntlRenewButtonHideHook", { context, settings, _ ->
+            context.isMain && settings.isMyPageCustomizeEnabled && settings.isRenewButtonHidden
+        }, featureKey = FeatureKeys.KEY_HIDE_RENEW_BUTTON) { cl -> IntlRenewButtonHideHook.hook(cl) },
     )
 
     val memberCard = listOf(

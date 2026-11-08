@@ -38,6 +38,10 @@ internal object SettingsHostTextCatalog {
 
     private fun baiduIntlTexts(): Map<String, SettingsText> {
         return commonTexts().apply {
+            this[SettingsUserState.KEY_HIDE_RENEW_BUTTON] = text(
+                UiText.Settings.HIDE_RENEW_BUTTON_LABEL,
+                "隐藏「我的」页右上角的去升级/去解锁按钮",
+            )
             this[SettingsUserState.KEY_MEMBER_CARD_CUSTOMIZE] = text(
                 "会员卡片定制",
                 "管理「我的」页会员卡片背景、点击事件、等级福利和升级按钮",

@@ -1,7 +1,9 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
 import android.app.Activity
+import android.content.Context
 import android.content.res.Configuration
+import android.content.res.Resources
 import android.os.Handler
 import android.os.Looper
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
@@ -16,6 +18,7 @@ import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.lang.reflect.Proxy
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal data class BaiduSystemNightModeHookPoints(
     val baseActivityClassName: String,
@@ -50,6 +53,7 @@ internal class BaiduSystemNightModeSyncHook(
     }
 
     private val hookState = HookState()
+    private val startupSkinSelected = AtomicBoolean(false)
     private val bottomBarThemeRefresh = BaiduBottomBarThemeRefreshCompat(
         logTag = logTag,
         homeFoldedFieldNames = hookPoints.bottomBarHomeFoldedFieldNames,
@@ -91,6 +95,7 @@ internal class BaiduSystemNightModeSyncHook(
                 }
 
             installRefreshTabSkinHook(cl)
+            installStartupSkinSelectionHook(cl)
             bottomBarThemeRefresh.hook(cl)
             installSettingsActivityHook(cl)
             installChangeSkinObserverHook(cl)
@@ -138,6 +143,45 @@ internal class BaiduSystemNightModeSyncHook(
         } catch (t: Throwable) {
             hookState.reset()
             log("FAILED: ${t.message}")
+        }
+    }
+
+    private fun installStartupSkinSelectionHook(cl: ClassLoader) {
+        val mod = XposedCompat.module ?: return
+        try {
+            val managerClass = hookPoints.skinManagerClassName
+                ?.let { XposedCompat.findClassOrNull(it, cl) } ?: return
+            val configClass = XposedCompat.findClassOrNull(hookPoints.skinConfigClassName, cl) ?: return
+            val init = XposedCompat.findMethodOrNull(managerClass, "init", Context::class.java) ?: return
+            val getSkinPath = XposedCompat.findMethodOrNull(configClass, "getCustomSkinPath", Context::class.java)
+                ?: return
+            val saveSkinPath = XposedCompat.findMethodOrNull(
+                configClass, "saveSkinPath", Context::class.java, String::class.java,
+            ) ?: return
+            val defaultSkin = configClass.getField("DEFAULT_SKIN").get(null) as? String ?: return
+
+            mod.hook(init).intercept { chain ->
+                if (startupSkinSelected.compareAndSet(false, true) && HookSettings.isFollowSystemNightModeEnabled) {
+                    val context = chain.args[0] as? Context
+                    if (context != null) {
+                        try {
+                            val night = Resources.getSystem().configuration.uiMode and
+                                Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+                            val skin = if (night) hookPoints.darkSkinTheme else defaultSkin
+                            // 原生 init 随后直接加载本次系统皮肤，避免先恢复旧皮肤再于 onResume 切换。
+                            if (getSkinPath.invoke(null, context) != skin) {
+                                saveSkinPath.invoke(null, context, skin)
+                            }
+                        } catch (t: Throwable) {
+                            log("Startup skin selection failed: ${t.message}")
+                        }
+                    }
+                }
+                chain.proceed()
+            }
+            log("hook INSTALLED: SkinManager startup skin selection")
+        } catch (t: Throwable) {
+            log("Startup skin selection hook FAILED: ${t.message}")
         }
     }
 

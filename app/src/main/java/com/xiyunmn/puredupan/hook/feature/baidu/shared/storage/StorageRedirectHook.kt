@@ -211,6 +211,17 @@ object StorageRedirectHook {
         methodNames: Set<String>,
     ): Int {
         val clazz = XposedCompat.findClassOrNull(className, cl) ?: return 0
+        val international = className in BaiduStorageHookPoints.INTL_DOWNLOAD_EXTENSIONS
+        val partitionStorage = if (international) {
+            XposedCompat.findMethodOrNull(
+                BaiduStorageHookPoints.INTL_TARGET30_STORAGE, cl,
+                BaiduStorageHookPoints.INTL_IS_PARTITION_STORAGE, Context::class.java,
+            )?.takeIf { Modifier.isStatic(it.modifiers) && it.returnType == Boolean::class.javaPrimitiveType }
+                ?: run {
+                    XposedCompat.logW("[$TAG] international storage mode unavailable: $className")
+                    return 0
+                }
+        } else null
         var count = 0
         clazz.declaredMethods.filter { method ->
             method.name in methodNames && method.returnType == String::class.java &&
@@ -232,6 +243,9 @@ object StorageRedirectHook {
         }.forEach { method ->
             method.isAccessible = true
             mod.hook(method).setExceptionMode(ExceptionMode.PASSTHROUGH).intercept { chain ->
+                if (!HookSettings.isStorageRedirectEnabled || !HookSettings.isStorageDownloadRedirectEnabled) {
+                    return@intercept chain.proceed()
+                }
                 val context = chain.args.firstOrNull { it is Context } as? Context
                 val fileName = findDownloadName(chain.args)
                 val parent = findDownloadParent(chain.args)
@@ -242,6 +256,19 @@ object StorageRedirectHook {
                     sourceDirPath,
                     HookSettings.isStorageRemoveOuterPathEnabled,
                 )
+                if (partitionStorage != null) {
+                    val legacyPath = runCatching {
+                        checkNotNull(context) { "下载上下文不可用" }
+                        if (partitionStorage.invoke(null, context) == false) {
+                            // 国际版传统下载链路用文件路径创建临时文件并完成重命名。
+                            resolveIntlLegacyDownload(context, effectiveParent, fileName, isDirectory)
+                        } else null
+                    }.getOrElse { error ->
+                        failWithoutFallback(context, "international download", error.message.orEmpty())
+                        throw IllegalStateException("storage redirect failed", error)
+                    }
+                    if (legacyPath != null) return@intercept legacyPath
+                }
                 // 部分下载分支绕过 URI 创建入口，需在原方法落盘前预检目标目录。
                 if (context != null && fileName != null && chain.args.any { it is Boolean && it }) {
                     when (val destination = resolver(context).resolve(effectiveParent, fileName, isDirectory)) {
@@ -279,6 +306,22 @@ object StorageRedirectHook {
             XposedCompat.logD("[$TAG] download path hooked: ${clazz.name}.${method.name}")
         }
         return count
+    }
+
+    private fun resolveIntlLegacyDownload(
+        context: Context,
+        parent: String,
+        fileName: String?,
+        isDirectory: Boolean,
+    ): String {
+        val relative = StoragePathRules.join(parent, fileName)
+        val destinationResolver = resolver(context)
+        val destination = destinationResolver.resolveLegacyAbsolutePath(relative)
+        check(destination is StorageDestination.ReadyLegacyAbsolutePath) { destination.toString() }
+        val directory = destinationResolver.resolveDirectory(if (isDirectory) relative else parent)
+        check(directory is StorageDestination.ReadyDocumentUri) { directory.toString() }
+        // 文件由宿主创建，保留临时文件、续传和完成收尾的一致路径。
+        return destination.absolutePath
     }
 
     /** 为宿主下载列表及目录跳转提供 SAF 任务路径。 */

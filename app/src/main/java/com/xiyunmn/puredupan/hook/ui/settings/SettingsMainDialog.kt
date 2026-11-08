@@ -106,7 +106,7 @@ internal object SettingsMainDialog {
                         }
                     },
                     onStoragePathManagementClick = {
-                        StoragePathSettingsDialog.show(context, prefs, settingsSession.isSamsungHost)
+                        StoragePathSettingsDialog.show(context, prefs)
                     },
                     onDefaultStartupTabClick = {
                         DefaultStartupTabSettingsDialog.show(context, prefs)

@@ -54,14 +54,14 @@ object StoragePathRules {
             ?: normalized
     }
 
-    /** 移除外层目录时，优先使用宿主提供的任务相对父路径。 */
+    /** 批量目录下载保留任务相对层级，单文件下载直接放入所选目录。 */
     fun selectDownloadParent(
         hostParent: String?,
         taskRelativeParent: String?,
         removeOuterPath: Boolean,
     ): String {
-        val candidate = if (removeOuterPath && taskRelativeParent != null) {
-            taskRelativeParent
+        val candidate = if (removeOuterPath) {
+            taskRelativeParent.orEmpty()
         } else {
             hostParent
         }

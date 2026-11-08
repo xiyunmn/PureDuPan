@@ -180,6 +180,7 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduSharedMyPageCustomize = listOf(
+        FeatureKeys.KEY_HIDE_RENEW_BUTTON,
         FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
         FeatureKeys.KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD,
         FeatureKeys.KEY_MY_PAGE_CONTENT_MANUAL_OFFSET,
@@ -230,7 +231,6 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_STORAGE_DOWNLOAD_TREE_URI,
         FeatureKeys.KEY_STORAGE_REMOVE_OUTER_PATH,
         FeatureKeys.KEY_STORAGE_ROOT_GUARD_ENABLED,
-        FeatureKeys.KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED,
         FeatureKeys.KEY_STORAGE_READER_SDK_REDIRECT_ENABLED,
     )
 
@@ -253,7 +253,6 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_REMOVE_MY_SERVICE,
         FeatureKeys.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET,
         FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT,
-        FeatureKeys.KEY_HIDE_RENEW_BUTTON,
         FeatureKeys.KEY_REMOVE_GAME_CENTER,
     )
 

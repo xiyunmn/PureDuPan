@@ -6,6 +6,7 @@ internal object BaiduStorageHookPoints {
     // 国际版下载扩展类，已核对对应 APK 的原始 DEX。
     val INTL_DOWNLOAD_EXTENSIONS = listOf("k01.s", "j01.s")
     const val INTL_TARGET30_STORAGE = "com.baidu.netdisk.partition.q"
+    const val INTL_IS_PARTITION_STORAGE = "f"
     const val DEFAULT_SETTING = "com.baidu.netdisk.base.storage.config.Setting"
     const val DEFAULT_SETTING_INTL = "com.baidu.netdisk.base.storage.config.r"
     const val URI_CREATOR = "createDownloadUriStr"

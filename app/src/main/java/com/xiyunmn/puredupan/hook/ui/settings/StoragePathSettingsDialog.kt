@@ -20,7 +20,7 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 
 /** 从“设置 → 拓展功能”打开的存储管理页面。 */
 internal object StoragePathSettingsDialog {
-    fun show(context: Context, prefs: SharedPreferences, isSamsungHost: Boolean) {
+    fun show(context: Context, prefs: SharedPreferences) {
         val density = context.resources.displayMetrics.density
         val padding = (16 * density).toInt()
         val root = LinearLayout(context).apply {
@@ -67,7 +67,7 @@ internal object StoragePathSettingsDialog {
             ),
         )
 
-        val specs = storageSwitchSpecs(isSamsungHost)
+        val specs = storageSwitchSpecs()
         val switches = linkedMapOf<String, Switch>()
         specs.forEach { spec ->
             SettingsSwitchRows.create(
@@ -112,7 +112,7 @@ internal object StoragePathSettingsDialog {
         SettingsDialogWindows.showStableSubDialog(dialog, density, "[StoragePathSettingsDialog]")
     }
 
-    private fun storageSwitchSpecs(isSamsungHost: Boolean): List<StorageSwitchSpec> = buildList {
+    private fun storageSwitchSpecs(): List<StorageSwitchSpec> = buildList {
         add(
             StorageSwitchSpec(
                 SettingsUserState.KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED,
@@ -137,16 +137,6 @@ internal object StoragePathSettingsDialog {
                 false,
             ),
         )
-        if (isSamsungHost) {
-            add(
-                StorageSwitchSpec(
-                    SettingsUserState.KEY_STORAGE_WECHAT_BACKUP_REDIRECT_ENABLED,
-                    UiText.Settings.STORAGE_WECHAT_BACKUP_LABEL,
-                    UiText.Settings.STORAGE_WECHAT_BACKUP_DESC,
-                    false,
-                ),
-            )
-        }
         add(
             StorageSwitchSpec(
                 SettingsUserState.KEY_STORAGE_READER_SDK_REDIRECT_ENABLED,
