@@ -141,6 +141,8 @@ object ConfigManager {
     const val KEY_REPLACE_MEMBER_CARD_BACKGROUND = FeatureKeys.KEY_REPLACE_MEMBER_CARD_BACKGROUND
     const val KEY_MEMBER_CARD_BACKGROUND_URI = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_URI
     const val KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS
+    const val KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT
+    const val KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT
     const val KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT
     const val KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES
     const val KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE
@@ -276,6 +278,8 @@ object ConfigManager {
     val isMemberCardBackgroundReplaced: Boolean get() = settingsSnapshot.isMemberCardBackgroundReplaced
     val memberCardBackgroundUri: String? get() = settingsSnapshot.memberCardBackgroundUri
     val memberCardBackgroundBlurRadius: Int get() = settingsSnapshot.memberCardBackgroundBlurRadius
+    val memberCardBackgroundDimLightPercent: Int get() = settingsSnapshot.memberCardBackgroundDimLightPercent
+    val memberCardBackgroundDimDarkPercent: Int get() = settingsSnapshot.memberCardBackgroundDimDarkPercent
     val memberCardBackgroundScalePercent: Int get() = settingsSnapshot.memberCardBackgroundScalePercent
     val memberCardBackgroundRotationDegrees: Int get() = settingsSnapshot.memberCardBackgroundRotationDegrees
     val memberCardBackgroundOffsetXPermille: Int get() = settingsSnapshot.memberCardBackgroundOffsetXPermille
@@ -548,6 +552,10 @@ object ConfigManager {
         val homeRecentItemLimit = featureInt(KEY_HOME_RECENT_ITEM_LIMIT, 3).coerceIn(1, 10)
         val homeSaveItemLimit = featureInt(KEY_HOME_SAVE_ITEM_LIMIT, 3).coerceIn(1, 10)
         val memberCardBackgroundReplaced = featureBoolean(KEY_REPLACE_MEMBER_CARD_BACKGROUND)
+        val memberCardBackgroundDimLightPercent =
+            featureInt(KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT, 0).coerceIn(0, 100)
+        val memberCardBackgroundDimDarkPercent =
+            featureInt(KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT, 0).coerceIn(0, 100)
         val memberCardBackgroundUri = p.getString(KEY_MEMBER_CARD_BACKGROUND_URI, null)
         val memberCardClickRemoved = featureBoolean(KEY_REMOVE_MEMBER_CARD_CLICK, false)
         val memberCardBackgroundViewedOnClick =
@@ -557,6 +565,8 @@ object ConfigManager {
                 featureBoolean(KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK, false)
         val hasMemberCardOptionEnabled =
             memberCardBackgroundReplaced ||
+                memberCardBackgroundDimLightPercent > 0 ||
+                memberCardBackgroundDimDarkPercent > 0 ||
                 featureBoolean(KEY_MEMBER_CARD_SIZE_ADJUST, false) ||
                 featureBoolean(KEY_HIDE_MEMBER_CARD_OPERATION, false) ||
                 featureBoolean(KEY_HIDE_MEMBER_CARD_BENEFIT, false) ||
@@ -730,6 +740,8 @@ object ConfigManager {
             } else {
                 0
             },
+            memberCardBackgroundDimLightPercent = memberCardBackgroundDimLightPercent,
+            memberCardBackgroundDimDarkPercent = memberCardBackgroundDimDarkPercent,
             memberCardBackgroundScalePercent = p.getInt(KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT, 100)
                 .coerceIn(100, 300),
             memberCardBackgroundRotationDegrees = p.getInt(KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES, 0)
@@ -745,7 +757,7 @@ object ConfigManager {
                 0
             },
             memberCardHeightDp = if (isFeatureAvailable(KEY_MEMBER_CARD_SIZE_HEIGHT_DP)) {
-                p.getInt(KEY_MEMBER_CARD_SIZE_HEIGHT_DP, 0)
+                p.getInt(KEY_MEMBER_CARD_SIZE_HEIGHT_DP, 0).coerceIn(0, 560)
             } else {
                 0
             },

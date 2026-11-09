@@ -258,8 +258,13 @@ internal object IntlMemberCardCustomizeHook {
         val background = findFirstViewByEntryNames(root, resources, packageName, MEMBER_CARD_BACKGROUND_IDS)
         if (background != null) {
             applyCardSize(background, snapshot)
-            if (snapshot.isMemberCardBackgroundReplaced && background is ImageView) {
-                MemberCardBackgroundLayout.apply(background, ::applyCustomBackground)
+            if (
+                background is ImageView &&
+                (snapshot.isMemberCardBackgroundReplaced ||
+                    snapshot.memberCardBackgroundDimLightPercent > 0 ||
+                    snapshot.memberCardBackgroundDimDarkPercent > 0)
+            ) {
+                MemberCardBackgroundLayout.apply(background, ::applyCardBackground)
             }
         }
 
@@ -379,7 +384,9 @@ internal object IntlMemberCardCustomizeHook {
         return snapshot.isMemberCardCustomizeEnabled &&
             (
                 snapshot.isMemberCardBackgroundReplaced ||
-                snapshot.isMemberCardSizeAdjusted ||
+                    snapshot.memberCardBackgroundDimLightPercent > 0 ||
+                    snapshot.memberCardBackgroundDimDarkPercent > 0 ||
+                    snapshot.isMemberCardSizeAdjusted ||
                     snapshot.isMemberCardOperationHidden ||
                     snapshot.isMemberCardBenefitHidden ||
                     snapshot.isMemberCardFirstBenefitHidden ||
@@ -633,6 +640,14 @@ internal object IntlMemberCardCustomizeHook {
     private fun dpToPx(dp: Int, density: Float): Int {
         return (dp.coerceAtLeast(0) * density + 0.5f).toInt()
             .coerceAtLeast(ViewGroup.LayoutParams.WRAP_CONTENT)
+    }
+
+    private fun applyCardBackground(background: ImageView) {
+        val snapshot = HookSettings.memberCardSnapshot()
+        if (snapshot.isMemberCardCustomizeEnabled && snapshot.isMemberCardBackgroundReplaced) {
+            applyCustomBackground(background)
+        }
+        MemberCardBackgroundLayout.applyDimming(background, snapshot)
     }
 
     private fun applyCustomBackground(background: ImageView) {

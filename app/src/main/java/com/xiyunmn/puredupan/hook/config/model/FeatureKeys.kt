@@ -117,6 +117,8 @@ object FeatureKeys {
     const val KEY_REPLACE_MEMBER_CARD_BACKGROUND = "replace_member_card_background"
     const val KEY_MEMBER_CARD_BACKGROUND_URI = "member_card_background_uri"
     const val KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS = "member_card_background_blur_radius"
+    const val KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT = "member_card_background_dim_light_percent"
+    const val KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT = "member_card_background_dim_dark_percent"
     const val KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT = "member_card_background_scale_percent"
     const val KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES = "member_card_background_rotation_degrees"
     const val KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE = "member_card_background_offset_x_permille"

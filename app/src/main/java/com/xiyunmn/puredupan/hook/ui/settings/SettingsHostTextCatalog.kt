@@ -412,6 +412,14 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.MEMBER_CARD_BACKGROUND_BLUR_LABEL,
                 UiText.Settings.MEMBER_CARD_BACKGROUND_BLUR_DESC,
             ),
+            SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT to text(
+                UiText.Settings.MEMBER_CARD_BACKGROUND_DIM_LIGHT_LABEL,
+                UiText.Settings.MEMBER_CARD_BACKGROUND_DIM_DESC,
+            ),
+            SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT to text(
+                UiText.Settings.MEMBER_CARD_BACKGROUND_DIM_DARK_LABEL,
+                UiText.Settings.MEMBER_CARD_BACKGROUND_DIM_DESC,
+            ),
             SettingsUserState.KEY_MEMBER_CARD_SIZE_ADJUST to text(
                 UiText.Settings.MEMBER_CARD_SIZE_ADJUST_LABEL,
                 UiText.Settings.MEMBER_CARD_SIZE_ADJUST_DESC,

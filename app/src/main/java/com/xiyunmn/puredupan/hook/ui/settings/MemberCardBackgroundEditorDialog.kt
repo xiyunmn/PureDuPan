@@ -255,7 +255,7 @@ internal object MemberCardBackgroundEditorDialog {
 
         if (!prefs.getBoolean(SettingsUserState.KEY_MEMBER_CARD_SIZE_ADJUST, false)) return defaultAspectRatio
         val widthDp = prefs.getInt(SettingsUserState.KEY_MEMBER_CARD_SIZE_WIDTH_DP, 0)
-        val heightDp = prefs.getInt(SettingsUserState.KEY_MEMBER_CARD_SIZE_HEIGHT_DP, 0)
+        val heightDp = prefs.getInt(SettingsUserState.KEY_MEMBER_CARD_SIZE_HEIGHT_DP, 0).coerceIn(0, 560)
         val density = context.resources.displayMetrics.density
         val effectiveWidthPx = when {
             widthDp > 0 -> widthDp * density

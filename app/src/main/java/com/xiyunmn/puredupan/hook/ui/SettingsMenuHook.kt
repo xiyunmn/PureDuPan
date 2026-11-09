@@ -113,7 +113,24 @@ object SettingsMenuHook {
                         Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
                 )
             }
-            activity.startActivityForResult(intent, REQUEST_MEMBER_CARD_BACKGROUND_IMAGE)
+            val preferred = resolvePreferredSystemDocumentPicker(context, intent)
+            try {
+                activity.startActivityForResult(
+                    Intent(intent).apply { component = preferred },
+                    REQUEST_MEMBER_CARD_BACKGROUND_IMAGE,
+                )
+                XposedCompat.logD(
+                    "[SettingsMenuHook] background image picker launched: " +
+                        (preferred?.flattenToShortString() ?: "implicit-system"),
+                )
+            } catch (e: Exception) {
+                if (preferred == null) throw e
+                XposedCompat.logW(
+                    "[SettingsMenuHook] preferred background image picker failed: " +
+                        "${preferred.flattenToShortString()} ${e.message}",
+                )
+                activity.startActivityForResult(intent, REQUEST_MEMBER_CARD_BACKGROUND_IMAGE)
+            }
         } catch (t: Throwable) {
             XposedCompat.logW("[SettingsMenuHook] launch background picker failed: ${t.message}")
             Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_PICK_FAILED, Toast.LENGTH_SHORT).show()

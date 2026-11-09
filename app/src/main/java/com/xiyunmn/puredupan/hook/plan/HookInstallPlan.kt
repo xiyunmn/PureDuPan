@@ -39,6 +39,8 @@ internal object HookInstallPlanner {
         return DerivedSettings(
             hasMemberCardCustomizeOption =
                 enabled(FeatureKeys.KEY_REPLACE_MEMBER_CARD_BACKGROUND, settings.isMemberCardBackgroundReplaced) ||
+                    enabled(FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT, settings.memberCardBackgroundDimLightPercent > 0) ||
+                    enabled(FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT, settings.memberCardBackgroundDimDarkPercent > 0) ||
                     enabled(FeatureKeys.KEY_MEMBER_CARD_SIZE_ADJUST, settings.isMemberCardSizeAdjusted) ||
                     enabled(FeatureKeys.KEY_HIDE_MEMBER_CARD_OPERATION, settings.isMemberCardOperationHidden) ||
                     enabled(FeatureKeys.KEY_HIDE_MEMBER_CARD_BENEFIT, settings.isMemberCardBenefitHidden) ||

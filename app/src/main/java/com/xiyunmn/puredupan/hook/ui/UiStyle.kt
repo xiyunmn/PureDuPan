@@ -101,7 +101,7 @@ internal object UiStyle {
         if (view.isAttachedToWindow) attach()
     }
 
-    private fun isNight(context: Context): Boolean {
+    internal fun isNight(context: Context): Boolean {
         val now = android.os.SystemClock.uptimeMillis()
         val cached = cachedHostNight
         if (cached != null && now - cachedHostNightAtMs < HOST_NIGHT_CACHE_MS) return cached

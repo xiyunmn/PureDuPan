@@ -49,6 +49,7 @@ internal object MemberCardSettingsControls {
         })
         textContainer.addView(TextView(context).apply {
             text = description
+                visibility = if (description.isBlank()) android.view.View.GONE else android.view.View.VISIBLE
             textSize = 12f
             UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textSecondary) }
             setPadding(0, (3 * density).toInt(), (12 * density).toInt(), 0)
@@ -75,8 +76,8 @@ internal object MemberCardSettingsControls {
 
         val controlRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, (8 * density).toInt(), 0, 0)
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            setPadding(0, (4 * density).toInt(), 0, 0)
         }
         val imageUri = prefs.getString(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI, null)
         val display = TextView(context).apply {
@@ -87,16 +88,21 @@ internal object MemberCardSettingsControls {
             ellipsize = TextUtils.TruncateAt.MIDDLE
             UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textPrimary) }
             includeFontPadding = false
-            UiStyle.bindTheme(this) { tokens -> background = UiStyle.createPlainInputUnderlineBackground(tokens, density) }
+            UiStyle.bindTheme(this) { tokens -> background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(tokens.surfaceAlt)
+                cornerRadius = 8 * density
+            } }
             setPadding((10 * density).toInt(), 0, (10 * density).toInt(), 0)
             setOnClickListener {
                 enabledSwitch.isChecked = true
                 onChoose()
             }
         }
-        controlRow.addView(
+        root.addView(
             display,
-            LinearLayout.LayoutParams(0, (40 * density).toInt(), 1.0f),
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (36 * density).toInt()).apply {
+                topMargin = (10 * density).toInt()
+            },
         )
 
         val chooseButton = Button(context).apply {
@@ -215,6 +221,7 @@ internal object MemberCardSettingsControls {
             })
             textContainer.addView(TextView(context).apply {
                 text = description
+                visibility = if (description.isBlank()) android.view.View.GONE else android.view.View.VISIBLE
                 textSize = 12f
                 UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textSecondary) }
                 setPadding(0, (3 * density).toInt(), (12 * density).toInt(), 0)

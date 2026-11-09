@@ -80,6 +80,8 @@ data class SettingsSnapshot(
     val isMemberCardBackgroundReplaced: Boolean = false,
     val memberCardBackgroundUri: String? = null,
     val memberCardBackgroundBlurRadius: Int = 0,
+    val memberCardBackgroundDimLightPercent: Int = 0,
+    val memberCardBackgroundDimDarkPercent: Int = 0,
     val memberCardBackgroundScalePercent: Int = 100,
     val memberCardBackgroundRotationDegrees: Int = 0,
     val memberCardBackgroundOffsetXPermille: Int = 0,

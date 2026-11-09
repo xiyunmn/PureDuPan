@@ -8,6 +8,8 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.Switch
 import android.widget.Toast
+import android.widget.TextView
+import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.settings.runtime.SettingsRuntimeSession
@@ -18,7 +20,7 @@ private const val MEMBER_CARD_BACKGROUND_BLUR_MAX = 25
 private const val MEMBER_CARD_SIZE_WIDTH_MIN = 0
 private const val MEMBER_CARD_SIZE_WIDTH_MAX = 420
 private const val MEMBER_CARD_SIZE_HEIGHT_MIN = 0
-private const val MEMBER_CARD_SIZE_HEIGHT_MAX = 280
+private const val MEMBER_CARD_SIZE_HEIGHT_MAX = 560
 
 internal object MemberCardCustomizeSettingsDialog {
     private const val LOG_TAG = "[MemberCardCustomizeSettingsDialog]"
@@ -60,7 +62,7 @@ internal object MemberCardCustomizeSettingsDialog {
                 context = context,
                 prefs = prefs,
                 label = backgroundText.label,
-                description = backgroundText.description.orEmpty(),
+                description = "建议使用 3:1 横图，支持裁剪与模糊。",
                 padding = padding,
                 onChoose = {
                     backgroundUriCleared = false
@@ -87,15 +89,10 @@ internal object MemberCardCustomizeSettingsDialog {
                     ).show()
                 },
             )
-            val blurText = texts.text(
-                SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS,
-                UiText.Settings.MEMBER_CARD_BACKGROUND_BLUR_LABEL,
-                UiText.Settings.MEMBER_CARD_BACKGROUND_BLUR_DESC,
-            )
             val blurSlider = MemberCardSettingsControls.createIntSliderRow(
                 context = context,
-                label = blurText.label,
-                description = blurText.description.orEmpty(),
+                label = "模糊程度",
+                description = "",
                 padding = padding,
                 minValue = MEMBER_CARD_BACKGROUND_BLUR_MIN,
                 maxValue = MEMBER_CARD_BACKGROUND_BLUR_MAX,
@@ -103,6 +100,26 @@ internal object MemberCardCustomizeSettingsDialog {
                 valueFormatter = { value ->
                     if (value == 0) UiText.Settings.MEMBER_CARD_BACKGROUND_BLUR_NONE else value.toString()
                 },
+            )
+            val dimLightSlider = MemberCardSettingsControls.createIntSliderRow(
+                context = context,
+                label = "浅色模式",
+                description = "",
+                padding = padding,
+                minValue = 0,
+                maxValue = 100,
+                initialValue = prefs.getInt(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT, 0),
+                valueFormatter = { value -> "${value}%" },
+            )
+            val dimDarkSlider = MemberCardSettingsControls.createIntSliderRow(
+                context = context,
+                label = "深色模式",
+                description = "",
+                padding = padding,
+                minValue = 0,
+                maxValue = 100,
+                initialValue = prefs.getInt(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT, 0),
+                valueFormatter = { value -> "${value}%" },
             )
             val canViewBackgroundOnClick =
                 canReplaceBackground &&
@@ -119,22 +136,17 @@ internal object MemberCardCustomizeSettingsDialog {
             val sizeRow = SettingsSwitchRows.create(
                 context,
                 prefs,
-                sizeAdjustItem.label,
-                sizeAdjustItem.description,
+                "调整尺寸",
+                "设为 0 时使用宿主默认尺寸。",
                 sizeAdjustItem.prefKey,
                 padding,
                 sizeAdjustItem.supported,
                 sizeAdjustItem.defaultValue,
             )
-            val widthText = texts.text(
-                SettingsUserState.KEY_MEMBER_CARD_SIZE_WIDTH_DP,
-                UiText.Settings.MEMBER_CARD_WIDTH_LABEL,
-                sizeAdjustItem.description,
-            )
             val widthSlider = MemberCardSettingsControls.createIntSliderRow(
                 context = context,
-                label = widthText.label,
-                description = widthText.description.orEmpty(),
+                label = "宽度",
+                description = "",
                 padding = padding,
                 minValue = MEMBER_CARD_SIZE_WIDTH_MIN,
                 maxValue = MEMBER_CARD_SIZE_WIDTH_MAX,
@@ -143,15 +155,10 @@ internal object MemberCardCustomizeSettingsDialog {
                     if (value == 0) UiText.Settings.MEMBER_CARD_SIZE_DEFAULT else "${value}dp"
                 },
             )
-            val heightText = texts.text(
-                SettingsUserState.KEY_MEMBER_CARD_SIZE_HEIGHT_DP,
-                UiText.Settings.MEMBER_CARD_SIZE_HEIGHT_LABEL,
-                sizeAdjustItem.description,
-            )
             val heightSlider = MemberCardSettingsControls.createIntSliderRow(
                 context = context,
-                label = heightText.label,
-                description = heightText.description.orEmpty(),
+                label = "高度",
+                description = "",
                 padding = padding,
                 minValue = MEMBER_CARD_SIZE_HEIGHT_MIN,
                 maxValue = MEMBER_CARD_SIZE_HEIGHT_MAX,
@@ -167,7 +174,7 @@ internal object MemberCardCustomizeSettingsDialog {
                     context = context,
                     prefs = prefs,
                     label = item.label,
-                    description = item.description,
+                    description = null,
                     prefKey = item.prefKey,
                     padding = padding,
                     enabled = item.supported,
@@ -201,35 +208,41 @@ internal object MemberCardCustomizeSettingsDialog {
                 viewBackgroundOnClickItem.defaultValue,
             )
 
+            fun section(title: String, rows: List<View>) {
+                SettingsDialogLayout.addTitledSection(
+                    root, context, padding,
+                    SettingsDialogLayout.createPerformanceSectionTitle(context, padding, title),
+                    rows, addDividerBefore = root.childCount > 0,
+                )
+            }
             if (canReplaceBackground) {
-                root.addView(backgroundImageControl.row)
-                root.addView(blurSlider.row)
+                section("背景图片", listOf(backgroundImageControl.row, blurSlider.row))
+            }
+            val brightnessRows = buildList<View> {
+                if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT)) add(dimLightSlider.row)
+                if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT)) add(dimDarkSlider.row)
+            }
+            if (brightnessRows.isNotEmpty()) {
+                val description = TextView(context).apply {
+                    text = "原生背景与自定义图片均可调暗，不影响文字。\n0% 保持原亮度，100% 全黑。"
+                    textSize = 12f
+                    includeFontPadding = false
+                    setPadding(0, (4 * density).toInt(), 0, (6 * density).toInt())
+                    UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textSecondary) }
+                }
+                section("背景亮度", listOf(description) + brightnessRows)
             }
             if (sizeAdjustItem.visible) {
-                root.addView(sizeRow)
-                root.addView(widthSlider.row)
-                root.addView(heightSlider.row)
+                section("卡片尺寸", listOf(sizeRow, widthSlider.row, heightSlider.row))
             }
-            if (root.childCount > 0 && (removeCardClickItem.visible || viewBackgroundOnClickItem.visible)) {
-                root.addView(SettingsDialogLayout.createDivider(context, padding))
-            }
-            if (removeCardClickItem.visible) {
-                root.addView(removeCardClickRow)
-            }
-            if (viewBackgroundOnClickItem.visible) {
-                root.addView(viewBackgroundOnClickRow)
-            }
+            section("点击行为", buildList {
+                if (removeCardClickItem.visible) add(removeCardClickRow)
+                if (viewBackgroundOnClickItem.visible) add(viewBackgroundOnClickRow)
+            })
             val memberCardHideRows = memberCardItems.visibleHideItems
                 .filter { it.item.visible }
                 .mapNotNull { memberCardHideRowsByKey[it.key] }
-            SettingsDialogLayout.addTitledSection(
-                root = root,
-                context = context,
-                padding = padding,
-                titleView = SettingsDialogLayout.createCustomHideWidgetSectionTitle(context, padding),
-                rows = memberCardHideRows,
-                addDividerBefore = true,
-            )
+            section("隐藏控件", memberCardHideRows)
 
             val backgroundSwitch = backgroundImageControl.switch
             val sizeSwitch = SettingsSwitchRows.findSwitchView(sizeRow)
@@ -313,6 +326,8 @@ internal object MemberCardCustomizeSettingsDialog {
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
                     val hasEnabledMemberCardOption =
                         canReplaceBackground && backgroundSwitch.isChecked ||
+                            settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT) && dimLightSlider.getValue() > 0 ||
+                            settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT) && dimDarkSlider.getValue() > 0 ||
                             sizeAdjustItem.visible && sizeSwitch.isChecked ||
                             memberCardItems.allHideItems.any { entry ->
                                 entry.item.visible && memberCardHideValueForSave(entry)
@@ -336,6 +351,18 @@ internal object MemberCardCustomizeSettingsDialog {
                         editor.putInt(
                             SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS,
                             blurSlider.getValue(),
+                        )
+                    }
+                    if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT)) {
+                        editor.putInt(
+                            SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT,
+                            dimLightSlider.getValue(),
+                        )
+                    }
+                    if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT)) {
+                        editor.putInt(
+                            SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT,
+                            dimDarkSlider.getValue(),
                         )
                     }
                     if (sizeAdjustItem.visible) {
