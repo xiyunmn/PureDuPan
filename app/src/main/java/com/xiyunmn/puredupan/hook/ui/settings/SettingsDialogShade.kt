@@ -13,11 +13,12 @@ import com.xiyunmn.puredupan.hook.ui.UiStyle
 
 /** 保留宿主遮罩，单独渐变父弹窗的压暗效果。 */
 internal object SettingsDialogShade {
-    private const val DURATION_MS = 360L
+    private const val DURATION_MS = 600L
+    private const val DIM_STRENGTH = 0.5f
     private val shades = mutableMapOf<View, Shade>()
 
     fun bind(parent: Window, child: Window) {
-        val targetAlpha = (child.attributes.dimAmount * 255).toInt().coerceIn(0, 255)
+        val targetAlpha = (child.attributes.dimAmount * DIM_STRENGTH * 255).toInt().coerceIn(0, 255)
         child.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         child.decorView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             private var shade: Shade? = null

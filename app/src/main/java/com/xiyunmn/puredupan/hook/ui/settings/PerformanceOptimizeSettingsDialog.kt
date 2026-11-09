@@ -7,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.Switch
-import android.widget.Toast
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.settings.runtime.SettingsRuntimeSession
@@ -89,23 +88,14 @@ internal object PerformanceOptimizeSettingsDialog {
             val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.PERFORMANCE_OPTIMIZE_DIALOG_TITLE)
                 .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
-                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-                .setPositiveButton(UiText.Settings.SAVE, null)
+                .setPositiveButton(UiText.Settings.DONE, null)
                 .create()
-            dialog.setOnShowListener {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
-                    PerformanceSettingsItemsBuilder.putPerformanceOptimizeValues(
-                        editor = prefs.edit(),
-                        isFeatureVisible = settingsSession::isFeatureVisible,
-                        isChecked = { key -> switchesByKey[key]?.isChecked == true },
-                    ).apply()
-                    Toast.makeText(
-                        context,
-                        UiText.Settings.withRestartHint(UiText.Settings.PERFORMANCE_OPTIMIZE_SAVED),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    dialog.dismiss()
-                }
+            SettingsSwitchRows.observeChanges(rowsByKey.values) {
+                PerformanceSettingsItemsBuilder.putPerformanceOptimizeValues(
+                    editor = prefs.edit(),
+                    isFeatureVisible = settingsSession::isFeatureVisible,
+                    isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                ).apply()
             }
             SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)
         } catch (t: Throwable) {

@@ -19,6 +19,8 @@ internal class MemberCardBackgroundEditorView(
     private val bitmap: Bitmap,
     private val cropAspectRatio: Float = 3f,
 ) : View(context) {
+    init { contentDescription = UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_HINT }
+
     private val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val framePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(130, 255, 255, 255)
@@ -41,37 +43,51 @@ internal class MemberCardBackgroundEditorView(
             }
         },
     )
+    private var activePointerId = MotionEvent.INVALID_POINTER_ID
     private var lastX = 0f
     private var lastY = 0f
     var onScalePercentChanged: ((Int) -> Unit)? = null
+    var onTransformChanged: (() -> Unit)? = null
 
     var scalePercent: Int = 100
         set(value) {
-            field = value.coerceIn(100, 300)
+            val normalized = value.coerceIn(100, 300)
+            if (field == normalized) return
+            field = normalized
             invalidate()
+            onTransformChanged?.invoke()
         }
 
     var rotationDegrees: Int = 0
         set(value) {
-            field = ((value % 360) + 360) % 360
+            val normalized = ((value % 360) + 360) % 360
+            if (field == normalized) return
+            field = normalized
             invalidate()
+            onTransformChanged?.invoke()
         }
 
     var offsetXPermille: Int = 0
         set(value) {
-            field = value.coerceIn(-1000, 1000)
+            val normalized = value.coerceIn(-1000, 1000)
+            if (field == normalized) return
+            field = normalized
             invalidate()
+            onTransformChanged?.invoke()
         }
 
     var offsetYPermille: Int = 0
         set(value) {
-            field = value.coerceIn(-1000, 1000)
+            val normalized = value.coerceIn(-1000, 1000)
+            if (field == normalized) return
+            field = normalized
             invalidate()
+            onTransformChanged?.invoke()
         }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec).coerceAtLeast(1)
-        val desiredHeight = (width * 1.16f).toInt().coerceAtLeast(1)
+        val desiredHeight = min((width * 1.16f).toInt(), (resources.displayMetrics.heightPixels * 0.45f).toInt()).coerceAtLeast(1)
         val height = when (MeasureSpec.getMode(heightMeasureSpec)) {
             MeasureSpec.EXACTLY -> MeasureSpec.getSize(heightMeasureSpec)
             MeasureSpec.AT_MOST -> min(desiredHeight, MeasureSpec.getSize(heightMeasureSpec))
@@ -93,33 +109,49 @@ internal class MemberCardBackgroundEditorView(
         scaleDetector.onTouchEvent(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                activePointerId = event.getPointerId(0)
                 parent?.requestDisallowInterceptTouchEvent(true)
-                lastX = event.x
-                lastY = event.y
+                lastX = event.getX(event.findPointerIndex(activePointerId).coerceAtLeast(0))
+                lastY = event.getY(event.findPointerIndex(activePointerId).coerceAtLeast(0))
                 return true
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
                 parent?.requestDisallowInterceptTouchEvent(true)
-                lastX = event.x
-                lastY = event.y
+                lastX = event.getX(event.findPointerIndex(activePointerId).coerceAtLeast(0))
+                lastY = event.getY(event.findPointerIndex(activePointerId).coerceAtLeast(0))
+                return true
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (event.getPointerId(event.actionIndex) == activePointerId) {
+                    val nextIndex = if (event.actionIndex == 0) 1 else 0
+                    activePointerId = event.getPointerId(nextIndex)
+                }
+                val index = event.findPointerIndex(activePointerId)
+                lastX = event.getX(index)
+                lastY = event.getY(index)
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
+                val index = event.findPointerIndex(activePointerId)
+                if (index < 0) return true
+                val x = event.getX(index)
+                val y = event.getY(index)
                 if (event.pointerCount == 1 && !scaleDetector.isInProgress) {
                     updateCropRect()
                     val overflow = calculateOverflow(cropRect)
                     if (overflow.first > 1f) {
-                        offsetXPermille += (((event.x - lastX) / overflow.first) * 1000f).toInt()
+                        offsetXPermille += (((x - lastX) / overflow.first) * 1000f).toInt()
                     }
                     if (overflow.second > 1f) {
-                        offsetYPermille += (((event.y - lastY) / overflow.second) * 1000f).toInt()
+                        offsetYPermille += (((y - lastY) / overflow.second) * 1000f).toInt()
                     }
                 }
-                lastX = event.x
-                lastY = event.y
+                lastX = x
+                lastY = y
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                activePointerId = MotionEvent.INVALID_POINTER_ID
                 parent?.requestDisallowInterceptTouchEvent(false)
                 return true
             }

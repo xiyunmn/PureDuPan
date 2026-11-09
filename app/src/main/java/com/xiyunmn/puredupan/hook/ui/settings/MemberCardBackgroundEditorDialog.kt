@@ -7,8 +7,11 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Typeface
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.SeekBar
@@ -39,14 +42,52 @@ internal object MemberCardBackgroundEditorDialog {
             }
             val prefs = SettingsUserState.getPrefs(context)
             val editorAspectRatio = memberCardBackgroundEditorAspectRatio(context, prefs)
-            val bitmap = loadMemberCardBackgroundPreviewBitmap(context, uriString, editorAspectRatio) ?: run {
-                Toast.makeText(
-                    context,
-                    UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_FAILED,
-                    Toast.LENGTH_SHORT,
-                ).show()
-                return
+            val content = FrameLayout(context).apply {
+                addView(TextView(context).apply {
+                    text = UiText.Settings.MEMBER_CARD_BACKGROUND_LOADING
+                    gravity = Gravity.CENTER
+                    setPadding(0, (32 * resources.displayMetrics.density).toInt(), 0, (32 * resources.displayMetrics.density).toInt())
+                    UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textSecondary) }
+                }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             }
+            val loading = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
+                .setTitle(UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_TITLE)
+                .setView(content)
+                .setPositiveButton(UiText.Settings.DONE, null)
+                .create()
+            SettingsDialogWindows.showStableSubDialog(loading, context.resources.displayMetrics.density, LOG_TAG)
+            Thread({
+                val bitmap = loadMemberCardBackgroundPreviewBitmap(context, uriString, editorAspectRatio)
+                Handler(Looper.getMainLooper()).post {
+                    if (!loading.isShowing || prefs.getString(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI, null) != uriString) {
+                        bitmap?.recycle()
+                        if (loading.isShowing) loading.dismiss()
+                        return@post
+                    }
+                    if (bitmap == null) {
+                        loading.dismiss()
+                        Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_FAILED, Toast.LENGTH_SHORT).show()
+                    } else {
+                        showLoaded(context, prefs, uriString, editorAspectRatio, bitmap, loading, content)
+                    }
+                }
+            }, "PureDuPan-card-editor").start()
+        } catch (t: Throwable) {
+            XposedCompat.logW("$LOG_TAG show failed: ${t.message}")
+            Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_FAILED, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showLoaded(
+        context: Context,
+        prefs: SharedPreferences,
+        uriString: String,
+        editorAspectRatio: Float,
+        bitmap: Bitmap,
+        dialog: AlertDialog,
+        content: FrameLayout,
+    ) {
+        try {
             val density = context.resources.displayMetrics.density
             val padding = (16 * density).toInt()
 
@@ -118,6 +159,7 @@ internal object MemberCardBackgroundEditorDialog {
 
                 addView(SeekBar(context).apply {
                     scaleSeekBar = this
+                    contentDescription = "${UiText.Settings.MEMBER_CARD_BACKGROUND_SCALE_LABEL}，${editorView.scalePercent}%"
                     max = 200
                     progress = editorView.scalePercent.coerceIn(100, 300) - 100
                     splitTrack = false
@@ -127,14 +169,28 @@ internal object MemberCardBackgroundEditorDialog {
                     setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                         override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                             val value = (100 + progress).coerceIn(100, 300)
-                            editorView.scalePercent = value
+                            if (fromUser) editorView.scalePercent = value
                             updateScaleValue(value)
+                            seekBar?.contentDescription = "${UiText.Settings.MEMBER_CARD_BACKGROUND_SCALE_LABEL}，${value}%"
                         }
 
                         override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
 
                         override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
                     })
+                })
+
+                addView(Button(context).apply {
+                    text = UiText.Settings.MEMBER_CARD_BACKGROUND_RESET
+                    UiStyle.bindTheme(this) { tokens -> UiStyle.paintScanActionButton(this, density, tokens.accent) }
+                    setOnClickListener {
+                        editorView.scalePercent = 100
+                        editorView.rotationDegrees = 0
+                        editorView.offsetXPermille = 0
+                        editorView.offsetYPermille = 0
+                        scaleSeekBar?.progress = 0
+                        updateScaleValue(100)
+                    }
                 })
 
                 addView(Button(context).apply {
@@ -152,11 +208,9 @@ internal object MemberCardBackgroundEditorDialog {
                 })
             }
 
-            val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
-                .setTitle(UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_TITLE)
-                .setView(root)
-                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-                .setPositiveButton(UiText.Settings.SAVE) { _, _ ->
+            var active = true
+            editorView.onTransformChanged = {
+                if (active && prefs.getString(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI, null) == uriString) {
                     val editor = prefs.edit()
                     if (isFeatureVisible(context, SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT)) {
                         editor.putInt(
@@ -183,15 +237,19 @@ internal object MemberCardBackgroundEditorDialog {
                         )
                     }
                     editor.apply()
-                    Toast.makeText(
-                        context,
-                        UiText.Settings.withRestartHint(UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_SAVED),
-                        Toast.LENGTH_SHORT,
-                    ).show()
                 }
-                .create()
-            SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)
+            }
+            content.removeAllViews()
+            content.addView(
+                SettingsDialogLayout.createDialogScrollContainer(context, root),
+                FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT),
+            )
+            dialog.setOnDismissListener {
+                active = false
+                editorView.onTransformChanged = null
+            }
         } catch (t: Throwable) {
+            dialog.dismiss()
             XposedCompat.logW("$LOG_TAG show failed: ${t.message}")
             Toast.makeText(
                 context,

@@ -27,6 +27,35 @@ internal object SettingsSwitchRows {
     private const val ACTION_TEXT_VIEW_TAG = "settings_action_text"
     private const val STATUS_BADGE_TEXT_VIEW_TAG = "settings_status_badge_text"
 
+    /** 独立通知值变化，保留各页面已有的联动和互斥处理。 */
+    @Suppress("DEPRECATION")
+    private class ObservedSwitch(context: Context) : Switch(context) {
+        var onValueChanged: (() -> Unit)? = null
+        var syncing = false
+
+        override fun setChecked(checked: Boolean) {
+            val previous = isChecked
+            super.setChecked(checked)
+            if (!syncing && previous != isChecked) onValueChanged?.invoke()
+        }
+    }
+
+    fun observeChanges(rows: Iterable<View>, onChange: () -> Unit) {
+        rows.forEach { row ->
+            (findSwitchView(row) as? ObservedSwitch)?.onValueChanged = onChange
+        }
+    }
+
+    fun setCheckedFromPreferences(switch: Switch, checked: Boolean) {
+        val observed = switch as? ObservedSwitch ?: return
+        observed.syncing = true
+        try {
+            observed.isChecked = checked
+        } finally {
+            observed.syncing = false
+        }
+    }
+
     @Suppress("DEPRECATION")
     fun create(
         context: Context,
@@ -150,13 +179,13 @@ internal object SettingsSwitchRows {
                             tokens = tokens,
                             icon = materialIcon,
                             enabled = isEnabled,
-                            contentDescription = actionIcon,
+                            contentDescription = actionDescription(actionIcon, label, prefKey),
                         )
                     }
                     if (secondaryActionIcon != null) {
                         layoutParams = LinearLayout.LayoutParams(
-                            (36 * density).toInt(),
-                            (36 * density).toInt(),
+                            (48 * density).toInt(),
+                            (48 * density).toInt(),
                         )
                     }
                     setOnClickListener {
@@ -205,12 +234,13 @@ internal object SettingsSwitchRows {
                     isEnabled = enabled
                     UiStyle.bindTheme(this) { tokens ->
                         UiStyle.paintMaterialIconButton(
-                            this, density, tokens, icon, isEnabled, secondaryActionIcon,
+                            this, density, tokens, icon, isEnabled,
+                            actionDescription(secondaryActionIcon, label, prefKey),
                         )
                     }
                     layoutParams = FrameLayout.LayoutParams(
-                        (36 * density).toInt(),
-                        (36 * density).toInt(),
+                        (48 * density).toInt(),
+                        (48 * density).toInt(),
                         Gravity.CENTER,
                     )
                     setOnClickListener {
@@ -221,7 +251,10 @@ internal object SettingsSwitchRows {
                     }
                 }
                 row.addView(FrameLayout(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(switchSlotWidth, (36 * density).toInt())
+                    layoutParams = LinearLayout.LayoutParams(
+                        switchSlotWidth.coerceAtLeast((48 * density).toInt()),
+                        (48 * density).toInt(),
+                    )
                     addView(button)
                 })
             }
@@ -231,7 +264,8 @@ internal object SettingsSwitchRows {
             return row
         }
 
-        val sw = Switch(context).apply {
+        val sw = ObservedSwitch(context).apply {
+            contentDescription = label
             var reverting = false
             isChecked = if (enabled && prefKey != null) {
                 resolveSwitchChecked(prefs, prefKey, linkedPrefKeys, defaultValue)
@@ -262,7 +296,7 @@ internal object SettingsSwitchRows {
             }
 
             setOnCheckedChangeListener { _, isChecked ->
-                if (enabled && !reverting) {
+                if (enabled && !reverting && !syncing) {
                     if (prefKey != null) {
                         val editor = prefs.edit().putBoolean(prefKey, isChecked)
                         for (linkedPrefKey in linkedPrefKeys) {
@@ -285,6 +319,15 @@ internal object SettingsSwitchRows {
         row.addView(sw)
 
         return row
+    }
+
+    private fun actionDescription(icon: String, label: String, prefKey: String?): String {
+        return when (materialActionIcon(icon)) {
+            UiStyle.MaterialActionIcon.SETTINGS -> "打开${label}设置"
+            UiStyle.MaterialActionIcon.PLAY_PAUSE ->
+                if (prefKey == SettingsUserState.KEY_AUTO_DAILY_SIGN_IN) "立即签到" else "开始 DexKit 解析"
+            else -> icon
+        }
     }
 
     fun findSwitchView(root: View): Switch? {

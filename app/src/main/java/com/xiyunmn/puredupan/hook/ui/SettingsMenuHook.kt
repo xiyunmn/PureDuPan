@@ -183,11 +183,6 @@ object SettingsMenuHook {
 
         MemberCardBackgroundSelectionState.notifySelected(uri.toString())
         MemberCardBackgroundEditorDialog.show(context, uri.toString())
-        Toast.makeText(
-            context,
-            UiText.Settings.withRestartHint(UiText.Settings.MEMBER_CARD_BACKGROUND_PICKED),
-            Toast.LENGTH_SHORT,
-        ).show()
         return true
     }
 
@@ -335,7 +330,6 @@ object SettingsMenuHook {
                 .putString(SettingsUserState.KEY_STORAGE_DOWNLOAD_TREE_URI, uri.toString())
                 .apply()
             StorageTreeSelectionState.notifySelected()
-            Toast.makeText(context, UiText.Settings.STORAGE_DIRECTORY_SELECTED, Toast.LENGTH_SHORT).show()
         } catch (t: Throwable) {
             XposedCompat.logW("[SettingsMenuHook] persist storage tree permission failed: ${t.message}")
             Toast.makeText(context, UiText.Settings.STORAGE_DIRECTORY_PERMISSION_INVALID, Toast.LENGTH_SHORT).show()

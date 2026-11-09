@@ -20,7 +20,7 @@ internal object DefaultStartupTabSettingsDialog {
             Toast.makeText(context, UiText.Settings.DEFAULT_STARTUP_TAB_EMPTY, Toast.LENGTH_LONG).show()
             return
         }
-        var selected = tabs.indexOfFirst {
+        val selected = tabs.indexOfFirst {
             it.id == prefs.getString(SettingsUserState.KEY_DEFAULT_STARTUP_TAB, null)
         }
         val choices = object : ArrayAdapter<String>(context, android.R.layout.simple_list_item_single_choice, tabs.map { it.label }) {
@@ -38,14 +38,10 @@ internal object DefaultStartupTabSettingsDialog {
         }
         val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
             .setTitle(UiText.Settings.DEFAULT_STARTUP_TAB_LABEL)
-            .setSingleChoiceItems(choices, selected) { _, which -> selected = which }
-            .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-            .setPositiveButton(UiText.Settings.SAVE) { _, _ ->
-                if (selected >= 0) {
-                    prefs.edit().putString(SettingsUserState.KEY_DEFAULT_STARTUP_TAB, tabs[selected].id).apply()
-                    Toast.makeText(context, UiText.Settings.withRestartHint("默认 Tab 已保存"), Toast.LENGTH_SHORT).show()
-                }
+            .setSingleChoiceItems(choices, selected) { _, which ->
+                prefs.edit().putString(SettingsUserState.KEY_DEFAULT_STARTUP_TAB, tabs[which].id).apply()
             }
+            .setPositiveButton(UiText.Settings.DONE, null)
             .create()
         SettingsDialogWindows.showStableSubDialog(dialog, context.resources.displayMetrics.density, "[DefaultStartupTabSettingsDialog]")
     }

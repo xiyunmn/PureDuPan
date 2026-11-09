@@ -109,7 +109,17 @@ internal data class MemberCardCustomizeSwitchItems(
 internal class IntSliderControl(
     val row: View,
     val getValue: () -> Int,
-)
+    private val seekBar: android.widget.SeekBar,
+) {
+    private var onValueChanged: (() -> Unit)? = null
+
+    fun setOnValueChanged(listener: () -> Unit) { onValueChanged = listener }
+    fun setEnabled(enabled: Boolean) {
+        row.isEnabled = enabled
+        seekBar.isEnabled = enabled
+    }
+    internal fun notifyValueChanged() { onValueChanged?.invoke() }
+}
 
 internal class MemberCardBackgroundImageControl(
     val row: View,

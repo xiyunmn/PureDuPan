@@ -9,9 +9,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
-import android.widget.Switch
 import android.widget.TextView
-import android.widget.Toast
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.storage.StorageDestinationResolver
 import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
@@ -52,7 +50,7 @@ internal object StoragePathSettingsDialog {
         )
         root.addView(TextView(context).apply {
             text = "所选目录即下载根目录；授权失效或 provider 不可写时任务会停止，不会回退旧公共目录。"
-            textSize = 11.5f
+            textSize = 12.5f
             UiStyle.bindTheme(this) { tokens -> setTextColor(UiStyle.tokens(context).textMuted) }
             setPadding(0, (10 * density).toInt(), 0, (4 * density).toInt())
             includeFontPadding = false
@@ -68,7 +66,6 @@ internal object StoragePathSettingsDialog {
         )
 
         val specs = storageSwitchSpecs()
-        val switches = linkedMapOf<String, Switch>()
         specs.forEach { spec ->
             SettingsSwitchRows.create(
                 context = context,
@@ -79,7 +76,6 @@ internal object StoragePathSettingsDialog {
                 padding = padding,
                 defaultValue = spec.defaultValue,
             ).also { row ->
-                SettingsSwitchRows.findSwitchView(row)?.let { switches[spec.key] = it }
                 root.addView(row)
             }
         }
@@ -87,25 +83,8 @@ internal object StoragePathSettingsDialog {
         val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
             .setTitle(UiText.Settings.STORAGE_PATH_MANAGEMENT_LABEL)
             .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
-            .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-            .setPositiveButton(UiText.Settings.SAVE, null)
+            .setPositiveButton(UiText.Settings.DONE, null)
             .create()
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
-                val editor = prefs.edit()
-                switches.forEach { (key, switch) -> editor.putBoolean(key, switch.isChecked) }
-                if (!editor.commit()) {
-                    Toast.makeText(context, UiText.Settings.SETTINGS_SAVE_FAILED, Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-                Toast.makeText(
-                    context,
-                    UiText.Settings.withRestartHint(UiText.Settings.STORAGE_SETTINGS_SAVED),
-                    Toast.LENGTH_SHORT,
-                ).show()
-                dialog.dismiss()
-            }
-        }
         val selectionListener = { updateDirectoryCard(context, prefs, directoryCard) }
         StorageTreeSelectionState.setListener(selectionListener)
         dialog.setOnDismissListener { StorageTreeSelectionState.clearIfSame(selectionListener) }
@@ -192,7 +171,7 @@ internal object StoragePathSettingsDialog {
             setPadding(0, (3 * density).toInt(), 0, 0)
         }
         val status = TextView(context).apply {
-            textSize = 11.2f
+            textSize = 12.5f
             includeFontPadding = false
             setPadding(0, (4 * density).toInt(), 0, 0)
         }

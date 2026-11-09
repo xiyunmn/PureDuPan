@@ -82,7 +82,7 @@ internal object DeviceFingerprintDialog {
                 .setTitle(UiText.Settings.DEVICE_FINGERPRINT_DIALOG_TITLE)
                 .setView(contentRoot)
                 .setNegativeButton(UiText.Settings.DEVICE_FINGERPRINT_COPY, null)
-                .setPositiveButton(android.R.string.ok, null)
+                .setPositiveButton(UiText.Settings.DONE, null)
             if (allowHiddenDeviceFingerprint) {
                 builder.setNeutralButton(UiText.Settings.DEVICE_FINGERPRINT_SHOW_HIDDEN, null)
             }

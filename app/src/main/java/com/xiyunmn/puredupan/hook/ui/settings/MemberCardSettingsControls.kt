@@ -62,6 +62,7 @@ internal object MemberCardSettingsControls {
         )
 
         val enabledSwitch = Switch(context).apply {
+            contentDescription = label
             isChecked = prefs.getBoolean(SettingsUserState.KEY_REPLACE_MEMBER_CARD_BACKGROUND, false)
             UiStyle.bindTheme(this) { tokens -> applySwitchTint(this, tokens) }
         }
@@ -94,7 +95,6 @@ internal object MemberCardSettingsControls {
             } }
             setPadding((10 * density).toInt(), 0, (10 * density).toInt(), 0)
             setOnClickListener {
-                enabledSwitch.isChecked = true
                 onChoose()
             }
         }
@@ -109,7 +109,6 @@ internal object MemberCardSettingsControls {
             text = UiText.Settings.MEMBER_CARD_BACKGROUND_CHOOSE
             UiStyle.bindTheme(this) { tokens -> UiStyle.paintScanActionButton(this, density, tokens.accent) }
             setOnClickListener {
-                enabledSwitch.isChecked = true
                 onChoose()
             }
         }
@@ -128,7 +127,6 @@ internal object MemberCardSettingsControls {
             UiStyle.bindTheme(this) { tokens -> UiStyle.paintScanActionButton(this, density, tokens.accent) }
             updateButtonEnabledState(!imageUri.isNullOrBlank())
             setOnClickListener {
-                enabledSwitch.isChecked = true
                 onAdjust()
             }
         }
@@ -185,6 +183,8 @@ internal object MemberCardSettingsControls {
     ): IntSliderControl {
         val density = context.resources.displayMetrics.density
         val currentValue = intArrayOf(initialValue.coerceIn(minValue, maxValue))
+        lateinit var slider: SeekBar
+        var control: IntSliderControl? = null
         val valueText = TextView(context).apply {
             textSize = 13f
             UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.accent) }
@@ -239,6 +239,8 @@ internal object MemberCardSettingsControls {
             addView(titleRow)
 
             addView(SeekBar(context).apply {
+                slider = this
+                contentDescription = "$label，${valueFormatter(currentValue[0])}"
                 max = (maxValue - minValue).coerceAtLeast(0)
                 progress = currentValue[0] - minValue
                 splitTrack = false
@@ -248,8 +250,11 @@ internal object MemberCardSettingsControls {
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                         val value = (minValue + progress).coerceIn(minValue, maxValue)
+                        val changed = currentValue[0] != value
                         currentValue[0] = value
                         updateValueText(value)
+                        seekBar?.contentDescription = "$label，${valueFormatter(value)}"
+                        if (fromUser && changed) control?.notifyValueChanged()
                     }
 
                     override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
@@ -262,7 +267,8 @@ internal object MemberCardSettingsControls {
         return IntSliderControl(
             row = row,
             getValue = { currentValue[0] },
-        )
+            seekBar = slider,
+        ).also { control = it }
     }
 
     fun applySeekBarTint(

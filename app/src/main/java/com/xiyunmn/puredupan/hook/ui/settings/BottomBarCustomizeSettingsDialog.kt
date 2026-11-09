@@ -105,33 +105,31 @@ internal object BottomBarCustomizeSettingsDialog {
             val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.BOTTOM_BAR_DIALOG_TITLE)
                 .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
-                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-                .setPositiveButton(UiText.Settings.SAVE, null)
+                .setPositiveButton(UiText.Settings.DONE, null)
                 .create()
-            dialog.setOnShowListener {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
+            var reverting = false
+            switchesByKey.values.filterNotNull().forEach { changedSwitch ->
+                changedSwitch.setOnCheckedChangeListener { _, checked ->
+                    if (reverting) return@setOnCheckedChangeListener
                     val saveValues = BottomBarSettingsItemsBuilder.bottomBarCustomizeSaveValues(
                         isFeatureVisible = settingsSession::isFeatureVisible,
                         isChecked = { key -> switchesByKey[key]?.isChecked == true },
                     )
                     if (!saveValues.hasVisibleTab) {
+                        reverting = true
+                        changedSwitch.isChecked = !checked
+                        reverting = false
                         Toast.makeText(
                             context,
                             UiText.Settings.BOTTOM_BAR_AT_LEAST_ONE,
                             Toast.LENGTH_SHORT,
                         ).show()
-                        return@setOnClickListener
+                        return@setOnCheckedChangeListener
                     }
                     BottomBarSettingsItemsBuilder.putBottomBarCustomizeValues(
                         editor = prefs.edit(),
                         values = saveValues,
                     ).apply()
-                    Toast.makeText(
-                        context,
-                        UiText.Settings.withRestartHint(UiText.Settings.BOTTOM_BAR_SAVED),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    dialog.dismiss()
                 }
             }
             SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)

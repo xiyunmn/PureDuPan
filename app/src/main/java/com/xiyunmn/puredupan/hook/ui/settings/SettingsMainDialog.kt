@@ -330,6 +330,7 @@ internal object SettingsMainDialog {
             settingsDialog = dialog
 
             dialog.show()
+            addCompletionHint(dialog, density)
             val unregisterImportedSettings = ModuleSettingsBackupActions.bindImportedListener {
                 val activity = context as? Activity
                 if (dialog.isShowing && activity?.isFinishing != true && activity?.isDestroyed != true) {
@@ -342,6 +343,13 @@ internal object SettingsMainDialog {
                 prefs = prefs,
                 refresh = aboutSection.refreshDeviceFingerprintDescription,
             )
+            val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                val switch = switchesByPrefKey[key] ?: return@OnSharedPreferenceChangeListener
+                SettingsSwitchRows.setCheckedFromPreferences(
+                    switch, prefs.getBoolean(key, switch.isChecked),
+                )
+            }
+            prefs.registerOnSharedPreferenceChangeListener(preferenceListener)
             val dexKitSummaryRefresh = bindDexKitSummaryRefresh(
                 context = context,
                 prefs = prefs,
@@ -352,6 +360,7 @@ internal object SettingsMainDialog {
             dialog.setOnDismissListener {
                 unregisterImportedSettings()
                 unregisterDeviceFingerprintVisibilityRefresh()
+                prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener)
                 dexKitSummaryRefresh?.unregister?.invoke()
             }
             dialog.window?.let { window ->
@@ -380,6 +389,32 @@ internal object SettingsMainDialog {
             XposedCompat.log("[SettingsMainDialog] FAILED to show settings dialog: ${t.message}")
             XposedCompat.log(t)
         }
+    }
+
+    private fun addCompletionHint(dialog: AlertDialog, density: Float) {
+        val button = dialog.getButton(AlertDialog.BUTTON_POSITIVE) ?: return
+        val oldBar = button.parent as? ViewGroup ?: return
+        val panel = oldBar.parent as? ViewGroup ?: return
+        val index = panel.indexOfChild(oldBar)
+        val footer = object : LinearLayout(dialog.context) {
+            // AlertDialog 按此高度预留按钮区，避免长内容挤掉底部说明。
+            override fun getMinimumHeight(): Int = measuredHeight
+        }.apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding((12 * density).toInt(), (2 * density).toInt(), (12 * density).toInt(), (2 * density).toInt())
+        }
+        footer.addView(TextView(dialog.context).apply {
+            text = UiText.Settings.SETTINGS_REALTIME_HINT
+            textSize = 11f
+            includeFontPadding = false
+            setPadding((8 * density).toInt(), 0, (8 * density).toInt(), 0)
+            UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textSecondary) }
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        oldBar.removeView(button)
+        footer.addView(button, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        panel.removeView(oldBar)
+        panel.addView(footer, index, oldBar.layoutParams)
     }
 
     private data class DexKitSummaryRefreshBinding(

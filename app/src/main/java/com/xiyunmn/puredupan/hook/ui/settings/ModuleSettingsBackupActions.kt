@@ -91,7 +91,7 @@ internal object ModuleSettingsBackupActions {
                 } catch (e: Exception) {
                     XposedCompat.logW("[ModuleSettingsBackup] import read failed: ${e.javaClass.simpleName}")
                     mainHandler.post {
-                        Toast.makeText(context, UiText.Settings.IMPORT_SETTINGS_INVALID, Toast.LENGTH_LONG).show()
+                        showImportMessage(activity, UiText.Settings.IMPORT_SETTINGS_INVALID)
                     }
                 }
             }
@@ -126,13 +126,30 @@ internal object ModuleSettingsBackupActions {
             val needsDirectory = success && runCatching { needsDownloadDirectory(context) }.getOrDefault(true)
             mainHandler.post {
                 if (success) importedListener?.invoke()
-                val message = if (success) {
-                    UiText.Settings.IMPORT_SETTINGS_SUCCESS +
-                        if (needsDirectory) "\n${UiText.Settings.IMPORT_SETTINGS_DIRECTORY_REQUIRED}" else ""
-                } else UiText.Settings.IMPORT_SETTINGS_FAILED
-                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                if (needsDirectory) {
+                    showImportMessage(
+                        activity,
+                        "设置已导入。请在「存储路径重定向」重新授权下载目录，再重启宿主。",
+                    )
+                } else {
+                    val message = if (success) UiText.Settings.IMPORT_SETTINGS_SUCCESS
+                        else UiText.Settings.IMPORT_SETTINGS_FAILED
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
             }
         }
+    }
+
+    private fun showImportMessage(activity: Activity, message: String) {
+        if (activity.isFinishing || activity.isDestroyed) return
+        val dialog = AlertDialog.Builder(activity, SettingsDialogWindows.themeFor(activity))
+            .setTitle(UiText.Settings.IMPORT_SETTINGS_LABEL)
+            .setMessage(message)
+            .setPositiveButton(UiText.Settings.DONE, null)
+            .create()
+        SettingsDialogWindows.showStableSubDialog(
+            dialog, activity.resources.displayMetrics.density, "[ModuleSettingsBackup]",
+        )
     }
 
     private fun needsDownloadDirectory(context: Context): Boolean {

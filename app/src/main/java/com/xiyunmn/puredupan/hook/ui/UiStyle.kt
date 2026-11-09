@@ -273,7 +273,7 @@ internal object UiStyle {
         enabled: Boolean,
         contentDescription: String,
     ) {
-        val size = (36 * density).toInt()
+        val size = (48 * density).toInt()
         val padding = (6 * density).toInt()
         button.contentDescription = contentDescription
         button.tooltipText = contentDescription

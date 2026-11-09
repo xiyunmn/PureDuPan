@@ -7,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.Switch
-import android.widget.Toast
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.settings.runtime.SettingsRuntimeSession
@@ -56,23 +55,14 @@ internal object PageCustomizeSettingsDialogs {
             val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.FILE_PAGE_CUSTOMIZE_DIALOG_TITLE)
                 .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
-                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-                .setPositiveButton(UiText.Settings.SAVE, null)
+                .setPositiveButton(UiText.Settings.DONE, null)
                 .create()
-            dialog.setOnShowListener {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
-                    PageCustomizeSettingsItemsBuilder.putFilePageCustomizeValues(
-                        editor = prefs.edit(),
-                        isFeatureVisible = settingsSession::isFeatureVisible,
-                        isChecked = { key -> switchesByKey[key]?.isChecked == true },
-                    ).apply()
-                    Toast.makeText(
-                        context,
-                        UiText.Settings.withRestartHint(UiText.Settings.FILE_PAGE_CUSTOMIZE_SAVED),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    dialog.dismiss()
-                }
+            SettingsSwitchRows.observeChanges(rowsByKey.values) {
+                PageCustomizeSettingsItemsBuilder.putFilePageCustomizeValues(
+                    editor = prefs.edit(),
+                    isFeatureVisible = settingsSession::isFeatureVisible,
+                    isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                ).apply()
             }
             SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)
         } catch (t: Throwable) {
@@ -118,23 +108,14 @@ internal object PageCustomizeSettingsDialogs {
             val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.DOWNLOAD_PAGE_CUSTOMIZE_DIALOG_TITLE)
                 .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
-                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-                .setPositiveButton(UiText.Settings.SAVE, null)
+                .setPositiveButton(UiText.Settings.DONE, null)
                 .create()
-            dialog.setOnShowListener {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
-                    PageCustomizeSettingsItemsBuilder.putDownloadPageCustomizeValues(
-                        editor = prefs.edit(),
-                        isFeatureVisible = settingsSession::isFeatureVisible,
-                        isChecked = { key -> switchesByKey[key]?.isChecked == true },
-                    ).apply()
-                    Toast.makeText(
-                        context,
-                        UiText.Settings.withRestartHint(UiText.Settings.DOWNLOAD_PAGE_CUSTOMIZE_SAVED),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    dialog.dismiss()
-                }
+            SettingsSwitchRows.observeChanges(rowsByKey.values) {
+                PageCustomizeSettingsItemsBuilder.putDownloadPageCustomizeValues(
+                    editor = prefs.edit(),
+                    isFeatureVisible = settingsSession::isFeatureVisible,
+                    isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                ).apply()
             }
             SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)
         } catch (t: Throwable) {
@@ -184,6 +165,15 @@ internal object PageCustomizeSettingsDialogs {
             val enableAllSwitch = SettingsSwitchRows.findSwitchView(enableAllRow) ?: return
             val visibleSwitches = popupBlockItems.filter { it.item.visible }
                 .mapNotNull { switchesByKey[it.key] }
+            fun persistPopupValues() {
+                PageCustomizeSettingsItemsBuilder.putPopupBlockValues(
+                    prefs = prefs,
+                    editor = prefs.edit(),
+                    isFeatureVisible = settingsSession::isFeatureVisible,
+                    isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                    enableMaster = enableAllSwitch.isChecked,
+                ).apply()
+            }
             var updatingSwitches = false
             enableAllSwitch.setOnCheckedChangeListener { _, checked ->
                 if (updatingSwitches) return@setOnCheckedChangeListener
@@ -193,6 +183,7 @@ internal object PageCustomizeSettingsDialogs {
                 } finally {
                     updatingSwitches = false
                 }
+                persistPopupValues()
             }
             visibleSwitches.forEach { child ->
                 child.setOnCheckedChangeListener { _, _ ->
@@ -207,35 +198,29 @@ internal object PageCustomizeSettingsDialogs {
                     } finally {
                         updatingSwitches = false
                     }
+                    persistPopupValues()
                 }
             }
             root.addView(enableAllRow)
-            root.addView(SettingsDialogLayout.createDivider(context, padding))
-            SettingsDialogLayout.addVisibleRows(root, popupBlockItems.visibleRows(rowsByKey))
+            for (section in PopupBlockSettingsSection.entries) {
+                val rows = popupBlockItems.filter {
+                    PopupBlockSettingsRegistry.sectionFor(it.key) == section
+                }.visibleRows(rowsByKey)
+                SettingsDialogLayout.addTitledSection(
+                    root = root,
+                    context = context,
+                    padding = padding,
+                    titleView = SettingsDialogLayout.createPerformanceSectionTitle(context, padding, section.title),
+                    rows = rows,
+                    addDividerBefore = true,
+                )
+            }
 
             val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.POPUP_BLOCK_LABEL)
                 .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
-                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-                .setPositiveButton(UiText.Settings.SAVE, null)
+                .setPositiveButton(UiText.Settings.DONE, null)
                 .create()
-            dialog.setOnShowListener {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
-                    PageCustomizeSettingsItemsBuilder.putPopupBlockValues(
-                        prefs = prefs,
-                        editor = prefs.edit(),
-                        isFeatureVisible = settingsSession::isFeatureVisible,
-                        isChecked = { key -> switchesByKey[key]?.isChecked == true },
-                        enableMaster = enableAllSwitch.isChecked,
-                    ).apply()
-                    Toast.makeText(
-                        context,
-                        UiText.Settings.withRestartHint(UiText.Settings.POPUP_BLOCK_SAVED),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    dialog.dismiss()
-                }
-            }
             SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)
         } catch (t: Throwable) {
             XposedCompat.logW("$LOG_TAG showPopupBlock failed: ${t.message}")
@@ -280,23 +265,14 @@ internal object PageCustomizeSettingsDialogs {
             val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.SEARCH_PAGE_CUSTOMIZE_DIALOG_TITLE)
                 .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
-                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-                .setPositiveButton(UiText.Settings.SAVE, null)
+                .setPositiveButton(UiText.Settings.DONE, null)
                 .create()
-            dialog.setOnShowListener {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
-                    PageCustomizeSettingsItemsBuilder.putSearchPageCustomizeValues(
-                        editor = prefs.edit(),
-                        isFeatureVisible = settingsSession::isFeatureVisible,
-                        isChecked = { key -> switchesByKey[key]?.isChecked == true },
-                    ).apply()
-                    Toast.makeText(
-                        context,
-                        UiText.Settings.withRestartHint(UiText.Settings.SEARCH_PAGE_CUSTOMIZE_SAVED),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    dialog.dismiss()
-                }
+            SettingsSwitchRows.observeChanges(rowsByKey.values) {
+                PageCustomizeSettingsItemsBuilder.putSearchPageCustomizeValues(
+                    editor = prefs.edit(),
+                    isFeatureVisible = settingsSession::isFeatureVisible,
+                    isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                ).apply()
             }
             SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)
         } catch (t: Throwable) {
@@ -429,26 +405,20 @@ internal object PageCustomizeSettingsDialogs {
             val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.HOME_CUSTOMIZE_DIALOG_TITLE)
                 .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
-                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-                .setPositiveButton(UiText.Settings.SAVE, null)
+                .setPositiveButton(UiText.Settings.DONE, null)
                 .create()
-            dialog.setOnShowListener {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
-                    PageCustomizeSettingsItemsBuilder.putHomeCustomizeValues(
-                        editor = prefs.edit(),
-                        isFeatureVisible = settingsSession::isFeatureVisible,
-                        isChecked = { key -> switchesByKey[key]?.isChecked == true },
-                        recentItemLimit = recentItemLimitSlider.getValue(),
-                        saveItemLimit = saveItemLimitSlider.getValue(),
-                    ).apply()
-                    Toast.makeText(
-                        context,
-                        UiText.Settings.withRestartHint(UiText.Settings.HOME_CUSTOMIZE_SAVED),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    dialog.dismiss()
-                }
+            val persistValues = {
+                PageCustomizeSettingsItemsBuilder.putHomeCustomizeValues(
+                    editor = prefs.edit(),
+                    isFeatureVisible = settingsSession::isFeatureVisible,
+                    isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                    recentItemLimit = recentItemLimitSlider.getValue(),
+                    saveItemLimit = saveItemLimitSlider.getValue(),
+                ).apply()
             }
+            SettingsSwitchRows.observeChanges(rowsByKey.values, persistValues)
+            recentItemLimitSlider.setOnValueChanged(persistValues)
+            saveItemLimitSlider.setOnValueChanged(persistValues)
             SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)
         } catch (t: Throwable) {
             XposedCompat.logW("$LOG_TAG showHome failed: ${t.message}")
@@ -547,6 +517,7 @@ internal object PageCustomizeSettingsDialogs {
                     manualOffsetSlider.row,
                     manualOffsetSwitch.isChecked,
                 )
+                manualOffsetSlider.setEnabled(manualOffsetSwitch.isChecked)
             }
             autoFollowSwitch.setOnCheckedChangeListener { _, isChecked ->
                 if (isChecked && manualOffsetSwitch.isChecked) {
@@ -565,25 +536,18 @@ internal object PageCustomizeSettingsDialogs {
             val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.MY_PAGE_CUSTOMIZE_DIALOG_TITLE)
                 .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
-                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-                .setPositiveButton(UiText.Settings.SAVE, null)
+                .setPositiveButton(UiText.Settings.DONE, null)
                 .create()
-            dialog.setOnShowListener {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
-                    PageCustomizeSettingsItemsBuilder.putMyPageCustomizeValues(
-                        editor = prefs.edit(),
-                        isFeatureVisible = settingsSession::isFeatureVisible,
-                        isChecked = { key -> switchesByKey[key]?.isChecked == true },
-                        manualOffsetYDp = manualOffsetSlider.getValue(),
-                    ).apply()
-                    Toast.makeText(
-                        context,
-                        UiText.Settings.withRestartHint(UiText.Settings.MY_PAGE_CUSTOMIZE_SAVED),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    dialog.dismiss()
-                }
+            val persistValues = {
+                PageCustomizeSettingsItemsBuilder.putMyPageCustomizeValues(
+                    editor = prefs.edit(),
+                    isFeatureVisible = settingsSession::isFeatureVisible,
+                    isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                    manualOffsetYDp = manualOffsetSlider.getValue(),
+                ).apply()
             }
+            SettingsSwitchRows.observeChanges(rowsByKey.values, persistValues)
+            manualOffsetSlider.setOnValueChanged(persistValues)
             SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)
         } catch (t: Throwable) {
             XposedCompat.logW("$LOG_TAG showMyPage failed: ${t.message}")

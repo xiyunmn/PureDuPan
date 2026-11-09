@@ -15,12 +15,19 @@ internal class ZoomableImageView(
     context: Context,
     private val bitmap: Bitmap,
 ) : View(context) {
+    init {
+        contentDescription = UiText.Settings.MEMBER_CARD_BACKGROUND_VIEWER_HINT
+        isLongClickable = true
+        setOnLongClickListener { onLongPress?.invoke(); true }
+    }
+
     private val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val matrix = Matrix()
     private var baseScale = 1f
     private var userScale = 1f
     private var translationX = 0f
     private var translationY = 0f
+    private var activePointerId = MotionEvent.INVALID_POINTER_ID
     private var lastX = 0f
     private var lastY = 0f
 
@@ -32,7 +39,7 @@ internal class ZoomableImageView(
             override fun onDown(e: MotionEvent): Boolean = true
 
             override fun onLongPress(e: MotionEvent) {
-                onLongPress?.invoke()
+                performLongClick()
             }
 
             override fun onDoubleTap(e: MotionEvent): Boolean {
@@ -84,22 +91,38 @@ internal class ZoomableImageView(
         scaleDetector.onTouchEvent(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                lastX = event.x
-                lastY = event.y
+                if (event.actionMasked == MotionEvent.ACTION_DOWN) activePointerId = event.getPointerId(0)
+                lastX = event.getX(event.findPointerIndex(activePointerId).coerceAtLeast(0))
+                lastY = event.getY(event.findPointerIndex(activePointerId).coerceAtLeast(0))
+                return true
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (event.getPointerId(event.actionIndex) == activePointerId) {
+                    val nextIndex = if (event.actionIndex == 0) 1 else 0
+                    activePointerId = event.getPointerId(nextIndex)
+                }
+                val index = event.findPointerIndex(activePointerId)
+                lastX = event.getX(index)
+                lastY = event.getY(index)
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
+                val index = event.findPointerIndex(activePointerId)
+                if (index < 0) return true
+                val x = event.getX(index)
+                val y = event.getY(index)
                 if (event.pointerCount == 1 && !scaleDetector.isInProgress && userScale > 1f) {
-                    translationX += event.x - lastX
-                    translationY += event.y - lastY
+                    translationX += x - lastX
+                    translationY += y - lastY
                     constrainTranslation()
                     invalidate()
                 }
-                lastX = event.x
-                lastY = event.y
+                lastX = x
+                lastY = y
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                activePointerId = MotionEvent.INVALID_POINTER_ID
                 parent?.requestDisallowInterceptTouchEvent(false)
                 return true
             }

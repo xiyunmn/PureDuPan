@@ -44,7 +44,7 @@ internal object SettingsHostTextCatalog {
             )
             this[SettingsUserState.KEY_MEMBER_CARD_CUSTOMIZE] = text(
                 "会员卡片定制",
-                "管理「我的」页会员卡片背景、点击事件、等级福利和升级按钮",
+                "调整会员卡片背景、尺寸和点击行为，隐藏指定内容",
             )
             this[SettingsUserState.KEY_AUTO_DAILY_SIGN_IN] = text(
                 UiText.Settings.AUTO_DAILY_SIGN_IN_LABEL,
@@ -117,7 +117,7 @@ internal object SettingsHostTextCatalog {
             )
             this[SettingsUserState.KEY_MEMBER_CARD_CUSTOMIZE] = text(
                 "会员卡片定制",
-                "管理「我的」页会员卡片背景、点击事件、等级福利和升级按钮",
+                "调整会员卡片背景、尺寸和点击行为，隐藏指定内容",
             )
             this[SettingsUserState.KEY_HIDE_INTL_MEMBER_CARD_SVIP_LEVEL] = text(
                 "SVIP 等级",
@@ -148,52 +148,52 @@ internal object SettingsHostTextCatalog {
                 UiText.Settings.PERFORMANCE_OPTIMIZE_DESC,
             )
             this[SettingsUserState.KEY_DISABLE_B2F_GUIDANCE_PREFETCH] = text(
-                "B2F 引导数据启动预拉取",
-                "阻止启动异步阶段预拉取回流引导和运营弹窗数据",
+                UiText.Settings.DISABLE_B2F_GUIDANCE_PREFETCH_LABEL,
+                UiText.Settings.DISABLE_B2F_GUIDANCE_PREFETCH_DESC,
             )
             this[SettingsUserState.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART] = text(
-                "音频媒体服务自启动",
-                "阻止启动期拉起音频媒体服务；手动打开音频仍按需启动",
+                UiText.Settings.DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART_LABEL,
+                UiText.Settings.DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART_DESC,
             )
             this[SettingsUserState.KEY_DISABLE_OEM_PUSH_SERVICE] = text(
-                "OEM 厂商推送组件唤起",
-                "阻止华为/荣耀/小米/OPPO/VIVO/魅族推送组件在主进程或推送进程中被唤起",
+                UiText.Settings.DISABLE_OEM_PUSH_SERVICE_LABEL,
+                UiText.Settings.DISABLE_OEM_PUSH_SERVICE_DESC,
             )
             this[SettingsUserState.KEY_DISABLE_SWAN_PRELOAD] = text(
-                "Swan 小程序运行时预加载",
-                "阻止启动后提前拉起小程序运行时，手动打开相关页面时仍按需加载",
+                UiText.Settings.DISABLE_SWAN_PRELOAD_LABEL,
+                UiText.Settings.DISABLE_SWAN_PRELOAD_DESC,
             )
             this[SettingsUserState.KEY_DISABLE_AD_SDK_INIT] = text(
-                "广告 SDK 下载服务",
-                "阻止广告 SDK 下载服务启动，保留网盘下载服务",
+                UiText.Settings.DISABLE_AD_SDK_INIT_LABEL,
+                UiText.Settings.DISABLE_AD_SDK_INIT_DESC,
             )
             this[SettingsUserState.KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER] = text(
-                "清理组件服务注册",
-                "跳过启动后置阶段的清理组件服务注册",
+                UiText.Settings.DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER_LABEL,
+                UiText.Settings.DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER_DESC,
             )
             this[SettingsUserState.KEY_DISABLE_DATAPACK_SOCKET_REGISTER] = text(
-                "流量包权益 Socket 注册",
-                "跳过启动后置阶段的流量包权益变化 Socket 注册",
+                UiText.Settings.DISABLE_DATAPACK_SOCKET_REGISTER_LABEL,
+                UiText.Settings.DISABLE_DATAPACK_SOCKET_REGISTER_DESC,
             )
             this[SettingsUserState.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD] = text(
-                "边缘动态插件自动下载/安装",
-                "阻止 OCR、图片转 Office、识图、人脸检测等边缘插件后台自动下载/安装",
+                UiText.Settings.DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD_LABEL,
+                UiText.Settings.DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD_DESC,
             )
             this[SettingsUserState.KEY_DISABLE_AIGC_BACKGROUND_COMPONENT] = text(
-                "AIGC 小组件后台刷新",
-                "阻止 AIGC 小组件后台刷新和资源解压，不拦截用户主动打开 AI 页面",
+                UiText.Settings.DISABLE_AIGC_BACKGROUND_COMPONENT_LABEL,
+                UiText.Settings.DISABLE_AIGC_BACKGROUND_COMPONENT_DESC,
             )
             this[SettingsUserState.KEY_DISABLE_INCENTIVE_BUSINESS_SERVICE] = text(
-                "激励业务服务",
-                "阻止激励任务、看广告领权益、广告应用下载与相关统计服务启动",
+                UiText.Settings.DISABLE_INCENTIVE_BUSINESS_SERVICE_LABEL,
+                UiText.Settings.DISABLE_INCENTIVE_BUSINESS_SERVICE_DESC,
             )
             this[SettingsUserState.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE] = text(
-                "缩略图端计算任务",
-                "阻止端计算管理器初始化和缩略图任务提交",
+                UiText.Settings.DISABLE_THUMBNAIL_OPERATOR_SERVICE_LABEL,
+                UiText.Settings.DISABLE_THUMBNAIL_OPERATOR_SERVICE_DESC,
             )
             this[SettingsUserState.KEY_DISABLE_VIDEO_AD_PRELOAD] = text(
-                "视频前贴广告素材预下载",
-                "阻止前后台切回时预下载视频前贴广告素材，不影响普通视频播放链路",
+                UiText.Settings.DISABLE_VIDEO_AD_PRELOAD_LABEL,
+                UiText.Settings.DISABLE_VIDEO_AD_PRELOAD_DESC,
             )
         }
     }

@@ -50,7 +50,6 @@ internal object MemberCardCustomizeSettingsDialog {
                 )
             }
 
-            var backgroundUriCleared = false
             val canReplaceBackground =
                 settingsSession.isFeatureVisible(SettingsUserState.KEY_REPLACE_MEMBER_CARD_BACKGROUND)
             val backgroundText = texts.text(
@@ -64,16 +63,13 @@ internal object MemberCardCustomizeSettingsDialog {
                 label = backgroundText.label,
                 description = "建议使用 3:1 横图，支持裁剪与模糊。",
                 padding = padding,
-                onChoose = {
-                    backgroundUriCleared = false
-                    onChooseBackground()
-                },
+                onChoose = onChooseBackground,
                 onAdjust = {
                     val uriString = prefs.getString(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI, null)
-                    if (uriString.isNullOrBlank() || backgroundUriCleared) {
+                    if (uriString.isNullOrBlank()) {
                         Toast.makeText(
                             context,
-                            UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_FAILED,
+                            "请先选择背景图片",
                             Toast.LENGTH_SHORT,
                         ).show()
                     } else {
@@ -81,12 +77,13 @@ internal object MemberCardCustomizeSettingsDialog {
                     }
                 },
                 onClear = {
-                    backgroundUriCleared = true
-                    Toast.makeText(
-                        context,
-                        UiText.Settings.MEMBER_CARD_BACKGROUND_CLEAR_PENDING,
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    prefs.edit()
+                        .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI)
+                        .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT)
+                        .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES)
+                        .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE)
+                        .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_OFFSET_Y_PERMILLE)
+                        .apply()
                 },
             )
             val blurSlider = MemberCardSettingsControls.createIntSliderRow(
@@ -272,7 +269,6 @@ internal object MemberCardCustomizeSettingsDialog {
             fun canUseViewBackgroundClick(): Boolean {
                 return canReplaceBackground &&
                     backgroundSwitch.isChecked &&
-                    !backgroundUriCleared &&
                     !prefs.getString(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI, null).isNullOrBlank()
             }
 
@@ -285,16 +281,12 @@ internal object MemberCardCustomizeSettingsDialog {
             }
 
             val selectionListener: (String) -> Unit = { uriString ->
-                backgroundUriCleared = false
                 backgroundSwitch.isChecked = true
                 backgroundImageControl.updateSelectedUri(uriString)
                 updateViewBackgroundClickRow()
             }
             MemberCardBackgroundSelectionState.setListener(selectionListener)
 
-            backgroundSwitch.setOnCheckedChangeListener { _, _ ->
-                updateViewBackgroundClickRow()
-            }
             removeCardClickSwitch.setOnCheckedChangeListener { _, isChecked ->
                 if (removeCardClickItem.visible && isChecked && viewBackgroundOnClickSwitch.isChecked) {
                     viewBackgroundOnClickSwitch.isChecked = false
@@ -316,105 +308,98 @@ internal object MemberCardCustomizeSettingsDialog {
                 }
             }
 
+            fun persist() {
+                val hasEnabledMemberCardOption =
+                    canReplaceBackground && backgroundSwitch.isChecked ||
+                        settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT) && dimLightSlider.getValue() > 0 ||
+                        settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT) && dimDarkSlider.getValue() > 0 ||
+                        sizeAdjustItem.visible && sizeSwitch.isChecked ||
+                        memberCardItems.allHideItems.any { entry ->
+                            entry.item.visible && memberCardHideValueForSave(entry)
+                        } ||
+                        removeCardClickItem.visible && removeCardClickSwitch.isChecked ||
+                        viewBackgroundOnClickItem.visible && viewBackgroundOnClickSwitch.isChecked
+                val viewBackgroundOnClickEnabled =
+                    viewBackgroundOnClickItem.visible &&
+                        !(removeCardClickItem.visible && removeCardClickSwitch.isChecked) &&
+                        canUseViewBackgroundClick() &&
+                        viewBackgroundOnClickSwitch.isChecked
+                val editor = prefs.edit()
+                    .putBoolean(SettingsUserState.KEY_MEMBER_CARD_CUSTOMIZE, hasEnabledMemberCardOption)
+                if (canReplaceBackground) {
+                    editor.putBoolean(
+                        SettingsUserState.KEY_REPLACE_MEMBER_CARD_BACKGROUND,
+                        backgroundSwitch.isChecked,
+                    )
+                }
+                if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS)) {
+                    editor.putInt(
+                        SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS,
+                        blurSlider.getValue(),
+                    )
+                }
+                if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT)) {
+                    editor.putInt(
+                        SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT,
+                        dimLightSlider.getValue(),
+                    )
+                }
+                if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT)) {
+                    editor.putInt(
+                        SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT,
+                        dimDarkSlider.getValue(),
+                    )
+                }
+                if (sizeAdjustItem.visible) {
+                    editor.putBoolean(
+                        memberCardItems.sizeAdjustItem.key,
+                        sizeSwitch.isChecked,
+                    )
+                }
+                if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_SIZE_WIDTH_DP)) {
+                    editor.putInt(
+                        SettingsUserState.KEY_MEMBER_CARD_SIZE_WIDTH_DP,
+                        widthSlider.getValue(),
+                    )
+                }
+                if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_SIZE_HEIGHT_DP)) {
+                    editor.putInt(
+                        SettingsUserState.KEY_MEMBER_CARD_SIZE_HEIGHT_DP,
+                        heightSlider.getValue(),
+                    )
+                }
+                if (removeCardClickItem.visible) {
+                    editor.putBoolean(
+                        memberCardItems.removeCardClickItem.key,
+                        removeCardClickSwitch.isChecked,
+                    )
+                }
+                if (viewBackgroundOnClickItem.visible) {
+                    editor.putBoolean(
+                        memberCardItems.viewBackgroundOnClickItem.key,
+                        viewBackgroundOnClickEnabled,
+                    )
+                }
+                for (entry in memberCardItems.allHideItems) {
+                    if (!settingsSession.isFeatureVisible(entry.key)) continue
+                    editor.putBoolean(entry.key, memberCardHideValueForSave(entry))
+                }
+                editor.apply()
+            }
+            val switchRows = listOf(sizeRow, removeCardClickRow, viewBackgroundOnClickRow) + memberCardHideRowsByKey.values
+            SettingsSwitchRows.observeChanges(switchRows, ::persist)
+            backgroundSwitch.setOnCheckedChangeListener { _, _ ->
+                updateViewBackgroundClickRow()
+                persist()
+            }
+            listOf(blurSlider, dimLightSlider, dimDarkSlider, widthSlider, heightSlider)
+                .forEach { it.setOnValueChanged(::persist) }
+
             val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.MEMBER_CARD_CUSTOMIZE_DIALOG_TITLE)
                 .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
-                .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
-                .setPositiveButton(UiText.Settings.SAVE, null)
+                .setPositiveButton(UiText.Settings.DONE, null)
                 .create()
-            dialog.setOnShowListener {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
-                    val hasEnabledMemberCardOption =
-                        canReplaceBackground && backgroundSwitch.isChecked ||
-                            settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT) && dimLightSlider.getValue() > 0 ||
-                            settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT) && dimDarkSlider.getValue() > 0 ||
-                            sizeAdjustItem.visible && sizeSwitch.isChecked ||
-                            memberCardItems.allHideItems.any { entry ->
-                                entry.item.visible && memberCardHideValueForSave(entry)
-                            } ||
-                            removeCardClickItem.visible && removeCardClickSwitch.isChecked ||
-                            viewBackgroundOnClickItem.visible && viewBackgroundOnClickSwitch.isChecked
-                    val viewBackgroundOnClickEnabled =
-                        viewBackgroundOnClickItem.visible &&
-                            !(removeCardClickItem.visible && removeCardClickSwitch.isChecked) &&
-                            canUseViewBackgroundClick() &&
-                            viewBackgroundOnClickSwitch.isChecked
-                    val editor = prefs.edit()
-                        .putBoolean(SettingsUserState.KEY_MEMBER_CARD_CUSTOMIZE, hasEnabledMemberCardOption)
-                    if (canReplaceBackground) {
-                        editor.putBoolean(
-                            SettingsUserState.KEY_REPLACE_MEMBER_CARD_BACKGROUND,
-                            backgroundSwitch.isChecked,
-                        )
-                    }
-                    if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS)) {
-                        editor.putInt(
-                            SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS,
-                            blurSlider.getValue(),
-                        )
-                    }
-                    if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT)) {
-                        editor.putInt(
-                            SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_LIGHT_PERCENT,
-                            dimLightSlider.getValue(),
-                        )
-                    }
-                    if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT)) {
-                        editor.putInt(
-                            SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT,
-                            dimDarkSlider.getValue(),
-                        )
-                    }
-                    if (sizeAdjustItem.visible) {
-                        editor.putBoolean(
-                            memberCardItems.sizeAdjustItem.key,
-                            sizeSwitch.isChecked,
-                        )
-                    }
-                    if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_SIZE_WIDTH_DP)) {
-                        editor.putInt(
-                            SettingsUserState.KEY_MEMBER_CARD_SIZE_WIDTH_DP,
-                            widthSlider.getValue(),
-                        )
-                    }
-                    if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_SIZE_HEIGHT_DP)) {
-                        editor.putInt(
-                            SettingsUserState.KEY_MEMBER_CARD_SIZE_HEIGHT_DP,
-                            heightSlider.getValue(),
-                        )
-                    }
-                    if (removeCardClickItem.visible) {
-                        editor.putBoolean(
-                            memberCardItems.removeCardClickItem.key,
-                            removeCardClickSwitch.isChecked,
-                        )
-                    }
-                    if (viewBackgroundOnClickItem.visible) {
-                        editor.putBoolean(
-                            memberCardItems.viewBackgroundOnClickItem.key,
-                            viewBackgroundOnClickEnabled,
-                        )
-                    }
-                    for (entry in memberCardItems.allHideItems) {
-                        if (!settingsSession.isFeatureVisible(entry.key)) continue
-                        editor.putBoolean(entry.key, memberCardHideValueForSave(entry))
-                    }
-                    if (canReplaceBackground && backgroundUriCleared) {
-                        editor.remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI)
-                            .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT)
-                            .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES)
-                            .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE)
-                            .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_OFFSET_Y_PERMILLE)
-                    }
-                    editor.apply()
-                    Toast.makeText(
-                        context,
-                        UiText.Settings.withRestartHint(UiText.Settings.MEMBER_CARD_CUSTOMIZE_SAVED),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    dialog.dismiss()
-                }
-            }
             dialog.setOnDismissListener {
                 MemberCardBackgroundSelectionState.clearIfSame(selectionListener)
             }

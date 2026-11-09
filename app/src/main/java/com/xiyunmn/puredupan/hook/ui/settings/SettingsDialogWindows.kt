@@ -7,6 +7,8 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
+import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
 import java.util.WeakHashMap
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -51,6 +53,7 @@ internal object SettingsDialogWindows {
         if (clearCustomPadding) {
             clearSystemDialogCustomPanelPadding(window)
         }
+        applyPanelSpacing(window, density)
         applyStableDialogWindowLayout(
             window = window,
             density = density,
@@ -73,8 +76,8 @@ internal object SettingsDialogWindows {
                 XposedCompat.logW("$logTag showStableSubDialog aborted: window missing before show")
                 return
             }
-            // 卡片沿用系统动画，嵌套弹窗单独渐变父页面遮罩。
             window.setWindowAnimations(android.R.style.Animation_Dialog)
+            // 嵌套弹窗的父页面遮罩独立渐入、渐出。
             themedWindows.keys.firstOrNull { parent ->
                 parent !== window && parent.decorView.isShown && parent.decorView.hasWindowFocus()
             }?.let { parent -> SettingsDialogShade.bind(parent, window) }
@@ -99,6 +102,29 @@ internal object SettingsDialogWindows {
             customPanel.paddingBottom != 0
         ) {
             customPanel.setPadding(0, 0, 0, 0)
+        }
+    }
+
+    private fun applyPanelSpacing(window: Window, density: Float) {
+        val resources = window.context.resources
+        val titleTemplate = window.findViewById<View>(resources.getIdentifier("title_template", "id", "android"))
+        if (titleTemplate?.visibility == View.VISIBLE) {
+            titleTemplate.setPadding(
+                titleTemplate.paddingLeft, (20 * density).toInt(),
+                titleTemplate.paddingRight, (10 * density).toInt(),
+            )
+            window.findViewById<TextView>(resources.getIdentifier("alertTitle", "id", "android"))?.textSize = 20f
+        }
+        val buttons = listOf(android.R.id.button1, android.R.id.button2, android.R.id.button3)
+            .mapNotNull { window.findViewById<Button>(it) }
+        buttons.forEach { button ->
+            button.minHeight = (48 * density).toInt()
+            button.minimumHeight = (48 * density).toInt()
+            button.setPadding(button.paddingLeft, 0, button.paddingRight, 0)
+        }
+        (buttons.firstOrNull()?.parent as? LinearLayout)?.let { bar ->
+            bar.setPadding(bar.paddingLeft, (2 * density).toInt(), bar.paddingRight, (2 * density).toInt())
+            bar.minimumHeight = 0
         }
     }
 

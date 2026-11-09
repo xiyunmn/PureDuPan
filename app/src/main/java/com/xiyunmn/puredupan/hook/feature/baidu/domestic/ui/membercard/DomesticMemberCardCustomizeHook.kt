@@ -14,6 +14,8 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -367,31 +369,18 @@ internal object DomesticMemberCardCustomizeHook {
             val context = view.context ?: return
             val snapshot = HookSettings.memberCardSnapshot()
             val uriString = snapshot.memberCardBackgroundUri?.takeIf { it.isNotBlank() } ?: return
-            val bitmap = loadOriginalBackgroundPreviewBitmap(context, uriString) ?: run {
-                Toast.makeText(
-                    context,
-                    UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_FAILED,
-                    Toast.LENGTH_SHORT,
-                ).show()
-                return
-            }
-
             val density = context.resources.displayMetrics.density
             val metrics = context.resources.displayMetrics
-            val imageView = ZoomableImageView(context, bitmap).apply {
-                onLongPress = {
-                    showOriginalBackgroundMenu(context, uriString)
-                }
-            }
             val container = FrameLayout(context).apply {
                 setBackgroundColor(Color.TRANSPARENT)
-                addView(
-                    imageView,
-                    FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        (metrics.heightPixels * 0.86f).toInt().coerceAtLeast((420 * density).toInt()),
-                    ),
-                )
+                addView(TextView(context).apply {
+                    text = UiText.Settings.MEMBER_CARD_BACKGROUND_LOADING
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                }, FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    (metrics.heightPixels * 0.86f).toInt(),
+                ))
             }
 
             val dialog = Dialog(context).apply {
@@ -408,6 +397,40 @@ internal object DomesticMemberCardCustomizeHook {
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
             }
+            Thread({
+                val bitmap = loadOriginalBackgroundPreviewBitmap(context, uriString)
+                Handler(Looper.getMainLooper()).post {
+                    if (!dialog.isShowing) {
+                        bitmap?.recycle()
+                        return@post
+                    }
+                    if (bitmap == null) {
+                        dialog.dismiss()
+                        Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_FAILED, Toast.LENGTH_SHORT).show()
+                        return@post
+                    }
+                    container.removeAllViews()
+                    container.addView(ZoomableImageView(context, bitmap).apply {
+                        onLongPress = { showOriginalBackgroundMenu(context, uriString) }
+                    }, FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        (metrics.heightPixels * 0.86f).toInt(),
+                    ))
+                    container.addView(TextView(context).apply {
+                        text = UiText.Settings.MEMBER_CARD_BACKGROUND_VIEWER_HINT
+                        textSize = 12f
+                        setTextColor(Color.WHITE)
+                        setBackgroundColor(Color.argb(150, 0, 0, 0))
+                        gravity = Gravity.CENTER
+                        setPadding((8 * density).toInt(), (8 * density).toInt(), (8 * density).toInt(), (8 * density).toInt())
+                        setOnClickListener { showOriginalBackgroundMenu(context, uriString) }
+                    }, FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Gravity.BOTTOM,
+                    ))
+                }
+            }, "PureDuPan-card-preview").start()
             XposedCompat.logD("[MemberCardCustomizeHook] custom background preview opened")
         } catch (e: Exception) {
             XposedCompat.logW("[MemberCardCustomizeHook] open custom background failed: ${e.message}")
@@ -726,20 +749,25 @@ internal object DomesticMemberCardCustomizeHook {
         context: Context,
         uriString: String,
     ) {
-        val success = runCatching {
-            writeOriginalBackgroundToAlbum(context, uriString)
-        }.onFailure {
-            XposedCompat.logW("[MemberCardCustomizeHook] save original background failed: ${it.message}")
-        }.getOrDefault(false)
-        Toast.makeText(
-            context,
-            if (success) {
-                UiText.Settings.MEMBER_CARD_BACKGROUND_SAVED_TO_ALBUM
-            } else {
-                UiText.Settings.MEMBER_CARD_BACKGROUND_SAVE_TO_ALBUM_FAILED
-            },
-            Toast.LENGTH_SHORT,
-        ).show()
+        Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_SAVING, Toast.LENGTH_SHORT).show()
+        Thread({
+            val success = runCatching {
+                writeOriginalBackgroundToAlbum(context, uriString)
+            }.onFailure {
+                XposedCompat.logW("[MemberCardCustomizeHook] save original background failed: ${it.message}")
+            }.getOrDefault(false)
+            Handler(Looper.getMainLooper()).post {
+                Toast.makeText(
+                    context,
+                    if (success) {
+                        UiText.Settings.MEMBER_CARD_BACKGROUND_SAVED_TO_ALBUM
+                    } else {
+                        UiText.Settings.MEMBER_CARD_BACKGROUND_SAVE_TO_ALBUM_FAILED
+                    },
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }, "PureDuPan-card-save").start()
     }
 
     private fun writeOriginalBackgroundToAlbum(
