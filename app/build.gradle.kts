@@ -69,8 +69,8 @@ android {
     }
 
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
+        version = release(37) {
+            minorApiLevel = 0
         }
     }
 
@@ -79,7 +79,7 @@ android {
     defaultConfig {
         applicationId = "com.xiyunmn.puredupan.hook"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         ndk {
             abiFilters += setOf("arm64-v8a")
         }

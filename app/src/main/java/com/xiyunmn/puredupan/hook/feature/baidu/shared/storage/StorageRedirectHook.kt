@@ -27,9 +27,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /** 共享存储重定向逻辑，按宿主解析不同符号。 */
 object StorageRedirectHook {
-    // 使用 PASSTHROUGH 传递拒绝异常，阻止无效下载回退到原路径。
+    // 适配缺失时使用宿主目录；目标授权或路径校验失败时不静默回退。
     private const val TAG = "StorageRedirectHook"
     private val installState = HookState()
+    private var installedTargetCount = 0
     private val rootGuardInstalled = AtomicBoolean(false)
     private val downloadItemContext = ThreadLocal<DownloadItemContext?>()
     private val downloadUnavailableNotified = AtomicBoolean(false)
@@ -47,7 +48,6 @@ object StorageRedirectHook {
         val mod = XposedCompat.module ?: return
         if (!installState.markInstalled()) return
         val international = XposedCompat.currentPackageName() == HostPackages.BAIDU_INTL
-        var count = 0
         if (HookSettings.isStorageRedirectEnabled && HookSettings.isStorageDownloadRedirectEnabled) {
             try {
                 val partitionStorage = if (international) {
@@ -58,6 +58,7 @@ object StorageRedirectHook {
                 } else null
                 internationalStorageMode = partitionStorage
                 val installed = mutableSetOf<String>()
+                // 国际版类名随版本替换，检查当前实际存在的实现。
                 val extensionOwners = (if (international) BaiduStorageHookPoints.INTL_DOWNLOAD_EXTENSIONS
                     else listOf(BaiduStorageHookPoints.DOMESTIC_DOWNLOAD_EXTENSION))
                     .filter { XposedCompat.findClassOrNull(it, cl) != null }
@@ -90,19 +91,33 @@ object StorageRedirectHook {
                 val legacy = installDownloadBinding(legacyOwner) {
                     hookLegacyDefaultSaveDir(mod, cl, legacyOwner, legacyNames, installed)
                 }
-                count += creators + extensions + folders + legacy
                 uriCreatorReady = creators > 0
                 downloadBindingsReady = extensionOwners.isNotEmpty() &&
                     extensionOwners.all { owner -> pathNames.all { "$owner#$it" in installed } } &&
                     (if (international) partitionStorage != null else uriCreatorReady)
-                if (!legacyNames.all { "$legacyOwner#$it" in installed }) {
-                    XposedCompat.logW("[$TAG] some legacy default directory bindings unavailable")
-                }
+                val missingLegacy = legacyNames.filter { "$legacyOwner#$it" !in installed }
                 folderBindingsReady = folderOwners.isNotEmpty() && folderOwners.all { it.first in installed }
                 XposedCompat.logD("[$TAG] download bindings: creators=$creators extensions=$extensions folders=$folders legacy=$legacy")
-                isDownloadRedirectActive(HookSettings.appContext())
-                if (downloadBindingsReady) shouldRemoveOuterPath(HookSettings.appContext())
-                count += installDownloadBinding("download path queries") { hookStoragePathQueries(
+                val context = HookSettings.appContext()
+                val active = isDownloadRedirectActive(context)
+                val removeOuter = active && shouldRemoveOuterPath(context)
+                // BT 等入口独立读取默认目录，普通下载扩展可直接返回目标路径。
+                val legacyState = when (missingLegacy.size) {
+                    0 -> if (active) "redirect" else "host"
+                    legacyNames.size -> "unavailable"
+                    else -> "partial"
+                }
+                XposedCompat.logD(
+                    "[$TAG] download capabilities: primary=${if (active) "redirect" else "host"} " +
+                        "uriCreator=$uriCreatorReady legacy=$legacyState removeOuter=$removeOuter " +
+                        "extensions=$extensionOwners folders=${folderOwners.map { it.first }} " +
+                        "bindingFailure=host-directory targetFailure=reject",
+                )
+                if (missingLegacy.isNotEmpty()) {
+                    XposedCompat.logW("[$TAG] legacy directory bindings missing: owner=$legacyOwner methods=$missingLegacy")
+                    if (active) showFailure(context, "部分下载可能使用宿主目录")
+                }
+                installDownloadBinding("download path queries") { hookStoragePathQueries(
                     mod,
                     cl,
                     if (international) BaiduStorageHookPoints.INTL_TARGET30_STORAGE else BaiduStorageHookPoints.DOMESTIC_TARGET30_STORAGE,
@@ -118,13 +133,18 @@ object StorageRedirectHook {
             }
         }
         if (HookSettings.isStorageRedirectEnabled && HookSettings.isStorageReaderSdkRedirectEnabled) {
-            count += installDownloadBinding("SDK public directory") { hookSdkPublicDirectory(mod, cl) }
+            installDownloadBinding("SDK public directory") { hookSdkPublicDirectory(mod, cl) }
         }
         if (HookSettings.isStorageRootGuardEnabled) {
-            count += installDownloadBinding("root directory protection") { hookRootGuard(mod) }
+            installDownloadBinding("root directory protection") { hookRootGuard(mod) }
         }
-        if (count == 0) XposedCompat.logW("[$TAG] no targets installed")
-        else XposedCompat.log("[$TAG] hook INSTALLED targets=$count")
+        if (installedTargetCount == 0) {
+            rootGuardInstalled.set(false)
+            installState.reset()
+            XposedCompat.logW("[$TAG] no targets installed; installation may retry")
+        } else {
+            XposedCompat.log("[$TAG] hook INSTALLED targets=$installedTargetCount")
+        }
     }
 
     private fun snapshot(): StorageRedirectSnapshot {
@@ -190,6 +210,7 @@ object StorageRedirectHook {
                     }
                 }
             }
+            installedTargetCount++
             count++
             XposedCompat.logD("[$TAG] URI creator hooked: ${clazz.name}.${method.name}")
         }
@@ -227,6 +248,7 @@ object StorageRedirectHook {
                     }
                 }
             }
+            installedTargetCount++
             count++
             installed.add("$className#${method.name}")
             XposedCompat.logD("[$TAG] default directory hooked: ${clazz.name}.${method.name}")
@@ -332,6 +354,7 @@ object StorageRedirectHook {
                     }
                 }
             }
+            installedTargetCount++
             count++
             installed.add("$className#${method.name}")
             XposedCompat.logD("[$TAG] download path hooked: ${clazz.name}.${method.name}")
@@ -393,6 +416,7 @@ object StorageRedirectHook {
                     if (slash < 0) "" else relative.substring(0, slash + 1)
                 }
             }
+            installedTargetCount++
             count++
             XposedCompat.logD("[$TAG] path query hooked: ${clazz.name}.${method.name}")
         }
@@ -433,7 +457,7 @@ object StorageRedirectHook {
             val getter = value.javaClass.methods.firstOrNull {
                 it.name == "getSourceDirPath" && it.parameterTypes.isEmpty() && it.returnType == String::class.java
             } ?: return@forEach
-            // 单文件允许 null；反射失败交由调用方保留完整父路径。
+            // 单文件和选中的根文件夹允许 null；反射失败时保留完整父路径。
             return getter.invoke(value) as String?
         }
         throw IllegalStateException("下载任务相对父路径接口不可用")
@@ -534,6 +558,7 @@ object StorageRedirectHook {
                 )
                 result
             }
+            installedTargetCount++
             count++
             XposedCompat.logD("[$TAG] folder task hooked: ${clazz.name}.${method.name}")
         }
@@ -559,6 +584,7 @@ object StorageRedirectHook {
             // 此处创建 SDK 根目录，子目录由调用方创建。
             if (!root.isDirectory && !root.mkdirs()) null else File(root, child)
         }
+        installedTargetCount++
         XposedCompat.logD("[$TAG] SDK public directory hooked: ${clazz.name}.${method.name}")
         return 1
     }
@@ -573,6 +599,7 @@ object StorageRedirectHook {
                 val file = chain.thisObject as? File
                 if (StorageRootGuard.shouldBlock(file?.path, snapshot())) false else chain.proceed()
             }
+            installedTargetCount++
             count++
         }
         val filesClass = Files::class.java
@@ -588,6 +615,7 @@ object StorageRedirectHook {
                 }
                 chain.proceed()
             }
+            installedTargetCount++
             count++
         }
         return count
