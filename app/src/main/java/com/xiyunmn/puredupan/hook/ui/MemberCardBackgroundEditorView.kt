@@ -48,6 +48,7 @@ internal class MemberCardBackgroundEditorView(
     private var lastY = 0f
     var onScalePercentChanged: ((Int) -> Unit)? = null
     var onTransformChanged: (() -> Unit)? = null
+    var onGestureFinished: (() -> Unit)? = null
 
     var scalePercent: Int = 100
         set(value) {
@@ -153,6 +154,7 @@ internal class MemberCardBackgroundEditorView(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 activePointerId = MotionEvent.INVALID_POINTER_ID
                 parent?.requestDisallowInterceptTouchEvent(false)
+                onGestureFinished?.invoke()
                 return true
             }
         }

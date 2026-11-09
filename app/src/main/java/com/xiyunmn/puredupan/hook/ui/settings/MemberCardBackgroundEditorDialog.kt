@@ -110,6 +110,7 @@ internal object MemberCardBackgroundEditorDialog {
             }
             updateScaleValue(editorView.scalePercent)
             var scaleSeekBar: SeekBar? = null
+            var transformSave: DeferredSettingsSave? = null
             editorView.onScalePercentChanged = { value ->
                 updateScaleValue(value)
                 val progress = value.coerceIn(100, 300) - 100
@@ -176,7 +177,9 @@ internal object MemberCardBackgroundEditorDialog {
 
                         override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
 
-                        override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+                        override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                            transformSave?.flush()
+                        }
                     })
                 })
 
@@ -209,7 +212,7 @@ internal object MemberCardBackgroundEditorDialog {
             }
 
             var active = true
-            editorView.onTransformChanged = {
+            val pendingTransformSave = DeferredSettingsSave {
                 if (active && prefs.getString(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI, null) == uriString) {
                     val editor = prefs.edit()
                     if (isFeatureVisible(context, SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT)) {
@@ -239,14 +242,19 @@ internal object MemberCardBackgroundEditorDialog {
                     editor.apply()
                 }
             }
+            transformSave = pendingTransformSave
+            editorView.onTransformChanged = pendingTransformSave::schedule
+            editorView.onGestureFinished = pendingTransformSave::flush
             content.removeAllViews()
             content.addView(
                 SettingsDialogLayout.createDialogScrollContainer(context, root),
                 FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT),
             )
             dialog.setOnDismissListener {
+                pendingTransformSave.flush()
                 active = false
                 editorView.onTransformChanged = null
+                editorView.onGestureFinished = null
             }
         } catch (t: Throwable) {
             dialog.dismiss()

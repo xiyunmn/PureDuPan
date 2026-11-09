@@ -112,13 +112,22 @@ internal class IntSliderControl(
     private val seekBar: android.widget.SeekBar,
 ) {
     private var onValueChanged: (() -> Unit)? = null
+    private val pendingSave = DeferredSettingsSave { onValueChanged?.invoke() }
+
+    init {
+        row.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(view: View) = Unit
+            override fun onViewDetachedFromWindow(view: View) = flushPendingValue()
+        })
+    }
 
     fun setOnValueChanged(listener: () -> Unit) { onValueChanged = listener }
     fun setEnabled(enabled: Boolean) {
         row.isEnabled = enabled
         seekBar.isEnabled = enabled
     }
-    internal fun notifyValueChanged() { onValueChanged?.invoke() }
+    internal fun notifyValueChanged() = pendingSave.schedule()
+    internal fun flushPendingValue() = pendingSave.flush()
 }
 
 internal class MemberCardBackgroundImageControl(

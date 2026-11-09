@@ -259,7 +259,9 @@ internal object MemberCardSettingsControls {
 
                     override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
 
-                    override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+                    override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                        control?.flushPendingValue()
+                    }
                 })
             })
         }

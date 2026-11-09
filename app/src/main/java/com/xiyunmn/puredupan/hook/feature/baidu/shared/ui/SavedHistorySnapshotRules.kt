@@ -3,7 +3,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 /** 快照用于补齐同一有序历史列表的尾部。 */
 internal object SavedHistorySnapshotRules {
     const val MAX_ITEMS = 10
-    const val MAX_AGE_MILLIS = 24 * 60 * 60 * 1_000L
+    const val MAX_AGE_MILLIS = 7 * 24 * 60 * 60 * 1_000L
 
     fun isFresh(writtenAt: Long, now: Long): Boolean =
         writtenAt > 0 && now >= writtenAt && now - writtenAt <= MAX_AGE_MILLIS
