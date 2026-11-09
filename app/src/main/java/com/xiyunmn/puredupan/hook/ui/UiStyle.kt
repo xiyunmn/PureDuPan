@@ -119,7 +119,7 @@ internal object UiStyle {
         dialogInsetPx = (CARD_INSET_DP * density).toInt(),
         cardCornerPx = CARD_CORNER_DP * density,
         night = false,
-        surface = 0xFFFFFFFF.toInt(),
+        surface = 0xFFF5F6F8.toInt(),
         surfaceAlt = 0xFFF4F6FA.toInt(),
         surfaceRaised = 0xFFFAFBFD.toInt(),
         textPrimary = 0xFF14171C.toInt(),
@@ -331,17 +331,6 @@ internal object UiStyle {
             .translationY(0f)
             .setDuration(220)
             .setInterpolator(DecelerateInterpolator(1.2f))
-            .start()
-    }
-
-    internal fun animateSubDialogEntry(root: View, density: Float) {
-        root.alpha = 0f
-        root.translationY = 14f * density
-        root.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setDuration(340)
-            .setInterpolator(PathInterpolator(0.2f, 0f, 0f, 1f))
             .start()
     }
 

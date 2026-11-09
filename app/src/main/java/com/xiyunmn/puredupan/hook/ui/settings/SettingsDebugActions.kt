@@ -79,7 +79,11 @@ internal object SettingsDebugActions {
                 .setView(scrollView)
                 .setNegativeButton(UiText.Settings.DEXKIT_STATUS_VIEW_DETAILS, null)
                 .setPositiveButton(android.R.string.ok, null)
-                .show()
+                .create()
+            SettingsDialogWindows.showStableSubDialog(
+                dialog, context.resources.displayMetrics.density, "[SettingsDebugActions]",
+                maxWidthDp = 360f, horizontalMarginDp = 28f,
+            )
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setOnClickListener {
                 showDexKitStatusDetailsDialog(
                     context = context,
@@ -93,19 +97,6 @@ internal object SettingsDebugActions {
             if (shouldContinueDexKitStatusRefresh(context)) {
                 refreshHandler.postDelayed(refreshRunnable, DEXKIT_STATUS_REFRESH_MS)
             }
-            dialog.window
-                ?.let { window ->
-                    SettingsDialogWindows.applyCardStyle(
-                        window = window,
-                        density = window.context.resources.displayMetrics.density,
-                        maxWidthDp = 360f,
-                        horizontalMarginDp = 28f,
-                    )
-                    UiStyle.animateSubDialogEntry(
-                        window.decorView,
-                        window.context.resources.displayMetrics.density,
-                    )
-                }
         } catch (t: Throwable) {
             XposedCompat.logW("[SettingsDebugActions] showDexKitStatusDialog failed: ${t.message}")
         }
@@ -193,7 +184,11 @@ internal object SettingsDebugActions {
                 .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
                 .setNegativeButton(UiText.Settings.DEXKIT_STATUS_COPY, null)
                 .setPositiveButton(android.R.string.ok, null)
-                .show()
+                .create()
+            SettingsDialogWindows.showStableSubDialog(
+                dialog, context.resources.displayMetrics.density, "[SettingsDebugActions]",
+                maxWidthDp = 420f, horizontalMarginDp = 24f,
+            )
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setOnClickListener {
                 copyDexKitStatusDetails(context, latestCopyText)
             }
@@ -203,19 +198,6 @@ internal object SettingsDebugActions {
             if (shouldContinueDexKitStatusRefresh(context)) {
                 refreshHandler.postDelayed(refreshRunnable, DEXKIT_STATUS_REFRESH_MS)
             }
-            dialog.window
-                ?.let { window ->
-                    SettingsDialogWindows.applyCardStyle(
-                        window = window,
-                        density = window.context.resources.displayMetrics.density,
-                        maxWidthDp = 420f,
-                        horizontalMarginDp = 24f,
-                    )
-                    UiStyle.animateSubDialogEntry(
-                        window.decorView,
-                        window.context.resources.displayMetrics.density,
-                    )
-                }
         } catch (t: Throwable) {
             XposedCompat.logW("[SettingsDebugActions] show DexKit detail dialog failed: ${t.message}")
         }
@@ -281,18 +263,11 @@ internal object SettingsDebugActions {
                     }
                     Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
                 }
-                .show()
-            val density = context.resources.displayMetrics.density
-            dialog.window
-                ?.let { window ->
-                    SettingsDialogWindows.applyCardStyle(
-                        window = window,
-                        density = density,
-                        maxWidthDp = 360f,
-                        horizontalMarginDp = 28f,
-                    )
-                    UiStyle.animateSubDialogEntry(window.decorView, density)
-                }
+                .create()
+            SettingsDialogWindows.showStableSubDialog(
+                dialog, context.resources.displayMetrics.density, "[SettingsDebugActions]",
+                maxWidthDp = 360f, horizontalMarginDp = 28f,
+            )
         } catch (t: Throwable) {
             Toast.makeText(context, UiText.Settings.CLEAR_LOGS_FAILED, Toast.LENGTH_SHORT).show()
             XposedCompat.logW("[SettingsDebugActions] showClearLogsConfirmDialog failed: ${t.message}")
@@ -317,18 +292,11 @@ internal object SettingsDebugActions {
                         onRestart()
                     }
                 }
-                .show()
-            val density = context.resources.displayMetrics.density
-            dialog.window
-                ?.let { window ->
-                    SettingsDialogWindows.applyCardStyle(
-                        window = window,
-                        density = density,
-                        maxWidthDp = 360f,
-                        horizontalMarginDp = 28f,
-                    )
-                    UiStyle.animateSubDialogEntry(window.decorView, density)
-                }
+                .create()
+            SettingsDialogWindows.showStableSubDialog(
+                dialog, context.resources.displayMetrics.density, "[SettingsDebugActions]",
+                maxWidthDp = 360f, horizontalMarginDp = 28f,
+            )
         } catch (t: Throwable) {
             Toast.makeText(context, UiText.Settings.RESET_MODULE_SETTINGS_FAILED, Toast.LENGTH_SHORT).show()
             XposedCompat.logW("[SettingsDebugActions] showResetModuleSettingsConfirmDialog failed: ${t.message}")

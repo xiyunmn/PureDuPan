@@ -64,60 +64,29 @@ internal object SettingsDialogWindows {
         dialog: AlertDialog,
         density: Float,
         logTag: String,
+        maxWidthDp: Float = 560f,
+        horizontalMarginDp: Float = 12f,
     ) {
         try {
-            val preShowWindow = dialog.window ?: run {
+            dialog.create()
+            val window = dialog.window ?: run {
                 XposedCompat.logW("$logTag showStableSubDialog aborted: window missing before show")
                 return
             }
-            applyStableSubDialogWindow(preShowWindow, density, clearCustomPadding = false, logTag = logTag)
-
-            dialog.show()
-
-            val window = dialog.window ?: run {
-                XposedCompat.logW("$logTag showStableSubDialog aborted: window missing after show")
-                return
-            }
-            val decorView = window.decorView
-            decorView.animate().cancel()
-            applyStableSubDialogWindow(window, density, clearCustomPadding = true, logTag = logTag)
-            animateStableSubDialogEntry(decorView, density, logTag)
-        } catch (t: Throwable) {
-            XposedCompat.logW("$logTag showStableSubDialog failed: ${t.message}")
-            try {
-                dialog.window?.decorView?.alpha = 1f
-            } catch (_: Throwable) {
-                // 尝试恢复窗口外观，失败时保留原状态。
-            }
-        }
-    }
-
-    private fun applyStableSubDialogWindow(
-        window: Window,
-        density: Float,
-        clearCustomPadding: Boolean,
-        logTag: String,
-    ) {
-        try {
-            window.setGravity(Gravity.CENTER)
-            window.setWindowAnimations(0)
+            // 卡片沿用系统动画，嵌套弹窗单独渐变父页面遮罩。
+            window.setWindowAnimations(android.R.style.Animation_Dialog)
+            themedWindows.keys.firstOrNull { parent ->
+                parent !== window && parent.decorView.isShown && parent.decorView.hasWindowFocus()
+            }?.let { parent -> SettingsDialogShade.bind(parent, window) }
             applyCardStyle(
                 window = window,
                 density = density,
-                clearCustomPadding = clearCustomPadding,
+                maxWidthDp = maxWidthDp,
+                horizontalMarginDp = horizontalMarginDp,
             )
+            dialog.show()
         } catch (t: Throwable) {
-            XposedCompat.logW("$logTag applyStableSubDialogWindow failed: ${t.message}")
-        }
-    }
-
-    private fun animateStableSubDialogEntry(root: View, density: Float, logTag: String) {
-        try {
-            UiStyle.animateSubDialogEntry(root, density)
-        } catch (t: Throwable) {
-            root.alpha = 1f
-            root.translationY = 0f
-            XposedCompat.logW("$logTag stable sub dialog entry animation failed: ${t.message}")
+            XposedCompat.logW("$logTag showStableSubDialog failed: ${t.message}")
         }
     }
 

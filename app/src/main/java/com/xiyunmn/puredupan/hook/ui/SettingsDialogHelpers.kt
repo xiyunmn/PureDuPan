@@ -18,13 +18,6 @@ internal fun showDisclaimerDialog(context: Context, onAccepted: () -> Unit) {
         .create()
 
     dialog.setOnShowListener {
-        val window = dialog.window
-        if (window != null) {
-            val density = context.resources.displayMetrics.density
-            SettingsDialogWindows.applyCardStyle(window, density)
-            UiStyle.animateSubDialogEntry(window.decorView, density)
-        }
-
         val positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
         val negativeButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
 
@@ -58,7 +51,9 @@ internal fun showDisclaimerDialog(context: Context, onAccepted: () -> Unit) {
         }
     }
 
-    dialog.show()
+    SettingsDialogWindows.showStableSubDialog(
+        dialog, context.resources.displayMetrics.density, "[SettingsDialogHelpers]",
+    )
 }
 
 internal fun showRestrictedFeatureWarningDialog(context: Context, onConfirmed: () -> Unit) {
@@ -71,13 +66,6 @@ internal fun showRestrictedFeatureWarningDialog(context: Context, onConfirmed: (
         .create()
 
     dialog.setOnShowListener {
-        val window = dialog.window
-        if (window != null) {
-            val density = context.resources.displayMetrics.density
-            SettingsDialogWindows.applyCardStyle(window, density)
-            UiStyle.animateSubDialogEntry(window.decorView, density)
-        }
-
         val positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
 
         positiveButton.isEnabled = false
@@ -105,7 +93,9 @@ internal fun showRestrictedFeatureWarningDialog(context: Context, onConfirmed: (
         }
     }
 
-    dialog.show()
+    SettingsDialogWindows.showStableSubDialog(
+        dialog, context.resources.displayMetrics.density, "[SettingsDialogHelpers]",
+    )
 }
 
 private const val DISCLAIMER_COUNTDOWN_SECONDS = 5

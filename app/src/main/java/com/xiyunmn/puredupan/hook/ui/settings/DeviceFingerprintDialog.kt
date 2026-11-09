@@ -86,7 +86,10 @@ internal object DeviceFingerprintDialog {
             if (allowHiddenDeviceFingerprint) {
                 builder.setNeutralButton(UiText.Settings.DEVICE_FINGERPRINT_SHOW_HIDDEN, null)
             }
-            val dialog = builder.show()
+            val dialog = builder.create()
+            SettingsDialogWindows.showStableSubDialog(
+                dialog, density, LOG_TAG, maxWidthDp = 420f, horizontalMarginDp = 24f,
+            )
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setOnClickListener {
                 copyToClipboard(context, currentJson)
             }
@@ -117,19 +120,6 @@ internal object DeviceFingerprintDialog {
                     }
                 }
             }
-            dialog.window
-                ?.let { window ->
-                    SettingsDialogWindows.applyCardStyle(
-                        window = window,
-                        density = window.context.resources.displayMetrics.density,
-                        maxWidthDp = 420f,
-                        horizontalMarginDp = 24f,
-                    )
-                    UiStyle.animateSubDialogEntry(
-                        window.decorView,
-                        window.context.resources.displayMetrics.density,
-                    )
-                }
         } catch (t: Throwable) {
             Toast.makeText(context, UiText.Settings.DEVICE_FINGERPRINT_SHOW_FAILED, Toast.LENGTH_SHORT).show()
             XposedCompat.logW("$LOG_TAG show failed: ${t.message}")
