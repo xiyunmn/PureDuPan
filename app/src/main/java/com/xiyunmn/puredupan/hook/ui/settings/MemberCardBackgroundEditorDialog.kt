@@ -27,13 +27,25 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 
 internal object MemberCardBackgroundEditorDialog {
     private const val LOG_TAG = "[MemberCardBackgroundEditorDialog]"
-    private var loading = false
+    private class Request(val owner: AlertDialog, val uri: String, val dialog: AlertDialog)
+    private var currentRequest: Request? = null
+
+    fun cancel(owner: AlertDialog) {
+        val request = currentRequest?.takeIf { it.owner === owner } ?: return
+        currentRequest = null
+        request.dialog.dismiss()
+    }
 
     fun show(
         context: Context,
         uriString: String,
+        owner: AlertDialog,
     ) {
-        if (loading) return
+        if (!owner.isShowing) return
+        currentRequest?.let { request ->
+            if (request.owner === owner && request.uri == uriString) return
+            cancel(request.owner)
+        }
         try {
             if (!SettingsHostState.isFeatureVisibleForContext(
                     context,
@@ -51,28 +63,35 @@ internal object MemberCardBackgroundEditorDialog {
                 .setView(content)
                 .setPositiveButton(UiText.Settings.DONE, null)
                 .create()
-            loading = true
+            val request = Request(owner, uriString, dialog)
+            currentRequest = request
             Thread({
                 val bitmap = loadMemberCardBackgroundPreviewBitmap(context, uriString, editorAspectRatio)
                 Handler(Looper.getMainLooper()).post {
-                    loading = false
                     val activity = context as? Activity
                     if (
+                        currentRequest !== request || !owner.isShowing ||
                         activity?.isFinishing == true || activity?.isDestroyed == true ||
                         prefs.getString(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI, null) != uriString
                     ) {
+                        if (currentRequest === request) currentRequest = null
                         bitmap?.recycle()
                         return@post
                     }
                     if (bitmap == null) {
+                        currentRequest = null
                         Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_FAILED, Toast.LENGTH_SHORT).show()
                     } else {
                         showLoaded(context, prefs, uriString, editorAspectRatio, bitmap, dialog, content)
+                        if (!dialog.isShowing) {
+                            if (currentRequest === request) currentRequest = null
+                            bitmap.recycle()
+                        }
                     }
                 }
             }, "PureDuPan-card-editor").start()
         } catch (t: Throwable) {
-            loading = false
+            cancel(owner)
             XposedCompat.logW("$LOG_TAG show failed: ${t.message}")
             Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_FAILED, Toast.LENGTH_SHORT).show()
         }
@@ -281,6 +300,7 @@ internal object MemberCardBackgroundEditorDialog {
                 FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT),
             )
             dialog.setOnDismissListener {
+                if (currentRequest?.dialog === dialog) currentRequest = null
                 pendingTransformSave.flush()
                 active = false
                 editorView.onTransformChanged = null

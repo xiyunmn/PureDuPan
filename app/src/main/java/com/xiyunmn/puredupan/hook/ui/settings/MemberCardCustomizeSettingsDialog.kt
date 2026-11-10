@@ -31,7 +31,6 @@ internal object MemberCardCustomizeSettingsDialog {
         settingsSession: SettingsRuntimeSession,
         texts: SettingsTextResolver,
         onChooseBackground: () -> Unit,
-        onAdjustBackground: (String) -> Unit,
     ) {
         try {
             if (!settingsSession.isFeatureVisible(SettingsUserState.KEY_MEMBER_CARD_CUSTOMIZE)) {
@@ -40,6 +39,7 @@ internal object MemberCardCustomizeSettingsDialog {
             }
             val density = context.resources.displayMetrics.density
             val padding = (16 * density).toInt()
+            lateinit var dialog: AlertDialog
 
             val root = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
@@ -73,7 +73,7 @@ internal object MemberCardCustomizeSettingsDialog {
                             Toast.LENGTH_SHORT,
                         ).show()
                     } else {
-                        onAdjustBackground(uriString)
+                        MemberCardBackgroundEditorDialog.show(context, uriString, dialog)
                     }
                 },
                 onClear = {
@@ -285,6 +285,7 @@ internal object MemberCardCustomizeSettingsDialog {
                 backgroundSwitch.isChecked = true
                 backgroundImageControl.updateSelectedUri(uriString)
                 updateViewBackgroundClickRow()
+                MemberCardBackgroundEditorDialog.show(context, uriString, dialog)
             }
             MemberCardBackgroundSelectionState.setListener(selectionListener)
 
@@ -385,12 +386,13 @@ internal object MemberCardCustomizeSettingsDialog {
             listOf(blurSlider, dimLightSlider, dimDarkSlider, widthSlider, heightSlider)
                 .forEach { it.setOnValueChanged(::persist) }
 
-            val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
+            dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.MEMBER_CARD_CUSTOMIZE_DIALOG_TITLE)
                 .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
                 .setPositiveButton(UiText.Settings.DONE, null)
                 .create()
             dialog.setOnDismissListener {
+                MemberCardBackgroundEditorDialog.cancel(dialog)
                 MemberCardBackgroundSelectionState.clearIfSame(selectionListener)
             }
             SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)

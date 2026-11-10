@@ -17,7 +17,6 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsHostState
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.ui.settings.MemberCardBackgroundSelectionState
-import com.xiyunmn.puredupan.hook.ui.settings.MemberCardBackgroundEditorDialog
 import com.xiyunmn.puredupan.hook.ui.settings.SettingsMainDialog
 import com.xiyunmn.puredupan.hook.ui.settings.StorageTreeSelectionState
 import java.text.SimpleDateFormat
@@ -185,7 +184,6 @@ object SettingsMenuHook {
         editor.apply()
 
         MemberCardBackgroundSelectionState.notifySelected(uri.toString())
-        MemberCardBackgroundEditorDialog.show(context, uri.toString())
         return true
     }
 

@@ -85,9 +85,6 @@ internal object SettingsMainDialog {
                             settingsSession = settingsSession,
                             texts = texts,
                             onChooseBackground = onChooseMemberCardBackground,
-                            onAdjustBackground = { uriString ->
-                                MemberCardBackgroundEditorDialog.show(context, uriString)
-                            },
                         )
                     },
                     onBottomBarCustomizeClick = {
