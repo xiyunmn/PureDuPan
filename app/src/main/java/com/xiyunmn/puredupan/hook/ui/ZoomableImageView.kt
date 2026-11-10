@@ -9,7 +9,6 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
-import kotlin.math.max
 import kotlin.math.min
 
 internal class ZoomableImageView(
@@ -147,9 +146,10 @@ internal class ZoomableImageView(
     private fun constrainTranslation() {
         val drawWidth = bitmap.width * baseScale * userScale
         val drawHeight = bitmap.height * baseScale * userScale
-        // 初始比例也允许拖动；保留图像中心附近的可见区域，双击回到居中。
-        val maxX = max((drawWidth - width) / 2f, width * 0.35f)
-        val maxY = max((drawHeight - height) / 2f, height * 0.35f)
+        // 只保留一小段图像在屏内，方便拖回；双击恢复居中。
+        val visibleEdge = 48f * resources.displayMetrics.density
+        val maxX = (drawWidth + width) / 2f - min(visibleEdge, min(drawWidth, width.toFloat()))
+        val maxY = (drawHeight + height) / 2f - min(visibleEdge, min(drawHeight, height.toFloat()))
         translationX = translationX.coerceIn(-maxX, maxX)
         translationY = translationY.coerceIn(-maxY, maxY)
     }

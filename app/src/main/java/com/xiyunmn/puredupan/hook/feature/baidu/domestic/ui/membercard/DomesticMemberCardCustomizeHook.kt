@@ -357,7 +357,6 @@ internal object DomesticMemberCardCustomizeHook {
             val snapshot = HookSettings.memberCardSnapshot()
             val uriString = snapshot.memberCardBackgroundUri?.takeIf { it.isNotBlank() } ?: return
             val density = context.resources.displayMetrics.density
-            val metrics = context.resources.displayMetrics
             val container = FrameLayout(context).apply {
                 setBackgroundColor(Color.TRANSPARENT)
                 addView(TextView(context).apply {
@@ -366,7 +365,7 @@ internal object DomesticMemberCardCustomizeHook {
                     setTextColor(Color.WHITE)
                 }, FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    (metrics.heightPixels * 0.86f).toInt(),
+                    ViewGroup.LayoutParams.MATCH_PARENT,
                 ))
             }
 
@@ -379,9 +378,10 @@ internal object DomesticMemberCardCustomizeHook {
             dialog.window?.apply {
                 setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
                 setDimAmount(0.45f)
+                decorView.setPadding(0, 0, 0, 0)
                 setLayout(
-                    (metrics.widthPixels * 0.96f).toInt(),
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
                 )
             }
             Thread({
@@ -399,7 +399,7 @@ internal object DomesticMemberCardCustomizeHook {
                     container.removeAllViews()
                     container.addView(ZoomableImageView(context, bitmap), FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
-                        (metrics.heightPixels * 0.86f).toInt(),
+                        ViewGroup.LayoutParams.MATCH_PARENT,
                     ))
                     container.addView(TextView(context).apply {
                         text = UiText.Settings.MEMBER_CARD_BACKGROUND_VIEWER_HINT
