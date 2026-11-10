@@ -84,6 +84,7 @@ data class SettingsSnapshot(
     val memberCardBackgroundDimDarkPercent: Int = 0,
     val memberCardBackgroundScalePercent: Int = 100,
     val memberCardBackgroundRotationDegrees: Int = 0,
+    val memberCardBackgroundMirror: Boolean = false,
     val memberCardBackgroundOffsetXPermille: Int = 0,
     val memberCardBackgroundOffsetYPermille: Int = 0,
     val isMemberCardSizeAdjusted: Boolean = false,

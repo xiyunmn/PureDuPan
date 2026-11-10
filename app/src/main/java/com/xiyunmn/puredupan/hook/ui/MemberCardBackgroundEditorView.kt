@@ -68,6 +68,14 @@ internal class MemberCardBackgroundEditorView(
             onTransformChanged?.invoke()
         }
 
+    var mirrored: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            invalidate()
+            onTransformChanged?.invoke()
+        }
+
     var offsetXPermille: Int = 0
         set(value) {
             val normalized = value.coerceIn(-1000, 1000)
@@ -196,7 +204,8 @@ internal class MemberCardBackgroundEditorView(
         matrix.reset()
         matrix.postTranslate(-sourceWidth / 2f, -sourceHeight / 2f)
         matrix.postRotate(normalizedRotation.toFloat())
-        matrix.postScale(drawScale, drawScale)
+        // 旋转后沿取景框水平方向镜像，拖动偏移仍使用屏幕坐标。
+        matrix.postScale(if (mirrored) -drawScale else drawScale, drawScale)
         matrix.postTranslate(
             target.left + targetWidth / 2f + offsetX,
             target.top + targetHeight / 2f + offsetY,

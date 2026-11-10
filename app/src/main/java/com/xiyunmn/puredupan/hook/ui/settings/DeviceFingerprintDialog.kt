@@ -88,7 +88,7 @@ internal object DeviceFingerprintDialog {
             }
             val dialog = builder.create()
             SettingsDialogWindows.showStableSubDialog(
-                dialog, density, LOG_TAG, maxWidthDp = 420f, horizontalMarginDp = 24f,
+                dialog, density, LOG_TAG,
             )
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setOnClickListener {
                 copyToClipboard(context, currentJson)

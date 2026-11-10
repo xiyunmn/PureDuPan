@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.ui.settings
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.content.SharedPreferences
@@ -26,11 +27,13 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 
 internal object MemberCardBackgroundEditorDialog {
     private const val LOG_TAG = "[MemberCardBackgroundEditorDialog]"
+    private var loading = false
 
     fun show(
         context: Context,
         uriString: String,
     ) {
+        if (loading) return
         try {
             if (!SettingsHostState.isFeatureVisibleForContext(
                     context,
@@ -42,37 +45,34 @@ internal object MemberCardBackgroundEditorDialog {
             }
             val prefs = SettingsUserState.getPrefs(context)
             val editorAspectRatio = memberCardBackgroundEditorAspectRatio(context, prefs)
-            val content = FrameLayout(context).apply {
-                addView(TextView(context).apply {
-                    text = UiText.Settings.MEMBER_CARD_BACKGROUND_LOADING
-                    gravity = Gravity.CENTER
-                    setPadding(0, (32 * resources.displayMetrics.density).toInt(), 0, (32 * resources.displayMetrics.density).toInt())
-                    UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textSecondary) }
-                }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            }
-            val loading = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
+            val content = FrameLayout(context)
+            val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_TITLE)
                 .setView(content)
                 .setPositiveButton(UiText.Settings.DONE, null)
                 .create()
-            SettingsDialogWindows.showStableSubDialog(loading, context.resources.displayMetrics.density, LOG_TAG)
+            loading = true
             Thread({
                 val bitmap = loadMemberCardBackgroundPreviewBitmap(context, uriString, editorAspectRatio)
                 Handler(Looper.getMainLooper()).post {
-                    if (!loading.isShowing || prefs.getString(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI, null) != uriString) {
+                    loading = false
+                    val activity = context as? Activity
+                    if (
+                        activity?.isFinishing == true || activity?.isDestroyed == true ||
+                        prefs.getString(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI, null) != uriString
+                    ) {
                         bitmap?.recycle()
-                        if (loading.isShowing) loading.dismiss()
                         return@post
                     }
                     if (bitmap == null) {
-                        loading.dismiss()
                         Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_FAILED, Toast.LENGTH_SHORT).show()
                     } else {
-                        showLoaded(context, prefs, uriString, editorAspectRatio, bitmap, loading, content)
+                        showLoaded(context, prefs, uriString, editorAspectRatio, bitmap, dialog, content)
                     }
                 }
             }, "PureDuPan-card-editor").start()
         } catch (t: Throwable) {
+            loading = false
             XposedCompat.logW("$LOG_TAG show failed: ${t.message}")
             Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_FAILED, Toast.LENGTH_SHORT).show()
         }
@@ -94,6 +94,7 @@ internal object MemberCardBackgroundEditorDialog {
             val editorView = MemberCardBackgroundEditorView(context, bitmap, editorAspectRatio).apply {
                 scalePercent = prefs.getInt(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT, 100)
                 rotationDegrees = prefs.getInt(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES, 0)
+                mirrored = prefs.getBoolean(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_MIRROR, false)
                 offsetXPermille = prefs.getInt(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE, 0)
                 offsetYPermille = prefs.getInt(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_OFFSET_Y_PERMILLE, 0)
             }
@@ -111,6 +112,15 @@ internal object MemberCardBackgroundEditorDialog {
             updateScaleValue(editorView.scalePercent)
             var scaleSeekBar: SeekBar? = null
             var transformSave: DeferredSettingsSave? = null
+            var mirrorButton: Button? = null
+            fun updateMirrorButton() {
+                mirrorButton?.let { button ->
+                    UiStyle.paintImageEditActionButton(
+                        button, density, UiStyle.tokens(context), UiStyle.MaterialActionIcon.MIRROR, editorView.mirrored,
+                    )
+                    button.contentDescription = "${UiText.Settings.MEMBER_CARD_BACKGROUND_MIRROR}，${if (editorView.mirrored) "已启用" else "未启用"}"
+                }
+            }
             editorView.onScalePercentChanged = { value ->
                 updateScaleValue(value)
                 val progress = value.coerceIn(100, 300) - 100
@@ -183,32 +193,49 @@ internal object MemberCardBackgroundEditorDialog {
                     })
                 })
 
-                addView(Button(context).apply {
-                    text = UiText.Settings.MEMBER_CARD_BACKGROUND_RESET
-                    UiStyle.bindTheme(this) { tokens -> UiStyle.paintScanActionButton(this, density, tokens.accent) }
-                    setOnClickListener {
+                addView(LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    fun actionButton(label: String, icon: UiStyle.MaterialActionIcon, action: () -> Unit): Button {
+                        return Button(context).apply {
+                            text = label
+                            UiStyle.bindTheme(this) { tokens ->
+                                UiStyle.paintImageEditActionButton(
+                                    this, density, tokens, icon,
+                                    selected = icon == UiStyle.MaterialActionIcon.MIRROR && editorView.mirrored,
+                                )
+                            }
+                            setOnClickListener { action() }
+                        }.also { button ->
+                            addView(button, LinearLayout.LayoutParams(0, (44 * density).toInt(), 1f).apply {
+                                if (childCount > 0) marginStart = (8 * density).toInt()
+                            })
+                        }
+                    }
+                    actionButton(UiText.Settings.MEMBER_CARD_BACKGROUND_RESET, UiStyle.MaterialActionIcon.RESET) {
                         editorView.scalePercent = 100
                         editorView.rotationDegrees = 0
+                        editorView.mirrored = false
                         editorView.offsetXPermille = 0
                         editorView.offsetYPermille = 0
                         scaleSeekBar?.progress = 0
                         updateScaleValue(100)
+                        updateMirrorButton()
+                        transformSave?.flush()
                     }
-                })
-
-                addView(Button(context).apply {
-                    text = UiText.Settings.MEMBER_CARD_BACKGROUND_ROTATE
-                    UiStyle.bindTheme(this) { tokens -> UiStyle.paintScanActionButton(this, density, tokens.accent) }
-                    setOnClickListener {
-                        editorView.rotationDegrees = editorView.rotationDegrees + 90
+                    actionButton(UiText.Settings.MEMBER_CARD_BACKGROUND_ROTATE, UiStyle.MaterialActionIcon.ROTATE) {
+                        editorView.rotationDegrees += 90
+                        transformSave?.flush()
                     }
+                    mirrorButton = actionButton(UiText.Settings.MEMBER_CARD_BACKGROUND_MIRROR, UiStyle.MaterialActionIcon.MIRROR) {
+                        editorView.mirrored = !editorView.mirrored
+                        updateMirrorButton()
+                        transformSave?.flush()
+                    }
+                    updateMirrorButton()
                 }, LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    (40 * density).toInt(),
-                ).apply {
-                    topMargin = (10 * density).toInt()
-                    gravity = Gravity.END
-                })
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = (10 * density).toInt() })
             }
 
             var active = true
@@ -226,6 +253,9 @@ internal object MemberCardBackgroundEditorDialog {
                             SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES,
                             editorView.rotationDegrees,
                         )
+                    }
+                    if (isFeatureVisible(context, SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_MIRROR)) {
+                        editor.putBoolean(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_MIRROR, editorView.mirrored)
                     }
                     if (isFeatureVisible(context, SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE)) {
                         editor.putInt(
@@ -256,6 +286,8 @@ internal object MemberCardBackgroundEditorDialog {
                 editorView.onTransformChanged = null
                 editorView.onGestureFinished = null
             }
+            // 完整内容就绪后统一入场，避免加载占位替换时窗口高度再次变化。
+            SettingsDialogWindows.showStableSubDialog(dialog, density, LOG_TAG)
         } catch (t: Throwable) {
             dialog.dismiss()
             XposedCompat.logW("$LOG_TAG show failed: ${t.message}")

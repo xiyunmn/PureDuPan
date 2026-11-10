@@ -10,6 +10,7 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.HorizontalScrollView
 import android.widget.TextView
 import android.widget.Toast
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -54,7 +55,23 @@ internal object SettingsDebugActions {
                 UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.accent) }
                 includeFontPadding = false
             }
-            root.addView(summaryView)
+            val contentRoot = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(summaryView, LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    setMargins(padding, (8 * density).toInt(), padding, (18 * density).toInt())
+                })
+                addView(android.view.View(context).apply {
+                    UiStyle.bindTheme(this) { tokens -> setBackgroundColor(tokens.divider) }
+                }, LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, density.toInt().coerceAtLeast(1),
+                ).apply { setMargins(padding, 0, padding, 0) })
+                addView(SettingsDialogLayout.createDialogScrollContainer(context, root),
+                    LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, 1f,
+                    ))
+            }
             val rows = linkedMapOf<String, DexKitStatusRow>()
             var latestCopyText = ""
             var hasDeferredUpdates = false
@@ -76,7 +93,7 @@ internal object SettingsDebugActions {
             refresh()
             val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(if (details) UiText.Settings.DEXKIT_STATUS_DETAILS_TITLE else UiText.Settings.DEXKIT_STATUS_TITLE)
-                .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
+                .setView(contentRoot)
                 .setNegativeButton(
                     if (details) UiText.Settings.DEXKIT_STATUS_COPY else UiText.Settings.DEXKIT_STATUS_VIEW_DETAILS,
                     null,
@@ -127,6 +144,7 @@ internal object SettingsDebugActions {
             if (details) {
                 typeface = Typeface.MONOSPACE
                 setTextIsSelectable(true)
+                setHorizontallyScrolling(true)
             }
             setPadding(0, (6 * density).toInt(), 0, 0)
             UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textSecondary) }
@@ -140,7 +158,19 @@ internal object SettingsDebugActions {
                 addView(title, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
                 addView(state)
             })
-            root.addView(body)
+            if (details) {
+                root.addView(HorizontalScrollView(context).apply {
+                    addView(body, ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ))
+                }, LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ))
+            } else {
+                root.addView(body)
+            }
             UiStyle.bindTheme(state) { tokens ->
                 state.setTextColor(when (renderedItem?.state) {
                     "error", "not_found" -> tokens.danger

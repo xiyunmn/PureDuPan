@@ -9,6 +9,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
+import kotlin.math.max
 import kotlin.math.min
 
 internal class ZoomableImageView(
@@ -17,8 +18,6 @@ internal class ZoomableImageView(
 ) : View(context) {
     init {
         contentDescription = UiText.Settings.MEMBER_CARD_BACKGROUND_VIEWER_HINT
-        isLongClickable = true
-        setOnLongClickListener { onLongPress?.invoke(); true }
     }
 
     private val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
@@ -31,16 +30,10 @@ internal class ZoomableImageView(
     private var lastX = 0f
     private var lastY = 0f
 
-    var onLongPress: (() -> Unit)? = null
-
     private val gestureDetector = GestureDetector(
         context,
         object : GestureDetector.SimpleOnGestureListener() {
             override fun onDown(e: MotionEvent): Boolean = true
-
-            override fun onLongPress(e: MotionEvent) {
-                performLongClick()
-            }
 
             override fun onDoubleTap(e: MotionEvent): Boolean {
                 userScale = 1f
@@ -50,7 +43,7 @@ internal class ZoomableImageView(
                 return true
             }
         },
-    )
+    ).apply { setIsLongpressEnabled(false) }
 
     private val scaleDetector = ScaleGestureDetector(
         context,
@@ -111,7 +104,7 @@ internal class ZoomableImageView(
                 if (index < 0) return true
                 val x = event.getX(index)
                 val y = event.getY(index)
-                if (event.pointerCount == 1 && !scaleDetector.isInProgress && userScale > 1f) {
+                if (event.pointerCount == 1 && !scaleDetector.isInProgress) {
                     translationX += x - lastX
                     translationY += y - lastY
                     constrainTranslation()
@@ -154,8 +147,9 @@ internal class ZoomableImageView(
     private fun constrainTranslation() {
         val drawWidth = bitmap.width * baseScale * userScale
         val drawHeight = bitmap.height * baseScale * userScale
-        val maxX = ((drawWidth - width) / 2f).coerceAtLeast(0f)
-        val maxY = ((drawHeight - height) / 2f).coerceAtLeast(0f)
+        // 初始比例也允许拖动；保留图像中心附近的可见区域，双击回到居中。
+        val maxX = max((drawWidth - width) / 2f, width * 0.35f)
+        val maxY = max((drawHeight - height) / 2f, height * 0.35f)
         translationX = translationX.coerceIn(-maxX, maxX)
         translationY = translationY.coerceIn(-maxY, maxY)
     }

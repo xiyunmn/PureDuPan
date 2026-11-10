@@ -173,6 +173,9 @@ object SettingsMenuHook {
         if (isFeatureVisible(context, SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES)) {
             editor.putInt(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES, 0)
         }
+        if (isFeatureVisible(context, SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_MIRROR)) {
+            editor.putBoolean(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_MIRROR, false)
+        }
         if (isFeatureVisible(context, SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE)) {
             editor.putInt(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE, 0)
         }

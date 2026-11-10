@@ -76,7 +76,6 @@ internal object MemberCardSettingsItemsBuilder {
                     prefKey = null,
                     supported = isFeatureVisible(viewBackgroundOnClickSpec.key) && canViewBackgroundOnClick,
                     defaultValue = canViewBackgroundOnClick &&
-                        !prefs.getBoolean(removeCardClickSpec.key, false) &&
                         prefs.getBoolean(viewBackgroundOnClickSpec.key, false),
                     visible = isFeatureVisible(viewBackgroundOnClickSpec.key),
                 ),
@@ -98,9 +97,7 @@ internal object MemberCardSettingsItemsBuilder {
         val removeCardClickSpec = MemberCardCustomizeSettingsRegistry.removeCardClickSpec
         val viewBackgroundOnClickSpec = MemberCardCustomizeSettingsRegistry.viewBackgroundOnClickSpec
         val hasViewBackgroundClick =
-            isFeatureVisible(removeCardClickSpec.key) &&
-                isFeatureVisible(SettingsUserState.KEY_REPLACE_MEMBER_CARD_BACKGROUND) &&
-                !prefs.getBoolean(removeCardClickSpec.key, false) &&
+            isFeatureVisible(SettingsUserState.KEY_REPLACE_MEMBER_CARD_BACKGROUND) &&
                 prefs.getBoolean(SettingsUserState.KEY_REPLACE_MEMBER_CARD_BACKGROUND, false) &&
                 !prefs.getString(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI, null).isNullOrBlank() &&
                 isFeatureVisible(viewBackgroundOnClickSpec.key) &&

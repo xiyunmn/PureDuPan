@@ -145,6 +145,7 @@ object ConfigManager {
     const val KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT
     const val KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT
     const val KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES
+    const val KEY_MEMBER_CARD_BACKGROUND_MIRROR = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_MIRROR
     const val KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE
     const val KEY_MEMBER_CARD_BACKGROUND_OFFSET_Y_PERMILLE = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_OFFSET_Y_PERMILLE
     const val KEY_MEMBER_CARD_SIZE_ADJUST = FeatureKeys.KEY_MEMBER_CARD_SIZE_ADJUST
@@ -282,6 +283,7 @@ object ConfigManager {
     val memberCardBackgroundDimDarkPercent: Int get() = settingsSnapshot.memberCardBackgroundDimDarkPercent
     val memberCardBackgroundScalePercent: Int get() = settingsSnapshot.memberCardBackgroundScalePercent
     val memberCardBackgroundRotationDegrees: Int get() = settingsSnapshot.memberCardBackgroundRotationDegrees
+    val memberCardBackgroundMirror: Boolean get() = settingsSnapshot.memberCardBackgroundMirror
     val memberCardBackgroundOffsetXPermille: Int get() = settingsSnapshot.memberCardBackgroundOffsetXPermille
     val memberCardBackgroundOffsetYPermille: Int get() = settingsSnapshot.memberCardBackgroundOffsetYPermille
     val isMemberCardSizeAdjusted: Boolean get() = settingsSnapshot.isMemberCardSizeAdjusted
@@ -559,8 +561,7 @@ object ConfigManager {
         val memberCardBackgroundUri = p.getString(KEY_MEMBER_CARD_BACKGROUND_URI, null)
         val memberCardClickRemoved = featureBoolean(KEY_REMOVE_MEMBER_CARD_CLICK, false)
         val memberCardBackgroundViewedOnClick =
-            !memberCardClickRemoved &&
-                memberCardBackgroundReplaced &&
+            memberCardBackgroundReplaced &&
                 !memberCardBackgroundUri.isNullOrBlank() &&
                 featureBoolean(KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK, false)
         val hasMemberCardOptionEnabled =
@@ -746,6 +747,7 @@ object ConfigManager {
                 .coerceIn(100, 300),
             memberCardBackgroundRotationDegrees = p.getInt(KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES, 0)
                 .floorMod360(),
+            memberCardBackgroundMirror = p.getBoolean(KEY_MEMBER_CARD_BACKGROUND_MIRROR, false),
             memberCardBackgroundOffsetXPermille = p.getInt(KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE, 0)
                 .coerceIn(-1000, 1000),
             memberCardBackgroundOffsetYPermille = p.getInt(KEY_MEMBER_CARD_BACKGROUND_OFFSET_Y_PERMILLE, 0)

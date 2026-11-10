@@ -81,6 +81,7 @@ internal object MemberCardCustomizeSettingsDialog {
                         .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI)
                         .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT)
                         .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES)
+                        .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_MIRROR)
                         .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE)
                         .remove(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_OFFSET_Y_PERMILLE)
                         .apply()
@@ -287,16 +288,6 @@ internal object MemberCardCustomizeSettingsDialog {
             }
             MemberCardBackgroundSelectionState.setListener(selectionListener)
 
-            removeCardClickSwitch.setOnCheckedChangeListener { _, isChecked ->
-                if (removeCardClickItem.visible && isChecked && viewBackgroundOnClickSwitch.isChecked) {
-                    viewBackgroundOnClickSwitch.isChecked = false
-                }
-            }
-            viewBackgroundOnClickSwitch.setOnCheckedChangeListener { _, isChecked ->
-                if (removeCardClickItem.visible && isChecked && removeCardClickSwitch.isChecked) {
-                    removeCardClickSwitch.isChecked = false
-                }
-            }
             updateViewBackgroundClickRow()
 
             fun memberCardHideValueForSave(entry: MemberCardHideSwitchItem): Boolean {
@@ -321,7 +312,6 @@ internal object MemberCardCustomizeSettingsDialog {
                         viewBackgroundOnClickItem.visible && viewBackgroundOnClickSwitch.isChecked
                 val viewBackgroundOnClickEnabled =
                     viewBackgroundOnClickItem.visible &&
-                        !(removeCardClickItem.visible && removeCardClickSwitch.isChecked) &&
                         canUseViewBackgroundClick() &&
                         viewBackgroundOnClickSwitch.isChecked
                 val editor = prefs.edit()

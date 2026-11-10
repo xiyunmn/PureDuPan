@@ -33,6 +33,11 @@ internal object UiStyle {
         IMPORT,
         EXPORT,
         REFRESH,
+        RESET,
+        ROTATE,
+        MIRROR,
+        IMAGE,
+        EDIT,
         PLAY_PAUSE,
     }
 
@@ -218,6 +223,29 @@ internal object UiStyle {
         button.minimumWidth = 0
         button.minimumHeight = 0
         button.setBackgroundColor(0x00000000)
+    }
+
+    internal fun imageViewerSaveIcon(density: Float): android.graphics.drawable.Drawable =
+        MaterialActionDrawable(MaterialActionIcon.EXPORT, Color.WHITE, density)
+
+    internal fun paintImageEditActionButton(
+        button: Button,
+        density: Float,
+        tokens: Tokens,
+        icon: MaterialActionIcon,
+        selected: Boolean = false,
+    ) {
+        paintScanActionButton(button, density, tokens.accent)
+        button.gravity = android.view.Gravity.CENTER
+        button.isSelected = selected
+        button.background = GradientDrawable().apply {
+            cornerRadius = 10f * density
+            setColor(if (selected) blendRgb(tokens.surface, tokens.accent, 0.12f) else Color.TRANSPARENT)
+        }
+        val drawable = MaterialActionDrawable(icon, tokens.accent, density)
+        drawable.setBounds(0, 0, (20 * density).toInt(), (20 * density).toInt())
+        button.setCompoundDrawablesRelative(drawable, null, null, null)
+        button.compoundDrawablePadding = (6 * density).toInt()
     }
 
     internal fun paintStatusBadge(
@@ -637,6 +665,31 @@ internal object UiStyle {
                 MaterialActionIcon.IMPORT -> drawImport(canvas)
                 MaterialActionIcon.EXPORT -> drawExport(canvas)
                 MaterialActionIcon.REFRESH -> drawRefresh(canvas)
+                MaterialActionIcon.RESET -> {
+                    canvas.save()
+                    canvas.scale(-1f, 1f, 12f, 12f)
+                    drawRefresh(canvas)
+                    canvas.restore()
+                }
+                MaterialActionIcon.ROTATE -> drawRefresh(canvas)
+                MaterialActionIcon.MIRROR -> drawMirror(canvas)
+                MaterialActionIcon.IMAGE -> {
+                    setStroke(width = 1.9f)
+                    canvas.drawRoundRect(RectF(3f, 4f, 21f, 20f), 2f, 2f, paint)
+                    canvas.drawCircle(8f, 9f, 1.4f, paint)
+                    canvas.drawPath(Path().apply {
+                        moveTo(4f, 18f); lineTo(10f, 12f); lineTo(14f, 16f)
+                        lineTo(17f, 13f); lineTo(20f, 16f)
+                    }, paint)
+                }
+                MaterialActionIcon.EDIT -> {
+                    setStroke(width = 1.9f)
+                    canvas.drawPath(Path().apply {
+                        moveTo(4f, 20f); lineTo(5f, 14f); lineTo(16f, 3f)
+                        lineTo(21f, 8f); lineTo(10f, 19f); close()
+                        moveTo(13f, 6f); lineTo(18f, 11f)
+                    }, paint)
+                }
                 MaterialActionIcon.PLAY_PAUSE -> drawPlayPause(canvas)
             }
             canvas.restore()
@@ -691,6 +744,25 @@ internal object UiStyle {
                 lineTo(15.1f, 8.2f)
             }
             canvas.drawPath(arrow, paint)
+        }
+
+        private fun drawMirror(canvas: Canvas) {
+            setStroke(width = 1.9f)
+            canvas.drawLine(12f, 3f, 12f, 5f, paint)
+            canvas.drawLine(12f, 9f, 12f, 11f, paint)
+            canvas.drawLine(12f, 15f, 12f, 17f, paint)
+            canvas.drawLine(12f, 20f, 12f, 21f, paint)
+            val halves = Path().apply {
+                moveTo(8f, 5f)
+                lineTo(3f, 18f)
+                lineTo(8f, 18f)
+                close()
+                moveTo(16f, 5f)
+                lineTo(21f, 18f)
+                lineTo(16f, 18f)
+                close()
+            }
+            canvas.drawPath(halves, paint)
         }
 
         private fun drawPlayPause(canvas: Canvas) {

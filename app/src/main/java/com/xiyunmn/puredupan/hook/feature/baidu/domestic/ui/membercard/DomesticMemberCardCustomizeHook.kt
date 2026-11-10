@@ -29,10 +29,10 @@ import android.view.Window
 import android.webkit.MimeTypeMap
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.MemberCardBackgroundLayout
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.MemberCardGestureBinding
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -41,6 +41,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.aboutme.AboutMeTopHe
 import com.xiyunmn.puredupan.hook.ui.UiText
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.ui.ZoomableImageView
+import com.xiyunmn.puredupan.hook.ui.settings.MemberCardBackgroundSelectionState
 import java.util.Collections
 import java.util.WeakHashMap
 import kotlin.math.max
@@ -72,6 +73,7 @@ internal object DomesticMemberCardCustomizeHook {
     )
 
     private val appliedBackgrounds = Collections.synchronizedMap(WeakHashMap<ImageView, AppliedBackground>())
+    @Volatile private var deniedBackgroundSelection: Pair<String, Long>? = null
     private val originalSizes = Collections.synchronizedMap(WeakHashMap<View, OriginalSize>())
 
     internal fun hook(cl: ClassLoader) {
@@ -184,8 +186,6 @@ internal object DomesticMemberCardCustomizeHook {
 
     private fun applyMemberCardCustomization(root: View) {
         val snapshot = HookSettings.memberCardSnapshot()
-        if (!hasEnabledOption(snapshot)) return
-
         val resources = root.resources ?: return
         val packageName = root.context?.packageName ?: return
         val hostRoot = root.rootView ?: root
@@ -197,6 +197,7 @@ internal object DomesticMemberCardCustomizeHook {
             MEMBER_CARD_ACTIVITY_CONTAINER_ID,
         )?.takeIf { isAncestorOf(it, cardRoot) }
         applyCardClickBehavior(cardRoot, snapshot)
+        if (!hasEnabledOption(snapshot)) return
 
         activityCardRoot?.let {
             applyCardSize(it, snapshot, recordDefault = true)
@@ -347,21 +348,7 @@ internal object DomesticMemberCardCustomizeHook {
     }
 
     private fun applyCardClickBehavior(cardRoot: View, snapshot: SettingsSnapshot) {
-        when {
-            snapshot.isMemberCardClickRemoved -> {
-                cardRoot.isClickable = true
-                cardRoot.setOnClickListener {
-                    XposedCompat.logD("[MemberCardCustomizeHook] member card click removed")
-                }
-            }
-            snapshot.isMemberCardBackgroundViewedOnClick -> {
-                snapshot.memberCardBackgroundUri?.takeIf { it.isNotBlank() } ?: return
-                cardRoot.isClickable = true
-                cardRoot.setOnClickListener {
-                    openCustomBackgroundImage(cardRoot)
-                }
-            }
-        }
+        MemberCardGestureBinding.apply(cardRoot, snapshot, ::openCustomBackgroundImage)
     }
 
     private fun openCustomBackgroundImage(view: View) {
@@ -410,9 +397,7 @@ internal object DomesticMemberCardCustomizeHook {
                         return@post
                     }
                     container.removeAllViews()
-                    container.addView(ZoomableImageView(context, bitmap).apply {
-                        onLongPress = { showOriginalBackgroundMenu(context, uriString) }
-                    }, FrameLayout.LayoutParams(
+                    container.addView(ZoomableImageView(context, bitmap), FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         (metrics.heightPixels * 0.86f).toInt(),
                     ))
@@ -420,15 +405,22 @@ internal object DomesticMemberCardCustomizeHook {
                         text = UiText.Settings.MEMBER_CARD_BACKGROUND_VIEWER_HINT
                         textSize = 12f
                         setTextColor(Color.WHITE)
-                        setBackgroundColor(Color.argb(150, 0, 0, 0))
+                        setShadowLayer(3f * density, 0f, density, Color.BLACK)
                         gravity = Gravity.CENTER
                         setPadding((8 * density).toInt(), (8 * density).toInt(), (8 * density).toInt(), (8 * density).toInt())
-                        setOnClickListener { showOriginalBackgroundMenu(context, uriString) }
                     }, FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT,
-                        Gravity.BOTTOM,
-                    ))
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL,
+                    ).apply { bottomMargin = (12 * density).toInt() })
+                    container.addView(createSaveImageButton(context, uriString), FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        (44 * density).toInt(),
+                        Gravity.TOP or Gravity.END,
+                    ).apply {
+                        topMargin = (12 * density).toInt()
+                        marginEnd = (12 * density).toInt()
+                    })
                 }
             }, "PureDuPan-card-preview").start()
             XposedCompat.logD("[MemberCardCustomizeHook] custom background preview opened")
@@ -437,57 +429,26 @@ internal object DomesticMemberCardCustomizeHook {
         }
     }
 
-    private fun showOriginalBackgroundMenu(
-        context: Context,
-        uriString: String,
-    ) {
-        val density = context.resources.displayMetrics.density
-        val tokens = UiStyle.tokens(context)
-        lateinit var dialog: Dialog
-        val content = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply {
-                setColor(tokens.surface)
-                cornerRadius = 18f * density
-            }
-            addView(createImageMenuItem(context, UiText.Settings.MEMBER_CARD_BACKGROUND_SAVE_TO_ALBUM, tokens) {
-                saveOriginalMemberCardBackgroundToAlbum(context, uriString)
-                dialog.dismiss()
-            })
-        }
-        dialog = Dialog(context).apply {
-            requestWindowFeature(Window.FEATURE_NO_TITLE)
-            setContentView(content)
-            setCanceledOnTouchOutside(true)
-        }
-        dialog.show()
-        dialog.window?.apply {
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            setDimAmount(0.18f)
-            setGravity(Gravity.CENTER)
-            setLayout(
-                (context.resources.displayMetrics.widthPixels * 0.66f).toInt(),
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
-        }
-    }
-
-    private fun createImageMenuItem(
-        context: Context,
-        text: String,
-        tokens: UiStyle.Tokens,
-        onClick: () -> Unit,
-    ): View {
+    private fun createSaveImageButton(context: Context, uriString: String): View {
         val density = context.resources.displayMetrics.density
         return TextView(context).apply {
-            this.text = text
-            textSize = 17f
-            gravity = Gravity.CENTER_VERTICAL
-            setTextColor(tokens.textPrimary)
+            text = UiText.Settings.SAVE
+            contentDescription = UiText.Settings.MEMBER_CARD_BACKGROUND_SAVE_TO_ALBUM
+            textSize = 14f
+            gravity = Gravity.CENTER
             includeFontPadding = false
-            setPadding((24 * density).toInt(), 0, (24 * density).toInt(), 0)
-            minHeight = (58 * density).toInt()
-            setOnClickListener { onClick() }
+            setTextColor(Color.WHITE)
+            setPadding((16 * density).toInt(), 0, (16 * density).toInt(), 0)
+            background = GradientDrawable().apply {
+                setColor(Color.argb(184, 24, 24, 26))
+                cornerRadius = 24f * density
+            }
+            val icon = UiStyle.imageViewerSaveIcon(density).apply {
+                setBounds(0, 0, (18 * density).toInt(), (18 * density).toInt())
+            }
+            setCompoundDrawablesRelative(icon, null, null, null)
+            compoundDrawablePadding = (6 * density).toInt()
+            setOnClickListener { saveOriginalMemberCardBackgroundToAlbum(context, uriString) }
         }
     }
 
@@ -588,6 +549,7 @@ internal object DomesticMemberCardCustomizeHook {
             append('|').append(width).append('x').append(height)
             append('|').append(snapshot.memberCardBackgroundScalePercent)
             append('|').append(snapshot.memberCardBackgroundRotationDegrees)
+            append('|').append(snapshot.memberCardBackgroundMirror)
             append('|').append(snapshot.memberCardBackgroundOffsetXPermille)
             append('|').append(snapshot.memberCardBackgroundOffsetYPermille)
         }
@@ -619,6 +581,11 @@ internal object DomesticMemberCardCustomizeHook {
         targetWidth: Int,
         targetHeight: Int,
     ): Bitmap? {
+        val selectionRevision = MemberCardBackgroundSelectionState.revision
+        val deniedSelection = deniedBackgroundSelection
+        if (deniedSelection != null && deniedSelection.first == uriString &&
+            deniedSelection.second == selectionRevision
+        ) return null
         val context = view.context ?: return null
         val uri = runCatching { Uri.parse(uriString) }.getOrNull() ?: return null
         val resolver = context.contentResolver ?: return null
@@ -653,6 +620,13 @@ internal object DomesticMemberCardCustomizeHook {
             }
             val blurRadius = snapshot.memberCardBackgroundBlurRadius.coerceIn(0, 25)
             return if (blurRadius > 0) boxBlur(transformed, blurRadius) else transformed
+        } catch (e: SecurityException) {
+            deniedBackgroundSelection = uriString to selectionRevision
+            XposedCompat.logW("[MemberCardCustomizeHook] custom background permission denied; reselect image to retry: ${e.message}")
+            Handler(Looper.getMainLooper()).post {
+                Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_PERMISSION_DENIED, Toast.LENGTH_SHORT).show()
+            }
+            return null
         } catch (e: Exception) {
             XposedCompat.logW("[MemberCardCustomizeHook] load custom background failed: ${e.message}")
             return null
@@ -677,6 +651,7 @@ internal object DomesticMemberCardCustomizeHook {
             targetHeight = safeHeight.toFloat(),
             scalePercent = snapshot.memberCardBackgroundScalePercent,
             rotationDegrees = snapshot.memberCardBackgroundRotationDegrees,
+            mirrored = snapshot.memberCardBackgroundMirror,
             offsetXPermille = snapshot.memberCardBackgroundOffsetXPermille,
             offsetYPermille = snapshot.memberCardBackgroundOffsetYPermille,
         )
@@ -691,6 +666,7 @@ internal object DomesticMemberCardCustomizeHook {
         targetHeight: Float,
         scalePercent: Int,
         rotationDegrees: Int,
+        mirrored: Boolean,
         offsetXPermille: Int,
         offsetYPermille: Int,
     ): Matrix {
@@ -708,7 +684,7 @@ internal object DomesticMemberCardCustomizeHook {
         return Matrix().apply {
             postTranslate(-sourceWidth / 2f, -sourceHeight / 2f)
             postRotate(normalizedRotation.toFloat())
-            postScale(drawScale, drawScale)
+            postScale(if (mirrored) -drawScale else drawScale, drawScale)
             postTranslate(targetWidth / 2f + offsetX, targetHeight / 2f + offsetY)
         }
     }

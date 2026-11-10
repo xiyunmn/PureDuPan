@@ -121,6 +121,7 @@ object FeatureKeys {
     const val KEY_MEMBER_CARD_BACKGROUND_DIM_DARK_PERCENT = "member_card_background_dim_dark_percent"
     const val KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT = "member_card_background_scale_percent"
     const val KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES = "member_card_background_rotation_degrees"
+    const val KEY_MEMBER_CARD_BACKGROUND_MIRROR = "member_card_background_mirror"
     const val KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE = "member_card_background_offset_x_permille"
     const val KEY_MEMBER_CARD_BACKGROUND_OFFSET_Y_PERMILLE = "member_card_background_offset_y_permille"
     const val KEY_MEMBER_CARD_SIZE_ADJUST = "member_card_size_adjust"

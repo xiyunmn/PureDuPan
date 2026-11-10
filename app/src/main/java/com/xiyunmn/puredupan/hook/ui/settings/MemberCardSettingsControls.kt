@@ -81,33 +81,49 @@ internal object MemberCardSettingsControls {
             setPadding(0, (4 * density).toInt(), 0, 0)
         }
         val imageUri = prefs.getString(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI, null)
-        val display = TextView(context).apply {
-            text = backgroundDisplayText(imageUri)
-            textSize = 13f
+        val thumbnail = MemberCardBackgroundThumbnail(context).apply { bind(imageUri) }
+        val selectedRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            maxLines = 1
-            ellipsize = TextUtils.TruncateAt.MIDDLE
-            UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textPrimary) }
-            includeFontPadding = false
+            setPadding((12 * density).toInt(), 0, (6 * density).toInt(), 0)
             UiStyle.bindTheme(this) { tokens -> background = android.graphics.drawable.GradientDrawable().apply {
                 setColor(tokens.surfaceAlt)
                 cornerRadius = 8 * density
             } }
-            setPadding((10 * density).toInt(), 0, (10 * density).toInt(), 0)
             setOnClickListener {
-                onChoose()
+                if (prefs.getString(SettingsUserState.KEY_MEMBER_CARD_BACKGROUND_URI, null).isNullOrBlank()) {
+                    onChoose()
+                } else {
+                    onAdjust()
+                }
             }
         }
+        val display = TextView(context).apply {
+            text = backgroundDisplayText(imageUri)
+            textSize = 13f
+            gravity = Gravity.CENTER_VERTICAL
+            maxLines = 2
+            ellipsize = TextUtils.TruncateAt.END
+            UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textPrimary) }
+            includeFontPadding = false
+            setLineSpacing(3 * density, 1f)
+        }
+        selectedRow.addView(display, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        selectedRow.addView(thumbnail, LinearLayout.LayoutParams(
+            (44 * density).toInt(), (44 * density).toInt(),
+        ).apply { marginStart = (12 * density).toInt() })
         root.addView(
-            display,
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (36 * density).toInt()).apply {
+            selectedRow,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (56 * density).toInt()).apply {
                 topMargin = (10 * density).toInt()
             },
         )
 
         val chooseButton = Button(context).apply {
             text = UiText.Settings.MEMBER_CARD_BACKGROUND_CHOOSE
-            UiStyle.bindTheme(this) { tokens -> UiStyle.paintScanActionButton(this, density, tokens.accent) }
+            UiStyle.bindTheme(this) { tokens ->
+                UiStyle.paintImageEditActionButton(this, density, tokens, UiStyle.MaterialActionIcon.IMAGE)
+            }
             setOnClickListener {
                 onChoose()
             }
@@ -115,16 +131,15 @@ internal object MemberCardSettingsControls {
         controlRow.addView(
             chooseButton,
             LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                (40 * density).toInt(),
-            ).apply {
-                leftMargin = (8 * density).toInt()
-            },
+                0, (44 * density).toInt(), 1f,
+            ),
         )
 
         val adjustButton = Button(context).apply {
             text = UiText.Settings.MEMBER_CARD_BACKGROUND_ADJUST
-            UiStyle.bindTheme(this) { tokens -> UiStyle.paintScanActionButton(this, density, tokens.accent) }
+            UiStyle.bindTheme(this) { tokens ->
+                UiStyle.paintImageEditActionButton(this, density, tokens, UiStyle.MaterialActionIcon.EDIT)
+            }
             updateButtonEnabledState(!imageUri.isNullOrBlank())
             setOnClickListener {
                 onAdjust()
@@ -133,19 +148,21 @@ internal object MemberCardSettingsControls {
         controlRow.addView(
             adjustButton,
             LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                (40 * density).toInt(),
+                0, (44 * density).toInt(), 1f,
             ).apply {
-                leftMargin = (4 * density).toInt()
+                marginStart = (8 * density).toInt()
             },
         )
 
         val clearButton = Button(context).apply {
             text = UiText.Settings.MEMBER_CARD_BACKGROUND_CLEAR
-            UiStyle.bindTheme(this) { tokens -> UiStyle.paintScanActionButton(this, density, tokens.textSecondary) }
+            UiStyle.bindTheme(this) { tokens ->
+                UiStyle.paintImageEditActionButton(this, density, tokens, UiStyle.MaterialActionIcon.DELETE)
+            }
             setOnClickListener {
                 enabledSwitch.isChecked = false
                 display.text = backgroundDisplayText(null)
+                thumbnail.bind(null)
                 adjustButton.updateButtonEnabledState(false)
                 onClear()
             }
@@ -153,10 +170,9 @@ internal object MemberCardSettingsControls {
         controlRow.addView(
             clearButton,
             LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                (40 * density).toInt(),
+                0, (44 * density).toInt(), 1f,
             ).apply {
-                leftMargin = (4 * density).toInt()
+                marginStart = (8 * density).toInt()
             },
         )
         root.addView(controlRow)
@@ -166,6 +182,7 @@ internal object MemberCardSettingsControls {
             switch = enabledSwitch,
             updateSelectedUri = { uri ->
                 display.text = backgroundDisplayText(uri)
+                thumbnail.bind(uri)
                 adjustButton.updateButtonEnabledState(!uri.isNullOrBlank())
             },
         )
@@ -287,15 +304,13 @@ internal object MemberCardSettingsControls {
         seekBar.secondaryProgressTintList = ColorStateList(states, intArrayOf(tokens.divider, tokens.inputStroke))
     }
 
-    private fun backgroundDisplayText(uri: String?): String {
+    private fun backgroundDisplayText(uri: String?): CharSequence {
         if (uri.isNullOrBlank()) return UiText.Settings.MEMBER_CARD_BACKGROUND_NONE
-        val name = runCatching {
-            android.net.Uri.parse(uri).lastPathSegment
-                ?.substringAfterLast('/')
-                ?.takeIf { it.isNotBlank() }
-        }.getOrNull()
-            ?: uri.takeLast(36)
-        return UiText.Settings.memberCardBackgroundSelected(name)
+        val title = "已选择背景图片"
+        return android.text.SpannableString("$title\n点击编辑取景").apply {
+            setSpan(android.text.style.StyleSpan(Typeface.BOLD), 0, title.length, 0)
+            setSpan(android.text.style.RelativeSizeSpan(0.9f), title.length + 1, length, 0)
+        }
     }
 
     private fun applySwitchTint(

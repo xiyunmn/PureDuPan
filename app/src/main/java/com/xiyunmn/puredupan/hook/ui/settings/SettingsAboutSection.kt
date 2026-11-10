@@ -1,17 +1,18 @@
 package com.xiyunmn.puredupan.hook.ui.settings
 
 import android.content.Context
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
 import android.view.Gravity
-import android.view.ActionMode
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
+import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.BuildConfig
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.ui.AboutInfoManager
@@ -165,9 +166,9 @@ internal object SettingsAboutSection {
         showDeviceFingerprint: Boolean,
     ): String {
         if (!showDeviceFingerprint) return ""
-        return UiText.Settings.deviceFingerprintDesc(
-            DeviceFingerprintDialog.sensitiveSummaryLines(context)
-        )
+        return DeviceFingerprintDialog.sensitiveSummaryLines(context).joinToString("\n") { line ->
+            line.replaceFirst(": ", "\n")
+        }
     }
 
     private fun deviceFingerprintToggleBadgeText(showDeviceFingerprint: Boolean): String {
@@ -213,31 +214,39 @@ internal object SettingsAboutSection {
         }
     }
 
-    private fun configureSelection(view: TextView, longPressOnly: Boolean) {
-        if (!longPressOnly) {
+    private fun configureSelection(view: TextView, item: AboutInfoManager.AboutItem) {
+        if (item.url != null) {
+            view.setTextIsSelectable(false)
+            return
+        }
+        if (item.title == UiText.Settings.DEVICE_FINGERPRINT_LABEL) {
+            view.setTextIsSelectable(false)
+            view.setOnLongClickListener {
+                if (!SettingsUserState.getPrefs(view.context)
+                        .getBoolean(SettingsUserState.KEY_SHOW_DEVICE_FINGERPRINT, false)
+                ) return@setOnLongClickListener false
+                val clipboard = view.context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                    ?: return@setOnLongClickListener false
+                clipboard.setPrimaryClip(ClipData.newPlainText(
+                    item.title, DeviceFingerprintDialog.sensitiveSummaryLines(view.context).joinToString("\n"),
+                ))
+                Toast.makeText(view.context, UiText.Settings.DEVICE_FINGERPRINT_COPIED, Toast.LENGTH_SHORT).show()
+                true
+            }
+            return
+        }
+        if (item.title != UiText.Settings.VERSION) {
             view.setTextIsSelectable(true)
             return
         }
-        fun resetSelection() {
-            view.setTextIsSelectable(false)
-            view.isClickable = view.hasOnClickListeners()
-            view.isLongClickable = true
-        }
-        resetSelection()
-        view.customSelectionActionModeCallback = object : ActionMode.Callback {
-            override fun onCreateActionMode(mode: ActionMode, menu: Menu) = true
-            override fun onPrepareActionMode(mode: ActionMode, menu: Menu) = false
-            override fun onActionItemClicked(mode: ActionMode, item: MenuItem) = false
-            override fun onDestroyActionMode(mode: ActionMode) {
-                view.post { resetSelection() }
-            }
-        }
+        view.setTextIsSelectable(false)
+        if (!SettingsUserState.areRestrictedFeaturesUnlocked) return
         view.setOnLongClickListener {
-            view.setTextIsSelectable(true)
-            view.requestFocus()
-            // 使用原生长按选词，选择未启动时恢复连续点击。
-            view.post { if (!view.hasSelection()) resetSelection() }
-            false
+            val clipboard = view.context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                ?: return@setOnLongClickListener false
+            clipboard.setPrimaryClip(ClipData.newPlainText(item.title, item.description))
+            Toast.makeText(view.context, UiText.Settings.VERSION_COPIED, Toast.LENGTH_SHORT).show()
+            true
         }
     }
 
@@ -249,10 +258,22 @@ internal object SettingsAboutSection {
         onDescriptionCreated: ((TextView) -> Unit)? = null,
         onSecondaryActionBadgeCreated: ((TextView) -> Unit)? = null,
     ): View {
+        val clickListener = item.onClickListener ?: item.url?.let { url ->
+            View.OnClickListener {
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    })
+                } catch (t: Throwable) {
+                    XposedCompat.logW("[SettingsAboutSection] open about link failed: url=$url, msg=${t.message}")
+                }
+            }
+        }
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, (padding * 0.4f).toInt(), 0, (padding * 0.4f).toInt())
-            item.onClickListener?.let { listener ->
+            if (item.url != null) minimumHeight = (48 * density).toInt()
+            clickListener?.let { listener ->
                 isClickable = true
                 setOnClickListener { listener.onClick(this) }
             }
@@ -262,8 +283,8 @@ internal object SettingsAboutSection {
                 gravity = Gravity.CENTER_VERTICAL
                 addView(TextView(context).apply {
                     text = item.title
-                    configureSelection(this, item.title == UiText.Settings.VERSION)
-                    item.onClickListener?.let { setOnClickListener(it) }
+                    configureSelection(this, item)
+                    clickListener?.let { setOnClickListener(it) }
                     textSize = 14.5f
                     UiStyle.bindTheme(this) { tokens -> setTextColor(tokens.textPrimary) }
                     typeface = Typeface.DEFAULT_BOLD
@@ -289,8 +310,8 @@ internal object SettingsAboutSection {
 
             val descriptionView = TextView(context).apply {
                 text = item.description
-                configureSelection(this, item.title == UiText.Settings.VERSION)
-                item.onClickListener?.let { setOnClickListener(it) }
+                configureSelection(this, item)
+                clickListener?.let { setOnClickListener(it) }
                 visibility = if (item.description.isBlank()) View.GONE else View.VISIBLE
                 textSize = 13f
                 UiStyle.bindTheme(this) { tokens -> setTextColor(if (item.url != null) tokens.accent else tokens.textSecondary) }
@@ -298,22 +319,14 @@ internal object SettingsAboutSection {
                 includeFontPadding = false
                 setPadding(0, (3 * density).toInt(), 0, 0)
 
-                item.url?.let { url ->
-                    setOnClickListener {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            context.startActivity(intent)
-                        } catch (t: Throwable) {
-                            XposedCompat.logW(
-                                "[SettingsAboutSection] open about link failed: url=$url, msg=${t.message}"
-                            )
-                        }
-                    }
-                }
             }
             onDescriptionCreated?.invoke(descriptionView)
             if (item.description.isNotBlank() || onDescriptionCreated != null) {
+                if (item.title == UiText.Settings.DEVICE_FINGERPRINT_LABEL) {
+                    descriptionView.breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
+                    descriptionView.hyphenationFrequency = android.text.Layout.HYPHENATION_FREQUENCY_NONE
+                    descriptionView.setLineSpacing(2 * density, 1f)
+                }
                 addView(descriptionView)
             }
         }
