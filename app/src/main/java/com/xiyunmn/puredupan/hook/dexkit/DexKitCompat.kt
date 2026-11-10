@@ -238,13 +238,13 @@ internal object DexKitCompat {
         }
     }
 
-    fun putCachedMethod(tag: String, resolverId: String, ref: MethodRef?) {
-        if (!isTargetResolutionPersistenceAllowed()) {
-            XposedCompat.logD(
-                "[$tag] DexKit cache persistence deferred until warm-up: $resolverId",
-            )
-            return
-        }
+    fun putCachedMethod(
+        tag: String,
+        resolverId: String,
+        ref: MethodRef?,
+        successDetail: String? = null,
+    ) {
+        if (!isTargetResolutionPersistenceAllowed()) return
         val fingerprint = hostFingerprint() ?: return
         val keyPrefix = cacheKeyPrefix(resolverId)
         val prefs = statePrefs() ?: return
@@ -268,16 +268,18 @@ internal object DexKitCompat {
             className = ref.className,
             methodName = ref.methodName,
         )
-        prefs.edit()
+        val editor = prefs.edit()
             .putString("$keyPrefix.fingerprint", entry.fingerprint)
             .putString("$keyPrefix.status", entry.status)
             .putString("$keyPrefix.className", entry.className)
             .putString("$keyPrefix.methodName", entry.methodName)
-            .apply()
-        memoryCache[resolverId] = entry
         val value = "${ref.className}.${ref.methodName}"
-        XposedCompat.logD("[$tag] DexKit cache updated: $resolverId -> $value")
-        recordTargetStatus(tag, resolverId, TARGET_STATE_SUCCESS, "dexkit:$value")
+        val detail = successDetail?.let(::normalizeTargetSuccessDetail) ?: "dexkit:$value"
+        putTargetStatus(editor, resolverId, fingerprint, TARGET_STATE_SUCCESS, detail)
+        editor.apply()
+        memoryCache[resolverId] = entry
+        scanSession.get()?.consumeTargetScanMiss(resolverId)
+        XposedCompat.logD("[$tag] DexKit cache updated: $resolverId -> $value, $detail")
     }
 
     fun shouldSkipScan(tag: String, resolverId: String, forceFullScan: Boolean = false): Boolean {
@@ -518,21 +520,27 @@ internal object DexKitCompat {
         state: String,
         detail: String?,
     ) {
-        if (!isTargetResolutionPersistenceAllowed()) {
-            XposedCompat.logD(
-                "[$tag] DexKit status persistence deferred until warm-up: $resolverId -> $state",
-            )
-            return
-        }
+        if (!isTargetResolutionPersistenceAllowed()) return
         val fingerprint = hostFingerprint() ?: return
-        val keyPrefix = targetStatusKeyPrefix(resolverId)
-        statePrefs()?.edit()
-            ?.putString("$keyPrefix.fingerprint", fingerprint)
-            ?.putString("$keyPrefix.state", state)
-            ?.putString("$keyPrefix.detail", detail)
-            ?.putLong("$keyPrefix.updatedAt", System.currentTimeMillis())
-            ?.apply()
+        val editor = statePrefs()?.edit() ?: return
+        putTargetStatus(editor, resolverId, fingerprint, state, detail)
+        editor.apply()
         XposedCompat.logD("[$tag] DexKit status updated: $resolverId -> $state, $detail")
+    }
+
+    private fun putTargetStatus(
+        editor: SharedPreferences.Editor,
+        resolverId: String,
+        fingerprint: String,
+        state: String,
+        detail: String?,
+    ) {
+        val keyPrefix = targetStatusKeyPrefix(resolverId)
+        editor
+            .putString("$keyPrefix.fingerprint", fingerprint)
+            .putString("$keyPrefix.state", state)
+            .putString("$keyPrefix.detail", detail)
+            .putLong("$keyPrefix.updatedAt", System.currentTimeMillis())
     }
 
     private fun removeTargetStatus(

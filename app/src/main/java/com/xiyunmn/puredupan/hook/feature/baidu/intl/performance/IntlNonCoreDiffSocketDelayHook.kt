@@ -227,11 +227,6 @@ internal object IntlNonCoreDiffSocketDelayHook {
                 "${method.declaringClass.name}.${method.name}",
         )
         cacheResolvedSocketRegister(method)
-        DexKitCompat.markTargetSuccess(
-            TAG,
-            SOCKET_REGISTER_CACHE_ID,
-            "dexkit:${method.declaringClass.name}.${method.name}",
-        )
         return method
     }
 

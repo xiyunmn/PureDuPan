@@ -33,8 +33,12 @@ internal object BaiduChangeSkinDexKitResolver {
         if (!BaiduFeatureRuntime.isCurrentIntlHost()) {
             val ref = DexKitCompat.MethodRef(BaiduThemeHookPoints.CHANGE_SKIN_KT, "changeSkin")
             resolveRef(cl, ref)?.let { method ->
-                DexKitCompat.putCachedMethod(TAG, CACHE_ID, ref)
-                DexKitCompat.markTargetSuccess(TAG, CACHE_ID, "direct:${method.declaringClass.name}.${method.name}")
+                DexKitCompat.putCachedMethod(
+                    TAG,
+                    CACHE_ID,
+                    ref,
+                    successDetail = "direct:${method.declaringClass.name}.${method.name}",
+                )
                 return method
             }
         }

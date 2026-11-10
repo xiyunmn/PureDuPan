@@ -400,6 +400,7 @@ object StorageRedirectHook {
             mod.hook(method).intercept { chain ->
                 val context = chain.args.getOrNull(0) as? Context
                 val uri = chain.args.getOrNull(1) as? String
+                if (!isDownloadRedirectActive(context)) return@intercept chain.proceed()
                 val relative = if (context != null && uri != null) {
                     resolver(context).relativePathForDocumentUri(uri)
                 } else {

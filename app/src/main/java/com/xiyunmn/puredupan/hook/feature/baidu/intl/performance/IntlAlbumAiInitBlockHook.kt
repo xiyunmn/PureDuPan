@@ -419,11 +419,6 @@ internal object IntlAlbumAiInitBlockHook {
             DIRECT_ALBUM_AI_INIT_CACHE_ID,
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
-        DexKitCompat.markTargetSuccess(
-            TAG,
-            DIRECT_ALBUM_AI_INIT_CACHE_ID,
-            "dexkit:${method.declaringClass.name}.${method.name}",
-        )
         return method
     }
 

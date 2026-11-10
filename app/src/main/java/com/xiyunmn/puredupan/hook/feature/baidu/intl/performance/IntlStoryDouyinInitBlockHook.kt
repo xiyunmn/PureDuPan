@@ -217,11 +217,7 @@ internal object IntlStoryDouyinInitBlockHook {
             TAG,
             STORY_INIT_CACHE_ID,
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
-        )
-        DexKitCompat.markTargetSuccess(
-            TAG,
-            STORY_INIT_CACHE_ID,
-            "$source:${method.declaringClass.name}.${method.name}",
+            successDetail = "$source:${method.declaringClass.name}.${method.name}",
         )
     }
 

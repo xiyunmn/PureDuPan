@@ -108,8 +108,8 @@ internal object SearchPageVoiceSearchDexKitResolver {
             TAG,
             CACHE_ID,
             DexKitCompat.MethodRef(clazz.name, method.name),
+            successDetail = "$source:${clazz.name}.${method.name}",
         )
-        DexKitCompat.markTargetSuccess(TAG, CACHE_ID, "$source:${clazz.name}.${method.name}")
     }
 
     private fun validateRef(cl: ClassLoader, ref: DexKitCompat.MethodRef): Class<*>? {

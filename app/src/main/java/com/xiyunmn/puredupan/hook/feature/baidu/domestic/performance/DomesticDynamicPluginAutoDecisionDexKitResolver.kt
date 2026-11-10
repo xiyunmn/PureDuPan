@@ -121,8 +121,12 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
             "isAutoInstall",
         )
         validateDecisionInterfaceRef(cl, ref, ref.className)?.let { method ->
-            DexKitCompat.putCachedMethod(TAG, AUTO_INSTALL_DECISION_CACHE_ID, ref)
-            DexKitCompat.markTargetSuccess(TAG, AUTO_INSTALL_DECISION_CACHE_ID, "direct:${ref.className}.${ref.methodName}")
+            DexKitCompat.putCachedMethod(
+                TAG,
+                AUTO_INSTALL_DECISION_CACHE_ID,
+                ref,
+                successDetail = "direct:${ref.className}.${ref.methodName}",
+            )
             return method
         }
         return resolveDecisionInterfaceMethod(

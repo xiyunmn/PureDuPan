@@ -253,7 +253,6 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
             cacheId,
             DexKitCompat.MethodRef(best.declaringClass.name, best.name),
         )
-        DexKitCompat.markTargetSuccess(TAG, cacheId, "dexkit:${best.declaringClass.name}.${best.name}")
         return best
     }
 
@@ -323,7 +322,6 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
             cacheId,
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
-        DexKitCompat.markTargetSuccess(TAG, cacheId, "dexkit:${method.declaringClass.name}.${method.name}")
         return method
     }
 
@@ -336,11 +334,7 @@ internal object BaiduVideoSpeedUnlockDexKitResolver {
                 TAG,
                 cacheId,
                 DexKitCompat.MethodRef(method.declaringClass.name, method.name),
-            )
-            DexKitCompat.markTargetSuccess(
-                TAG,
-                cacheId,
-                "fallback:${method.declaringClass.name}.${method.name}",
+                successDetail = "fallback:${method.declaringClass.name}.${method.name}",
             )
             XposedCompat.log(
                 "[$TAG] fallback $cacheId: ${method.declaringClass.name}.${method.name}",

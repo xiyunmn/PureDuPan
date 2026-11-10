@@ -140,11 +140,7 @@ internal object IntlHotStartSplashDexKitResolver {
             TAG,
             CACHE_ID,
             DexKitCompat.MethodRef(result.className, result.methodName),
-        )
-        DexKitCompat.markTargetSuccess(
-            TAG,
-            CACHE_ID,
-            "$source:${result.className}.${result.methodName}",
+            successDetail = "$source:${result.className}.${result.methodName}",
         )
     }
 

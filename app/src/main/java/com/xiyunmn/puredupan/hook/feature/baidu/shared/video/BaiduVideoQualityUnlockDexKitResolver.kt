@@ -114,11 +114,7 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             TAG,
             VIDEO_PRIVILEGE_OWNER_CACHE_ID,
             DexKitCompat.MethodRef(best.name, OWNER_SENTINEL_METHOD),
-        )
-        DexKitCompat.markTargetSuccess(
-            TAG,
-            VIDEO_PRIVILEGE_OWNER_CACHE_ID,
-            "dexkit:${best.name}",
+            successDetail = "dexkit:${best.name}",
         )
         return best
     }
@@ -226,11 +222,7 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             TAG,
             VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID,
             DexKitCompat.MethodRef(owner.name, joinedNames),
-        )
-        DexKitCompat.markTargetSuccess(
-            TAG,
-            VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID,
-            "dexkit:${methods.joinToString { "${it.declaringClass.name}.${it.name}" }}",
+            successDetail = "dexkit:${methods.joinToString { "${it.declaringClass.name}.${it.name}" }}",
         )
         return methods
     }
@@ -255,11 +247,7 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
             TAG,
             VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID,
             DexKitCompat.MethodRef(owner.name, named.joinToString(",") { it.name }),
-        )
-        DexKitCompat.markTargetSuccess(
-            TAG,
-            VIDEO_PRIVILEGE_QUALITY_METHODS_CACHE_ID,
-            "fallback:${named.joinToString { "${it.declaringClass.name}.${it.name}" }}",
+            successDetail = "fallback:${named.joinToString { "${it.declaringClass.name}.${it.name}" }}",
         )
         XposedCompat.log(
             "[$TAG] fallback quality methods: " +
@@ -274,11 +262,7 @@ internal object BaiduVideoQualityUnlockDexKitResolver {
                 TAG,
                 VIDEO_PRIVILEGE_OWNER_CACHE_ID,
                 DexKitCompat.MethodRef(owner.name, OWNER_SENTINEL_METHOD),
-            )
-            DexKitCompat.markTargetSuccess(
-                TAG,
-                VIDEO_PRIVILEGE_OWNER_CACHE_ID,
-                "fallback:${owner.name}",
+                successDetail = "fallback:${owner.name}",
             )
             XposedCompat.log("[$TAG] fallback VideoPrivilege owner: ${owner.name}")
         }

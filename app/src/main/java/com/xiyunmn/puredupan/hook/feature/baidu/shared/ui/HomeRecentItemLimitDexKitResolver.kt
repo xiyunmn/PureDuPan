@@ -174,6 +174,7 @@ internal object HomeRecentItemLimitDexKitResolver {
     }
 
     private fun markResolution(source: String, methods: List<ResolvedMethods>) {
+        if (!DexKitCompat.isTargetResolutionPersistenceAllowed()) return
         val members = methods.joinToString { resolved ->
             val owner = resolved.source.declaringClass.name
             "$owner.${resolved.source.name}/${resolved.cacheWriter.name}/${resolved.stateWriter.name}"

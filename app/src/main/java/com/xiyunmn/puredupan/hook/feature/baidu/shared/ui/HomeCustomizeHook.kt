@@ -79,6 +79,7 @@ object HomeCustomizeHook {
             var installedCount = independentHookCount
             installedCount += hookTopBannerView(cl)
             installedCount += hookHomeSearchPlaceholderText(cl)
+            installedCount += hookSearchWordsSource(cl)
             installedCount += hookHomeToolbarRenderEntry(cl)
             installedCount += hookHomeToolbarRootLayout(cl)
             installedCount += hookSearchboxAigcAnimation(cl)
@@ -196,7 +197,6 @@ object HomeCustomizeHook {
                 if (isSearchPlaceholderHidden()) {
                     // 阻止 TextFlipper 写入提示词和右侧图标。
                     // 布局中的默认提示词在 onViewCreated 中统一隐藏。
-                    XposedCompat.logD("[HomeCustomizeHook] $className.$SET_SEARCH_TEXT_METHOD blocked")
                     null
                 } else {
                     chain.proceed()
@@ -224,6 +224,21 @@ object HomeCustomizeHook {
             }
         }
         return count
+    }
+
+    private fun hookSearchWordsSource(cl: ClassLoader): Int {
+        if (!isSearchPlaceholderHidden()) return 0
+        val mod = XposedCompat.module ?: return 0
+        val method = HomeSearchWordsResolver.resolve(cl) ?: run {
+            XposedCompat.logD("[HomeCustomizeHook] search words source unavailable; text interception retained")
+            return 0
+        }
+        mod.hook(method).intercept { chain ->
+            // 隐藏提示词时不注册轮播观察者，也不发起推荐词请求。
+            if (isSearchPlaceholderHidden()) null else chain.proceed()
+        }
+        XposedCompat.log("[HomeCustomizeHook] search words source installed: ${method.declaringClass.name}.${method.name}")
+        return 1
     }
 
     private fun hookHomeToolbarRenderEntry(cl: ClassLoader): Int {

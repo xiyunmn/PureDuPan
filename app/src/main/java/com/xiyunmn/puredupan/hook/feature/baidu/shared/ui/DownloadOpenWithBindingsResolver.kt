@@ -102,6 +102,7 @@ internal object DownloadOpenWithBindingsResolver {
     }
 
     private fun record(bindings: Bindings): Bindings {
+        if (!DexKitCompat.isTargetResolutionPersistenceAllowed()) return bindings
         listOf(PATH_ID to bindings.path, ALL_ID to bindings.allItem, COMPLETED_ID to bindings.completedItems).forEach { (id, method) ->
             DexKitCompat.putCachedMethod(TAG, id, DexKitCompat.MethodRef(method.declaringClass.name, method.name))
         }

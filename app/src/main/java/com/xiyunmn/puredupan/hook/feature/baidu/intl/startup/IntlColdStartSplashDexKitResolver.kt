@@ -62,7 +62,6 @@ internal object IntlColdStartSplashDexKitResolver {
             return null
         }
         DexKitCompat.putCachedMethod(TAG, CACHE_ID, DexKitCompat.MethodRef(method.declaringClass.name, method.name))
-        DexKitCompat.markTargetSuccess(TAG, CACHE_ID, "dexkit:${method.declaringClass.name}.${method.name}")
         return method
     }
 
