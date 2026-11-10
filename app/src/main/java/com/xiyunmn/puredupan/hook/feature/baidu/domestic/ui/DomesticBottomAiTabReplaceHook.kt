@@ -22,7 +22,7 @@ internal object DomesticBottomAiTabReplaceHook {
                 hookState.reset()
                 return
             }
-            mod.hook(method).intercept {
+            mod.hook(method).setId("DomesticBottomAiTabReplaceHook:hook:method").intercept {
                 if (isEnabled()) 0L else it.proceed()
             }
             XposedCompat.log(

@@ -35,7 +35,7 @@ internal object DomesticColdStartNoAdHook {
         // 首次进入时固定进程模式，方法缺失时沿用原生模式。
         entries.forEach { method ->
             if (method !in installed) {
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticColdStartNoAdHook:hook:method").intercept { chain ->
                     val nativeNoAd = useNativeNoAdMode()
                     (chain.thisObject as? Activity)?.takeUnless { domestic }?.let { activity ->
                         prepareColdStartWindow(activity, chain.args.firstOrNull() != null, nativeNoAd, mainClass)
@@ -53,7 +53,7 @@ internal object DomesticColdStartNoAdHook {
         ) ?: return
 
         if (entry !in installed) {
-            mod.hook(entry).intercept { chain ->
+            mod.hook(entry).setId("DomesticColdStartNoAdHook:hook:entry").intercept { chain ->
                 val previous = coldDecision.get()
                 coldDecision.set(chain.thisObject as? Activity)
                 try {
@@ -65,7 +65,7 @@ internal object DomesticColdStartNoAdHook {
             installed += entry
         }
         if (gate !in installed) {
-            mod.hook(gate).intercept { chain ->
+            mod.hook(gate).setId("DomesticColdStartNoAdHook:hook:gate").intercept { chain ->
                 val activity = coldDecision.get()
                 if (activity != null && chain.args.firstOrNull() === activity && useNativeNoAdMode()) {
                     false
@@ -76,7 +76,7 @@ internal object DomesticColdStartNoAdHook {
             installed += gate
         }
         if (mode !in installed) {
-            mod.hook(mode).intercept { chain ->
+            mod.hook(mode).setId("DomesticColdStartNoAdHook:hook:mode").intercept { chain ->
                 if (useNativeNoAdMode()) false else chain.proceed()
             }
             installed += mode
@@ -94,7 +94,7 @@ internal object DomesticColdStartNoAdHook {
             Class::class.java, ViewGroup::class.java, Int::class.javaPrimitiveType!!,
         ) ?: return
         if (method.returnType != Void.TYPE || method in installed) return
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DomesticColdStartNoAdHook:hookHomeWindow:method").intercept { chain ->
             val destination = chain.args[0] as? Class<*>
             if (destination?.name == BaiduSharedHookPoints.HOME_ACTIVITY && useNativeNoAdMode()) {
                 // 首页异步创建前补齐初始颜色，覆盖系统回收后的任务恢复。

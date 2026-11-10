@@ -35,6 +35,11 @@ private const val DEXKIT_SUMMARY_REFRESH_MS = 1000L
 
 internal object SettingsMainDialog {
     @Volatile private var versionTapCount = 0
+    private val reopenHandler = Handler(Looper.getMainLooper())
+
+    fun disposeForReload() {
+        reopenHandler.removeCallbacksAndMessages(null)
+    }
 
     fun show(
         context: Context,
@@ -43,6 +48,7 @@ internal object SettingsMainDialog {
         onReopenSettings: (Int) -> Unit,
         onRestartHost: () -> Unit,
     ) {
+        if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return
         try {
             val settingsSession = SettingsRuntimeSession.create(context)
             val prefs = settingsSession.prefs
@@ -242,8 +248,8 @@ internal object SettingsMainDialog {
                         showRestrictedFeatureWarningDialog(context) {
                             SettingsUserState.setRestrictedFeaturesUnlocked(context, true)
                             settingsDialog?.dismiss()
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                onReopenSettings(0)
+                            reopenHandler.postDelayed({
+                                if (!com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) onReopenSettings(0)
                             }, 100)
                             Toast.makeText(
                                 context,
@@ -283,7 +289,7 @@ internal object SettingsMainDialog {
                 )
             }
             if (initialScrollY > 0) {
-                scrollContainer.post {
+                com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.postResult(android.os.Handler(android.os.Looper.getMainLooper())) {
                     scrollContainer.scrollTo(0, initialScrollY)
                 }
             }
@@ -326,11 +332,12 @@ internal object SettingsMainDialog {
                 .create()
             settingsDialog = dialog
 
-            dialog.show()
+            SettingsReloadCleanup.showDialog(dialog)
             addCompletionHint(dialog, density)
+            var active = true
             val unregisterImportedSettings = ModuleSettingsBackupActions.bindImportedListener {
                 val activity = context as? Activity
-                if (dialog.isShowing && activity?.isFinishing != true && activity?.isDestroyed != true) {
+                if (active && !com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring && dialog.isShowing && activity?.isFinishing != true && activity?.isDestroyed != true) {
                     val scrollY = scrollContainer.scrollY
                     dialog.dismiss()
                     onReopenSettings(scrollY)
@@ -341,6 +348,7 @@ internal object SettingsMainDialog {
                 refresh = aboutSection.refreshDeviceFingerprintDescription,
             )
             val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                if (!active || com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@OnSharedPreferenceChangeListener
                 val switch = switchesByPrefKey[key] ?: return@OnSharedPreferenceChangeListener
                 SettingsSwitchRows.setCheckedFromPreferences(
                     switch, prefs.getBoolean(key, switch.isChecked),
@@ -354,7 +362,9 @@ internal object SettingsMainDialog {
                 dexKitRow = rowsByPrefKey[SettingsUserState.KEY_DEXKIT_STATUS],
             )
             requestDexKitSummaryRefresh = dexKitSummaryRefresh?.requestRefresh
-            dialog.setOnDismissListener {
+            SettingsReloadCleanup.onDispose(dialog) {
+                active = false
+                requestDexKitSummaryRefresh = null
                 unregisterImportedSettings()
                 unregisterDeviceFingerprintVisibilityRefresh()
                 prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener)
@@ -429,7 +439,10 @@ internal object SettingsMainDialog {
         val summaryView = dexKitRow?.let(SettingsSwitchRows::findStatusBadgeTextView) ?: return null
         val mainHandler = Handler(Looper.getMainLooper())
 
+        var active = true
+
         fun refreshSummary() {
+            if (!active || com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return
             summaryView.text = SettingsSwitchRows.emphasizeDexKitStatusBadge(
                 dexKitStatusBadgeText(SettingsDexKitState.summaryText(context)),
                 UiStyle.tokens(context),
@@ -438,6 +451,7 @@ internal object SettingsMainDialog {
 
         val refreshRunnable = object : Runnable {
             override fun run() {
+                if (!active || com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return
                 refreshSummary()
                 if (SettingsDexKitState.shouldContinueStatusRefresh(context)) {
                     mainHandler.postDelayed(this, DEXKIT_SUMMARY_REFRESH_MS)
@@ -446,6 +460,7 @@ internal object SettingsMainDialog {
         }
 
         fun scheduleRefresh(forceNextTick: Boolean = false) {
+            if (!active || com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return
             mainHandler.removeCallbacks(refreshRunnable)
             refreshSummary()
             if (forceNextTick || SettingsDexKitState.shouldContinueStatusRefresh(context)) {
@@ -457,7 +472,7 @@ internal object SettingsMainDialog {
 
         return DexKitSummaryRefreshBinding(
             requestRefresh = { scheduleRefresh(forceNextTick = true) },
-            unregister = { mainHandler.removeCallbacks(refreshRunnable) },
+            unregister = { active = false; mainHandler.removeCallbacks(refreshRunnable) },
         )
     }
 
@@ -528,9 +543,12 @@ internal object SettingsMainDialog {
         refresh: () -> Unit,
     ): () -> Unit {
         val mainHandler = Handler(Looper.getMainLooper())
-        val refreshRunnable = Runnable { refresh() }
+        var active = true
+        val refreshRunnable = Runnable {
+            if (active && !com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) refresh()
+        }
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == SettingsUserState.KEY_SHOW_DEVICE_FINGERPRINT) {
+            if (active && !com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring && key == SettingsUserState.KEY_SHOW_DEVICE_FINGERPRINT) {
                 mainHandler.post(refreshRunnable)
             }
         }
@@ -538,6 +556,7 @@ internal object SettingsMainDialog {
         refresh()
 
         return {
+            active = false
             prefs.unregisterOnSharedPreferenceChangeListener(listener)
             mainHandler.removeCallbacks(refreshRunnable)
         }

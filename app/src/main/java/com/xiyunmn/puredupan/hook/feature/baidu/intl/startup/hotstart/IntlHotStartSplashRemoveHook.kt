@@ -32,7 +32,7 @@ internal object IntlHotStartSplashRemoveHook {
                 return
             }
 
-            mod.hook(resolvedMethod).intercept {
+            mod.hook(resolvedMethod).setId("IntlHotStartSplashRemoveHook:hookHotStartEntry:resolvedMethod").intercept {
                 if (HookSettings.isHotStartSplashRemoveEnabled) false else it.proceed()
             }
             XposedCompat.log(
@@ -72,7 +72,7 @@ internal object IntlHotStartSplashRemoveHook {
         }
 
         try {
-            mod.hook(onCreate).intercept { chain ->
+            mod.hook(onCreate).setId("IntlHotStartSplashRemoveHook:hookSplashAdActivity:onCreate").intercept { chain ->
                 val result = chain.proceed()
                 if (HookSettings.isHotStartSplashRemoveEnabled) {
                     (chain.thisObject as? Activity)?.let { activity ->

@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.os.Handler
 import android.os.Looper
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
@@ -10,6 +11,19 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
 internal object IntlFeedPreloadDelayHook {
+    fun disposeForReload() {
+        try {
+            if (pendingInvocation != null) restoreIfPending("reload")
+        } finally {
+            mainHandler.removeCallbacksAndMessages(null)
+            pendingInvocation = null
+            preloadReceiver = null
+            preloadMethod = null
+            homeStableRestoreScheduled = false
+            timeoutRestoreScheduled = false
+        }
+    }
+
     private const val TAG = "IntlFeedPreloadDelayHook"
     private const val NEW_FEED_HOME_CONTEXT_CLASS_NAME = BaiduIntlHookPoints.NEW_FEED_HOME_CONTEXT
     private const val NEW_FEED_HOME_COMPANION_CLASS_NAME = BaiduIntlHookPoints.NEW_FEED_HOME_COMPANION
@@ -43,6 +57,8 @@ internal object IntlFeedPreloadDelayHook {
     @Volatile private var timeoutRestoreScheduled = false
 
     internal fun hook(cl: ClassLoader) {
+        // 旧代已交还待恢复调用，热重载不重新进入冷启动抑制阶段。
+        if (ModuleLifetime.hotReloaded) return
         if (!isEnabled()) {
             XposedCompat.log("[IntlFeedPreloadDelayHook] skipped: config disabled")
             return
@@ -60,7 +76,8 @@ internal object IntlFeedPreloadDelayHook {
             preloadMethod = resolved.method
             preloadReceiver = resolved.receiver
 
-            mod.hook(resolved.method).intercept { chain ->
+            mod.hook(resolved.method).setId("IntlFeedPreloadDelayHook:hook:resolved-method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val cursor = chain.args.getOrNull(0) as? String
                 val serialNum = chain.args.getOrNull(1) as? String
                 if (cursor == null || serialNum == null || !shouldSkipStartupPreload()) {
@@ -68,6 +85,7 @@ internal object IntlFeedPreloadDelayHook {
                 }
 
                 synchronized(lock) {
+                    preloadReceiver = chain.thisObject
                     pendingInvocation = PreloadInvocation(cursor, serialNum)
                     skipped = true
                     skipCount++
@@ -138,7 +156,7 @@ internal object IntlFeedPreloadDelayHook {
     }
 
     private fun shouldSkipStartupPreload(): Boolean {
-        if (!isEnabled()) return false
+        if (ModuleLifetime.isRetiring || !isEnabled()) return false
         if (restoring || restored) return false
         return true
     }
@@ -149,7 +167,7 @@ internal object IntlFeedPreloadDelayHook {
         }
 
     private fun scheduleHomeStableRestore() {
-        if (!isEnabled()) return
+        if (ModuleLifetime.isRetiring || !isEnabled()) return
         IntlHomeStableRestoreSignal.scheduleDelayedRestore(
             tag = TAG,
             delayMs = HOME_STABLE_RESTORE_DELAY_MS,
@@ -169,6 +187,7 @@ internal object IntlFeedPreloadDelayHook {
     }
 
     private fun scheduleTimeoutRestore() {
+        if (ModuleLifetime.isRetiring) return
         if (!isEnabled()) return
         val shouldSchedule = synchronized(lock) {
             if (restored || timeoutRestoreScheduled) {
@@ -188,7 +207,7 @@ internal object IntlFeedPreloadDelayHook {
     }
 
     private fun restoreIfPending(reason: String) {
-        if (!isEnabled()) return
+        if (reason != "reload" && (ModuleLifetime.isRetiring || !isEnabled())) return
         val method = preloadMethod ?: run {
             XposedCompat.logW("[IntlFeedPreloadDelayHook] restore skipped: preloadMethod missing, reason=$reason")
             return

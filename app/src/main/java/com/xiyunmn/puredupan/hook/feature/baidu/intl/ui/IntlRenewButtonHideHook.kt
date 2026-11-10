@@ -30,7 +30,7 @@ internal object IntlRenewButtonHideHook {
         if (!hookState.markInstalled()) return
         try {
             methods.forEach { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("IntlRenewButtonHideHook:hook:method").intercept { chain ->
                     val result = chain.proceed()
                     if (isEnabled()) {
                         val activity = chain.thisObject as? Activity

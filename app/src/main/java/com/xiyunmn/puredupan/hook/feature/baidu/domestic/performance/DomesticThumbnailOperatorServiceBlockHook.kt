@@ -63,7 +63,7 @@ object DomesticThumbnailOperatorServiceBlockHook {
             XposedCompat.log("[DomesticThumbnailOperatorServiceBlockHook] ClientComputeManager.init NOT FOUND")
             return 0
         }
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DomesticThumbnailOperatorServiceBlockHook:hookClientComputeInit:method").intercept { chain ->
             if (isEnabled()) {
                 XposedCompat.logD(
                     "[DomesticThumbnailOperatorServiceBlockHook] ClientComputeManager.init blocked",
@@ -113,7 +113,7 @@ object DomesticThumbnailOperatorServiceBlockHook {
             return 0
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DomesticThumbnailOperatorServiceBlockHook:hookAddJob:method").intercept { chain ->
             if (isEnabled()) {
                 XposedCompat.logD("[DomesticThumbnailOperatorServiceBlockHook] ThumbnailOperatorUtil.addJob blocked")
                 null
@@ -130,7 +130,7 @@ object DomesticThumbnailOperatorServiceBlockHook {
             XposedCompat.log("[DomesticThumbnailOperatorServiceBlockHook] DexKit ClientComputeManager.init NOT FOUND")
             return 0
         }
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DomesticThumbnailOperatorServiceBlockHook:hookDexKitClientComputeInit:method").intercept { chain ->
             if (isEnabled()) {
                 XposedCompat.logD(
                     "[DomesticThumbnailOperatorServiceBlockHook] DexKit ClientComputeManager.init blocked",
@@ -149,7 +149,7 @@ object DomesticThumbnailOperatorServiceBlockHook {
             XposedCompat.log("[DomesticThumbnailOperatorServiceBlockHook] DexKit ThumbnailOperatorUtil.addJob NOT FOUND")
             return 0
         }
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DomesticThumbnailOperatorServiceBlockHook:hookDexKitAddJob:method").intercept { chain ->
             if (isEnabled()) {
                 XposedCompat.logD("[DomesticThumbnailOperatorServiceBlockHook] DexKit ThumbnailOperatorUtil.addJob blocked")
                 null

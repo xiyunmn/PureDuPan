@@ -130,7 +130,7 @@ internal object MarketingDialogBlockHook {
             }
             val bindings = CopyOnWriteArrayList(listOf(binding))
             method.isAccessible = true
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("MarketingDialogBlockHook:install:method").intercept { chain ->
                 val instance = chain.thisObject
                 val selected = bindings.firstOrNull {
                     instance != null && it.target.isInstance(instance) &&
@@ -181,7 +181,7 @@ internal object MarketingDialogBlockHook {
             val mod = XposedCompat.module ?: return
             synchronized(offerEntries) {
                 if (entry in offerEntries) return
-                mod.hook(entry).intercept { chain ->
+                mod.hook(entry).setId("MarketingDialogBlockHook:myPageOffer:entry").intercept { chain ->
                     val activity = MarketingPopupContext.activity(chain.args.firstOrNull())
                     if (!HookSettings.isMarketingPopupBlocked(MarketingPopup.MY_PAGE_OFFER) ||
                         !MarketingPopupContext.isMainPage(activity)

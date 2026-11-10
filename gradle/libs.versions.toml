@@ -11,7 +11,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-xposed-api = { group = "io.github.libxposed", name = "api", version = "101.0.0" }
+xposed-api = { group = "io.github.libxposed", name = "api", version = "102.0.0" }
 dexkit = { group = "org.luckypray", name = "dexkit", version.ref = "dexkit" }
 
 [plugins]

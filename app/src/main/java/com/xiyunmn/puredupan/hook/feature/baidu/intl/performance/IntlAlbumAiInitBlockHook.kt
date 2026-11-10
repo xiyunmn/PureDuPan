@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -15,6 +16,18 @@ import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object IntlAlbumAiInitBlockHook {
+    fun disposeForReload() {
+        try {
+            restoreIfPending("reload", null)
+        } finally {
+            pendingApplication = null
+            pendingInitMethod = null
+            pendingInitReceiver = null
+            stableInitFallback = null
+            directInitMethod = null
+        }
+    }
+
     const val DIRECT_ALBUM_AI_INIT_CACHE_ID = "intl_album_ai_direct_init"
 
     private const val ALBUM_CONTEXT_CLASS_NAME = BaiduIntlHookPoints.ALBUM_CONTEXT
@@ -62,6 +75,8 @@ internal object IntlAlbumAiInitBlockHook {
 
     @Volatile private var directInitMethod: Method? = null
     @Volatile private var stableInitFallback: StableInitFallback? = null
+    @Volatile private var pendingInitMethod: Method? = null
+    @Volatile private var pendingInitReceiver: Any? = null
     @Volatile private var pendingApplication: Application? = null
     @Volatile private var skipped = false
     @Volatile private var restored = false
@@ -70,6 +85,8 @@ internal object IntlAlbumAiInitBlockHook {
     @Volatile private var restoreCount = 0
 
     internal fun hook(cl: ClassLoader) {
+        // 旧代已交还待恢复调用，热重载不重新进入冷启动抑制阶段。
+        if (ModuleLifetime.hotReloaded) return
         if (!isEnabled()) {
             XposedCompat.log("[IntlAlbumAiInitBlockHook] skipped: config disabled")
             return
@@ -130,7 +147,8 @@ internal object IntlAlbumAiInitBlockHook {
         val mod = XposedCompat.module ?: return 0
         var installed = 0
         for (method in resolveNamedInitMethods(className, cl, logMissing = true)) {
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlAlbumAiInitBlockHook:hookNamedInitMethods:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val application = chain.args.firstOrNull() as? Application
                 if (application == null || !shouldBlockInit()) {
                     return@intercept chain.proceed()
@@ -138,6 +156,8 @@ internal object IntlAlbumAiInitBlockHook {
 
                 synchronized(lock) {
                     stableInitFallback = StableInitFallback(method, chain.thisObject)
+                    pendingInitMethod = method
+                    pendingInitReceiver = chain.thisObject
                     pendingApplication = application
                     skipped = true
                     skipCount++
@@ -187,13 +207,16 @@ internal object IntlAlbumAiInitBlockHook {
 
     private fun hookDirectInitMethod(method: Method): Boolean {
         val mod = XposedCompat.module ?: return false
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("IntlAlbumAiInitBlockHook:hookDirectInitMethod:method").intercept { chain ->
+            if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
             val application = chain.args.firstOrNull() as? Application
             if (application == null || !shouldBlockInit()) {
                 return@intercept chain.proceed()
             }
 
             synchronized(lock) {
+                pendingInitMethod = method
+                pendingInitReceiver = chain.thisObject
                 pendingApplication = application
                 skipped = true
                 skipCount++
@@ -208,7 +231,7 @@ internal object IntlAlbumAiInitBlockHook {
     }
 
     private fun shouldBlockInit(): Boolean {
-        if (!isEnabled()) return false
+        if (ModuleLifetime.isRetiring || !isEnabled()) return false
         if (restoring || restored) return false
         return true
     }
@@ -232,7 +255,8 @@ internal object IntlAlbumAiInitBlockHook {
         for (method in clazz.declaredMethods) {
             if (method.name !in albumAiEntryMethodNames) continue
             method.isAccessible = true
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlAlbumAiInitBlockHook:hookNamedEntryMethods:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val fallbackApplication = findApplicationFromArgs(chain.args)
                 restoreIfPending("album_entry:${method.name}/${method.parameterTypes.size}", fallbackApplication)
                 chain.proceed()
@@ -255,7 +279,8 @@ internal object IntlAlbumAiInitBlockHook {
     private fun hookActivityOnCreate(activityClass: Class<*>, reason: String): Boolean {
         val mod = XposedCompat.module ?: return false
         val method = XposedCompat.findMethodOrNull(activityClass, "onCreate", Bundle::class.java) ?: return false
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("IntlAlbumAiInitBlockHook:hookActivityOnCreate:method").intercept { chain ->
+            if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
             val activity = chain.thisObject as? Activity
             restoreIfPending(reason, activity?.application)
             chain.proceed()
@@ -266,7 +291,8 @@ internal object IntlAlbumAiInitBlockHook {
     private fun hookActivityOnResume(activityClass: Class<*>, reason: String): Boolean {
         val mod = XposedCompat.module ?: return false
         val method = XposedCompat.findMethodOrNull(activityClass, "onResume") ?: return false
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("IntlAlbumAiInitBlockHook:hookActivityOnResume:method").intercept { chain ->
+            if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
             val activity = chain.thisObject as? Activity
             restoreIfPending(reason, activity?.application)
             chain.proceed()
@@ -275,7 +301,7 @@ internal object IntlAlbumAiInitBlockHook {
     }
 
     private fun restoreIfPending(reason: String, fallbackApplication: Application?) {
-        if (!isEnabled()) return
+        if (reason != "reload" && (ModuleLifetime.isRetiring || !isEnabled())) return
         val application = synchronized(lock) {
             if (!skipped || restored) return
             val pending = pendingApplication ?: fallbackApplication ?: return
@@ -286,6 +312,10 @@ internal object IntlAlbumAiInitBlockHook {
 
         try {
             restoring = true
+            if (reason == "reload") {
+                pendingInitMethod?.invoke(pendingInitReceiver, application)
+                return
+            }
             val direct = directInitMethod
             if (direct != null) {
                 direct.invoke(null, application)

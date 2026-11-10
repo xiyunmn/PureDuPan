@@ -23,7 +23,7 @@ internal object AlbumBackupBarBlockHook {
                 return
             }
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("AlbumBackupBarBlockHook:hook:method").intercept { chain ->
                 if (HookSettings.isAlbumBackupBarBlocked) {
                     XposedCompat.logD("[AlbumBackupBarBlockHook] album backup bar add blocked")
                     true

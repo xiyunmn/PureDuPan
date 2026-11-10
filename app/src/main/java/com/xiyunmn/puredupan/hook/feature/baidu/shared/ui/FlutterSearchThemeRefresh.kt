@@ -10,6 +10,7 @@ import android.view.PixelCopy
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduThemeHookPoints
 import java.lang.reflect.Method
@@ -24,6 +25,8 @@ internal object FlutterSearchThemeRefresh {
         var fragment: Any? = null
         var cleanup: Runnable? = null
         var rebuilt = false
+        var pixelPending = false
+        var frame: Runnable? = null
     }
 
     fun hook(cl: ClassLoader): Boolean {
@@ -31,11 +34,15 @@ internal object FlutterSearchThemeRefresh {
         val fragmentClass = XposedCompat.findClassOrNull(BaiduThemeHookPoints.FLUTTER_FRAGMENT, cl) ?: return false
         val displayed = fragmentClass.getMethod("onFlutterUiDisplayed")
         if (displayed in installed) return true
-        mod.hook(displayed).intercept { chain ->
+        mod.hook(displayed).setId("FlutterSearchThemeRefresh:uiDisplayed:${displayed.declaringClass.name}").intercept { chain ->
+            if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
             val result = chain.proceed()
             transitions.entries.firstOrNull { it.value.fragment === chain.thisObject }?.let { (activity, state) ->
                 // 等待新纹理提交到窗口后再移除遮罩。
-                state.decor.postOnAnimation { state.decor.postOnAnimation { finish(activity, state) } }
+                state.frame?.let(state.decor::removeCallbacks)
+                state.frame = Runnable {
+                    state.frame = Runnable { finish(activity, state) }.also(state.decor::postOnAnimation)
+                }.also(state.decor::postOnAnimation)
             }
             result
         }
@@ -43,7 +50,13 @@ internal object FlutterSearchThemeRefresh {
         return true
     }
 
+    fun disposeForReload() {
+        transitions.toMap().forEach { (activity, state) -> finish(activity, state) }
+        handler.removeCallbacksAndMessages(null)
+    }
+
     fun refresh(activity: Activity, isCurrent: () -> Boolean, completed: (Boolean) -> Unit) {
+        if (ModuleLifetime.isRetiring) return
         if (transitions.containsKey(activity)) {
             completed(false)
             return
@@ -73,36 +86,55 @@ internal object FlutterSearchThemeRefresh {
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }
             val state = Transition(decor, cover, completed)
+            if (!ModuleLifetime.beginTask()) return
             transitions[activity] = state
             state.cleanup = Runnable { finish(activity, state) }.also { handler.postDelayed(it, 3000L) }
-            PixelCopy.request(activity.window, rect, bitmap, { result ->
-                if (transitions[activity] !== state) {
-                    return@request
+            if (!ModuleLifetime.beginTask()) {
+                finish(activity, state)
+                return
+            }
+            state.pixelPending = true
+            try {
+                PixelCopy.request(activity.window, rect, bitmap, { result ->
+                    try {
+                        if (transitions[activity] !== state) {
+                            return@request
+                        }
+                        if (ModuleLifetime.isRetiring || result != PixelCopy.SUCCESS || activity.isDestroyed || activity.isFinishing ||
+                            !isCurrent() || runCatching { saved.invoke(manager) != false }.getOrDefault(true)
+                        ) {
+                            finish(activity, state)
+                            return@request
+                        }
+                        runCatching {
+                            cover.setImageBitmap(bitmap)
+                            decor.addView(cover, ViewGroup.LayoutParams(rect.width(), rect.height()))
+                            val decorLocation = IntArray(2).also(decor::getLocationInWindow)
+                            cover.x = (rect.left - decorLocation[0]).toFloat()
+                            cover.y = (rect.top - decorLocation[1]).toFloat()
+                            // 为透明 Activity 保留不透明背景，避免 Flutter 空帧露出底层主页。
+                            activity.window.setBackgroundDrawable(ColorDrawable(bitmap.getPixel(bitmap.width / 2, 0) or (0xff shl 24)))
+                            val fragment = initFragment.invoke(activity) ?: error("search fragment unavailable")
+                            state.fragment = fragment
+                            fragmentField.set(activity, fragment)
+                            execute.invoke(manager)
+                            state.rebuilt = true
+                        }.onFailure {
+                            finish(activity, state)
+                            XposedCompat.logW("[FlutterSearchThemeRefresh] refresh failed: ${it.message}")
+                        }
+                    } finally {
+                        state.pixelPending = false
+                        ModuleLifetime.finishTask()
+                    }
+                }, handler)
+            } catch (error: Throwable) {
+                if (state.pixelPending) {
+                    state.pixelPending = false
+                    ModuleLifetime.finishTask()
                 }
-                if (result != PixelCopy.SUCCESS || activity.isDestroyed || activity.isFinishing ||
-                    !isCurrent() || runCatching { saved.invoke(manager) != false }.getOrDefault(true)
-                ) {
-                    finish(activity, state)
-                    return@request
-                }
-                runCatching {
-                    cover.setImageBitmap(bitmap)
-                    decor.addView(cover, ViewGroup.LayoutParams(rect.width(), rect.height()))
-                    val decorLocation = IntArray(2).also(decor::getLocationInWindow)
-                    cover.x = (rect.left - decorLocation[0]).toFloat()
-                    cover.y = (rect.top - decorLocation[1]).toFloat()
-                    // 为透明 Activity 保留不透明背景，避免 Flutter 空帧露出底层主页。
-                    activity.window.setBackgroundDrawable(ColorDrawable(bitmap.getPixel(bitmap.width / 2, 0) or (0xff shl 24)))
-                    val fragment = initFragment.invoke(activity) ?: error("search fragment unavailable")
-                    state.fragment = fragment
-                    fragmentField.set(activity, fragment)
-                    execute.invoke(manager)
-                    state.rebuilt = true
-                }.onFailure {
-                    finish(activity, state)
-                    XposedCompat.logW("[FlutterSearchThemeRefresh] refresh failed: ${it.message}")
-                }
-            }, handler)
+                throw error
+            }
         }.onFailure {
             if (transitions.containsKey(activity)) cancel(activity) else completed(false)
             XposedCompat.logW("[FlutterSearchThemeRefresh] prepare failed: ${it.message}")
@@ -117,9 +149,14 @@ internal object FlutterSearchThemeRefresh {
         if (transitions[activity] !== state) return
         transitions.remove(activity)
         state.cleanup?.let(handler::removeCallbacks)
+        state.frame?.let(state.decor::removeCallbacks)
         (state.cover.parent as? ViewGroup)?.removeView(state.cover)
         state.cover.setImageDrawable(null)
         // PixelCopy 回调前可能仍占用缓冲区，交由 GC 回收。
-        state.completed(state.rebuilt)
+        try {
+            if (!ModuleLifetime.isRetiring) state.completed(state.rebuilt)
+        } finally {
+            ModuleLifetime.finishTask()
+        }
     }
 }

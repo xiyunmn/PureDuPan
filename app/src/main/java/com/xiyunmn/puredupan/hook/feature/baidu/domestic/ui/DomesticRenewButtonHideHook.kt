@@ -47,7 +47,7 @@ internal object DomesticRenewButtonHideHook {
                 return
             }
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("DomesticRenewButtonHideHook:hook:method").intercept { chain ->
                 val result = chain.proceed()
                 if (isEnabled()) {
                     hideVipEntrance(chain.thisObject as? Activity)

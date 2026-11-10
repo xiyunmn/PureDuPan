@@ -33,7 +33,7 @@ internal object DomesticAboutMeAiCoinHideHook {
                 return
             }
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("DomesticAboutMeAiCoinHideHook:hook:method").intercept { chain ->
                 val result = chain.proceed()
                 if (isEnabled()) {
                     try {

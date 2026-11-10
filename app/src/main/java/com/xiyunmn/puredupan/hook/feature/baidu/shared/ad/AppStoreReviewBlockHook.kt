@@ -44,7 +44,7 @@ internal object AppStoreReviewBlockHook {
                         continue
                     }
                     method.isAccessible = true
-                    mod.hook(method).intercept { chain ->
+                    mod.hook(method).setId("AppStoreReviewBlockHook:hook:method").intercept { chain ->
                         if (HookSettings.isAppStoreReviewBlocked) {
                             XposedCompat.logD("[AppStoreReviewBlockHook] showCenterDialog blocked")
                             HookUtils.getDefaultReturnValue(method.returnType)
@@ -68,7 +68,7 @@ internal object AppStoreReviewBlockHook {
                     BaiduDialogHookPoints.APP_STORE_REVIEW_DIALOG_SHOW_METHOD,
                 )
                 if (showMethod != null) {
-                    mod.hook(showMethod).intercept { chain ->
+                    mod.hook(showMethod).setId("AppStoreReviewBlockHook:hook:showMethod").intercept { chain ->
                         if (
                             HookSettings.isAppStoreReviewBlocked &&
                             dialogClass.isInstance(chain.thisObject)
@@ -96,7 +96,7 @@ internal object AppStoreReviewBlockHook {
                     BaiduDialogHookPoints.APP_STORE_REVIEW_DIALOG_SHOW_METHOD,
                 )
                 if (showMethod != null) {
-                    mod.hook(showMethod).intercept { chain ->
+                    mod.hook(showMethod).setId("AppStoreReviewBlockHook:hook:showMethod:2").intercept { chain ->
                         if (
                             HookSettings.isAppStoreReviewBlocked &&
                             bottomDialogClass.isInstance(chain.thisObject)
@@ -152,7 +152,7 @@ internal object AppStoreReviewBlockHook {
         }
         method.isAccessible = true
         val mod = XposedCompat.module ?: return 0
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("AppStoreReviewBlockHook:hookPerformStrategyEntry:method").intercept { chain ->
             if (HookSettings.isAppStoreReviewBlocked) {
                 XposedCompat.logD("[AppStoreReviewBlockHook] $tag blocked")
                 HookUtils.getDefaultReturnValue(method.returnType)

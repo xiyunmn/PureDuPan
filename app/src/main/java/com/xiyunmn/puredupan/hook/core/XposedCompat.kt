@@ -4,7 +4,7 @@ import android.content.Context
 import io.github.libxposed.api.XposedModule
 import java.util.concurrent.ConcurrentHashMap
 
-/** 管理 API 101 模块引用，提供日志、反射和 Hook 查找工具。 */
+/** 管理模块引用，提供日志、反射和 Hook 查找工具。 */
 object XposedCompat {
     private const val LOG_TAG = "WangPanHook"
 

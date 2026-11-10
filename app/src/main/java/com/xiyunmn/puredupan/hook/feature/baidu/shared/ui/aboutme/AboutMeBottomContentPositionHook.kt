@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -31,6 +32,41 @@ internal object AboutMeBottomContentPositionHook {
     private const val MAX_OFFSET_DP = 160
 
     private val hookState = HookState()
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val preDrawListeners = WeakHashMap<View, ViewTreeObserver.OnPreDrawListener>()
+    private val positionRoots = WeakHashMap<View, Boolean>()
+
+    fun exportPositionTargets(): ArrayList<Array<Any?>> {
+        val targets = ArrayList<Array<Any?>>()
+        positionRoots.keys.toList().forEach { root ->
+            targets.add(arrayOf("aboutme-position", WeakReference(root)))
+        }
+        return targets
+    }
+
+    fun rebindPosition(root: View) {
+        if (ModuleLifetime.isRetiring || !isEnabled(HookSettings.settingsSnapshot())) return
+        val activity = findActivity(root.context)
+        if (activity?.isFinishing == true || activity?.isDestroyed == true) return
+        schedulePositionApply(root)
+    }
+
+    fun disposeForReload() {
+        handler.removeCallbacksAndMessages(null)
+        preDrawListeners.toMap().forEach { (view, listener) ->
+            view.viewTreeObserver.takeIf { it.isAlive }?.removeOnPreDrawListener(listener)
+        }
+        preDrawListeners.clear()
+        positionCache.toMap().forEach { (view, cached) -> view.translationY = cached.baseTranslationY }
+        headerLayoutCache.toMap().forEach { (view, cached) ->
+            view.layoutParams?.let { it.height = cached.baseHeight; view.layoutParams = it }
+        }
+        positionCache.clear()
+        headerLayoutCache.clear()
+        calibratedRoots.clear()
+        positionRoots.clear()
+    }
+
     private data class PositionCache(
         val baseTranslationY: Float,
     )
@@ -82,7 +118,8 @@ internal object AboutMeBottomContentPositionHook {
             return
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("AboutMeBottomContentPositionHook:hook:method").intercept { chain ->
+            if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
             val result = chain.proceed()
             val root = chain.args.firstOrNull() as? View
             root?.let(::schedulePositionApply)
@@ -92,14 +129,16 @@ internal object AboutMeBottomContentPositionHook {
     }
 
     private fun schedulePositionApply(root: View) {
+        if (ModuleLifetime.isRetiring) return
+        positionRoots[root] = true
         val snapshot = HookSettings.settingsSnapshot()
         if (snapshot.isMyPageContentAutoFollowMemberCardEnabled) {
             hookNativeHeightRefresh(root.context.classLoader)
             scheduleCachedPositionApply(root)
             return
         }
-        root.post { applyPosition(root, "cache", allowCalibration = false) }
-        root.postDelayed(
+        handler.post { applyPosition(root, "cache", allowCalibration = false) }
+        handler.postDelayed(
             { applyPosition(root, "settled", allowCalibration = true) },
             APPLY_DELAY_MS,
         )
@@ -126,7 +165,8 @@ internal object AboutMeBottomContentPositionHook {
                 continue
             }
             if (method in installedHeightRefreshMethods) continue
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("AboutMeBottomContentPositionHook:hookNativeHeightRefresh:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val result = chain.proceed()
                 val activity = chain.thisObject as? Activity
                 val root = activity?.let { calibratedRoots[it]?.get() }
@@ -150,11 +190,14 @@ internal object AboutMeBottomContentPositionHook {
         listener = ViewTreeObserver.OnPreDrawListener {
             maintainCachedPositionBeforeDraw(root)
         }
+        preDrawListeners.remove(root)?.let { root.viewTreeObserver.removeOnPreDrawListener(it) }
+        preDrawListeners[root] = listener
         root.viewTreeObserver.addOnPreDrawListener(listener)
-        root.postDelayed(
+        handler.postDelayed(
             {
                 applyPosition(root, "settled", allowCalibration = true)
-                root.post {
+                handler.post {
+                    preDrawListeners.remove(root)
                     root.viewTreeObserver
                         .takeIf { it.isAlive }
                         ?.removeOnPreDrawListener(listener)

@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -7,6 +8,14 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
 import java.lang.reflect.Method
 
 internal object IntlOfflinePackageInitBlockHook {
+    fun disposeForReload() {
+        try {
+            if (skipped && !restored) restoreForH5Entry("reload")
+        } finally {
+            startSyncMethod = null
+        }
+    }
+
     private const val DYNAMIC_CONTEXT_CLASS_NAME = BaiduIntlHookPoints.DYNAMIC_CONTEXT
     private const val FAST_WEB_VIEW_CLIENT_CLASS_NAME = BaiduIntlHookPoints.FAST_WEB_VIEW_CLIENT
     private const val OFFLINE_H5_PACKAGE_ACTIVITY_CLASS_NAME = BaiduIntlHookPoints.OFFLINE_H5_PACKAGE_ACTIVITY
@@ -23,6 +32,8 @@ internal object IntlOfflinePackageInitBlockHook {
     @Volatile private var restoreCount = 0
 
     internal fun hook(cl: ClassLoader) {
+        // 旧代已交还待恢复调用，热重载不重新进入冷启动抑制阶段。
+        if (ModuleLifetime.hotReloaded) return
         if (!isEnabled()) {
             XposedCompat.log("[IntlOfflinePackageInitBlockHook] skipped: config disabled")
             return
@@ -39,7 +50,8 @@ internal object IntlOfflinePackageInitBlockHook {
             }
             startSyncMethod = syncMethod
 
-            mod.hook(syncMethod).intercept { chain ->
+            mod.hook(syncMethod).setId("IntlOfflinePackageInitBlockHook:hook:syncMethod").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 if (!shouldBlockStartupInit()) {
                     return@intercept chain.proceed()
                 }
@@ -76,7 +88,7 @@ internal object IntlOfflinePackageInitBlockHook {
     }
 
     private fun shouldBlockStartupInit(): Boolean {
-        if (!isEnabled()) return false
+        if (ModuleLifetime.isRetiring || !isEnabled()) return false
         if (restoring || restored) return false
         return true
     }
@@ -89,7 +101,8 @@ internal object IntlOfflinePackageInitBlockHook {
             for (constructor in fastClientClass.declaredConstructors) {
                 if (constructor.parameterTypes.size < 3) continue
                 constructor.isAccessible = true
-                mod.hook(constructor).intercept { chain ->
+                mod.hook(constructor).setId("IntlOfflinePackageInitBlockHook:hookH5RestoreSignals:constructor").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     restoreForH5Entry("fast_webview_client:${constructor.parameterTypes.joinToString { it.simpleName }}")
                     chain.proceed()
                 }
@@ -100,7 +113,8 @@ internal object IntlOfflinePackageInitBlockHook {
         XposedCompat.findClassOrNull(OFFLINE_H5_PACKAGE_ACTIVITY_CLASS_NAME, cl)?.let { activityClass ->
             listOf("initFragment", "onResume").forEach { methodName ->
                 XposedCompat.findMethodOrNull(activityClass, methodName)?.let { method ->
-                    mod.hook(method).intercept { chain ->
+                    mod.hook(method).setId("IntlOfflinePackageInitBlockHook:hookH5RestoreSignals:method").intercept { chain ->
+                        if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                         restoreForH5Entry("offline_h5_activity:$methodName")
                         chain.proceed()
                     }
@@ -113,7 +127,7 @@ internal object IntlOfflinePackageInitBlockHook {
     }
 
     private fun restoreForH5Entry(reason: String) {
-        if (!isEnabled()) return
+        if (reason != "reload" && (ModuleLifetime.isRetiring || !isEnabled())) return
         val method = startSyncMethod ?: run {
             XposedCompat.logW("[IntlOfflinePackageInitBlockHook] restore skipped: startSyncMethod missing, reason=$reason")
             return

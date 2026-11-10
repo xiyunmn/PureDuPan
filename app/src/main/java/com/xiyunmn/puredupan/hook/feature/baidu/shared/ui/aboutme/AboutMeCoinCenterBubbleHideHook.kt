@@ -48,7 +48,7 @@ object AboutMeCoinCenterBubbleHideHook {
                 return
             }
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("AboutMeCoinCenterBubbleHideHook:hook:method").intercept { chain ->
                 val result = chain.proceed()
                 if (isEnabled()) {
                     try {

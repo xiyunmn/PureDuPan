@@ -88,7 +88,7 @@ internal object SharedAboutMeModuleEntryInstaller {
         if (onCreateMethod == null) {
             XposedCompat.log("[$tag] $activityClassName.onCreate NOT FOUND")
         } else {
-            mod.hook(onCreateMethod).intercept { chain ->
+            mod.hook(onCreateMethod).setId("SharedAboutMeModuleEntryInstaller:hookActivityOnCreate:onCreateMethod").intercept { chain ->
                 val result = chain.proceed()
                 scheduleBindScanIconLongPress(
                     activity = chain.thisObject as? Activity,
@@ -105,7 +105,7 @@ internal object SharedAboutMeModuleEntryInstaller {
         if (onResumeMethod == null) {
             XposedCompat.logD("[$tag] $activityClassName.onResume NOT FOUND")
         } else {
-            mod.hook(onResumeMethod).intercept { chain ->
+            mod.hook(onResumeMethod).setId("SharedAboutMeModuleEntryInstaller:hookActivityOnCreate:onResumeMethod").intercept { chain ->
                 val result = chain.proceed()
                 scheduleBindScanIconLongPress(
                     activity = chain.thisObject as? Activity,
@@ -133,7 +133,9 @@ internal object SharedAboutMeModuleEntryInstaller {
             scanIconIdNames = scanIconIdNames,
             verboseMiss = false,
         )
-        activity.window?.decorView?.post {
+        com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.postResult(
+            android.os.Handler(android.os.Looper.getMainLooper()),
+        ) {
             bindScanIconLongPress(
                 activity = activity,
                 tag = tag,

@@ -47,7 +47,7 @@ internal object DomesticUpdateDialogBlockHook {
         var installed = 0
         for (method in methods) {
             method.isAccessible = true
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("DomesticUpdateDialogBlockHook:hookMethods:method").intercept { chain ->
                 if (HookSettings.isUpdateDialogBlocked) {
                     XposedCompat.logD("[DomesticUpdateDialogBlockHook] $logName blocked")
                     HookUtils.getDefaultReturnValue(method.returnType)

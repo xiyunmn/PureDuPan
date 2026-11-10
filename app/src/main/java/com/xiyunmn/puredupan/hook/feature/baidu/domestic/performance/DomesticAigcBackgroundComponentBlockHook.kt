@@ -41,7 +41,7 @@ object DomesticAigcBackgroundComponentBlockHook {
             }
 
             for (method in methods) {
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticAigcBackgroundComponentBlockHook:hook:method").intercept { chain ->
                     if (isEnabled()) {
                         XposedCompat.logD(
                             "[DomesticAigcBackgroundComponentBlockHook] ${method.name} blocked",

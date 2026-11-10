@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Activity
 import android.content.Intent
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -47,43 +48,49 @@ object SettingsImagePickerResultHook {
                     continue
                 }
 
-                mod.hook(method).intercept { chain ->
-                    if (ModuleSettingsBackupActions.handleResult(
-                            activity = chain.thisObject as? Activity,
-                            requestCode = chain.args.getOrNull(0) as? Int ?: -1,
-                            resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
-                            data = chain.args.getOrNull(2) as? Intent,
-                        )
-                    ) {
-                        return@intercept null
-                    }
-                    if (SettingsMenuHook.handleLogExportResult(
-                            context = chain.thisObject as? Activity,
-                            requestCode = chain.args.getOrNull(0) as? Int ?: -1,
-                            resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
-                            data = chain.args.getOrNull(2) as? Intent,
-                        )
-                    ) {
-                        return@intercept null
-                    }
-                    val result = chain.proceed()
+                mod.hook(method).setId("settings-picker:result:$className").intercept { chain ->
+                    val activity = chain.thisObject as? Activity
+                    val code = chain.args.getOrNull(0) as? Int ?: -1
                     try {
-                        SettingsMenuHook.handleMemberCardBackgroundImageResult(
-                            context = chain.thisObject as? Activity,
-                            requestCode = chain.args.getOrNull(0) as? Int ?: -1,
-                            resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
-                            data = chain.args.getOrNull(2) as? Intent,
-                        )
-                        SettingsMenuHook.handleStorageTreeResult(
-                            context = chain.thisObject as? Activity,
-                            requestCode = chain.args.getOrNull(0) as? Int ?: -1,
-                            resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
-                            data = chain.args.getOrNull(2) as? Intent,
-                        )
-                    } catch (e: Exception) {
-                        XposedCompat.logD("[SettingsImagePickerResultHook] handle result failed: ${e.message}")
+                        if (ModuleSettingsBackupActions.handleResult(
+                                activity = chain.thisObject as? Activity,
+                                requestCode = chain.args.getOrNull(0) as? Int ?: -1,
+                                resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
+                                data = chain.args.getOrNull(2) as? Intent,
+                            )
+                        ) {
+                            return@intercept null
+                        }
+                        if (SettingsMenuHook.handleLogExportResult(
+                                context = chain.thisObject as? Activity,
+                                requestCode = chain.args.getOrNull(0) as? Int ?: -1,
+                                resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
+                                data = chain.args.getOrNull(2) as? Intent,
+                            )
+                        ) {
+                            return@intercept null
+                        }
+                        val result = chain.proceed()
+                        try {
+                            SettingsMenuHook.handleMemberCardBackgroundImageResult(
+                                context = chain.thisObject as? Activity,
+                                requestCode = chain.args.getOrNull(0) as? Int ?: -1,
+                                resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
+                                data = chain.args.getOrNull(2) as? Intent,
+                            )
+                            SettingsMenuHook.handleStorageTreeResult(
+                                context = chain.thisObject as? Activity,
+                                requestCode = chain.args.getOrNull(0) as? Int ?: -1,
+                                resultCode = chain.args.getOrNull(1) as? Int ?: Activity.RESULT_CANCELED,
+                                data = chain.args.getOrNull(2) as? Intent,
+                            )
+                        } catch (e: Exception) {
+                            XposedCompat.logD("[SettingsImagePickerResultHook] handle result failed: ${e.message}")
+                        }
+                        result
+                    } finally {
+                        ModuleLifetime.finishPicker(activity, code)
                     }
-                    result
                 }
                 installedCount++
                 XposedCompat.logD("[SettingsImagePickerResultHook] onActivityResult hooked: $className")

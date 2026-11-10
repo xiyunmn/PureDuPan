@@ -32,7 +32,7 @@ internal object HostThemeRuntime {
         synchronized(observedWriters) {
             if (writer in observedWriters) return
             writer.isAccessible = true
-            module.hook(writer).intercept { chain ->
+            module.hook(writer).setId("host-theme:writer").intercept { chain ->
                 val result = chain.proceed()
                 HostThemeChangeDispatcher.notifyChanged("host-skin-path")
                 result

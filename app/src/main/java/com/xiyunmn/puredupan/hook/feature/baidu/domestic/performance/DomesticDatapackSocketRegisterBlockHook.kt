@@ -36,7 +36,7 @@ object DomesticDatapackSocketRegisterBlockHook {
                 return
             }
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("DomesticDatapackSocketRegisterBlockHook:hook:method").intercept { chain ->
                 if (isEnabled()) {
                     XposedCompat.logD("[DomesticDatapackSocketRegisterBlockHook] registerSocket blocked")
                     null

@@ -70,6 +70,7 @@ internal object SettingsDialogWindows {
         maxWidthDp: Float = 560f,
         horizontalMarginDp: Float = 12f,
     ) {
+        if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return
         try {
             dialog.create()
             val window = dialog.window ?: run {
@@ -87,7 +88,7 @@ internal object SettingsDialogWindows {
                 maxWidthDp = maxWidthDp,
                 horizontalMarginDp = horizontalMarginDp,
             )
-            dialog.show()
+            SettingsReloadCleanup.showDialog(dialog)
         } catch (t: Throwable) {
             XposedCompat.logW("$logTag showStableSubDialog failed: ${t.message}")
         }

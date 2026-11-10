@@ -27,20 +27,20 @@ internal object IntlSearchPageCustomizeHook {
         val activityClass = XposedCompat.findClassOrNull(BaiduIntlSearchHookPoints.FLUTTER_BUSINESS_ACTIVITY, cl)
         if (activityClass != null && HookSettings.isSearchPageRecommendHidden) {
             installed += installOnce(XposedCompat.findMethodOrNull(activityClass, "onCreate", Bundle::class.java)) { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("IntlSearchPageCustomizeHook:hook:method").intercept { chain ->
                     isSearchRouteActive = isSearchActivity(chain.thisObject)
                     chain.proceed()
                 }
             }
             installed += installOnce(XposedCompat.findMethodOrNull(activityClass, "onResume")) { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("IntlSearchPageCustomizeHook:hook:method:2").intercept { chain ->
                     val result = chain.proceed()
                     isSearchRouteActive = isSearchActivity(chain.thisObject)
                     result
                 }
             }
             installed += installOnce(XposedCompat.findMethodOrNull(activityClass, "onPause")) { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("IntlSearchPageCustomizeHook:hook:method:3").intercept { chain ->
                     val result = chain.proceed()
                     if (isSearchActivity(chain.thisObject)) isSearchRouteActive = false
                     result
@@ -51,7 +51,7 @@ internal object IntlSearchPageCustomizeHook {
                 XposedCompat.findMethodOrNull(it, BaiduIntlSearchHookPoints.RESULT_SUCCESS_METHOD, Any::class.java)
             }
             installed += installOnce(resultMethod) { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("IntlSearchPageCustomizeHook:hook:method:4").intercept { chain ->
                     val original = chain.args.firstOrNull()
                     val replacement = sanitizeFlutterResult(original)
                     if (replacement !== original) chain.proceed(arrayOf(replacement)) else chain.proceed()
@@ -75,7 +75,7 @@ internal object IntlSearchPageCustomizeHook {
             fragmentClass.getMethod(BaiduIntlSearchHookPoints.FLUTTER_ROUTE_PARAMS_METHOD)
         }.getOrNull()?.takeIf { Map::class.java.isAssignableFrom(it.returnType) }
         return installOnce(paramsGetter) { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlSearchPageCustomizeHook:hookSearchPlaceholder:method").intercept { chain ->
                 val result = chain.proceed()
                 if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPagePlaceholderHidden &&
                     fragmentClass.isInstance(chain.thisObject) && result is Map<*, *>
@@ -95,7 +95,7 @@ internal object IntlSearchPageCustomizeHook {
         val getter = XposedCompat.findMethodOrNull(clazz, "getAll", String::class.java, List::class.java)
             ?.takeIf { Map::class.java.isAssignableFrom(it.returnType) }
         return installOnce(getter) { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlSearchPageCustomizeHook:hookSearchStorage:method").intercept { chain ->
                 val result = chain.proceed()
                 if (HookSettings.isSearchPageCustomizeEnabled && result is Map<*, *>) {
                     IntlSearchStorageRules.sanitize(
@@ -118,7 +118,7 @@ internal object IntlSearchPageCustomizeHook {
             val target = XposedCompat.findMethodOrNull(companion, name)
                 ?.takeIf { it.returnType == Boolean::class.javaObjectType }
             installOnce(target) { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("IntlSearchPageCustomizeHook:hookAdvancedSearchBannerExperiment:method").intercept { chain ->
                     if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isIntlSearchPageSvipBannerHidden) {
                         false
                     } else chain.proceed()

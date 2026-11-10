@@ -9,6 +9,7 @@ import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.os.Build
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import com.xiyunmn.puredupan.hook.host.HostPackages
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -22,9 +23,11 @@ internal object StartupSplashSettingsSync {
     private val failureLogged = AtomicBoolean(false)
     private var sender: PendingIntent? = null
     private var receiver: BroadcastReceiver? = null
+    private var receiverContext: Context? = null
     @Volatile private var enabledHosts: Set<String> = emptySet()
 
     fun publish(context: Context, enabled: Boolean) {
+        if (ModuleLifetime.isRetiring) return
         if (Build.VERSION.SDK_INT < 31 || Application.getProcessName() != context.packageName ||
             context.packageName !in HostPackages.baiduPackages
         ) return
@@ -41,12 +44,14 @@ internal object StartupSplashSettingsSync {
 
     @Suppress("DEPRECATION")
     fun initializeSystemUi(context: Context) {
+        if (ModuleLifetime.isRetiring) return
         if (receiver != null || context.packageName != HostPackages.SYSTEM_UI) return
         val storage = context.createDeviceProtectedStorageContext()
         val prefs = storage.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         enabledHosts = prefs.all.filterValues { it == true }.keys.toSet()
         val listener = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
+                if (ModuleLifetime.isRetiring) return
                 runCatching {
                     val identity = if (Build.VERSION.SDK_INT >= 33) {
                         intent.getParcelableExtra(IDENTITY, PendingIntent::class.java)
@@ -61,6 +66,7 @@ internal object StartupSplashSettingsSync {
                     prefs.edit().apply {
                         if (enabled) putBoolean(key, true) else remove(key)
                     }.apply()
+                    com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.StartupSplashDrawable.updateLevels()
                 }.onFailure { logFailure(it) }
             }
         }
@@ -68,9 +74,18 @@ internal object StartupSplashSettingsSync {
             storage.registerReceiver(listener, IntentFilter(ACTION), Context.RECEIVER_EXPORTED)
         } else storage.registerReceiver(listener, IntentFilter(ACTION))
         receiver = listener
+        receiverContext = storage
     }
 
-    fun isEnabled(info: ApplicationInfo): Boolean = key(info.uid, info.packageName) in enabledHosts
+    fun disposeForReload() {
+        receiver?.let { receiverContext?.unregisterReceiver(it) }
+        receiver = null
+        receiverContext = null
+        sender = null
+    }
+
+    fun isEnabled(info: ApplicationInfo): Boolean = isEnabled(info.uid, info.packageName)
+    fun isEnabled(uid: Int, packageName: String): Boolean = key(uid, packageName) in enabledHosts
 
     private fun key(uid: Int, packageName: String) = "$uid:$packageName"
 

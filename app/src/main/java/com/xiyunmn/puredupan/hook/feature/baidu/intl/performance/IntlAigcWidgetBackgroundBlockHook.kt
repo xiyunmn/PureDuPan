@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -60,7 +61,8 @@ internal object IntlAigcWidgetBackgroundBlockHook {
         for (method in clazz.declaredMethods) {
             if (method.name !in backgroundMethodNames) continue
             method.isAccessible = true
-            mod.hook(method).intercept {
+            mod.hook(method).setId("IntlAigcWidgetBackgroundBlockHook:hookNamedBackgroundMethods:method").intercept {
+                if (ModuleLifetime.isRetiring) return@intercept it.proceed()
                 if (!isEnabled()) {
                     return@intercept it.proceed()
                 }

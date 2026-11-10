@@ -41,7 +41,7 @@ internal object SharedHomeTitleBarModuleEntryInstaller {
                 return
             }
 
-            mod.hook(onCreateViewMethod).intercept { chain ->
+            mod.hook(onCreateViewMethod).setId("SharedHomeTitleBarModuleEntryInstaller:hook:onCreateViewMethod").intercept { chain ->
                 val result = chain.proceed()
                 bindUploadEntryLongPress(
                     rootView = result as? View,

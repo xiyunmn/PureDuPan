@@ -32,7 +32,7 @@ object BottomBarBadgeBlockHook {
                     }
                     for (method in methods) {
                         method.isAccessible = true
-                        mod.hook(method).intercept { chain ->
+                        mod.hook(method).setId("BottomBarBadgeBlockHook:hook:method").intercept { chain ->
                             if (isEnabled()) {
                                 HookUtils.getDefaultReturnValue(method.returnType)
                             } else {
@@ -52,7 +52,7 @@ object BottomBarBadgeBlockHook {
                     }
                     for (method in methods) {
                         method.isAccessible = true
-                        mod.hook(method).intercept { chain ->
+                        mod.hook(method).setId("BottomBarBadgeBlockHook:hook:method:2").intercept { chain ->
                             if (isEnabled()) {
                                 HookUtils.getDefaultReturnValue(method.returnType)
                             } else {

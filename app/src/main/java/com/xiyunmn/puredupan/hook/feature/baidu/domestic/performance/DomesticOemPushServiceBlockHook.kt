@@ -145,7 +145,7 @@ internal object DomesticOemPushServiceBlockHook {
                 continue
             }
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("DomesticOemPushServiceBlockHook:hookMultipleClasses:method").intercept { chain ->
                 if (isEnabled()) {
                     val startId = getStartId?.invoke(chain.args.toTypedArray())
                     stopSelfQuietly(chain.thisObject, startId)
@@ -187,7 +187,7 @@ internal object DomesticOemPushServiceBlockHook {
                 BaiduDomesticHookPoints.OEM_PUSH_ON_MESSAGE_RECEIVED_METHOD,
                 remoteMessageClass,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticOemPushServiceBlockHook:hookHmsMessages:method").intercept { chain ->
                     if (isEnabled()) {
                         stopSelfQuietly(chain.thisObject)
                         XposedCompat.logD(
@@ -207,7 +207,7 @@ internal object DomesticOemPushServiceBlockHook {
                 BaiduDomesticHookPoints.OEM_PUSH_ON_NEW_TOKEN_METHOD,
                 String::class.java,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticOemPushServiceBlockHook:hookHmsMessages:method:2").intercept { chain ->
                     if (isEnabled()) {
                         stopSelfQuietly(chain.thisObject)
                         XposedCompat.logD(
@@ -227,7 +227,7 @@ internal object DomesticOemPushServiceBlockHook {
                 BaiduDomesticHookPoints.OEM_PUSH_ON_TOKEN_ERROR_METHOD,
                 Exception::class.java,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticOemPushServiceBlockHook:hookHmsMessages:method:3").intercept { chain ->
                     if (isEnabled()) {
                         stopSelfQuietly(chain.thisObject)
                         XposedCompat.logD(
@@ -269,7 +269,7 @@ internal object DomesticOemPushServiceBlockHook {
                 BaiduDomesticHookPoints.OEM_PUSH_ON_MESSAGE_RECEIVED_METHOD,
                 honorMessageClass,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticOemPushServiceBlockHook:hookHonorMessages:method").intercept { chain ->
                     if (isEnabled()) {
                         stopSelfQuietly(chain.thisObject)
                         XposedCompat.logD(
@@ -289,7 +289,7 @@ internal object DomesticOemPushServiceBlockHook {
                 BaiduDomesticHookPoints.OEM_PUSH_ON_NEW_TOKEN_METHOD,
                 String::class.java,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticOemPushServiceBlockHook:hookHonorMessages:method:2").intercept { chain ->
                     if (isEnabled()) {
                         stopSelfQuietly(chain.thisObject)
                         XposedCompat.logD(

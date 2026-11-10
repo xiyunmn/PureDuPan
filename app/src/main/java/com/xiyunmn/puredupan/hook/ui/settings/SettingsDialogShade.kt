@@ -17,6 +17,10 @@ internal object SettingsDialogShade {
     private const val DIM_STRENGTH = 0.5f
     private val shades = mutableMapOf<View, Shade>()
 
+    fun disposeForReload() {
+        shades.values.toList().forEach { it.dispose() }
+    }
+
     fun bind(parent: Window, child: Window) {
         val targetAlpha = (child.attributes.dimAmount * DIM_STRENGTH * 255).toInt().coerceIn(0, 255)
         child.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
@@ -73,7 +77,8 @@ internal object SettingsDialogShade {
             if (child !== view) return
             view.removeOnLayoutChangeListener(this)
             child = null
-            fadeTo(0, removeWhenFinished = true)
+            if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) remove()
+            else fadeTo(0, removeWhenFinished = true)
         }
 
         private fun updateBounds() {
@@ -111,10 +116,13 @@ internal object SettingsDialogShade {
         }
 
         private fun stopAnimation() {
+            animator?.removeAllUpdateListeners()
             animator?.removeAllListeners()
             animator?.cancel()
             animator = null
         }
+
+        fun dispose() = remove()
 
         private fun remove() {
             stopAnimation()

@@ -10,15 +10,23 @@ internal object HostThemeChangeDispatcher {
     private val listeners = CopyOnWriteArraySet<(String) -> Unit>()
 
     internal fun register(listener: (String) -> Unit): () -> Unit {
+        if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return {}
         listeners.add(listener)
         return { listeners.remove(listener) }
     }
 
+    internal fun disposeForReload() {
+        mainHandler.removeCallbacksAndMessages(null)
+        listeners.clear()
+    }
+
     internal fun notifyChanged(reason: String) {
+        if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return
         UiStyle.invalidateHostNightCache()
         if (listeners.isEmpty()) return
 
         mainHandler.post {
+            if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@post
             for (listener in listeners) {
                 try {
                     listener(reason)

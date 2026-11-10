@@ -25,7 +25,7 @@ object DomesticVideoAdPreloadBlockHook {
                 return
             }
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("DomesticVideoAdPreloadBlockHook:hook:method").intercept { chain ->
                 if (isEnabled()) {
                     XposedCompat.logD("[DomesticVideoAdPreloadBlockHook] downloadVideoFrontAd blocked")
                     blockedReturnValue(method)

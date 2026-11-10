@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.content.Context
 import android.os.Bundle
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
@@ -9,6 +10,16 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
 import java.lang.reflect.Method
 
 internal object IntlTaskScoreRefreshDelayHook {
+    fun disposeForReload() {
+        try {
+            if (pendingInvocation != null) restoreIfPending("reload")
+        } finally {
+            pendingInvocation = null
+            refreshMethod = null
+            homeStableRestoreScheduled = false
+        }
+    }
+
     private const val TAG = "IntlTaskScoreRefreshDelayHook"
     private const val TASK_SCORE_MANAGER_CLASS_NAME = BaiduIntlHookPoints.TASK_SCORE_MANAGER
     private const val VIP_CHANNEL_ACTIVITY_CLASS_NAME = BaiduIntlHookPoints.VIP_CHANNEL_ACTIVITY
@@ -32,6 +43,8 @@ internal object IntlTaskScoreRefreshDelayHook {
     @Volatile private var homeStableRestoreScheduled = false
 
     internal fun hook(cl: ClassLoader) {
+        // 旧代已交还待恢复调用，热重载不重新进入冷启动抑制阶段。
+        if (ModuleLifetime.hotReloaded) return
         if (!isEnabled()) {
             XposedCompat.log("[IntlTaskScoreRefreshDelayHook] skipped: config disabled")
             return
@@ -48,7 +61,8 @@ internal object IntlTaskScoreRefreshDelayHook {
             }
             refreshMethod = method
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlTaskScoreRefreshDelayHook:hook:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val context = chain.args.getOrNull(0) as? Context
                 val force = chain.args.getOrNull(1) as? Boolean ?: false
                 if (context == null || force || !shouldSkipStartupRefresh()) {
@@ -104,7 +118,7 @@ internal object IntlTaskScoreRefreshDelayHook {
     }
 
     private fun shouldSkipStartupRefresh(): Boolean {
-        if (!isEnabled()) return false
+        if (ModuleLifetime.isRetiring || !isEnabled()) return false
         if (restoring || restored) return false
         return true
     }
@@ -123,7 +137,8 @@ internal object IntlTaskScoreRefreshDelayHook {
         var installed = 0
 
         XposedCompat.findMethodOrNull(vipActivityClass, "onCreate", Bundle::class.java)?.let { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlTaskScoreRefreshDelayHook:hookBusinessEntryRestoreSignals:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 restoreIfPending("vip_channel_activity:onCreate")
                 chain.proceed()
             }
@@ -131,7 +146,8 @@ internal object IntlTaskScoreRefreshDelayHook {
         }
 
         XposedCompat.findMethodOrNull(vipActivityClass, "onResume")?.let { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlTaskScoreRefreshDelayHook:hookBusinessEntryRestoreSignals:method:2").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 restoreIfPending("vip_channel_activity:onResume")
                 chain.proceed()
             }
@@ -142,7 +158,7 @@ internal object IntlTaskScoreRefreshDelayHook {
     }
 
     private fun scheduleHomeStableRestore() {
-        if (!isEnabled()) return
+        if (ModuleLifetime.isRetiring || !isEnabled()) return
         IntlHomeStableRestoreSignal.scheduleDelayedRestore(
             tag = TAG,
             delayMs = HOME_STABLE_RESTORE_DELAY_MS,
@@ -162,7 +178,7 @@ internal object IntlTaskScoreRefreshDelayHook {
     }
 
     private fun restoreIfPending(reason: String) {
-        if (!isEnabled()) return
+        if (reason != "reload" && (ModuleLifetime.isRetiring || !isEnabled())) return
         val method = refreshMethod ?: run {
             XposedCompat.logW("[IntlTaskScoreRefreshDelayHook] restore skipped: refreshMethod missing, reason=$reason")
             return

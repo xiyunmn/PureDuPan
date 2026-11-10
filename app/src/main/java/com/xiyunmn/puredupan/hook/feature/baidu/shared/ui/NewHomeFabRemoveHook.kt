@@ -54,7 +54,7 @@ object NewHomeFabRemoveHook {
                 return
             }
 
-            mod.hook(method).intercept {
+            mod.hook(method).setId("NewHomeFabRemoveHook:hook:method").intercept {
                 if (isEnabled()) {
                     // 阻止运营数据进入渲染流程。
                     return@intercept null

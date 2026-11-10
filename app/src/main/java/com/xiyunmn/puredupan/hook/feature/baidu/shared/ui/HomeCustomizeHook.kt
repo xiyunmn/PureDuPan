@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -47,7 +48,7 @@ object HomeCustomizeHook {
     private val topPromotionRequestHooks = mutableSetOf<Method>()
     private val recentLimitForCall = ThreadLocal<List<*>?>()
     private val verticalSaveGroups = Collections.synchronizedMap(WeakHashMap<ViewGroup, Boolean>())
-    private val verticalSaveHeightGuards = Collections.synchronizedMap(WeakHashMap<View, Boolean>())
+    private val verticalSaveHeightGuards = Collections.synchronizedMap(WeakHashMap<View, View.OnLayoutChangeListener>())
     private val subscriptionItemsForCall = ThreadLocal<Pair<Class<*>, List<*>>?>()
     private val publishingSavedHistory = ThreadLocal<Any?>()
     private val savedRowBinders = mutableMapOf<Class<*>, Method?>()
@@ -55,6 +56,77 @@ object HomeCustomizeHook {
     private val saveTabListenerFields = mutableMapOf<Class<*>, Field?>()
     private val saveTabSelectionHooks = mutableSetOf<Method>()
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val scrollCompats = mutableListOf<HomeFeedScrollCompat>()
+    private val wrappers = WeakHashMap<VerticalSaveRows, Boolean>()
+    private val originalRowTags = WeakHashMap<View, Any?>()
+    private val originalHeights = WeakHashMap<View, Int>()
+    private val observers = mutableMapOf<Any, Pair<Any, Method>>()
+    private const val FEED_ROOT_TARGET = "home:feed-root"
+    private const val SAVE_CARD_TARGET = "home:save-card"
+    private class SaveCardTarget(card: ViewGroup) {
+        val card = WeakReference(card)
+        var state: WeakReference<Any>? = null
+    }
+    private val saveCardTargets = mutableListOf<SaveCardTarget>()
+
+    /** 只交接宿主视图和状态，包装容器由新代重新创建。 */
+    fun exportState(): ArrayList<Array<Any?>> = arrayListOf<Array<Any?>>().also { targets ->
+        scrollCompats.flatMap { it.exportRoots() }.distinct().forEach { root ->
+            targets += arrayOf<Any?>(FEED_ROOT_TARGET, root)
+        }
+        saveCardTargets.forEach { target ->
+            target.card.get()?.let { card ->
+                targets += arrayOf<Any?>(SAVE_CARD_TARGET, card, target.state?.get())
+            }
+        }
+    }
+
+    fun restoreState(targets: List<Array<Any?>>, cl: ClassLoader) {
+        if (ModuleLifetime.isRetiring) return
+        val mod = XposedCompat.module ?: return
+        for (target in targets) {
+            when (target.firstOrNull()) {
+                FEED_ROOT_TARGET -> {
+                    val root = target.getOrNull(1) as? View ?: continue
+                    scrollCompats.forEach { it.attach(root) }
+                }
+                SAVE_CARD_TARGET -> {
+                    if (!isSaveCardVerticalLayoutEnabled() || HookSettings.isHomeSaveSectionHidden) continue
+                    val card = target.getOrNull(1) as? ViewGroup ?: continue
+                    val cardClass = XposedCompat.findClassOrNull(card.javaClass.name, cl) ?: continue
+                    applySaveCardVerticalLayout(card, target.getOrNull(2))
+                    prepareVerticalSaveRows(card)
+                    hookSaveCardTabSelection(mod, card, cardClass)
+                }
+            }
+        }
+    }
+
+    fun disposeForReload() {
+        mainHandler.removeCallbacksAndMessages(null)
+        observers.toMap().forEach { (observer, owner) -> owner.second.invoke(owner.first, observer) }
+        observers.clear()
+        verticalSaveHeightGuards.toMap().forEach { (view, listener) -> view.removeOnLayoutChangeListener(listener) }
+        verticalSaveHeightGuards.clear()
+        HomeSaveCardLongPressCompat.disposeForReload()
+        originalRowTags.toMap().forEach { (view, tag) -> view.tag = tag }
+        originalRowTags.clear()
+        wrappers.keys.toList().forEach { it.restore() }
+        wrappers.clear()
+        originalHeights.toMap().forEach { (view, height) ->
+            view.layoutParams?.let { it.height = height; view.layoutParams = it }
+        }
+        originalHeights.clear()
+        scrollCompats.forEach { it.disposeForReload() }
+        scrollCompats.clear()
+        verticalSaveGroups.clear()
+        saveHistorySessions.clear()
+        saveCardTargets.clear()
+        recentLimitForCall.remove()
+        subscriptionItemsForCall.remove()
+        publishingSavedHistory.remove()
+    }
+
     private val saveHistorySessions =
         Collections.synchronizedMap(WeakHashMap<Any, SavedHistorySession>())
 
@@ -117,7 +189,8 @@ object HomeCustomizeHook {
             for (bindings in resolved) {
                 for (method in bindings.requests) {
                     if (method in topPromotionRequestHooks) continue
-                    mod.hook(method).intercept { chain ->
+                    mod.hook(method).setId("HomeCustomizeHook:hookTopPromotionRequests:method").intercept { chain ->
+                        if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                         if (isTopPromotionHidden()) {
                             // 发送一次空值，让宿主合并为空列表并结束加载。
                             // 每次创建独立 LiveData，避免重复绑定同一数据源。
@@ -158,7 +231,8 @@ object HomeCustomizeHook {
                 XposedCompat.log("[HomeCustomizeHook] initBanner NOT FOUND")
                 return 0
             }
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("HomeCustomizeHook:hookTopBannerView:method").intercept { chain ->
+            if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
             if (isTopPromotionHidden()) {
                 XposedCompat.logD("[HomeCustomizeHook] HomeSearchboxFragment.initBanner blocked")
                 null
@@ -193,7 +267,8 @@ object HomeCustomizeHook {
                 XposedCompat.logD("[HomeCustomizeHook] $className.$SET_SEARCH_TEXT_METHOD not found")
                 return@forEach
             }
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("HomeCustomizeHook:hookHomeSearchPlaceholderText:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 if (isSearchPlaceholderHidden()) {
                     // 阻止 TextFlipper 写入提示词和右侧图标。
                     // 布局中的默认提示词在 onViewCreated 中统一隐藏。
@@ -211,7 +286,8 @@ object HomeCustomizeHook {
                 Bundle::class.java,
             )
             if (onViewCreated != null) {
-                mod.hook(onViewCreated).intercept { chain ->
+                mod.hook(onViewCreated).setId("HomeCustomizeHook:hookHomeSearchPlaceholderText:onViewCreated").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     if (isSearchPlaceholderHidden() && hideSearchPlaceholderBindingView(chain.thisObject)) {
                         XposedCompat.logD(
@@ -233,7 +309,8 @@ object HomeCustomizeHook {
             XposedCompat.logD("[HomeCustomizeHook] search words source unavailable; text interception retained")
             return 0
         }
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("HomeCustomizeHook:hookSearchWordsSource:method").intercept { chain ->
+            if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
             // 隐藏提示词时不注册轮播观察者，也不发起推荐词请求。
             if (isSearchPlaceholderHidden()) null else chain.proceed()
         }
@@ -265,7 +342,8 @@ object HomeCustomizeHook {
                 Bundle::class.java,
             )
             if (onCreateView != null) {
-                mod.hook(onCreateView).intercept { chain ->
+                mod.hook(onCreateView).setId("HomeCustomizeHook:hookHomeToolbarRenderEntry:onCreateView").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     if (isHomeToolbarHidden()) {
                         collapseView(result as? View)
@@ -285,7 +363,8 @@ object HomeCustomizeHook {
                 Bundle::class.java,
             )
             if (onViewCreated != null) {
-                mod.hook(onViewCreated).intercept { chain ->
+                mod.hook(onViewCreated).setId("HomeCustomizeHook:hookHomeToolbarRenderEntry:onViewCreated").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     if (isHomeToolbarHidden()) {
                         collapseView(chain.args.firstOrNull() as? View)
@@ -326,7 +405,8 @@ object HomeCustomizeHook {
                 Bundle::class.java,
             )
             if (onCreateView != null) {
-                mod.hook(onCreateView).intercept { chain ->
+                mod.hook(onCreateView).setId("HomeCustomizeHook:hookHomeToolbarRootLayout:onCreateView").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     adjustHomeToolbarRootLayout(result as? View)
                     result
@@ -343,7 +423,8 @@ object HomeCustomizeHook {
                 Bundle::class.java,
             )
             if (onViewCreated != null) {
-                mod.hook(onViewCreated).intercept { chain ->
+                mod.hook(onViewCreated).setId("HomeCustomizeHook:hookHomeToolbarRootLayout:onViewCreated").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     adjustHomeToolbarRootLayout(chain.args.firstOrNull() as? View)
                     result
@@ -417,7 +498,8 @@ object HomeCustomizeHook {
                 XposedCompat.logD("[HomeCustomizeHook] startSearchBoxAnim not found")
                 return 0
             }
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("HomeCustomizeHook:hookSearchboxAigcAnimation:method").intercept { chain ->
+            if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
             if (!HookSettings.isHomeCustomizeEnabled || !HookSettings.isHomeSearchAigcIconHidden) {
                 chain.proceed()
             } else {
@@ -436,7 +518,8 @@ object HomeCustomizeHook {
             Bundle::class.java,
         )
         if (onViewCreated != null) {
-            mod.hook(onViewCreated).intercept { chain ->
+            mod.hook(onViewCreated).setId("HomeCustomizeHook:hookSearchboxAigcAnimation:onViewCreated").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val result = chain.proceed()
                 if (HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeSearchAigcIconHidden) {
                     hideSearchboxAigcBindingViews(chain.thisObject)
@@ -479,7 +562,8 @@ object HomeCustomizeHook {
             }
             methods.forEach { method ->
                 method.isAccessible = true
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("HomeCustomizeHook:hookRecentCardDataUseCase:method").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     if (HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeRecentSectionHidden) {
                         XposedCompat.logD("[HomeCustomizeHook] recent card data blocked: ${clazz.name}.${method.name}")
                         successMethod.invoke(null, emptyList<Any>())
@@ -581,7 +665,8 @@ object HomeCustomizeHook {
             methods.forEach { method ->
                 if (!hookedMethods.add(method)) return@forEach
                 method.isAccessible = true
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("HomeCustomizeHook:hookSaveCardViewModelMethods:method").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     if (HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeSaveSectionHidden) {
                         XposedCompat.logD("[HomeCustomizeHook] $label blocked: ${clazz.name}.${method.name}")
                         null
@@ -631,7 +716,8 @@ object HomeCustomizeHook {
 
         return try {
             methodSets.forEach { methods ->
-                mod.hook(methods.source).intercept { chain ->
+                mod.hook(methods.source).setId("HomeCustomizeHook:hookRecentCardItemLimit:methods-source").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     if (!isRecentItemLimitCustomized() || HookSettings.isHomeRecentSectionHidden) {
                         return@intercept chain.proceed()
                     }
@@ -670,7 +756,8 @@ object HomeCustomizeHook {
                     }
                 }
                 listOf(methods.cacheWriter, methods.stateWriter).forEach { method ->
-                    mod.hook(method).intercept { chain ->
+                    mod.hook(method).setId("HomeCustomizeHook:hookRecentCardItemLimit:method").intercept { chain ->
+                        if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                         val limited = recentLimitForCall.get()
                         val rewrittenArgs = if (
                             limited != null &&
@@ -717,7 +804,8 @@ object HomeCustomizeHook {
         if (!recentScrollRangeHookState.markInstalled()) return 0
 
         return try {
-            mod.hook(methods.callback).intercept { chain ->
+            mod.hook(methods.callback).setId("HomeCustomizeHook:hookRecentScrollRange:methods-callback").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 if (!isRecentScrollRangeAdjustmentEnabled()) {
                     return@intercept chain.proceed()
                 }
@@ -762,7 +850,8 @@ object HomeCustomizeHook {
                     method.returnType == Void.TYPE &&
                     method.parameterTypes.isEmpty()
             }?.apply { isAccessible = true } ?: return@forEach
-            mod.hook(initView).intercept { chain ->
+            mod.hook(initView).setId("HomeCustomizeHook:hookSaveCardVerticalLayout:initView").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val result = chain.proceed()
                 if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
                     val card = chain.thisObject as? ViewGroup
@@ -781,7 +870,8 @@ object HomeCustomizeHook {
                     arrayOf(Context::class.java, android.util.AttributeSet::class.java),
                 )
             }?.let { constructor ->
-                mod.hook(constructor).intercept { chain ->
+                mod.hook(constructor).setId("HomeCustomizeHook:hookSaveCardVerticalLayout:constructor").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
                         (chain.thisObject as? ViewGroup)?.let { card ->
@@ -814,7 +904,8 @@ object HomeCustomizeHook {
             listOf("onInterceptTouchEvent", "onTouchEvent").forEach { methodName ->
                 val method = XposedCompat.findMethodOrNull(clazz, methodName, MotionEvent::class.java)
                     ?: return@forEach
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("HomeCustomizeHook:hookSaveCardVerticalLayout:method").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val group = chain.thisObject as? ViewGroup
                     if (group != null && verticalSaveGroups.containsKey(group)) {
                         false
@@ -840,7 +931,8 @@ object HomeCustomizeHook {
         for (suffix in BaiduHomeCardHookPoints.SAVE_STATE_COLLECTOR_SUFFIXES) {
             val collector = XposedCompat.findClassOrNull(cardClass.name + suffix, cl) ?: continue
             val callback = HomeSaveCardBindingResolver.stateCollector(collector, cardClass) ?: continue
-            mod.hook(callback.method).intercept { chain ->
+            mod.hook(callback.method).setId("HomeCustomizeHook:hookSaveCardStateRendering:callback-method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val result = chain.proceed()
                 if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
                     applySaveCardVerticalLayout(callback.owner.get(chain.thisObject) as? View, chain.args[0])
@@ -853,7 +945,8 @@ object HomeCustomizeHook {
         val methods = cardClass.declaredMethods.filter(::isSaveCardStateRenderMethod)
         methods.forEach { method ->
             method.isAccessible = true
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("HomeCustomizeHook:hookSaveCardStateRendering:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val result = chain.proceed()
                 if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
                     applySaveCardVerticalLayout(chain.thisObject as? View, chain.args[0])
@@ -891,7 +984,8 @@ object HomeCustomizeHook {
                 if (callback.owner.get(listener) !== card || callback.method in saveTabSelectionHooks) {
                     return@forEach
                 }
-                mod.hook(callback.method).intercept { chain ->
+                mod.hook(callback.method).setId("HomeCustomizeHook:hookSaveCardTabSelection:callback-method").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
                         applySaveCardVerticalLayout(callback.owner.get(chain.thisObject) as? View)
@@ -912,6 +1006,7 @@ object HomeCustomizeHook {
         if (!homeCustomizeHookPoints().supportsRecentScrollRangeAdjustment) return 0
         val mod = XposedCompat.module ?: return 0
         val compat = HomeFeedScrollCompat.install(cl) ?: return 0
+        scrollCompats += compat
         var count = 1
         homeCustomizeHookPoints().feedFragmentClassNames.distinct().forEach { className ->
             val clazz = XposedCompat.findClassOrNull(className, cl) ?: return@forEach
@@ -926,7 +1021,8 @@ object HomeCustomizeHook {
             }
             methods.forEach { method ->
                 method.isAccessible = true
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("HomeCustomizeHook:hookNativeFeedScrollRange:method").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     val fragmentView = invokeNoArg(chain.thisObject, "getView") as? View
                         ?: return@intercept result
@@ -970,7 +1066,8 @@ object HomeCustomizeHook {
                     List::class.java.isAssignableFrom(method.parameterTypes[2]) &&
                     method.parameterTypes[3] == Boolean::class.javaPrimitiveType
             }?.apply { isAccessible = true } ?: return@forEach
-            mod.hook(copy).intercept { chain ->
+            mod.hook(copy).setId("HomeCustomizeHook:hookSaveCardUpdateObservers:copy").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val batch = subscriptionItemsForCall.get()
                 val state = chain.args[0] as? Enum<*>
                 // 扩展当前订阅响应的 LINK_UPDATE_DATA，保留其它状态处理。
@@ -998,7 +1095,8 @@ object HomeCustomizeHook {
                     method.parameterTypes.size == 1
             }.forEach { method ->
                 method.isAccessible = true
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("HomeCustomizeHook:hookSaveCardUpdateObservers:method").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val previous = subscriptionItemsForCall.get()
                     val items = if (isSaveCardVerticalLayoutEnabled() && !HookSettings.isHomeSaveSectionHidden) {
                         readSubscriptionResponse(chain.args.firstOrNull())
@@ -1019,6 +1117,10 @@ object HomeCustomizeHook {
 
     private fun applySaveCardVerticalLayout(cardView: View?, state: Any? = null) {
         if (cardView !is ViewGroup) return
+        saveCardTargets.removeAll { it.card.get() == null }
+        val target = saveCardTargets.firstOrNull { it.card.get() === cardView }
+            ?: SaveCardTarget(cardView).also { saveCardTargets += it }
+        if (state != null) target.state = WeakReference(state)
         if (state != null) HomeSaveCardLongPressCompat.dismiss(cardView)
         val saveGroup = findHostView<ViewGroup>(cardView, "horizontalScrollView")
         val subscribeGroup = findHostView<ViewGroup>(cardView, "linkHorizontalScrollView")
@@ -1079,6 +1181,7 @@ object HomeCustomizeHook {
         wrapper.extraRows.getOrNull(index - 3)?.let { return it }
         if (wrapper.extraRows.size != index - 3) return null
         val row = inflateSaveCardRow(card, wrapper, subscription) ?: return null
+        if (!originalRowTags.containsKey(row)) originalRowTags[row] = row.tag
         row.tag = index.toString()
         row.visibility = View.GONE
         row.layoutParams = LinearLayout.LayoutParams(
@@ -1093,6 +1196,29 @@ object HomeCustomizeHook {
     }
 
     private class VerticalSaveRows(context: Context, val rowHeight: Int) : LinearLayout(context) {
+        data class OriginalRow(val view: View, val parent: ViewGroup, val index: Int,
+            val params: ViewGroup.LayoutParams, val visibility: Int)
+        var group: ViewGroup? = null
+        val originalChildren = mutableListOf<Pair<View, ViewGroup.LayoutParams>>()
+        val originalRows = mutableListOf<OriginalRow>()
+        val innerWidths = mutableListOf<Pair<View, Int>>()
+        fun restore() {
+            val owner = group ?: return
+            originalRows.forEach { (view, _, _, _, _) -> (view.parent as? ViewGroup)?.removeView(view) }
+            if (parent === owner) owner.removeView(this)
+            originalChildren.forEachIndexed { index, (view, params) ->
+                if (view.parent == null) owner.addView(view, index.coerceAtMost(owner.childCount), params)
+            }
+            originalRows.sortedBy { it.index }.forEach { row ->
+                if (row.view.parent == null) row.parent.addView(row.view, row.index.coerceAtMost(row.parent.childCount), row.params)
+                row.view.layoutParams = row.params
+                row.view.visibility = row.visibility
+            }
+            innerWidths.forEach { (view, width) -> view.layoutParams = view.layoutParams.apply { this.width = width } }
+            extraRows.forEach { it.view.setOnClickListener(null) }
+            removeAllViews()
+            group = null
+        }
         val extraRows = mutableListOf<SaveRow>()
 
         init {
@@ -1314,7 +1440,8 @@ object HomeCustomizeHook {
         viewModelClassNames.distinct().forEach { name ->
             val clazz = XposedCompat.findClassOrNull(name, cl) ?: return@forEach
             val setList = HomeSaveCardBindingResolver.listWriter(clazz) ?: return@forEach
-            mod.hook(setList).intercept { chain ->
+            mod.hook(setList).setId("HomeCustomizeHook:hookSavedHistoryLoading:setList").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val viewModel = chain.thisObject ?: return@intercept chain.proceed()
                 if (publishingSavedHistory.get() === viewModel) return@intercept chain.proceed()
                 val nativeItems = chain.args[1] as? List<*> ?: return@intercept chain.proceed()
@@ -1332,7 +1459,8 @@ object HomeCustomizeHook {
             // homeSaveCardInfo 在账号或首页数据稍后就绪时补充加载。
             listOf("cacheHomeSaveCard", "homeSaveCardInfo").forEach { methodName ->
                 val method = XposedCompat.findMethodOrNull(clazz, methodName) ?: return@forEach
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("HomeCustomizeHook:hookSavedHistoryLoading:method").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     chain.thisObject?.let { startSavedHistory(it, cl, methodName == "homeSaveCardInfo") }
                     result
@@ -1517,10 +1645,12 @@ object HomeCustomizeHook {
         val reference = WeakReference(viewModel)
         lateinit var observer: Any
         val timeout = Runnable {
+            observers.remove(observer)
             runCatching { removeObserver.invoke(liveData, observer) }
             synchronized(requestState) { requestState.markTerminal() }
         }
         fun detach() {
+            observers.remove(observer)
             mainHandler.removeCallbacks(timeout)
             removeObserver.invoke(liveData, observer)
         }
@@ -1529,7 +1659,7 @@ object HomeCustomizeHook {
                 "onChanged" -> {
                     val model = reference.get()
                     val currentAccount = runCatching { resolveAccountCredentials(cl).uid }.getOrNull()
-                    if (!isSavedHistoryExpansionEnabled() || model == null ||
+                    if (ModuleLifetime.isRetiring || !isSavedHistoryExpansionEnabled() || model == null ||
                         saveHistorySessions[model] !== session || session.request !== requestState ||
                         currentAccount != session.uid
                     ) {
@@ -1588,6 +1718,7 @@ object HomeCustomizeHook {
             arrayOf(observerClass),
             handler,
         )
+        observers[observer] = liveData to removeObserver
         mainHandler.postDelayed(timeout, 15_000L)
         try {
             observeForever.invoke(liveData, observer)
@@ -1837,6 +1968,17 @@ object HomeCustomizeHook {
         // 新布局保留 WRAP_CONTENT，旧 MATCH_PARENT 行沿用原容器高度。
         val originalGroupHeight = group.layoutParams?.height ?: ViewGroup.LayoutParams.WRAP_CONTENT
         val wrapper = VerticalSaveRows(group.context, originalGroupHeight)
+        wrapper.group = group
+        wrappers[wrapper] = true
+        for (index in 0 until group.childCount) {
+            val child = group.getChildAt(index)
+            wrapper.originalChildren += child to child.layoutParams
+        }
+        rows.forEach { row ->
+            val parent = row.parent as? ViewGroup ?: return@forEach
+            wrapper.originalRows += VerticalSaveRows.OriginalRow(row, parent, parent.indexOfChild(row), row.layoutParams, row.visibility)
+            innerIdNames.forEach { name -> findHostView<View>(row, name)?.let { wrapper.innerWidths += it to it.layoutParams.width } }
+        }
 
         rows.forEach { row ->
             val height = HomeCardLayoutRules.rowHeight(
@@ -1872,12 +2014,10 @@ object HomeCustomizeHook {
         subscribeGroup: ViewGroup?,
     ) {
         if (contentArea == null || verticalSaveHeightGuards.containsKey(contentArea)) return
-        verticalSaveHeightGuards[contentArea] = true
         val saveReference = WeakReference(saveGroup)
         val subscribeReference = WeakReference(subscribeGroup)
         // 监听固定容器的布局变化，修正异步写回的高度。
-        contentArea.addOnLayoutChangeListener(
-            View.OnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
+        val listener = View.OnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
                 if (!isSaveCardVerticalLayoutEnabled() || HookSettings.isHomeSaveSectionHidden) {
                     return@OnLayoutChangeListener
                 }
@@ -1889,13 +2029,15 @@ object HomeCustomizeHook {
                         "[HomeCustomizeHook] save card natural height restored after host layout change",
                     )
                 }
-            },
-        )
+            }
+        verticalSaveHeightGuards[contentArea] = listener
+        contentArea.addOnLayoutChangeListener(listener)
     }
 
     private fun enforceWrapContentHeight(view: View?): Boolean {
         val params = view?.layoutParams ?: return false
         if (params.height == ViewGroup.LayoutParams.WRAP_CONTENT) return false
+        if (!originalHeights.containsKey(view)) originalHeights[view] = params.height
         params.height = ViewGroup.LayoutParams.WRAP_CONTENT
         view.layoutParams = params
         return true
@@ -1930,7 +2072,8 @@ object HomeCustomizeHook {
         }
         methods.forEach { method ->
             method.isAccessible = true
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("HomeCustomizeHook:hookHomeStoryCardRenderEntry:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 if (HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeMemoriesSectionHidden) {
                     XposedCompat.logD("[HomeCustomizeHook] story card render blocked: ${clazz.name}.${method.name}")
                     val context = chain.args.firstOrNull { it is Context } as? Context
@@ -2007,7 +2150,8 @@ object HomeCustomizeHook {
         }
         methods.forEach { method ->
             method.isAccessible = true
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("HomeCustomizeHook:hookHomeHeaderCardRenderEntry:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 if (!enabled()) return@intercept chain.proceed()
                 if (blockBeforeCreate && FrameLayout::class.java.isAssignableFrom(method.returnType)) {
                     val context = fragmentContext(chain.thisObject)
@@ -2038,7 +2182,7 @@ object HomeCustomizeHook {
     private fun adjustHomeToolbarRootLayout(root: View?) {
         if (!isHomeToolbarHidden() || root == null) return
         adjustHomeToolbarRootLayoutNow(root)
-        root.post { runCatching { adjustHomeToolbarRootLayoutNow(root) } }
+        mainHandler.post { runCatching { adjustHomeToolbarRootLayoutNow(root) } }
     }
 
     private fun adjustHomeToolbarRootLayoutNow(root: View) {
@@ -2189,7 +2333,7 @@ object HomeCustomizeHook {
 
         topContainer.requestLayout()
         adjustContentOffset()
-        content.post { adjustContentOffset() }
+        mainHandler.post { adjustContentOffset() }
     }
 
     private fun hookStartupHomeBannerPreload(cl: ClassLoader): Int {
@@ -2217,7 +2361,8 @@ object HomeCustomizeHook {
             XposedCompat.log("[HomeCustomizeHook] Home25aiContext.loadHomeBanner(Context) NOT FOUND")
             return 0
         }
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("HomeCustomizeHook:hookStartupHomeBannerPreload:method").intercept { chain ->
+            if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
             val context = chain.args.getOrNull(0) as? Context
             if (isTopPromotionHidden() && context is Application) {
                 XposedCompat.logD("[HomeCustomizeHook] Home25aiContext.loadHomeBanner startup preload blocked")

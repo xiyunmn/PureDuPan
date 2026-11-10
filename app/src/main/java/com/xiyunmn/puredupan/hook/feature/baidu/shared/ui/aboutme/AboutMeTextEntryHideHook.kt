@@ -69,7 +69,7 @@ object AboutMeTextEntryHideHook {
         }
 
         method.isAccessible = true
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("AboutMeTextEntryHideHook:hookMiddleRows:method").intercept { chain ->
             val node = chain.args.firstOrNull()
             val accountExitNode = isAccountExitEnabled() && hasStringValue(node, KEY_SETTINGS)
             val starNode = isStarSkinEnabled() && hasStringValue(node, KEY_PERSONAL_THEME_SETTING)
@@ -102,7 +102,7 @@ object AboutMeTextEntryHideHook {
         for (method in fragmentClass.declaredMethods) {
             if (!isManageSpaceRenderMethod(method)) continue
             method.isAccessible = true
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("AboutMeTextEntryHideHook:hookBottomManageSpace:method").intercept { chain ->
                 val result = chain.proceed()
                 if (isManageSpaceEnabled()) hideMiddleManageSpace(chain.thisObject, method.name)
                 result
@@ -156,7 +156,7 @@ object AboutMeTextEntryHideHook {
             return 0
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("AboutMeTextEntryHideHook:hookCoinCenterRewardSubtitle:method").intercept { chain ->
             val result = chain.proceed()
             if (isRewardEnabled()) {
                 val root = fragmentRoot(chain.thisObject)

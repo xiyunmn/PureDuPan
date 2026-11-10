@@ -57,7 +57,7 @@ object AboutMeBannerHideHook {
         val method = fragmentClass.declaredMethods.firstOrNull {
             it.name == "initBanner" && it.parameterTypes.isEmpty()
         } ?: return 0
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("AboutMeBannerHideHook:hookInitBanner:method").intercept { chain ->
             val result = chain.proceed()
             if (isEnabled()) hideBanner(fragmentRoot(chain.thisObject), "initBanner")
             result
@@ -71,7 +71,7 @@ object AboutMeBannerHideHook {
         var count = 0
         for (method in fragmentClass.declaredMethods) {
             if (method.name != methodName) continue
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("AboutMeBannerHideHook:hookBlockMethod:method").intercept { chain ->
                 if (isEnabled()) {
                     hideBanner(fragmentRoot(chain.thisObject), methodName)
                     null
@@ -90,7 +90,7 @@ object AboutMeBannerHideHook {
         var count = 0
         for (method in fragmentClass.declaredMethods) {
             if (!method.name.startsWith(UPDATE_ITEMS_PREFIX)) continue
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("AboutMeBannerHideHook:hookUpdateItems:method").intercept { chain ->
                 if (isEnabled()) {
                     hideBanner(fragmentRoot(chain.thisObject), method.name)
                     null

@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.automation
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Activity
 import android.os.Build
 import android.os.Handler
@@ -20,6 +21,12 @@ internal object AutoDailySignInScheduler {
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
     private val hookStates = ConcurrentHashMap<String, HookState>()
     private val pendingRuns = ConcurrentHashMap<String, AtomicBoolean>()
+
+    fun disposeForReload() {
+        mainHandler.removeCallbacksAndMessages(null)
+        pendingRuns.clear()
+        hookStates.clear()
+    }
 
     fun install(
         cl: ClassLoader,
@@ -49,7 +56,8 @@ internal object AutoDailySignInScheduler {
 
             var installedCount = 0
             XposedCompat.findMethodOrNull(mainActivityClass, "onResume")?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("$tag:install:method").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     scheduleIfNeeded(chain.thisObject as? Activity, tag, delayRangeMs, onRun)
                     result
@@ -62,7 +70,8 @@ internal object AutoDailySignInScheduler {
                 "onWindowFocusChanged",
                 Boolean::class.javaPrimitiveType!!,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("$tag:install:method:2").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     val hasFocus = chain.args.firstOrNull() as? Boolean ?: false
                     if (hasFocus) {
@@ -93,7 +102,7 @@ internal object AutoDailySignInScheduler {
         delayRangeMs: LongRange,
         onRun: (Activity) -> Unit,
     ) {
-        if (activity == null) return
+        if (ModuleLifetime.isRetiring || activity == null) return
         if (!HookSettings.isAutoDailySignInEnabled) return
         if (activity.isFinishing) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed) return
@@ -104,6 +113,7 @@ internal object AutoDailySignInScheduler {
         val delayMs = randomDelayMs(delayRangeMs)
         val activityRef = WeakReference(activity)
         mainHandler.postDelayed({
+            if (ModuleLifetime.isRetiring) return@postDelayed
             pending.set(false)
             val current = activityRef.get() ?: return@postDelayed
             if (!HookSettings.isAutoDailySignInEnabled) return@postDelayed

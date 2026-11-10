@@ -91,7 +91,7 @@ object AboutMeServiceAndSignDotHideHook {
         for (method in fragmentClass.declaredMethods) {
             if (!method.name.startsWith(methodPrefix)) continue
             if (!Modifier.isStatic(method.modifiers)) continue
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("AboutMeServiceAndSignDotHideHook:hookServiceLambda:method").intercept { chain ->
                 val result = chain.proceed()
                 if (isMyServiceEnabled()) {
                     val fragment = chain.args.firstOrNull { fragmentClass.isInstance(it) }
@@ -114,7 +114,7 @@ object AboutMeServiceAndSignDotHideHook {
         var count = 0
         for (methodName in listOf("initView", "onResume", "onPostResume", "onSkinChanged")) {
             val method = XposedCompat.findMethodOrNull(activityClass, methodName) ?: continue
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("AboutMeServiceAndSignDotHideHook:hookActivityRenderPoints:method").intercept { chain ->
                 val result = chain.proceed()
                 hideSignDotFromActivity(chain.thisObject as? Activity, methodName)
                 result
@@ -131,7 +131,7 @@ object AboutMeServiceAndSignDotHideHook {
         val popupResponseClassName = BaiduFeatureRuntime.currentPopupResponseClassName() ?: return 0
         val popupResponseClass = XposedCompat.findClassOrNull(popupResponseClassName, cl) ?: return 0
         val method = XposedCompat.findMethodOrNull(activityClass, "setActivityEntry", popupResponseClass) ?: return 0
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("AboutMeServiceAndSignDotHideHook:hookSetActivityEntry:method").intercept { chain ->
             val result = chain.proceed()
             hideSignDotFromActivity(chain.thisObject as? Activity, "setActivityEntry")
             result
@@ -151,7 +151,7 @@ object AboutMeServiceAndSignDotHideHook {
             XposedCompat.logD("[$TAG] PopupResponseHelper.refresh not resolved")
             return 0
         }
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("AboutMeServiceAndSignDotHideHook:hookPopupResponseHelperRefresh:method").intercept { chain ->
             val result = chain.proceed()
             if (isSignDotEnabled()) {
                 hideSignDot(helperRoot(chain.thisObject), "PopupResponseHelper.refresh")

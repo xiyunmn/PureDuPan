@@ -56,7 +56,7 @@ internal object DomesticAudioCircleViewAutostartBlockHook {
             return 0
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DomesticAudioCircleViewAutostartBlockHook:hookFloatViewStartupTask:method").intercept { chain ->
             if (isEnabled()) {
                 XposedCompat.logD("[$TAG] initAudioCircleView blocked")
                 null
@@ -76,7 +76,7 @@ internal object DomesticAudioCircleViewAutostartBlockHook {
             return 0
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DomesticAudioCircleViewAutostartBlockHook:hookDexKitFloatViewStartupTask:method").intercept { chain ->
             if (isEnabled()) {
                 XposedCompat.logD("[$TAG] DexKit initAudioCircleView blocked")
                 null

@@ -395,6 +395,13 @@ object ConfigManager {
         }
     }
 
+    fun disposeForReload() {
+        synchronized(this) {
+            prefsListener?.let { prefs?.unregisterOnSharedPreferenceChangeListener(it) }
+            prefsListener = null
+        }
+    }
+
     fun snapshot(): SettingsSnapshot = settingsSnapshot
 
     fun readHomeTopPromotionHidden(p: SharedPreferences): Boolean {
@@ -403,12 +410,14 @@ object ConfigManager {
 
     private fun replaceSettingsSnapshot(snapshot: SettingsSnapshot) {
         settingsSnapshot = snapshot
+        com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.StartupSplashDrawable.updateLevels()
     }
 
     private fun ensurePrefsListener(p: SharedPreferences) {
         if (prefsListener != null) return
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
             synchronized(this@ConfigManager) {
+                if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@OnSharedPreferenceChangeListener
                 if (prefs !== sharedPrefs) return@OnSharedPreferenceChangeListener
                 if (key in CONTENT_POSITION_CACHE_INVALIDATION_KEYS) {
                     invalidateContentPositionCache(appContext)

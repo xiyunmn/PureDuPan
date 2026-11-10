@@ -38,7 +38,7 @@ internal object DomesticGameCenterRemoveHook {
                 XposedCompat.log("[GameCenterRemoveHook] onCreateView NOT FOUND")
                 return
             }
-            mod.hook(method).intercept {
+            mod.hook(method).setId("DomesticGameCenterRemoveHook:hook:method").intercept {
                 if (isEnabled()) null else it.proceed()
             }
             XposedCompat.log("[GameCenterRemoveHook] hook INSTALLED")

@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.automation
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -16,6 +17,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 internal object IntlAutoDailySignInHook {
     private const val TAG = "IntlAutoDailySignInHook"
+    private val resultHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    fun disposeForReload() { resultHandler.removeCallbacksAndMessages(null) }
     private val membershipSignInRunning = AtomicBoolean(false)
 
     fun hook(cl: ClassLoader) {
@@ -36,13 +39,13 @@ internal object IntlAutoDailySignInHook {
     }
 
     private fun run(activity: Activity, cl: ClassLoader, force: Boolean = false) {
-        if (!force && !HookSettings.isAutoDailySignInEnabled) return
+        if (ModuleLifetime.isRetiring || (!force && !HookSettings.isAutoDailySignInEnabled)) return
 
         val context = activity.applicationContext ?: activity
         val account = AccountAccess.resolve(cl)
         if (account == null) {
             if (force && AutoDailySignInStateStore.beginAttempt(context, null, TAG, force = true)) {
-                AutoDailySignInStateStore.markFailed(context, null, TAG, "account state unavailable")
+                ModuleLifetime.postResult(resultHandler) { AutoDailySignInStateStore.markFailed(context, null, TAG, "account state unavailable") }
             } else {
                 XposedCompat.logD("[$TAG] auto sign-in skipped: account state unavailable")
             }
@@ -50,7 +53,7 @@ internal object IntlAutoDailySignInHook {
         }
         if (!account.isLogin) {
             if (force && AutoDailySignInStateStore.beginAttempt(context, account.uid, TAG, force = true)) {
-                AutoDailySignInStateStore.markFailed(context, account.uid, TAG, "account not logged in")
+                ModuleLifetime.postResult(resultHandler) { AutoDailySignInStateStore.markFailed(context, account.uid, TAG, "account not logged in") }
             } else {
                 XposedCompat.logD("[$TAG] auto sign-in skipped: account not logged in")
             }
@@ -70,45 +73,45 @@ internal object IntlAutoDailySignInHook {
         val uid = account.uid
         val bduss = account.bduss
         if (bduss.isNullOrBlank()) {
-            AutoDailySignInStateStore.markFailed(context, uid, TAG, "bduss unavailable")
+            ModuleLifetime.postResult(resultHandler) { AutoDailySignInStateStore.markFailed(context, uid, TAG, "bduss unavailable") }
             return
         }
         if (!membershipSignInRunning.compareAndSet(false, true)) {
-            AutoDailySignInStateStore.markRetryableFailed(context, uid, TAG, "membership sign-in already running")
+            ModuleLifetime.postResult(resultHandler) { AutoDailySignInStateStore.markRetryableFailed(context, uid, TAG, "membership sign-in already running") }
             return
         }
 
-        Thread({
+        if (!ModuleLifetime.launchWorker("$TAG-MembershipSignIn") {
             try {
                 if (!force && !HookSettings.isAutoDailySignInEnabled) {
-                    AutoDailySignInStateStore.markSkipped(
+                    ModuleLifetime.postResult(resultHandler) { AutoDailySignInStateStore.markSkipped(
                         context,
                         uid,
                         TAG,
                         "disabled before membership request",
                         clearAttempt = true,
-                    )
-                    return@Thread
+                    ) }
+                    return@launchWorker
                 }
                 val cookie = IntlCookieByBdussDexKitResolver.cookieFor(cl, bduss)
                     .takeUnless { it.isBlank() }
                     ?: "BDUSS=$bduss"
                 when (val result = MembershipSignInClient.signIn(cookie, TAG)) {
                     is MembershipSignInResult.Success -> {
-                        AutoDailySignInStateStore.markSuccess(
+                        ModuleLifetime.postResult(resultHandler) { AutoDailySignInStateStore.markSuccess(
                             context,
                             uid,
                             TAG,
                             "membership endpoint signed in, points=${result.points ?: "unknown"}",
-                        )
+                        ) }
                     }
                     is MembershipSignInResult.AlreadySignedIn -> {
-                        AutoDailySignInStateStore.markAlreadySignedIn(
+                        ModuleLifetime.postResult(resultHandler) { AutoDailySignInStateStore.markAlreadySignedIn(
                             context,
                             uid,
                             TAG,
                             "membership endpoint reports already signed: ${result.message}",
-                        )
+                        ) }
                     }
                     is MembershipSignInResult.Failed -> {
                         confirmMembershipFailure(context, uid, cookie, result)
@@ -117,7 +120,7 @@ internal object IntlAutoDailySignInHook {
             } finally {
                 membershipSignInRunning.set(false)
             }
-        }, "$TAG-MembershipSignIn").start()
+        }) membershipSignInRunning.set(false)
     }
 
     private fun confirmMembershipFailure(
@@ -128,12 +131,12 @@ internal object IntlAutoDailySignInHook {
     ) {
         when (val status = MembershipSignInClient.queryTaskCenterSignedIn(cookie, TAG)) {
             MembershipSignInStatusResult.SignedIn -> {
-                AutoDailySignInStateStore.markAlreadySignedIn(
+                ModuleLifetime.postResult(resultHandler) { AutoDailySignInStateStore.markAlreadySignedIn(
                     context,
                     uid,
                     TAG,
                     "${failure.detail}, task-center status reports already signed after request",
-                )
+                ) }
                 return
             }
             MembershipSignInStatusResult.NotSignedIn -> Unit
@@ -143,19 +146,19 @@ internal object IntlAutoDailySignInHook {
         }
         when (val status = MembershipSignInClient.queryTodaySignedIn(cookie, TAG)) {
             MembershipSignInStatusResult.SignedIn -> {
-                AutoDailySignInStateStore.markAlreadySignedIn(
+                ModuleLifetime.postResult(resultHandler) { AutoDailySignInStateStore.markAlreadySignedIn(
                     context,
                     uid,
                     TAG,
                     "${failure.detail}, membership status reports already signed after request",
-                )
+                ) }
             }
             MembershipSignInStatusResult.NotSignedIn -> {
-                AutoDailySignInStateStore.markRetryableFailed(context, uid, TAG, failure.detail)
+                ModuleLifetime.postResult(resultHandler) { AutoDailySignInStateStore.markRetryableFailed(context, uid, TAG, failure.detail) }
             }
             is MembershipSignInStatusResult.Unknown -> {
                 XposedCompat.logD("[$TAG] membership status unavailable after failure: ${status.detail}")
-                AutoDailySignInStateStore.markRetryableFailed(context, uid, TAG, failure.detail)
+                ModuleLifetime.postResult(resultHandler) { AutoDailySignInStateStore.markRetryableFailed(context, uid, TAG, failure.detail) }
             }
         }
     }

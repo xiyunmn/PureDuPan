@@ -87,7 +87,7 @@ internal object StoragePathSettingsDialog {
             .create()
         val selectionListener = { updateDirectoryCard(context, prefs, directoryCard) }
         StorageTreeSelectionState.setListener(selectionListener)
-        dialog.setOnDismissListener { StorageTreeSelectionState.clearIfSame(selectionListener) }
+        SettingsReloadCleanup.onDispose(dialog) { StorageTreeSelectionState.clearIfSame(selectionListener) }
         SettingsDialogWindows.showStableSubDialog(dialog, density, "[StoragePathSettingsDialog]")
     }
 

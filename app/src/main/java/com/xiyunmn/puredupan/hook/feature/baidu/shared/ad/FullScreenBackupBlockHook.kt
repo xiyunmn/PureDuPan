@@ -61,7 +61,7 @@ internal object FullScreenBackupBlockHook {
             return 0
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("FullScreenBackupBlockHook:hookActivityOnCreate:method").intercept { chain ->
             val result = chain.proceed()
             if (HookSettings.isFullScreenBackupBlocked) {
                 closeActivity(chain.thisObject as? Activity, className)
@@ -87,7 +87,7 @@ internal object FullScreenBackupBlockHook {
             return 0
         }
         method.isAccessible = true
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("FullScreenBackupBlockHook:hookNewQuickSettingsCanShow:method").intercept { chain ->
             if (HookSettings.isFullScreenBackupBlocked) {
                 XposedCompat.logD("[$TAG] NewQuickSettingsActivity can-show blocked")
                 false
@@ -111,7 +111,7 @@ internal object FullScreenBackupBlockHook {
                 )
         } ?: return 0
         method.isAccessible = true
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("FullScreenBackupBlockHook:hookNewQuickSettingsStart:method").intercept { chain ->
             // 宿主覆盖安装和备份条件可能重新允许弹窗，此处直接阻止引导启动。
             if (HookSettings.isFullScreenBackupBlocked) false else chain.proceed()
         }
@@ -134,7 +134,7 @@ internal object FullScreenBackupBlockHook {
             return 0
         }
         method.isAccessible = true
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("FullScreenBackupBlockHook:hookRepeatedQuickSettingsCanShow:method").intercept { chain ->
             if (HookSettings.isFullScreenBackupBlocked) false else chain.proceed()
         }
         XposedCompat.log("[$TAG] hook INSTALLED: RepeatedNewQuickSettingsActivity.checkIsShow")

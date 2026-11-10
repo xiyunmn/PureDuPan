@@ -33,14 +33,14 @@ internal object DefaultStartupTabHook {
             val labelField = tabClass.getDeclaredField("textView").apply { isAccessible = true }
 
             if (onCreate !in installed) {
-                mod.hook(onCreate).intercept { chain ->
+                mod.hook(onCreate).setId("DefaultStartupTabHook:hook:onCreate").intercept { chain ->
                     freshActivities[chain.thisObject as Activity] = chain.args[0] == null
                     chain.proceed()
                 }
                 installed += onCreate
             }
             if (initTabs in installed) return
-            mod.hook(initTabs).intercept { chain ->
+            mod.hook(initTabs).setId("DefaultStartupTabHook:hook:initTabs").intercept { chain ->
                 val activity = chain.thisObject as Activity
                 val firstStartup = freshActivities.remove(activity) == true
                 val result = chain.proceed()

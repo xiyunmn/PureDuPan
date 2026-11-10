@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Application
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
@@ -9,6 +10,16 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
 internal object IntlFloatViewStartupDelayHook {
+    fun disposeForReload() {
+        try {
+            if (chainStates.values.any { it.pending != null }) restoreAllPending("reload")
+        } finally {
+            chainStates.values.forEach { it.pending = null }
+            registerLifecycleMethod = null
+            homeStableRestoreScheduled = false
+        }
+    }
+
     private const val TAG = "IntlFloatViewStartupDelayHook"
     private const val TASK_QUERY_API_CLASS_NAME = BaiduIntlHookPoints.TASK_QUERY_API
     private const val AUDIO_API_CLASS_NAME = BaiduIntlHookPoints.AUDIO_API
@@ -51,6 +62,8 @@ internal object IntlFloatViewStartupDelayHook {
     @Volatile private var homeStableRestoreScheduled = false
 
     internal fun hook(cl: ClassLoader) {
+        // 旧代已交还待恢复调用，热重载不重新进入冷启动抑制阶段。
+        if (ModuleLifetime.hotReloaded) return
         if (!isEnabled()) {
             XposedCompat.log("[IntlFloatViewStartupDelayHook] skipped: config disabled")
             return
@@ -65,7 +78,8 @@ internal object IntlFloatViewStartupDelayHook {
             ).apply { isAccessible = true }
             registerLifecycleMethod = method
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlFloatViewStartupDelayHook:hook:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val application = chain.thisObject as? Application
                 val callback = chain.args.firstOrNull() as? Application.ActivityLifecycleCallbacks
                 val targetChain = callback?.let { classifyLifecycleCallback(it.javaClass) }
@@ -163,7 +177,7 @@ internal object IntlFloatViewStartupDelayHook {
     }
 
     private fun shouldDelay(state: ChainState): Boolean {
-        if (!isEnabled()) return false
+        if (ModuleLifetime.isRetiring || !isEnabled()) return false
         if (homeStableReached) return false
         if (state.restoring || state.restored) return false
         return true
@@ -211,7 +225,8 @@ internal object IntlFloatViewStartupDelayHook {
         var installed = 0
         for (constructor in viewClass.declaredConstructors) {
             constructor.isAccessible = true
-            mod.hook(constructor).intercept { chain ->
+            mod.hook(constructor).setId("IntlFloatViewStartupDelayHook:hookReturnThirdRestoreSignals:constructor").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 restoreChainIfPending(Chain.RETURN_THIRD_APP, "return_third_view:${constructor.parameterTypes.size}")
                 chain.proceed()
             }
@@ -231,7 +246,8 @@ internal object IntlFloatViewStartupDelayHook {
         for (method in clazz.declaredMethods) {
             if (method.name !in methodNames) continue
             method.isAccessible = true
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlFloatViewStartupDelayHook:hookNamedMethodsBeforeProceed:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 beforeProceed("$reasonPrefix:${method.name}/${method.parameterTypes.size}")
                 chain.proceed()
             }
@@ -242,7 +258,7 @@ internal object IntlFloatViewStartupDelayHook {
 
     private fun scheduleHomeStableRestore() {
         homeStableReached = true
-        if (!isEnabled()) return
+        if (ModuleLifetime.isRetiring || !isEnabled()) return
         IntlHomeStableRestoreSignal.scheduleDelayedRestore(
             tag = TAG,
             delayMs = HOME_STABLE_RESTORE_DELAY_MS,
@@ -269,7 +285,7 @@ internal object IntlFloatViewStartupDelayHook {
     }
 
     private fun restoreChainIfPending(chain: Chain, reason: String) {
-        if (!isEnabled()) return
+        if (reason != "reload" && (ModuleLifetime.isRetiring || !isEnabled())) return
         val method = registerLifecycleMethod ?: run {
             XposedCompat.logW(
                 "[IntlFloatViewStartupDelayHook] restore skipped: register method missing, " +

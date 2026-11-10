@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.domestic.ad
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Dialog
 import android.content.Context
 import android.os.Bundle
@@ -11,6 +12,12 @@ import java.lang.reflect.Method
 
 /** 等待 FragmentManager 完成显示流程后关闭推送引导弹窗，保留正常生命周期。 */
 internal object DomesticSharePushGuideBlockHook {
+    private val dialogs = java.util.WeakHashMap<Dialog, Boolean>()
+    fun disposeForReload() {
+        dialogs.keys.toList().forEach { it.setOnShowListener(null); if (it.isShowing) it.dismiss() }
+        dialogs.clear()
+    }
+
     private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
@@ -37,7 +44,8 @@ internal object DomesticSharePushGuideBlockHook {
                 BaiduDomesticHookPoints.SHARE_TAB_PUSH_GUIDE_ON_CREATE_DIALOG_METHOD,
                 Bundle::class.java,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticSharePushGuideBlockHook:hook:method").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     if (!HookSettings.isSharePushGuideBlocked) {
                         return@intercept chain.proceed()
                     }
@@ -50,7 +58,8 @@ internal object DomesticSharePushGuideBlockHook {
                 targetClass,
                 BaiduDomesticHookPoints.SHARE_TAB_PUSH_GUIDE_ON_RESUME_METHOD,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticSharePushGuideBlockHook:hook:method:2").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     if (
                         HookSettings.isSharePushGuideBlocked &&
@@ -86,6 +95,7 @@ internal object DomesticSharePushGuideBlockHook {
     private fun createDismissedDialog(fragment: Any?): Dialog? {
         val context = findContext(fragment) ?: return null
         return Dialog(context).apply {
+            dialogs[this] = true
             setOnShowListener { dialog -> dialog.dismiss() }
         }
     }

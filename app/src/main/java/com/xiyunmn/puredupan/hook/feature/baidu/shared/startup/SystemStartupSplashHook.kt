@@ -25,14 +25,22 @@ internal object SystemStartupSplashHook {
     // 由 LSPosed 在 SystemUI 进程内访问框架成员。
     @SuppressLint("BlockedPrivateApi")
     @Synchronized
-    fun hook(cl: ClassLoader) {
+    fun hook(cl: ClassLoader, application: Application? = null, onApplicationReady: ((Application) -> Unit)? = null) {
         if (installed || Build.VERSION.SDK_INT < 31) return
         val module = XposedCompat.module ?: return
+        fun initialize(app: Application) {
+            if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return
+            StartupSplashSettingsSync.initializeSystemUi(app)
+            StartupSplashDrawable.installConfigurationHook(app)
+            onApplicationReady?.invoke(app)
+        }
+        if (application != null) safely { initialize(application) }
         runCatching {
             val attach = Application::class.java.getDeclaredMethod("attach", Context::class.java).apply { isAccessible = true }
-            module.hook(attach).intercept { chain ->
+            module.hook(attach).setId("SystemStartupSplash:attach:${attach.declaringClass.name}").intercept { chain ->
+                if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val result = chain.proceed()
-                safely { StartupSplashSettingsSync.initializeSystemUi(chain.args[0] as Context) }
+                safely { initialize(chain.thisObject as Application) }
                 result
             }
         }.getOrElse { error ->
@@ -53,31 +61,42 @@ internal object SystemStartupSplashHook {
                 Class.forName(BaiduStartupSplashHookPoints.ICON_MASK_BACKGROUND, false, cl)
                     .getDeclaredField("mBackgroundPaint").apply { isAccessible = true }
             }.onFailure { XposedCompat.logW("[$TAG] icon mask unavailable: ${it.message}") }.getOrNull()
-            val background = builder.getDeclaredMethod("setBackgroundColor", Int::class.javaPrimitiveType).apply { isAccessible = true }
             check(build.returnType == view && contextField.type == Context::class.java &&
-                overlay.type == Drawable::class.java && !Modifier.isFinal(overlay.modifiers) && background.returnType == builder)
-            module.hook(build).intercept { chain ->
+                overlay.type == Drawable::class.java && !Modifier.isFinal(overlay.modifiers))
+            module.hook(build).setId("SystemStartupSplash:build:${build.declaringClass.name}").intercept { chain ->
+                if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 safely {
                     val instance = chain.thisObject!!
                     val context = contextField.get(instance) as Context
                     val info = context.applicationInfo
-                    if (StartupSplashSettingsSync.isEnabled(info) && StartupSplashDrawable.isSystemDark()) {
+                    if (info.packageName in com.xiyunmn.puredupan.hook.host.HostPackages.baiduPackages) {
                         val original = overlay.get(instance) as? Drawable
                         val replacement = original?.let {
-                            checkNotNull(StartupSplashDrawable.wrap(it, context.resources) { StartupSplashSettingsSync.isEnabled(info) }) {
+                            checkNotNull(StartupSplashDrawable.wrap(it, context.resources, info.packageName, info.uid)) {
                                 "Unsupported system splash overlay: ${it.javaClass.name}"
                             }
                         }
-                        background.invoke(instance, StartupSplashDrawable.DARK_BACKGROUND)
                         if (replacement != null) overlay.set(instance, replacement)
                         val mask = iconBackground.get(instance)
-                        if (maskPaint != null && mask != null && maskPaint.declaringClass.isInstance(mask)) {
+                        if (StartupSplashSettingsSync.isEnabled(info) && StartupSplashDrawable.isSystemDark() && maskPaint != null && mask != null && maskPaint.declaringClass.isInstance(mask)) {
                             // 调整系统图标遮罩的背景色。
                             (maskPaint.get(mask) as? Paint)?.color = StartupSplashDrawable.DARK_BACKGROUND
                         }
                     }
                 }
-                chain.proceed()
+                val result = chain.proceed()
+                safely {
+                    val splash = result as? View ?: return@safely
+                    val info = splash.context.applicationInfo
+                    if (info.packageName in com.xiyunmn.puredupan.hook.host.HostPackages.baiduPackages) {
+                        splash.background?.let { original ->
+                            splash.background = checkNotNull(StartupSplashDrawable.wrap(
+                                original, splash.resources, info.packageName, info.uid,
+                            )) { "Unsupported system splash background: ${original.javaClass.name}" }
+                        }
+                    }
+                }
+                result
             }
             XposedCompat.log("[$TAG] framework splash hook INSTALLED")
         }.onFailure { XposedCompat.logW("[$TAG] framework install failed: ${it.message}") }
@@ -90,16 +109,15 @@ internal object SystemStartupSplashHook {
             val view = Class.forName(BaiduStartupSplashHookPoints.SPLASH_VIEW, false, cl)
             val method = manager.getDeclaredMethod("setContentViewBackground", view, Drawable::class.java)
             check(!Modifier.isStatic(method.modifiers) && method.returnType == Void.TYPE)
-            module.hook(method).intercept { chain ->
+            module.hook(method).setId("SystemStartupSplash:colorOsBackground:${method.declaringClass.name}").intercept { chain ->
+                if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 var replacement: Drawable? = null
                 safely {
                     val splash = chain.args[0] as? View ?: return@safely
                     val original = chain.args[1] as? Drawable ?: return@safely
                     val info = splash.context.applicationInfo
-                    if (StartupSplashSettingsSync.isEnabled(info) && StartupSplashDrawable.isSystemDark()) {
-                        replacement = checkNotNull(StartupSplashDrawable.wrap(original, splash.resources) {
-                            StartupSplashSettingsSync.isEnabled(info)
-                        }) { "Unsupported ColorOS splash background: ${original.javaClass.name}" }
+                    if (info.packageName in com.xiyunmn.puredupan.hook.host.HostPackages.baiduPackages) {
+                        replacement = checkNotNull(StartupSplashDrawable.wrap(original, splash.resources, info.packageName, info.uid)) { "Unsupported ColorOS splash background: ${original.javaClass.name}" }
                     }
                 }
                 // ColorOS 会在 build 后的异步任务中使用此背景参数。
@@ -129,7 +147,8 @@ internal object SystemStartupSplashHook {
             )
             check(Drawable::class.java.isAssignableFrom(wrap.returnType) && !Modifier.isStatic(wrap.modifiers))
             val darkMask = ThreadLocal<Boolean>()
-            module.hook(wrap).intercept { chain ->
+            module.hook(wrap).setId("SystemStartupSplash:legacyMask:${wrap.declaringClass.name}").intercept { chain ->
+                if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val result = chain.proceed()
                 if (darkMask.get() == true && factory.isInstance(chain.thisObject) &&
                     chain.args[0] !is AdaptiveIconDrawable && result is AdaptiveIconDrawable
@@ -139,7 +158,8 @@ internal object SystemStartupSplashHook {
                 }
                 result
             }
-            module.hook(build).intercept { chain ->
+            module.hook(build).setId("SystemStartupSplash:build:${build.declaringClass.name}").intercept { chain ->
+                if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val previous = darkMask.get()
                 var adapt = false
                 safely {

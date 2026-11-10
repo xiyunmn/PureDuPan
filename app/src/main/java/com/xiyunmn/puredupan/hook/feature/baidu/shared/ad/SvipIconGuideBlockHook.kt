@@ -34,7 +34,7 @@ internal object SvipIconGuideBlockHook {
                     continue
                 }
                 method.isAccessible = true
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("SvipIconGuideBlockHook:hook:method").intercept { chain ->
                     if (HookSettings.isFullScreenBackupBlocked) {
                         XposedCompat.logD("[SvipIconGuideBlockHook] showGuide blocked")
                         HookUtils.getDefaultReturnValue(method.returnType)

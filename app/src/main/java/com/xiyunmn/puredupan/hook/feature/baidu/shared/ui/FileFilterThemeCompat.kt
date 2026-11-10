@@ -2,6 +2,7 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
 import android.os.Handler
 import android.os.Looper
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduFilePageHookPoints
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduThemeHookPoints
@@ -17,8 +18,34 @@ internal object FileFilterThemeCompat {
     private val constructors = mutableSetOf<Constructor<*>>()
     private val adapters = WeakHashMap<Any, Method>()
     private var skinHooked = false
+    private var notifyChangedMethod: Method? = null
+    private val restoredAdapters = WeakHashMap<Any, Boolean>()
+
+    fun exportState(): ArrayList<Array<Any?>> = synchronized(adapters) {
+        ArrayList(adapters.keys.map { adapter ->
+            arrayOf<Any?>("file-filter", java.lang.ref.WeakReference(adapter))
+        })
+    }
+
+    fun restoreTarget(adapter: Any) {
+        synchronized(adapters) {
+            val method = notifyChangedMethod
+            if (method == null) restoredAdapters[adapter] = true
+            else if (method.declaringClass.isInstance(adapter)) adapters[adapter] = method
+        }
+    }
+
+    fun disposeForReload() {
+        mainHandler.removeCallbacksAndMessages(null)
+        synchronized(adapters) {
+            adapters.clear()
+            restoredAdapters.clear()
+        }
+        notifyChangedMethod = null
+    }
 
     private val refresh = Runnable {
+        if (ModuleLifetime.isRetiring) return@Runnable
         val targets = synchronized(adapters) { adapters.entries.map { it.key to it.value } }
         targets.forEach { (adapter, notifyChanged) ->
             runCatching { notifyChanged.invoke(adapter) }
@@ -43,12 +70,20 @@ internal object FileFilterThemeCompat {
                 ?.takeIf { adapterBase.isAssignableFrom(it) }
             val notifyChanged = adapterBase.getMethod("notifyDataSetChanged")
                 .takeIf { it.returnType == Void.TYPE && !Modifier.isStatic(it.modifiers) } ?: return
+            synchronized(adapters) {
+                notifyChangedMethod = notifyChanged
+                restoredAdapters.keys.toList().forEach { adapter ->
+                    if (adapterBase.isInstance(adapter)) adapters[adapter] = notifyChanged
+                }
+                restoredAdapters.clear()
+            }
             val skinManager = XposedCompat.findClassOrNull(BaiduThemeHookPoints.SKIN_MANAGER, cl) ?: return
             val skinUpdate = skinManager.getDeclaredMethod("notifySkinUpdate")
                 .takeIf { it.returnType == Void.TYPE && !Modifier.isStatic(it.modifiers) } ?: return
 
             if (!skinHooked) {
-                mod.hook(skinUpdate).intercept { chain ->
+                mod.hook(skinUpdate).setId("FileFilterThemeCompat:skinUpdate:${skinUpdate.declaringClass.name}").intercept { chain ->
+                    if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     // 等待宿主换肤通知结束后合并刷新，避开 RecyclerView 布局期间的更新。
                     mainHandler.removeCallbacks(refresh)
@@ -61,7 +96,8 @@ internal object FileFilterThemeCompat {
                 runCatching {
                     val constructor = adapterClass.getDeclaredConstructor(header)
                     if (constructor in constructors) return@forEach
-                    mod.hook(constructor).intercept { chain ->
+                    mod.hook(constructor).setId("FileFilterThemeCompat:adapterCreated:${constructor.declaringClass.name}").intercept { chain ->
+                        if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                         val result = chain.proceed()
                         chain.thisObject?.let { adapter ->
                             // 映射值避免持有视图或适配器，允许旧页面回收。

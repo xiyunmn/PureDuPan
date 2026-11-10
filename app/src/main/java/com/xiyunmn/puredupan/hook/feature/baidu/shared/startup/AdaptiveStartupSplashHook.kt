@@ -26,6 +26,7 @@ internal object AdaptiveStartupSplashHook {
     fun hook(cl: ClassLoader) {
         val module = XposedCompat.module ?: return
         val context = HookSettings.appContext() ?: return
+        (context.applicationContext as? android.app.Application)?.let(StartupSplashDrawable::installConfigurationHook)
         val contentId = context.resources.getIdentifier(
             BaiduStartupSplashHookPoints.NAVIGATE_CONTENT_ID, "id", context.packageName,
         )
@@ -47,14 +48,14 @@ internal object AdaptiveStartupSplashHook {
                 val theme = context.resources.newTheme().apply { applyStyle(themeId, true) }
                 val attrs = theme.obtainStyledAttributes(intArrayOf(android.R.attr.windowBackground))
                 val background = try { attrs.getDrawable(0) } finally { attrs.recycle() }
-                val prepared = background?.let { StartupSplashDrawable.wrap(it, context.resources, ::enabled) }
+                val prepared = background?.let { StartupSplashDrawable.wrap(it, context.resources) }
                 checkNotNull(prepared) { "Unsupported launch background: $name" }
-                val state = checkNotNull(prepared.constantState)
 
-                module.hook(create).setPriority(XposedInterface.PRIORITY_HIGHEST).intercept { chain ->
+                module.hook(create).setId("AdaptiveStartupSplash:create:$name").setPriority(XposedInterface.PRIORITY_HIGHEST).intercept { chain ->
+                    if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val activity = chain.thisObject as Activity
                     // 在 Navigate 缓存窗口背景前替换，以供 MainActivity 交接时复用。
-                    if (enabled()) safely { activity.window.setBackgroundDrawable(state.newDrawable()) }
+                    if (enabled()) safely { activity.window.setBackgroundDrawable(checkNotNull(StartupSplashDrawable.wrap(checkNotNull(background), context.resources))) }
                     val result = chain.proceed()
                     if (enabled()) safely { updateWindow(activity) }
                     result
@@ -62,7 +63,8 @@ internal object AdaptiveStartupSplashHook {
                 installed += create
                 val init = type.getDeclaredMethod("initView")
                 if (init !in installed) {
-                    module.hook(init).setPriority(XposedInterface.PRIORITY_HIGHEST).intercept { chain ->
+                    module.hook(init).setId("AdaptiveStartupSplash:init:${init.declaringClass.name}").setPriority(XposedInterface.PRIORITY_HIGHEST).intercept { chain ->
+                        if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                         val result = chain.proceed()
                         if (enabled() && name == BaiduStartupSplashHookPoints.NAVIGATE_ACTIVITY) safely {
                             updateLaunchContent(chain.thisObject as Activity, contentId)
@@ -82,13 +84,13 @@ internal object AdaptiveStartupSplashHook {
         val content = activity.findViewById<View>(contentId) ?: return
         val original = content.background ?: return
         // 导航布局会在窗口背景之上绘制欢迎页及白色父容器。
-        content.background = checkNotNull(StartupSplashDrawable.wrap(original, activity.resources, ::enabled)) {
+        content.background = checkNotNull(StartupSplashDrawable.wrap(original, activity.resources)) {
             "Unsupported launch content background: ${original.javaClass.name}"
         }
         val parent = content.parent as? View ?: return
         val parentBackground = parent.background as? ColorDrawable ?: return
         if (parentBackground.color == Color.WHITE) {
-            parent.background = checkNotNull(StartupSplashDrawable.wrap(parentBackground, activity.resources, ::enabled))
+            parent.background = checkNotNull(StartupSplashDrawable.wrap(parentBackground, activity.resources))
         }
     }
 
@@ -98,14 +100,15 @@ internal object AdaptiveStartupSplashHook {
         runCatching {
             val init = Class.forName(name, false, cl).getDeclaredMethod("initView")
             if (init in installed) return@runCatching
-            module.hook(init).intercept { chain ->
+            module.hook(init).setId("AdaptiveStartupSplash:init:${init.declaringClass.name}").intercept { chain ->
+                if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 if (enabled()) safely {
                     val activity = chain.thisObject as Activity
                     val original = activity.window.decorView.background as? ColorDrawable
                     if (original?.color == Color.WHITE) {
                         // Main 在 initView 前写入白色背景，后续焦点回调会清除该临时背景。
                         activity.window.setBackgroundDrawable(checkNotNull(
-                            StartupSplashDrawable.wrap(original, activity.resources, ::enabled),
+                            StartupSplashDrawable.wrap(original, activity.resources),
                         ))
                     }
                 }
@@ -121,8 +124,8 @@ internal object AdaptiveStartupSplashHook {
         val window = activity.window
         val original = window.decorView.background ?: return
         // 宿主初始化可能再次写入原生窗口背景。
-        if (original !is StartupSplashDrawable) {
-            val adaptive = StartupSplashDrawable.wrap(original, activity.resources, ::enabled)
+        run {
+            val adaptive = StartupSplashDrawable.wrap(original, activity.resources)
             checkNotNull(adaptive) { "Unsupported launch background: ${original.javaClass.name}" }
             window.setBackgroundDrawable(adaptive)
         }

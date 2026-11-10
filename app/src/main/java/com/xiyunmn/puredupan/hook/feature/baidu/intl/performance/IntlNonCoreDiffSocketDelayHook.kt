@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.os.Bundle
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
@@ -13,6 +14,16 @@ import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object IntlNonCoreDiffSocketDelayHook {
+    fun disposeForReload() {
+        try {
+            if (actionStates.values.any { it.pending != null }) restoreAllPending("reload")
+        } finally {
+            actionStates.values.forEach { it.pending = null }
+            registerMethod = null
+            homeStableRestoreScheduled = false
+        }
+    }
+
     const val SOCKET_REGISTER_CACHE_ID = "intl_non_core_diff_socket_register"
 
     private const val KOTLIN_FUNCTION1_CLASS_NAME = "kotlin.jvm.functions.Function1"
@@ -65,6 +76,8 @@ internal object IntlNonCoreDiffSocketDelayHook {
     @Volatile private var homeStableRestoreScheduled = false
 
     internal fun hook(cl: ClassLoader) {
+        // 旧代已交还待恢复调用，热重载不重新进入冷启动抑制阶段。
+        if (ModuleLifetime.hotReloaded) return
         if (!isEnabled()) {
             XposedCompat.log("[IntlNonCoreDiffSocketDelayHook] skipped: config disabled")
             return
@@ -81,7 +94,8 @@ internal object IntlNonCoreDiffSocketDelayHook {
             }
             registerMethod = method
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlNonCoreDiffSocketDelayHook:hook:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val action = chain.args.getOrNull(0) as? String
                 val callback = chain.args.getOrNull(1)
                 val receiver = chain.thisObject
@@ -312,7 +326,7 @@ internal object IntlNonCoreDiffSocketDelayHook {
             action == CLOUD_FILE_DIFF_CHECK_ACTION
 
     private fun shouldDelay(state: ActionState): Boolean {
-        if (!isEnabled()) return false
+        if (ModuleLifetime.isRetiring || !isEnabled()) return false
         if (state.restoring || state.restored) return false
         return true
     }
@@ -348,7 +362,8 @@ internal object IntlNonCoreDiffSocketDelayHook {
     ): Boolean {
         val mod = XposedCompat.module ?: return false
         val method = XposedCompat.findMethodOrNull(activityClass, "onCreate", Bundle::class.java) ?: return false
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("IntlNonCoreDiffSocketDelayHook:hookActivityOnCreate:method").intercept { chain ->
+            if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
             beforeProceed(reason)
             chain.proceed()
         }
@@ -356,7 +371,7 @@ internal object IntlNonCoreDiffSocketDelayHook {
     }
 
     private fun scheduleHomeStableRestore() {
-        if (!isEnabled()) return
+        if (ModuleLifetime.isRetiring || !isEnabled()) return
         IntlHomeStableRestoreSignal.scheduleDelayedRestore(
             tag = TAG,
             delayMs = HOME_STABLE_RESTORE_DELAY_MS,
@@ -383,7 +398,7 @@ internal object IntlNonCoreDiffSocketDelayHook {
     }
 
     private fun restoreActionIfPending(action: String, reason: String) {
-        if (!isEnabled()) return
+        if (reason != "reload" && (ModuleLifetime.isRetiring || !isEnabled())) return
         val method = registerMethod ?: run {
             XposedCompat.logW(
                 "[IntlNonCoreDiffSocketDelayHook] restore skipped: registerMethod missing, " +

@@ -6,6 +6,7 @@ import android.os.Looper
 import android.os.Process
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal object DexKitCacheWarmUp {
@@ -30,7 +31,9 @@ internal object DexKitCacheWarmUp {
         processName: String,
         classLoader: ClassLoader,
         onWarmUpFinished: (() -> Unit)? = null,
+        immediate: Boolean = false,
     ) {
+        if (ModuleLifetime.isRetiring) return
         if (!host.isMainProcess(processName)) return
 
         val registry = HostDexKitTargetRegistries.forHost(host)
@@ -39,12 +42,19 @@ internal object DexKitCacheWarmUp {
             XposedCompat.logD("[DexKitCacheWarmUp] skipped: no available DexKit task for host=${host.hostId}")
             return
         }
-        val forceFullScan = DexKitCompat.consumeFullScanPending()
+        val forceFullScan = DexKitCompat.isFullScanPending()
         if (!forceFullScan && tasks.all { task -> DexKitCompat.readTargetStatus(task.id)?.isTerminal() == true }) {
             XposedCompat.logD("[DexKitCacheWarmUp] skipped: current DexKit cache is already terminal")
             return
         }
         if (!started.compareAndSet(false, true)) return
+
+        if (immediate) {
+            mainHandler.post {
+                startAutomaticWarmUpThread(tasks, registry.descriptors, forceFullScan, "hot-reload", onWarmUpFinished)
+            }
+            return
+        }
 
         val hooked = installStableActivitySignal(
             classLoader = classLoader,
@@ -137,10 +147,10 @@ internal object DexKitCacheWarmUp {
                 "onWindowFocusChanged",
                 Boolean::class.javaPrimitiveType!!,
             ) ?: continue
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("DexKitCacheWarmUp:stable-focus").intercept { chain ->
                 val result = chain.proceed()
                 val hasFocus = chain.args.firstOrNull() as? Boolean ?: false
-                if (hasFocus) {
+                if (hasFocus && !ModuleLifetime.isRetiring) {
                     mainHandler.postDelayed(
                         {
                             startAutomaticWarmUpThread(
@@ -169,13 +179,14 @@ internal object DexKitCacheWarmUp {
         reason: String,
         onWarmUpFinished: (() -> Unit)?,
     ): Boolean {
+        if (ModuleLifetime.isRetiring) return false
         if (!automaticScanStarted.compareAndSet(false, true)) return false
         return startWarmUpThread(
             tasks = tasks,
             descriptors = descriptors,
             forceFullScan = forceFullScan,
             reason = reason,
-            consumePendingFullScan = false,
+            consumePendingFullScan = true,
             onWarmUpFinished = onWarmUpFinished,
         )
     }
@@ -192,7 +203,7 @@ internal object DexKitCacheWarmUp {
             XposedCompat.logD("[DexKitCacheWarmUp] scan skipped: already running, reason=$reason")
             return false
         }
-        Thread({
+        val launched = ModuleLifetime.launchWorker("WPH-DexKit-WarmUp") {
             try {
                 runCatching { Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND) }
                     .onFailure { t ->
@@ -212,7 +223,7 @@ internal object DexKitCacheWarmUp {
             } finally {
                 scanRunning.set(false)
                 onWarmUpFinished?.let { callback ->
-                    mainHandler.post {
+                    ModuleLifetime.postResult(mainHandler) {
                         runCatching { callback() }
                             .onFailure { t ->
                                 XposedCompat.logW(
@@ -222,11 +233,13 @@ internal object DexKitCacheWarmUp {
                     }
                 }
             }
-        }, "WPH-DexKit-WarmUp").apply {
-            isDaemon = true
-            start()
         }
-        return true
+        if (!launched) scanRunning.set(false)
+        return launched
+    }
+
+    fun disposeForReload() {
+        mainHandler.removeCallbacksAndMessages(null)
     }
 
     private fun warmUp(

@@ -42,7 +42,7 @@ object DomesticGarbageCleanServiceRegisterBlockHook {
                 return
             }
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("DomesticGarbageCleanServiceRegisterBlockHook:hook:method").intercept { chain ->
                 if (isEnabled()) {
                     XposedCompat.logD(
                         "[DomesticGarbageCleanServiceRegisterBlockHook] registerGarbageCleanService blocked",

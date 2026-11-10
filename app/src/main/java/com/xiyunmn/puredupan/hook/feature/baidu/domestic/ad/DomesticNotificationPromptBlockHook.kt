@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.domestic.ad
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Dialog
 import android.content.Context
 import android.os.Bundle
@@ -10,6 +11,12 @@ import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduDomesticHookPoints
 import java.lang.reflect.Method
 
 internal object DomesticNotificationPromptBlockHook {
+    private val dialogs = java.util.WeakHashMap<Dialog, Boolean>()
+    fun disposeForReload() {
+        dialogs.keys.toList().forEach { it.setOnShowListener(null); if (it.isShowing) it.dismiss() }
+        dialogs.clear()
+    }
+
     private val hookState = HookState()
 
     internal fun hook(cl: ClassLoader) {
@@ -53,7 +60,8 @@ internal object DomesticNotificationPromptBlockHook {
             Bundle::class.java,
         )?.let { method ->
             method.isAccessible = true
-            XposedCompat.module?.hook(method)?.intercept { chain ->
+            XposedCompat.module?.hook(method)?.setId("DomesticNotificationPromptBlockHook:hookPushGuideDialog:method")?.intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 if (!HookSettings.isNotificationPromptBlocked) {
                     return@intercept chain.proceed()
                 }
@@ -64,7 +72,8 @@ internal object DomesticNotificationPromptBlockHook {
 
         for (methodName in listOf(BaiduDomesticHookPoints.PUSH_GUIDE_ON_RESUME_METHOD)) {
             findNoArgMethodInHierarchy(targetClass, methodName)?.let { method ->
-                XposedCompat.module?.hook(method)?.intercept { chain ->
+                XposedCompat.module?.hook(method)?.setId("DomesticNotificationPromptBlockHook:hookPushGuideDialog:method:2")?.intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     if (HookSettings.isNotificationPromptBlocked) {
                         dismissDialogFragment(chain.thisObject)
@@ -84,6 +93,7 @@ internal object DomesticNotificationPromptBlockHook {
     private fun createDismissedDialog(fragment: Any?): Dialog? {
         val context = findContext(fragment) ?: return null
         return Dialog(context).apply {
+            dialogs[this] = true
             setOnShowListener { dialog -> dialog.dismiss() }
         }
     }

@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.view.View
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -23,7 +24,23 @@ internal object HomeSaveCardLongPressCompat {
         var clearing = false
     }
 
+    private val attachListeners = WeakHashMap<View, View.OnAttachStateChangeListener>()
+    private val originalTags = WeakHashMap<View, Any?>()
+    fun disposeForReload() {
+        activePopups.keys.toList().forEach(::dismiss)
+        attachListeners.toMap().forEach { (view, listener) -> view.removeOnAttachStateChangeListener(listener) }
+        originalTags.toMap().forEach { (view, tag) -> view.tag = tag }
+        attachListeners.clear()
+        originalTags.clear()
+        rows.clear()
+        activePopups.clear()
+        pendingPopup.remove()
+        bindings.clear()
+        installed.clear()
+    }
+
     fun bind(card: View, row: View, index: Int, subscription: Boolean) {
+        if (ModuleLifetime.isRetiring) return
         if (rows[row]?.let { it.card.get() === card && it.index == index && it.subscription == subscription } == true) return
         val binding = bindings.getOrPut(card.javaClass to row.javaClass) {
             HomeSaveCardLongPressBinding.resolve(card.javaClass, row.javaClass, View::class.java)
@@ -41,16 +58,20 @@ internal object HomeSaveCardLongPressCompat {
             install(binding)
             if (binding.onLongClick !in installed || binding.popupCallback !in installed) return
             binding.listenerSetter.invoke(row, card)
+            if (!originalTags.containsKey(row)) originalTags[row] = row.tag
             row.tag = index.toString()
             rows[row] = Row(card, row, content, index, subscription, binding)
-            row.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            attachListeners.remove(row)?.let(row::removeOnAttachStateChangeListener)
+            val listener = object : View.OnAttachStateChangeListener {
                 override fun onViewAttachedToWindow(v: View) = Unit
                 override fun onViewDetachedFromWindow(v: View) {
                     val target = rows[v] ?: return
                     val owner = target.card.get() ?: return
                     if (activePopups[owner] === target) dismiss(owner)
                 }
-            })
+            }
+            attachListeners[row] = listener
+            row.addOnAttachStateChangeListener(listener)
         }.onFailure { XposedCompat.logW("[HomeSaveCardLongPressCompat] bind failed: ${it.message}") }
     }
 
@@ -58,7 +79,8 @@ internal object HomeSaveCardLongPressCompat {
         val mod = XposedCompat.module ?: return
         // 先安装清理回调，避免后续安装失败时遗留选中高亮。
         if (binding.popupCallback !in installed) {
-            mod.hook(binding.popupCallback).intercept { chain ->
+            mod.hook(binding.popupCallback).setId("HomeSaveCardLongPressCompat:install:binding-popupCallback").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val card = chain.thisObject ?: return@intercept chain.proceed()
                 val remove = chain.args[0] as? Boolean ?: return@intercept chain.proceed()
                 val target = if (remove) activePopups[card] else
@@ -70,7 +92,8 @@ internal object HomeSaveCardLongPressCompat {
             installed += binding.popupCallback
         }
         if (binding.onLongClick !in installed) {
-            mod.hook(binding.onLongClick).intercept { chain ->
+            mod.hook(binding.onLongClick).setId("HomeSaveCardLongPressCompat:install:binding-onLongClick").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val card = chain.thisObject ?: return@intercept chain.proceed()
                 val view = chain.args.firstOrNull() as? View ?: return@intercept chain.proceed()
                 val target = rows[view]

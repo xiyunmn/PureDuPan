@@ -77,7 +77,7 @@ object DomesticSwanPreloadBlockHook {
                 Context::class.java,
                 Bundle::class.java,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticSwanPreloadBlockHook:hook:method").intercept { chain ->
                     if (isEnabled()) {
                         XposedCompat.logD("[DomesticSwanPreloadBlockHook] SwanClientPuppet.tryPreload blocked")
                         chain.thisObject
@@ -115,7 +115,7 @@ object DomesticSwanPreloadBlockHook {
             XposedCompat.log("[DomesticSwanPreloadBlockHook] ${clazz.name}.$methodName NOT FOUND")
             return 0
         }
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DomesticSwanPreloadBlockHook:hookVoidPreloadMethod:method").intercept { chain ->
             if (isEnabled()) {
                 XposedCompat.logD("[DomesticSwanPreloadBlockHook] ${clazz.name}.$methodName blocked")
                 null
@@ -129,7 +129,7 @@ object DomesticSwanPreloadBlockHook {
     private fun hookDomesticPrefetchManager(cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
         DomesticSwanPreloadResolver.resolvePrefetchEventMethod(cl)?.let { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("DomesticSwanPreloadBlockHook:hookDomesticPrefetchManager:method").intercept { chain ->
                 if (isEnabled()) {
                     XposedCompat.logD("[DomesticSwanPreloadBlockHook] Swan prefetch event blocked")
                     null

@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Activity
 import android.os.Bundle
 import android.os.SystemClock
@@ -36,6 +37,8 @@ internal object IntlAudioCircleStartupShowBlockHook {
     @Volatile private var allowedCount = 0
 
     internal fun hook(cl: ClassLoader) {
+        // 旧代已交还待恢复调用，热重载不重新进入冷启动抑制阶段。
+        if (ModuleLifetime.hotReloaded) return
         if (!isEnabled()) {
             XposedCompat.log("[IntlAudioCircleStartupShowBlockHook] skipped: config disabled")
             return
@@ -85,7 +88,8 @@ internal object IntlAudioCircleStartupShowBlockHook {
         for (method in apiClass.declaredMethods) {
             if (method.name != "showAudioCircleViewManagerAudio") continue
             method.isAccessible = true
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlAudioCircleStartupShowBlockHook:hookShowAudioCircleMethods:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val receiver = chain.thisObject
                 val activity = chain.args.firstOrNull() as? Activity
                 val methodLabel = "${method.name}/${method.parameterTypes.size}"
@@ -115,7 +119,8 @@ internal object IntlAudioCircleStartupShowBlockHook {
         for (method in apiClass.declaredMethods) {
             if (method.name != "startAudioPlayerActivity") continue
             method.isAccessible = true
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlAudioCircleStartupShowBlockHook:hookAudioEntrySignals:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 markAudioEntryReached("api:${method.name}/${method.parameterTypes.size}")
                 chain.proceed()
             }
@@ -125,14 +130,16 @@ internal object IntlAudioCircleStartupShowBlockHook {
         val playerClass = XposedCompat.findClassOrNull(AUDIO_PLAYER_ACTIVITY_CLASS_NAME, cl)
         if (playerClass != null) {
             XposedCompat.findMethodOrNull(playerClass, "onCreate", Bundle::class.java)?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("IntlAudioCircleStartupShowBlockHook:hookAudioEntrySignals:method:2").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     markAudioEntryReached("activity:onCreate")
                     chain.proceed()
                 }
                 installed++
             }
             XposedCompat.findMethodOrNull(playerClass, "onResume")?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("IntlAudioCircleStartupShowBlockHook:hookAudioEntrySignals:method:3").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     markAudioEntryReached("activity:onResume")
                     chain.proceed()
                 }

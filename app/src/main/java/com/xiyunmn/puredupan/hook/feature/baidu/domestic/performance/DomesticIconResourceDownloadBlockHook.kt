@@ -23,7 +23,7 @@ object DomesticIconResourceDownloadBlockHook {
                 return
             }
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("DomesticIconResourceDownloadBlockHook:hook:method").intercept { chain ->
                 if (isEnabled()) {
                     XposedCompat.logD("[DomesticIconResourceDownloadBlockHook] startDownload blocked")
                     null

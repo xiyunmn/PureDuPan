@@ -32,7 +32,7 @@ internal object DomesticGameCenterRuntimeBlockHook {
                 viewModelClass,
                 BaiduDomesticHookPoints.GAME_CENTER_CAN_SHOW_METHOD,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticGameCenterRuntimeBlockHook:hook:method").intercept { chain ->
                     if (isEnabled()) {
                         XposedCompat.logD("[GameCenterRuntimeBlockHook] gameCenterCanShow blocked")
                         false
@@ -55,7 +55,7 @@ internal object DomesticGameCenterRuntimeBlockHook {
                     BaiduDomesticHookPoints.GAME_CENTER_FETCH_CONFIG_METHOD,
                     lifecycleOwnerClass,
                 )?.let { method ->
-                    mod.hook(method).intercept { chain ->
+                    mod.hook(method).setId("DomesticGameCenterRuntimeBlockHook:hook:method:2").intercept { chain ->
                         if (isEnabled()) {
                             XposedCompat.logD("[GameCenterRuntimeBlockHook] fetchGameCenterConfig blocked")
                             null

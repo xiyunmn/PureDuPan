@@ -6,6 +6,7 @@ import android.os.Looper
 import com.xiyunmn.puredupan.hook.config.model.MarketingPopup
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduMarketingTransferHookPoints as Points
 import java.lang.ref.WeakReference
 import java.lang.reflect.Member
@@ -18,6 +19,7 @@ internal object MarketingSearchTransferBlockHook {
     private const val TAG = "MarketingSearchTransferBlockHook"
     private val installed = mutableSetOf<Member>()
     private val limitStates = WeakHashMap<Any, LimitState>()
+    private val failureDialogs = WeakHashMap<AlertDialog, () -> Unit>()
 
     private data class LimitState(val activity: WeakReference<Activity>, val errno: Int, val count: Int)
 
@@ -27,6 +29,16 @@ internal object MarketingSearchTransferBlockHook {
         installCoupon(cl)
         installSpace(cl)
         installLimit(cl)
+    }
+
+    internal fun disposeForReload() {
+        val pending = failureDialogs.toMap()
+        failureDialogs.clear()
+        pending.forEach { (dialog, cancel) ->
+            dialog.setOnDismissListener(null)
+            dialog.dismiss()
+            cancel()
+        }
     }
 
     private fun enabled(option: MarketingPopup) = HookSettings.isMarketingPopupBlocked(option)
@@ -180,7 +192,7 @@ internal object MarketingSearchTransferBlockHook {
         synchronized(installed) {
             if (constructor !in installed) {
                 constructor.isAccessible = true
-                mod.hook(constructor).intercept { chain ->
+                mod.hook(constructor).setId("MarketingSearchTransferBlockHook:installLimitOwner:constructor").intercept { chain ->
                     val result = chain.proceed()
                     val instance = chain.thisObject
                     val activity = chain.args[1] as? Activity
@@ -232,7 +244,8 @@ internal object MarketingSearchTransferBlockHook {
         synchronized(installed) {
             if (method in installed) return
             method.isAccessible = true
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("MarketingSearchTransferBlockHook:install:method").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val handled = runCatching { handler(chain.thisObject, chain.args.toList()) }
                     .onFailure { XposedCompat.logW("[$TAG] ${method.name}: ${it.javaClass.simpleName}") }
                     .getOrDefault(false)
@@ -273,7 +286,8 @@ internal object MarketingSearchTransferBlockHook {
             .setMessage(hostText(activity, messageResource, fallback))
             .setPositiveButton(hostText(activity, "know_it", "知道了"), null)
             .create()
-        dialog.setOnDismissListener { onDismiss() }
+        failureDialogs[dialog] = onDismiss
+        dialog.setOnDismissListener { failureDialogs.remove(dialog)?.invoke() }
         dialog.show()
         return true
     }

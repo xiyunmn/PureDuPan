@@ -8,16 +8,14 @@ import android.os.Handler
 import android.os.Looper
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
-import com.xiyunmn.puredupan.hook.core.HookUtils
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduThemeHookPoints
 import com.xiyunmn.puredupan.hook.ui.HostThemeChangeDispatcher
 import java.lang.ref.WeakReference
-import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
-import java.lang.reflect.Proxy
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal data class BaiduSystemNightModeHookPoints(
@@ -43,15 +41,36 @@ internal class BaiduSystemNightModeSyncHook(
     private val logTag: String,
     private val hookPoints: BaiduSystemNightModeHookPoints,
 ) {
-    private companion object {
+    internal companion object {
+        private val owners = mutableSetOf<BaiduSystemNightModeSyncHook>()
+        private val restoredOwners = mutableMapOf<String, Array<Any?>>()
+
+        fun exportState(): ArrayList<Array<Any?>> = ArrayList(owners.map { owner ->
+            arrayOf<Any?>(
+                "night-owner", owner.logTag, owner.activeActivityRef, owner.mainActivityRef,
+                owner.settingsActivityRef, owner.flutterSearchActivityRef, owner.flutterSearchResumed,
+                owner.flutterSearchDefaultSkin, owner.bottomBarThemeRefresh.initializedActivity()?.let(::WeakReference),
+            )
+        })
+
+        fun restoreOwner(state: Array<Any?>) {
+            val tag = state[1] as String
+            val owner = owners.firstOrNull { it.logTag == tag && it.hostLoader != null }
+            if (owner == null) restoredOwners[tag] = state else owner.restoreTargets(state)
+        }
+        fun disposeAllForReload() {
+            owners.toList().forEach { it.disposeForReload() }
+            owners.clear()
+            restoredOwners.clear()
+        }
         const val SYNC_DELAY_MS = 300L
         const val NIGHT_MODE_POLL_INTERVAL_MS = 700L
-        const val FALLBACK_REFRESH_DELAY_MS = 400L
         const val AVATAR_REFRESH_DELAY_MS = 160L
         const val AVATAR_REFRESH_STABLE_DELAY_MS = 600L
         const val AVATAR_REFRESH_DEBOUNCE_MS = 500L
     }
 
+    private var hostLoader: ClassLoader? = null
     private val hookState = HookState()
     private val startupSkinSelected = AtomicBoolean(false)
     private val bottomBarThemeRefresh = BaiduBottomBarThemeRefreshCompat(
@@ -80,7 +99,33 @@ internal class BaiduSystemNightModeSyncHook(
     private var flutterSearchDefaultSkin: Boolean? = null
     private var flutterSearchRefreshing = false
 
+    private fun restoreTargets(state: Array<Any?>) {
+        fun activityAt(index: Int): Activity? = (state[index] as? WeakReference<*>)?.get() as? Activity
+        activeActivityRef = activityAt(2)?.let(::WeakReference)
+        mainActivityRef = activityAt(3)?.let(::WeakReference)
+        settingsActivityRef = activityAt(4)?.let(::WeakReference)
+        flutterSearchActivityRef = activityAt(5)?.let(::WeakReference)
+        flutterSearchResumed = state[6] as Boolean
+        flutterSearchDefaultSkin = state[7] as? Boolean
+        bottomBarThemeRefresh.restoreInitializedActivity(activityAt(8))
+        val cl = hostLoader ?: return
+        activeActivityRef?.get()?.takeIf { !it.isDestroyed && !it.isFinishing }?.let {
+            if (HookSettings.isFollowSystemNightModeEnabled) ensureNightModePolling(cl)
+        }
+    }
+
+    internal fun disposeForReload() {
+        mainHandler.removeCallbacksAndMessages(null)
+        bottomBarThemeRefresh.disposeForReload()
+        activeActivityRef = null
+        mainActivityRef = null
+        settingsActivityRef = null
+        flutterSearchActivityRef = null
+    }
+
     internal fun hook(cl: ClassLoader) {
+        owners += this
+        hostLoader = cl
         val mod = XposedCompat.module ?: return
         FileFilterThemeCompat.hook(cl)
         ComposeSearchThemeCompat.hook(cl)
@@ -101,7 +146,8 @@ internal class BaiduSystemNightModeSyncHook(
             installChangeSkinObserverHook(cl)
             installSkinManagerObserverHook(cl)
 
-            val queueSyncLogic = { activity: Activity ->
+            val queueSyncLogic = sync@ { activity: Activity ->
+                if (ModuleLifetime.isRetiring) return@sync
                 activeActivityRef = WeakReference(activity)
                 updateMainActivityRef(activity)
                 updateSettingsActivityRef(activity)
@@ -115,7 +161,8 @@ internal class BaiduSystemNightModeSyncHook(
             }
 
             XposedCompat.findMethodOrNull(baseActivityClass, "onResume")?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("BaiduSystemNightModeSyncHook:baseResume:${method.declaringClass.name}").intercept { chain ->
+                    if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     (chain.thisObject as? Activity)?.let { queueSyncLogic(it) }
                     result
@@ -127,7 +174,8 @@ internal class BaiduSystemNightModeSyncHook(
                 "onConfigurationChanged",
                 Configuration::class.java,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("BaiduSystemNightModeSyncHook:baseConfiguration:${method.declaringClass.name}").intercept { chain ->
+                    if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     (chain.thisObject as? Activity)?.let { queueSyncLogic(it) }
                     result
@@ -135,6 +183,7 @@ internal class BaiduSystemNightModeSyncHook(
             }
 
             installFlutterSearchActivityHooks(cl, queueSyncLogic)
+            restoredOwners.remove(logTag)?.let(::restoreTargets)
 
             log(
                 "hooks INSTALLED: BaseActivity.onResume + " +
@@ -160,7 +209,8 @@ internal class BaiduSystemNightModeSyncHook(
             ) ?: return
             val defaultSkin = configClass.getField("DEFAULT_SKIN").get(null) as? String ?: return
 
-            mod.hook(init).intercept { chain ->
+            mod.hook(init).setId("BaiduSystemNightModeSyncHook:startupSkin:${init.declaringClass.name}").intercept { chain ->
+                if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 if (startupSkinSelected.compareAndSet(false, true) && HookSettings.isFollowSystemNightModeEnabled) {
                     val context = chain.args[0] as? Context
                     if (context != null) {
@@ -191,7 +241,8 @@ internal class BaiduSystemNightModeSyncHook(
             ?: return
         if (!FlutterSearchThemeRefresh.hook(cl)) return
         XposedCompat.findMethodOrNull(activityClass, "onResume")?.let { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("BaiduSystemNightModeSyncHook:flutterResume:${method.declaringClass.name}").intercept { chain ->
+                if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val result = chain.proceed()
                 (chain.thisObject as? Activity)?.takeIf(::isFlutterSearchActivity)?.let { activity ->
                     if (flutterSearchActivityRef?.get() !== activity) {
@@ -207,7 +258,8 @@ internal class BaiduSystemNightModeSyncHook(
             }
         }
         XposedCompat.findMethodOrNull(activityClass, "onPause")?.let { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("BaiduSystemNightModeSyncHook:flutterPause:${method.declaringClass.name}").intercept { chain ->
+                if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 (chain.thisObject as? Activity)?.let { activity ->
                     if (flutterSearchActivityRef?.get() === activity) flutterSearchResumed = false
                 }
@@ -215,7 +267,8 @@ internal class BaiduSystemNightModeSyncHook(
             }
         }
         activityClass.superclass?.let { XposedCompat.findMethodOrNull(it, "onDestroy") }?.let { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("BaiduSystemNightModeSyncHook:flutterDestroy:${method.declaringClass.name}").intercept { chain ->
+                if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 (chain.thisObject as? Activity)?.let { activity ->
                     FlutterSearchThemeRefresh.cancel(activity)
                     if (flutterSearchActivityRef?.get() === activity) {
@@ -246,6 +299,7 @@ internal class BaiduSystemNightModeSyncHook(
     }.getOrNull()
 
     private fun requestFlutterSearchRefresh(cl: ClassLoader) {
+        if (ModuleLifetime.isRetiring) return
         val activity = flutterSearchActivityRef?.get() ?: return
         if (activity.isFinishing || activity.isDestroyed) return
         val defaultSkin = resolveDefaultSkin(cl, activity) ?: return
@@ -294,7 +348,8 @@ internal class BaiduSystemNightModeSyncHook(
 
                 for (method in methods) {
                     method.isAccessible = true
-                    mod.hook(method).intercept { chain ->
+                    mod.hook(method).setId("BaiduSystemNightModeSyncHook:changeSkinObserver:${method.declaringClass.name}").intercept { chain ->
+                        if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                         val result = chain.proceed()
                         HostThemeChangeDispatcher.notifyChanged("changeSkin")
                         result
@@ -338,11 +393,24 @@ internal class BaiduSystemNightModeSyncHook(
                     return
                 }
             XposedCompat.findMethodOrNull(skinManagerClass, "notifySkinUpdate")?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("BaiduSystemNightModeSyncHook:skinUpdate:${method.declaringClass.name}").intercept { chain ->
+                    if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     // 在浅色恢复和异步深色加载的共同结束点刷新界面。
                     // 浅色分支不会触发 SkinLoaderListener.onSuccess。
-                    mainHandler.post { requestFlutterSearchRefresh(cl) }
+                    mainHandler.post {
+                        if (!ModuleLifetime.isRetiring) {
+                            requestFlutterSearchRefresh(cl)
+                            activeActivityRef?.get()?.let { target ->
+                                updateMainActivityRef(target)
+                                updateSettingsActivityRef(target)
+                                HostThemeChangeDispatcher.notifyChanged("skin-update-complete")
+                                syncSettingsNightSwitch(resolveSystemNight(target))
+                                scheduleForceAvatarRefresh("skin-update-complete")
+                                pulseDecor(target)
+                            }
+                        }
+                    }
                     result
                 }
             }
@@ -354,7 +422,8 @@ internal class BaiduSystemNightModeSyncHook(
                     String::class.java,
                     listenerClass,
                 )?.let { method ->
-                    mod.hook(method).intercept { chain ->
+                    mod.hook(method).setId("BaiduSystemNightModeSyncHook:loadDefaultSkin:${method.declaringClass.name}").intercept { chain ->
+                        if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                         val result = chain.proceed()
                         HostThemeChangeDispatcher.notifyChanged("skinManager.loadDefaultUpdateSkin")
                         result
@@ -362,7 +431,8 @@ internal class BaiduSystemNightModeSyncHook(
                 }
             }
             XposedCompat.findMethodOrNull(skinManagerClass, "restoreDefaultTheme")?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("BaiduSystemNightModeSyncHook:restoreDefaultTheme:${method.declaringClass.name}").intercept { chain ->
+                    if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     HostThemeChangeDispatcher.notifyChanged("skinManager.restoreDefaultTheme")
                     result
@@ -407,7 +477,8 @@ internal class BaiduSystemNightModeSyncHook(
 
             for (method in methods) {
                 method.isAccessible = true
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("BaiduSystemNightModeSyncHook:refreshTabSkin:${method.declaringClass.name}").intercept { chain ->
+                    if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     (chain.thisObject as? Activity)?.let {
                         updateMainActivityRef(it)
@@ -446,7 +517,8 @@ internal class BaiduSystemNightModeSyncHook(
                     return
                 }
 
-            mod.hook(onResumeMethod).intercept { chain ->
+            mod.hook(onResumeMethod).setId("BaiduSystemNightModeSyncHook:settingsResume:${onResumeMethod.declaringClass.name}").intercept { chain ->
+                if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val result = chain.proceed()
                 (chain.thisObject as? Activity)?.let { activity ->
                     updateSettingsActivityRef(activity)
@@ -469,7 +541,7 @@ internal class BaiduSystemNightModeSyncHook(
 
         val runnable = object : Runnable {
             override fun run() {
-                if (!HookSettings.isFollowSystemNightModeEnabled) {
+                if (ModuleLifetime.isRetiring || !HookSettings.isFollowSystemNightModeEnabled) {
                     pollRunnable = null
                     return
                 }
@@ -487,6 +559,7 @@ internal class BaiduSystemNightModeSyncHook(
     }
 
     private fun runNightModeSync(cl: ClassLoader, activity: Activity) {
+        if (ModuleLifetime.isRetiring) return
         try {
             val isSystemNight = resolveSystemNight(activity)
 
@@ -496,12 +569,11 @@ internal class BaiduSystemNightModeSyncHook(
                 logD("host skin already matches system: night=$isSystemNight")
                 return
             }
-            val listenerClass = XposedCompat.findClassOrNull(hookPoints.skinLoaderListenerClassName, cl)
             val changeMethod = resolveChangeSkinMethod(cl)
             if (changeMethod != null) {
                 changeMethod.isAccessible = true
                 bottomBarThemeRefresh.expectHostThemeChange()
-                applySystemSkin(activity, changeMethod, listenerClass, isSystemNight)
+                applySystemSkin(changeMethod, isSystemNight)
                 lastAppliedNightMode = isSystemNight
                 return
             }
@@ -573,83 +645,14 @@ internal class BaiduSystemNightModeSyncHook(
             parameterTypes[1].name == hookPoints.skinLoaderListenerClassName
     }
 
-    private fun applySystemSkin(
-        activity: Activity,
-        changeMethod: Method,
-        listenerClass: Class<*>?,
-        isSystemNight: Boolean,
-    ) {
-        val skinName = if (isSystemNight) hookPoints.darkSkinTheme else null
-
-        try {
-            if (listenerClass != null) {
-                val listener = createSkinLoaderListener(
-                    listenerClass,
-                    activity,
-                    isSystemNight,
-                )
-                changeMethod.invoke(null, skinName, listener)
-            } else {
-                changeMethod.invoke(null, skinName, null)
-                syncSettingsNightSwitch(isSystemNight)
-                mainHandler.postDelayed({
-                    scheduleForceAvatarRefresh("changeSkin-fallback")
-                    pulseDecor(activity)
-                }, FALLBACK_REFRESH_DELAY_MS)
-            }
-
-            if (isSystemNight) {
-                log("Changed to Dark Skin")
-            } else {
-                syncSettingsNightSwitch(false)
-                scheduleForceAvatarRefresh("changeSkin-default")
-                pulseDecor(activity)
-                log("Changed to Default Skin")
-            }
-        } catch (t: Throwable) {
-            throw t
-        }
-    }
-
-    private fun createSkinLoaderListener(
-        listenerClass: Class<*>,
-        activity: Activity,
-        expectedNightMode: Boolean,
-    ): Any {
-        val activityRef = WeakReference(activity)
-        val handler = InvocationHandler { proxy, method, args ->
-            when (method.name) {
-                "toString" -> return@InvocationHandler "$logTag.SkinLoaderListenerProxy"
-                "hashCode" -> return@InvocationHandler System.identityHashCode(proxy)
-                "equals" -> return@InvocationHandler proxy === args?.firstOrNull()
-            }
-
-            if (method.name == "onSuccess") {
-                val target = activityRef.get()
-                mainHandler.post {
-                    if (target != null) {
-                        updateMainActivityRef(target)
-                        updateSettingsActivityRef(target)
-                        HostThemeChangeDispatcher.notifyChanged("skin-loader-success")
-                        syncSettingsNightSwitch(expectedNightMode)
-                        scheduleForceAvatarRefresh("changeSkin-success")
-                        pulseDecor(target)
-                    }
-                }
-            } else if (method.name == "onFailed" || method.name.startsWith("mo")) {
-                logD("skin loader callback ${method.name}: ${args?.firstOrNull()}")
-            }
-            HookUtils.getDefaultReturnValue(method.returnType)
-        }
-
-        return Proxy.newProxyInstance(
-            listenerClass.classLoader ?: javaClass.classLoader,
-            arrayOf(listenerClass),
-            handler,
-        )
+    private fun applySystemSkin(changeMethod: Method, isSystemNight: Boolean) {
+        // 宿主 wrapper 保留自身监听器；模块不向异步加载器发布代理。
+        changeMethod.invoke(null, if (isSystemNight) hookPoints.darkSkinTheme else null, null)
+        log(if (isSystemNight) "Changed to Dark Skin" else "Changed to Default Skin")
     }
 
     private fun scheduleForceAvatarRefresh(reason: String) {
+        if (ModuleLifetime.isRetiring) return
         val now = System.currentTimeMillis()
         if (now - lastAvatarRefreshRequestMs < AVATAR_REFRESH_DEBOUNCE_MS) return
         lastAvatarRefreshRequestMs = now
@@ -670,6 +673,7 @@ internal class BaiduSystemNightModeSyncHook(
     }
 
     private fun forceRefreshMineAvatar(activity: Activity?, reason: String) {
+        if (ModuleLifetime.isRetiring) return
         val mainActivityClassName = currentMainActivityClassName() ?: return
         if (activity == null || activity.javaClass.name != mainActivityClassName) return
         if (activity.isFinishing || activity.isDestroyed) return
@@ -777,6 +781,7 @@ internal class BaiduSystemNightModeSyncHook(
         if (activity.isFinishing || activity.isDestroyed) return
 
         mainHandler.post {
+            if (ModuleLifetime.isRetiring) return@post
             try {
                 val item = findDarkSettingItem(activity)
                     ?: run {

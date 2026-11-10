@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduBottomBarHookPoints
@@ -57,6 +58,24 @@ internal class BaiduBottomBarThemeRefreshCompat(
         val isExpectedThemeChange: Boolean,
     )
 
+    internal fun initializedActivity(): Activity? = initializedActivityRef?.get()
+
+    internal fun restoreInitializedActivity(activity: Activity?) {
+        initializedActivityRef = activity?.let(::WeakReference)
+    }
+
+    internal fun disposeForReload() {
+        mainHandler.removeCallbacksAndMessages(null)
+        pendingCompletion = null
+        mainActivityRef = null
+        initializedActivityRef = null
+        handles = null
+        pendingReveals.forEach { (view, visibility) -> view.visibility = visibility }
+        pendingReveals.clear()
+    }
+
+    private val pendingReveals = mutableMapOf<View, Int>()
+
     internal fun hook(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
         if (!hookState.markInstalled()) return
@@ -75,7 +94,8 @@ internal class BaiduBottomBarThemeRefreshCompat(
             handles = resolved
             refreshEntries.forEach { method ->
                 method.isAccessible = true
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("BaiduBottomBarThemeRefreshCompat:themeEntry:${method.declaringClass.name}").intercept { chain ->
+                    if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     (chain.thisObject as? Activity)?.let { activity ->
                         if (themeRefreshCompletionMethodName == null) {
@@ -148,7 +168,8 @@ internal class BaiduBottomBarThemeRefreshCompat(
             method.name == methodName && method.parameterTypes.size == 1
         } ?: error("MainActivity.$methodName(selectedTab) not found")
         completion.isAccessible = true
-        mod.hook(completion).intercept { chain ->
+        mod.hook(completion).setId("BaiduBottomBarThemeRefreshCompat:themeCompletion:${completion.declaringClass.name}").intercept { chain ->
+            if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
             val activity = chain.thisObject as? Activity
             val selectedTab = chain.args.firstOrNull() as? View
             val pending = pendingCompletion
@@ -184,10 +205,10 @@ internal class BaiduBottomBarThemeRefreshCompat(
                 method.parameterTypes.contentEquals(arrayOf(Intent::class.java))
         } ?: error("MainActivity.initTabs(Intent) not found")
         val tabRootField = requireField(mainActivityClass, BaiduBottomBarHookPoints.TAB_ROOT_FIELD)
-        val contentViewField = requireField(mainActivityClass, BaiduBottomBarHookPoints.CONTENT_VIEW_FIELD)
 
         initTabs.isAccessible = true
-        mod.hook(initTabs).intercept { chain ->
+        mod.hook(initTabs).setId("BaiduBottomBarThemeRefreshCompat:coldStartTabs:${initTabs.declaringClass.name}").intercept { chain ->
+            if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
             val activity = chain.thisObject as? Activity
             val isColdSelection = activity != null && resolved.childIndex.getInt(activity) < 0
             val tabRoot = if (isColdSelection) tabRootField.get(activity) as? View else null
@@ -199,15 +220,16 @@ internal class BaiduBottomBarThemeRefreshCompat(
             val result = chain.proceed()
             if (activity != null && tabRoot != null && originalVisibility != null) {
                 finishSelectedAnimationByIndex(activity, resolved, "cold-start initTabs")
-                val contentView = contentViewField.get(activity) as? View
+                pendingReveals[tabRoot] = originalVisibility
                 val reveal = Runnable {
+                    pendingReveals.remove(tabRoot)
                     if (!activity.isFinishing && !activity.isDestroyed) {
                         finishSelectedAnimationByIndex(activity, resolved, "cold-start reveal")
                         tabRoot.visibility = originalVisibility
                         logD("cold-start bottom bar revealed with content")
                     }
                 }
-                if (contentView != null) contentView.post(reveal) else mainHandler.post(reveal)
+                mainHandler.post(reveal)
             }
             result
         }

@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Activity
 import android.content.ClipData
 import android.content.ComponentName
@@ -28,6 +29,16 @@ import java.util.Locale
 internal object DownloadOpenWithHook {
     private const val TAG = "DownloadOpenWithHook"
     private val installed = mutableSetOf<Method>()
+    private val buttons = java.util.WeakHashMap<View, Boolean>()
+    fun disposeForReload() {
+        buttons.keys.toList().forEach { button ->
+            button.setOnClickListener(null)
+            button.tag = null
+            (button.parent as? ViewGroup)?.removeView(button)
+        }
+        buttons.clear()
+        installed.clear()
+    }
     private class OpenButtonState(var path: String? = null)
 
     fun hook(cl: ClassLoader) {
@@ -44,7 +55,7 @@ internal object DownloadOpenWithHook {
             val getUri = fileProvider.getMethod("getUriForFile", android.content.Context::class.java, String::class.java, File::class.java)
 
             fun update(instance: Any, models: List<*>?, preserveSelection: Boolean = false) {
-                if (!transmission.isInstance(instance)) return
+                if (ModuleLifetime.isRetiring || !transmission.isInstance(instance)) return
                 val activity = getActivity.invoke(instance) as? Activity ?: return
                 val root = getView.invoke(instance) as? View ?: return
                 val resources = root.resources
@@ -65,6 +76,7 @@ internal object DownloadOpenWithHook {
                     (button.parent as ViewGroup).removeView(button)
                     button.id = View.generateViewId()
                     button.tag = OpenButtonState()
+                    buttons[button] = true
                     button.text = UiText.Settings.OPEN_WITH_BUTTON
                     button.contentDescription = UiText.Settings.OPEN_WITH
                     button.visibility = View.VISIBLE
@@ -98,7 +110,8 @@ internal object DownloadOpenWithHook {
 
             fun hookAfter(method: Method, after: (Any, List<Any?>) -> Unit) {
                 if (method !in installed) {
-                    mod.hook(method).intercept { chain ->
+                    mod.hook(method).setId("DownloadOpenWithHook:hookAfter:method").intercept { chain ->
+                        if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                         val result = chain.proceed()
                         runCatching { after(chain.thisObject!!, chain.args) }
                             .onFailure { XposedCompat.logW("[$TAG] button update failed: ${it.message}") }
@@ -113,7 +126,8 @@ internal object DownloadOpenWithHook {
             }
             val other = base.getDeclaredMethod("showOtherAppBtn", Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
             if (other !in installed) {
-                mod.hook(other).intercept { chain ->
+                mod.hook(other).setId("DownloadOpenWithHook:hookAfter:other").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     if (HookSettings.settingsSnapshot().isDownloadOpenWithEnabled) chain.proceed(arrayOf(false, false))
                     else chain.proceed()
                 }

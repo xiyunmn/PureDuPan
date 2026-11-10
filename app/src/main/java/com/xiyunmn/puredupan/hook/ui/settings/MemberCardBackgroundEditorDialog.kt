@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.ui.settings
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
@@ -29,6 +30,16 @@ internal object MemberCardBackgroundEditorDialog {
     private const val LOG_TAG = "[MemberCardBackgroundEditorDialog]"
     private class Request(val owner: AlertDialog, val uri: String, val dialog: AlertDialog)
     private var currentRequest: Request? = null
+
+    fun disposeForReload() {
+        val request = currentRequest
+        currentRequest = null
+        request?.dialog?.let {
+            SettingsReloadCleanup.disposeDialog(it)
+            it.setOnDismissListener(null)
+            it.dismiss()
+        }
+    }
 
     fun cancel(owner: AlertDialog) {
         val request = currentRequest?.takeIf { it.owner === owner } ?: return
@@ -65,9 +76,9 @@ internal object MemberCardBackgroundEditorDialog {
                 .create()
             val request = Request(owner, uriString, dialog)
             currentRequest = request
-            Thread({
+            ModuleLifetime.launchWorker("PureDuPan-card-editor") {
                 val bitmap = loadMemberCardBackgroundPreviewBitmap(context, uriString, editorAspectRatio)
-                Handler(Looper.getMainLooper()).post {
+                ModuleLifetime.postResult(Handler(Looper.getMainLooper())) {
                     val activity = context as? Activity
                     if (
                         currentRequest !== request || !owner.isShowing ||
@@ -76,7 +87,7 @@ internal object MemberCardBackgroundEditorDialog {
                     ) {
                         if (currentRequest === request) currentRequest = null
                         bitmap?.recycle()
-                        return@post
+                        return@postResult
                     }
                     if (bitmap == null) {
                         currentRequest = null
@@ -89,7 +100,7 @@ internal object MemberCardBackgroundEditorDialog {
                         }
                     }
                 }
-            }, "PureDuPan-card-editor").start()
+            }
         } catch (t: Throwable) {
             cancel(owner)
             XposedCompat.logW("$LOG_TAG show failed: ${t.message}")
@@ -299,10 +310,11 @@ internal object MemberCardBackgroundEditorDialog {
                 SettingsDialogLayout.createDialogScrollContainer(context, root),
                 FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT),
             )
-            dialog.setOnDismissListener {
+            SettingsReloadCleanup.onDispose(dialog) {
                 if (currentRequest?.dialog === dialog) currentRequest = null
                 pendingTransformSave.flush()
                 active = false
+                editorView.onScalePercentChanged = null
                 editorView.onTransformChanged = null
                 editorView.onGestureFinished = null
             }

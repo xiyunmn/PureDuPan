@@ -1,5 +1,7 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.membercard
 
+import com.xiyunmn.puredupan.hook.ui.settings.SettingsReloadCleanup
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Dialog
 import android.content.ContentResolver
 import android.content.ContentValues
@@ -113,7 +115,7 @@ internal object DomesticMemberCardCustomizeHook {
             XposedCompat.log("[MemberCardCustomizeHook] operation gate: myCardHasOperation NOT FOUND")
             return
         }
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("member-domestic:operation-gate").intercept { chain ->
             if (HookSettings.memberCardSnapshot().isMemberCardOperationHidden) {
                 XposedCompat.logD("[MemberCardCustomizeHook] member card operation blocked at logic gate")
                 false
@@ -143,7 +145,7 @@ internal object DomesticMemberCardCustomizeHook {
             return
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("member-domestic:initial-render").intercept { chain ->
             val result = chain.proceed()
             applyInitialMemberCardPlaceholders(result as? View)
             result
@@ -163,7 +165,7 @@ internal object DomesticMemberCardCustomizeHook {
             XposedCompat.log("[MemberCardCustomizeHook] render entry: setCardUi NOT FOUND")
             return
         }
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("member-domestic:card-render").intercept { chain ->
             val result = chain.proceed()
             try {
                 val fragment = chain.thisObject
@@ -185,6 +187,7 @@ internal object DomesticMemberCardCustomizeHook {
     }
 
     private fun applyMemberCardCustomization(root: View) {
+        if (ModuleLifetime.isRetiring) return
         val snapshot = HookSettings.memberCardSnapshot()
         val resources = root.resources ?: return
         val packageName = root.context?.packageName ?: return
@@ -213,7 +216,7 @@ internal object DomesticMemberCardCustomizeHook {
                     snapshot.memberCardBackgroundDimLightPercent > 0 ||
                     snapshot.memberCardBackgroundDimDarkPercent > 0)
             ) {
-                MemberCardBackgroundLayout.apply(background, ::applyCardBackground)
+                MemberCardBackgroundLayout.apply(background, "background-domestic", ::applyCardBackground)
             }
         }
 
@@ -348,10 +351,38 @@ internal object DomesticMemberCardCustomizeHook {
     }
 
     private fun applyCardClickBehavior(cardRoot: View, snapshot: SettingsSnapshot) {
-        MemberCardGestureBinding.apply(cardRoot, snapshot, ::openCustomBackgroundImage)
+        MemberCardGestureBinding.apply(cardRoot, snapshot, "member-domestic", ::openCustomBackgroundImage)
+    }
+
+    internal fun detachSizes(): ArrayList<Array<Any?>> = synchronized(originalSizes) {
+        val targets = ArrayList<Array<Any?>>()
+        originalSizes.forEach { (view, size) ->
+            targets.add(arrayOf("member-size-domestic", java.lang.ref.WeakReference(view), size.width, size.height))
+        }
+        originalSizes.clear()
+        targets
+    }
+
+    internal fun restoreOriginalSize(view: View, width: Int, height: Int) {
+        if (ModuleLifetime.isRetiring) return
+        originalSizes[view] = OriginalSize(width, height)
+    }
+
+    internal fun rebindSize(view: View) {
+        if (ModuleLifetime.isRetiring) return
+        applyCardSize(view, HookSettings.memberCardSnapshot(), recordDefault = false)
+    }
+
+    internal fun rebindGesture(view: View) {
+        MemberCardGestureBinding.apply(view, HookSettings.memberCardSnapshot(), "member-domestic", ::openCustomBackgroundImage)
+    }
+
+    internal fun rebindBackground(view: ImageView) {
+        MemberCardBackgroundLayout.apply(view, "background-domestic", ::applyCardBackground)
     }
 
     private fun openCustomBackgroundImage(view: View) {
+        if (ModuleLifetime.isRetiring) return
         try {
             val context = view.context ?: return
             val snapshot = HookSettings.memberCardSnapshot()
@@ -374,7 +405,7 @@ internal object DomesticMemberCardCustomizeHook {
                 setContentView(container)
                 setCanceledOnTouchOutside(true)
             }
-            dialog.show()
+            SettingsReloadCleanup.showDialog(dialog)
             dialog.window?.apply {
                 setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
                 setDimAmount(0.45f)
@@ -384,17 +415,17 @@ internal object DomesticMemberCardCustomizeHook {
                     ViewGroup.LayoutParams.MATCH_PARENT,
                 )
             }
-            Thread({
+            ModuleLifetime.launchWorker("PureDuPan-card-preview") {
                 val bitmap = loadOriginalBackgroundPreviewBitmap(context, uriString)
-                Handler(Looper.getMainLooper()).post {
+                ModuleLifetime.postResult(Handler(Looper.getMainLooper())) {
                     if (!dialog.isShowing) {
                         bitmap?.recycle()
-                        return@post
+                        return@postResult
                     }
                     if (bitmap == null) {
                         dialog.dismiss()
                         Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_EDITOR_FAILED, Toast.LENGTH_SHORT).show()
-                        return@post
+                        return@postResult
                     }
                     container.removeAllViews()
                     container.addView(ZoomableImageView(context, bitmap), FrameLayout.LayoutParams(
@@ -422,7 +453,7 @@ internal object DomesticMemberCardCustomizeHook {
                         marginEnd = (12 * density).toInt()
                     })
                 }
-            }, "PureDuPan-card-preview").start()
+            }
             XposedCompat.logD("[MemberCardCustomizeHook] custom background preview opened")
         } catch (e: Exception) {
             XposedCompat.logW("[MemberCardCustomizeHook] open custom background failed: ${e.message}")
@@ -623,7 +654,7 @@ internal object DomesticMemberCardCustomizeHook {
         } catch (e: SecurityException) {
             deniedBackgroundSelection = uriString to selectionRevision
             XposedCompat.logW("[MemberCardCustomizeHook] custom background permission denied; reselect image to retry: ${e.message}")
-            Handler(Looper.getMainLooper()).post {
+            ModuleLifetime.postResult(Handler(Looper.getMainLooper())) {
                 Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_PERMISSION_DENIED, Toast.LENGTH_SHORT).show()
             }
             return null
@@ -726,13 +757,13 @@ internal object DomesticMemberCardCustomizeHook {
         uriString: String,
     ) {
         Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_SAVING, Toast.LENGTH_SHORT).show()
-        Thread({
+        ModuleLifetime.launchWorker("PureDuPan-card-save") {
             val success = runCatching {
                 writeOriginalBackgroundToAlbum(context, uriString)
             }.onFailure {
                 XposedCompat.logW("[MemberCardCustomizeHook] save original background failed: ${it.message}")
             }.getOrDefault(false)
-            Handler(Looper.getMainLooper()).post {
+            ModuleLifetime.postResult(Handler(Looper.getMainLooper())) {
                 Toast.makeText(
                     context,
                     if (success) {
@@ -743,7 +774,7 @@ internal object DomesticMemberCardCustomizeHook {
                     Toast.LENGTH_SHORT,
                 ).show()
             }
-        }, "PureDuPan-card-save").start()
+        }
     }
 
     private fun writeOriginalBackgroundToAlbum(

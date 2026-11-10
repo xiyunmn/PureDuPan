@@ -98,7 +98,7 @@ object DomesticDynamicPluginAutoDownloadBlockHook {
                 XposedCompat.log("[DomesticDynamicPluginAutoDownloadBlockHook] $className.$methodName NOT FOUND")
                 continue
             }
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("DomesticDynamicPluginAutoDownloadBlockHook:hookDecisionClasses:method").intercept { chain ->
                 val plugin = chain.args.firstOrNull()
                 if (
                     isEnabled() &&

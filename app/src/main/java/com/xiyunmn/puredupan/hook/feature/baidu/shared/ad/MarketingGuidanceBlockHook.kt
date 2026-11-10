@@ -92,7 +92,7 @@ internal object MarketingGuidanceBlockHook {
             eventName,
             method(type, Points.DISMISS, Void.TYPE) ?: return,
         )
-        mod.hook(show).intercept { chain ->
+        mod.hook(show).setId("MarketingGuidanceBlockHook:installGuidance:show").intercept { chain ->
             val instance = chain.thisObject
             val block = instance != null && onMainThread() && HookSettings.isMarketingPopupBlocked(option) &&
                 binding.isMarketing(instance, guide)
@@ -147,7 +147,7 @@ internal object MarketingGuidanceBlockHook {
         )
         method(type, Points.SUPPORT_CONTEXT, Boolean::class.javaPrimitiveType!!, Activity::class.java)?.let { method ->
             if (method !in installed) attempt("supportCtx") {
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("MarketingGuidanceBlockHook:installFreeMode:method").intercept { chain ->
                     val result = chain.proceed()
                     val activity = chain.args.firstOrNull() as? Activity
                     if (binding.shouldBlock(chain.thisObject, activity, result == true)) {
@@ -160,7 +160,7 @@ internal object MarketingGuidanceBlockHook {
         }
         method(type, Points.ATTACH_FLOAT, Void.TYPE, Activity::class.java)?.let { method ->
             if (method !in installed) attempt("attachFloatView") {
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("MarketingGuidanceBlockHook:installFreeMode:method:2").intercept { chain ->
                     val activity = chain.args.firstOrNull() as? Activity
                     if (binding.shouldBlock(chain.thisObject, activity, true)) {
                         binding.remove(chain.thisObject, activity)
@@ -172,7 +172,7 @@ internal object MarketingGuidanceBlockHook {
         }
         method(type, Points.CHANGE_FLOAT_VISIBLE, Void.TYPE, Boolean::class.javaPrimitiveType!!, Activity::class.java)?.let { method ->
             if (method !in installed) attempt("changeFloatVisible") {
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("MarketingGuidanceBlockHook:installFreeMode:method:3").intercept { chain ->
                     val result = chain.proceed()
                     val activity = chain.args.getOrNull(1) as? Activity
                     if (chain.args.firstOrNull() == true && binding.shouldBlock(chain.thisObject, activity, true)) {

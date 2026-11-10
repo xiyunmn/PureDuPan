@@ -56,14 +56,14 @@ internal object IntlLaunchHandoffOptimizeHook {
             BaiduIntlHookPoints.NAVIGATE_ACTIVITY, cl, BaiduIntlHookPoints.NAVIGATE_DISPATCH,
         ) ?: return
         if (!coldDispatchState.isInstalled()) {
-            mod.hook(dispatch).intercept { chain ->
+            mod.hook(dispatch).setId("IntlLaunchHandoffOptimizeHook:hookColdGate:dispatch").intercept { chain ->
                 coldDecision.get()?.takeIf { it.activity === chain.thisObject }?.restoreIntent()
                 chain.proceed()
             }
             coldDispatchState.markInstalled()
         }
         if (!coldEntryState.isInstalled()) {
-            mod.hook(entry).intercept { chain ->
+            mod.hook(entry).setId("IntlLaunchHandoffOptimizeHook:hookColdGate:entry").intercept { chain ->
                 val activity = chain.thisObject as? Activity
                 if (!HookSettings.isIntlSplashStartupAccelerateEnabled ||
                     activity?.javaClass?.name != BaiduIntlHookPoints.NAVIGATE_ACTIVITY
@@ -92,7 +92,7 @@ internal object IntlLaunchHandoffOptimizeHook {
             XposedCompat.logD("[$TAG] cold gate pending DexKit warm-up; native filterad bypass ready")
             return
         }
-        mod.hook(gate).intercept { chain ->
+        mod.hook(gate).setId("IntlLaunchHandoffOptimizeHook:hookColdGate:gate").intercept { chain ->
             val activity = coldDecision.get()?.activity
             if (HookSettings.isIntlSplashStartupAccelerateEnabled && activity != null &&
                 activity.javaClass.name == BaiduIntlHookPoints.NAVIGATE_ACTIVITY &&
@@ -121,7 +121,7 @@ internal object IntlLaunchHandoffOptimizeHook {
         if (!windowState.markInstalled()) return
 
         creates.forEach { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlLaunchHandoffOptimizeHook:hookWindows:method").intercept { chain ->
                 val activity = chain.thisObject as? Activity
                 if (isEnabledShell(activity)) {
                     val shell = activity!!
@@ -136,7 +136,7 @@ internal object IntlLaunchHandoffOptimizeHook {
             }
         }
         inits.forEach { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlLaunchHandoffOptimizeHook:hookWindows:method:2").intercept { chain ->
                 val activity = chain.thisObject as? Activity
                 if (!isEnabledShell(activity)) return@intercept chain.proceed()
                 val previous = shellInit.get()
@@ -150,7 +150,7 @@ internal object IntlLaunchHandoffOptimizeHook {
             }
         }
         finishes.forEach { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlLaunchHandoffOptimizeHook:hookWindows:method:3").intercept { chain ->
                 val activity = chain.thisObject as? Activity
                 if (isEnabledShell(activity)) safely { suppressTransition(activity!!) }
                 val result = chain.proceed()
@@ -159,7 +159,7 @@ internal object IntlLaunchHandoffOptimizeHook {
             }
         }
         // 两个 startActivity 重载均经过此入口，启动壳的生命周期继续由宿主管理。
-        mod.hook(start).intercept { chain ->
+        mod.hook(start).setId("IntlLaunchHandoffOptimizeHook:hookWindows:start").intercept { chain ->
             val activity = chain.thisObject as? Activity
             val intent = chain.args.firstOrNull() as? Intent
             val ordinaryHandoff = isEnabledShell(activity) && chain.args.getOrNull(1) == -1 &&
@@ -218,13 +218,13 @@ internal object IntlLaunchHandoffOptimizeHook {
     @Suppress("DEPRECATION")
     private fun hookShellBarRequests(cl: ClassLoader) {
         val mod = XposedCompat.module ?: return
-        mod.hook(View::class.java.getDeclaredMethod("setSystemUiVisibility", Int::class.javaPrimitiveType)).intercept { chain ->
+        mod.hook(View::class.java.getDeclaredMethod("setSystemUiVisibility", Int::class.javaPrimitiveType)).setId("IntlLaunchHandoffOptimizeHook:hookShellBarRequests:setSystemUiVisibility").intercept { chain ->
             val shell = shellInit.get()
             if (isEnabledShell(shell) && chain.thisObject === shell!!.window.peekDecorView()) {
                 chain.proceed(arrayOf(visibleBars(chain.args[0] as Int)))
             } else chain.proceed()
         }
-        mod.hook(Window::class.java.getDeclaredMethod("addFlags", Int::class.javaPrimitiveType)).intercept { chain ->
+        mod.hook(Window::class.java.getDeclaredMethod("addFlags", Int::class.javaPrimitiveType)).setId("IntlLaunchHandoffOptimizeHook:hookShellBarRequests:addFlags").intercept { chain ->
             val shell = shellInit.get()
             if (isEnabledShell(shell) && chain.thisObject === shell!!.window) {
                 val flags = (chain.args[0] as Int) and
@@ -235,7 +235,7 @@ internal object IntlLaunchHandoffOptimizeHook {
         val hide = XposedCompat.findMethodOrNull(
             "androidx.core.view.WindowInsetsControllerCompat", cl, "hide", Int::class.javaPrimitiveType!!,
         ) ?: return
-        mod.hook(hide).intercept { chain ->
+        mod.hook(hide).setId("IntlLaunchHandoffOptimizeHook:hookShellBarRequests:hide").intercept { chain ->
             if (isEnabledShell(shellInit.get())) {
                 // 系统栏掩码包含状态栏、导航栏和标题栏。
                 val types = (chain.args[0] as Int) and 7.inv()

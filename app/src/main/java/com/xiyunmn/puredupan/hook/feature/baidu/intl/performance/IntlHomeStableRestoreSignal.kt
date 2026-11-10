@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Activity
 import android.os.Handler
 import android.os.Looper
@@ -10,6 +11,8 @@ import java.lang.reflect.Method
 internal object IntlHomeStableRestoreSignal {
     private const val HOME_STABLE_REASON = "home_stable"
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+
+    fun disposeForReload() { mainHandler.removeCallbacksAndMessages(null) }
 
     fun hook(cl: ClassLoader, tag: String, onHomeStable: () -> Unit): Boolean {
         val mod = XposedCompat.module ?: return false
@@ -32,11 +35,12 @@ internal object IntlHomeStableRestoreSignal {
                 continue
             }
 
-            mod.hook(focusMethod).intercept { chain ->
+            mod.hook(focusMethod).setId("$tag:hook:focusMethod").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 val result = chain.proceed()
                 val activity = chain.thisObject as? Activity
                 val hasFocus = chain.args.firstOrNull() as? Boolean ?: false
-                if (hasFocus && activity?.javaClass?.name in activityClassNames) {
+                if (!ModuleLifetime.isRetiring && hasFocus && activity?.javaClass?.name in activityClassNames) {
                     onHomeStable()
                 }
                 result
@@ -60,10 +64,10 @@ internal object IntlHomeStableRestoreSignal {
         clearScheduled: () -> Unit,
         restore: (String) -> Unit,
     ) {
-        if (!tryMarkScheduled()) return
+        if (ModuleLifetime.isRetiring || !tryMarkScheduled()) return
         mainHandler.postDelayed({
             clearScheduled()
-            restore(HOME_STABLE_REASON)
+            if (!ModuleLifetime.isRetiring) restore(HOME_STABLE_REASON)
         }, delayMs)
         XposedCompat.logD("[$tag] home stable restore scheduled")
     }

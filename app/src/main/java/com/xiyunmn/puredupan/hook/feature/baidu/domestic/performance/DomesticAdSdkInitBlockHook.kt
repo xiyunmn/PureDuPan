@@ -32,7 +32,7 @@ object DomesticAdSdkInitBlockHook {
                     clazz,
                     BaiduDomesticHookPoints.AD_SDK_SERVICE_ON_CREATE_METHOD,
                 )?.let { method ->
-                    mod.hook(method).intercept { chain ->
+                    mod.hook(method).setId("DomesticAdSdkInitBlockHook:hook:method").intercept { chain ->
                         if (isEnabled()) {
                             stopSelfQuietly(chain.thisObject)
                             XposedCompat.logD(
@@ -53,7 +53,7 @@ object DomesticAdSdkInitBlockHook {
                     Integer.TYPE,
                     Integer.TYPE,
                 )?.let { method ->
-                    mod.hook(method).intercept { chain ->
+                    mod.hook(method).setId("DomesticAdSdkInitBlockHook:hook:method:2").intercept { chain ->
                         if (isEnabled()) {
                             val startId = chain.args.getOrNull(2) as? Int
                             stopSelfQuietly(chain.thisObject, startId)
@@ -73,7 +73,7 @@ object DomesticAdSdkInitBlockHook {
                     BaiduDomesticHookPoints.AD_SDK_SERVICE_ON_BIND_METHOD,
                     Intent::class.java,
                 )?.let { method ->
-                    mod.hook(method).intercept { chain ->
+                    mod.hook(method).setId("DomesticAdSdkInitBlockHook:hook:method:3").intercept { chain ->
                         if (isEnabled()) {
                             stopSelfQuietly(chain.thisObject)
                             XposedCompat.logD(

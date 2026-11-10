@@ -46,7 +46,7 @@ internal object BottomBarStaticTabHideHook {
             }
             if (initTabsMethod != null) {
                 initTabsMethod.isAccessible = true
-                mod.hook(initTabsMethod).intercept { chain ->
+                mod.hook(initTabsMethod).setId("BottomBarStaticTabHideHook:hook:initTabsMethod").intercept { chain ->
                     if (isEnabled()) {
                         applyStaticTabVisibility(chain.thisObject as Activity)
                         applyAigcFallbackVisibility(chain.thisObject as Activity)
@@ -59,7 +59,7 @@ internal object BottomBarStaticTabHideHook {
                 )
             } else {
                 method.isAccessible = true
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("BottomBarStaticTabHideHook:hook:method").intercept { chain ->
                     val result = chain.proceed()
                     if (isEnabled()) {
                         applyStaticTabVisibility(chain.thisObject as Activity)
@@ -92,7 +92,7 @@ internal object BottomBarStaticTabHideHook {
             it.name == INIT_TABS_SKIN_METHOD && it.parameterTypes.isEmpty()
         } ?: return
         method.isAccessible = true
-        XposedCompat.module?.hook(method)?.intercept { chain ->
+        XposedCompat.module?.hook(method)?.setId("BottomBarStaticTabHideHook:hookInitTabsSkin:method")?.intercept { chain ->
             val result = chain.proceed()
             val activity = chain.thisObject as? Activity
             if (activity != null && shouldHideAigcTab(activity)) {
@@ -109,7 +109,7 @@ internal object BottomBarStaticTabHideHook {
                 it.parameterTypes[0] == Boolean::class.javaPrimitiveType
         } ?: return
         method.isAccessible = true
-        XposedCompat.module?.hook(method)?.intercept { chain ->
+        XposedCompat.module?.hook(method)?.setId("BottomBarStaticTabHideHook:hookSetTabRaisedBgVisible:method")?.intercept { chain ->
             val activity = chain.thisObject as? Activity
             if (activity != null && shouldHideAigcTab(activity)) {
                 return@intercept chain.proceed(arrayOf(false))
@@ -125,7 +125,7 @@ internal object BottomBarStaticTabHideHook {
                 it.parameterTypes[0] == View::class.java
         } ?: return
         method.isAccessible = true
-        XposedCompat.module?.hook(method)?.intercept { chain ->
+        XposedCompat.module?.hook(method)?.setId("BottomBarStaticTabHideHook:hookAigcClick:method")?.intercept { chain ->
             val activity = chain.thisObject as? Activity
             val view = chain.args.firstOrNull() as? View
             if (activity != null && view != null && shouldHideAigcTab(activity) && isAigcTabView(activity, view)) {

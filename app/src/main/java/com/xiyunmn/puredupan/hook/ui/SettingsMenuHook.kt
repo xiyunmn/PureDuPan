@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.ui
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
@@ -22,7 +23,6 @@ import com.xiyunmn.puredupan.hook.ui.settings.StorageTreeSelectionState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.concurrent.thread
 
 internal const val REQUEST_MEMBER_CARD_BACKGROUND_IMAGE = 0x4D31
 internal const val REQUEST_STORAGE_DOWNLOAD_TREE = 0x4D32
@@ -37,6 +37,7 @@ object SettingsMenuHook {
             }
             val activity = context as? Activity ?: error("settings context is not Activity")
             val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+            if (!ModuleLifetime.beginPicker(activity, REQUEST_EXPORT_LOGS)) return
             val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "application/zip"
@@ -59,6 +60,7 @@ object SettingsMenuHook {
                 activity.startActivityForResult(intent, REQUEST_EXPORT_LOGS)
             }
         } catch (e: Exception) {
+            ModuleLifetime.finishPicker(context as? Activity, REQUEST_EXPORT_LOGS)
             XposedCompat.logW("[SettingsMenuHook] launch log export picker failed: ${e.message}")
             Toast.makeText(context, UiText.Settings.EXPORT_LOGS_PICK_FAILED, Toast.LENGTH_SHORT).show()
         }
@@ -75,7 +77,7 @@ object SettingsMenuHook {
         val uri = data?.data ?: return true
         val appContext = context.applicationContext ?: context
         Toast.makeText(appContext, UiText.Settings.EXPORT_LOGS_STARTED, Toast.LENGTH_SHORT).show()
-        thread(name = "WPH-LogExport") {
+        ModuleLifetime.launchWorker("WPH-LogExport") {
             val message = try {
                 appContext.contentResolver.openOutputStream(uri, "wt").use { output ->
                     checkNotNull(output) { "Cannot open export destination" }
@@ -86,7 +88,7 @@ object SettingsMenuHook {
                 XposedCompat.logW("[SettingsMenuHook] export logs failed: ${e.message}")
                 UiText.Settings.EXPORT_LOGS_FAILED
             }
-            Handler(Looper.getMainLooper()).post {
+            ModuleLifetime.postResult(Handler(Looper.getMainLooper())) {
                 Toast.makeText(appContext, message, Toast.LENGTH_SHORT).show()
             }
         }
@@ -104,6 +106,7 @@ object SettingsMenuHook {
                 Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_PICK_FAILED, Toast.LENGTH_SHORT).show()
                 return
             }
+            if (!ModuleLifetime.beginPicker(activity, REQUEST_MEMBER_CARD_BACKGROUND_IMAGE)) return
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "image/*"
@@ -131,6 +134,7 @@ object SettingsMenuHook {
                 activity.startActivityForResult(intent, REQUEST_MEMBER_CARD_BACKGROUND_IMAGE)
             }
         } catch (t: Throwable) {
+            ModuleLifetime.finishPicker(context as? Activity, REQUEST_MEMBER_CARD_BACKGROUND_IMAGE)
             XposedCompat.logW("[SettingsMenuHook] launch background picker failed: ${t.message}")
             Toast.makeText(context, UiText.Settings.MEMBER_CARD_BACKGROUND_PICK_FAILED, Toast.LENGTH_SHORT).show()
         }
@@ -190,6 +194,7 @@ object SettingsMenuHook {
     internal fun launchStorageTreePicker(context: Context) {
         try {
             val activity = context as? Activity ?: throw IllegalStateException("settings context is not Activity")
+            if (!ModuleLifetime.beginPicker(activity, REQUEST_STORAGE_DOWNLOAD_TREE)) return
             val baseIntent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
                 addFlags(
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or
@@ -220,6 +225,7 @@ object SettingsMenuHook {
                 activity.startActivityForResult(Intent(baseIntent).apply { component = null }, REQUEST_STORAGE_DOWNLOAD_TREE)
             }
         } catch (t: Throwable) {
+            ModuleLifetime.finishPicker(context as? Activity, REQUEST_STORAGE_DOWNLOAD_TREE)
             XposedCompat.logW("[SettingsMenuHook] launch storage picker failed: ${t.message}")
             Toast.makeText(context, UiText.Settings.STORAGE_DIRECTORY_PICK_FAILED, Toast.LENGTH_SHORT).show()
         }
@@ -352,6 +358,7 @@ object SettingsMenuHook {
         classLoader: ClassLoader?,
         initialScrollY: Int = 0,
     ) {
+        if (ModuleLifetime.isRetiring) return
         if (!SettingsHostState.isSupportedHost(context)) {
             XposedCompat.logW("[SettingsMenuHook] settings dialog skipped: unsupported host=${context.packageName}")
             return

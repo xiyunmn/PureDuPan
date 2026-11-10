@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.graphics.Rect
 import android.view.View
 import android.view.ViewGroup
@@ -16,6 +17,17 @@ internal class HomeFeedScrollCompat private constructor(
     private val offsetGetter: Method,
     private val scrollBy: Method,
 ) {
+    private val frames = java.util.WeakHashMap<ContentFrame, Boolean>()
+    private val roots = mutableListOf<java.lang.ref.WeakReference<View>>()
+
+    fun exportRoots(): List<View> = roots.mapNotNull { it.get() }
+
+    fun disposeForReload() {
+        frames.keys.toList().forEach { it.restore() }
+        frames.clear()
+        roots.clear()
+    }
+
     companion object {
         fun install(cl: ClassLoader): HomeFeedScrollCompat? {
             val mod = XposedCompat.module ?: return null
@@ -32,7 +44,8 @@ internal class HomeFeedScrollCompat private constructor(
                 ).apply { isAccessible = true }
                 if (scroll.returnType != Void.TYPE) return null
                 val compat = HomeFeedScrollCompat(clazz, content, offset, scroll)
-                mod.hook(offset).intercept { chain ->
+                mod.hook(offset).setId("HomeFeedScrollCompat:install:offset").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val original = chain.proceed() as Int
                     val frame = content.get(chain.thisObject) as? ContentFrame
                     frame?.stickyOffset(original) ?: original
@@ -46,6 +59,7 @@ internal class HomeFeedScrollCompat private constructor(
     }
 
     fun attach(root: View) {
+        if (ModuleLifetime.isRetiring) return
         val layout = findView(root, "sticky_nested_layout") as? ViewGroup ?: return
         if (!layoutClass.isInstance(layout)) return
         runCatching {
@@ -58,13 +72,16 @@ internal class HomeFeedScrollCompat private constructor(
             val nav = findView(root, "stickyNavView")?.takeIf { it.parent === layout }
             val index = layout.indexOfChild(content)
             val params = content.layoutParams
-            val frame = ContentFrame(layout, head, nav, content)
+            val frame = ContentFrame(layout, head, nav, content, index, params)
+            frames[frame] = true
             layout.removeViewAt(index)
             frame.addView(content, FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
             ))
             layout.addView(frame, index, params)
             contentField.set(layout, frame)
+            roots.removeAll { it.get() == null }
+            if (roots.none { it.get() === root }) roots += java.lang.ref.WeakReference(root)
         }.onFailure {
             XposedCompat.logW("[HomeFeedScrollCompat] attach failed: ${it.message}")
         }
@@ -80,7 +97,17 @@ internal class HomeFeedScrollCompat private constructor(
         private val head: View,
         private val nav: View?,
         private val content: View,
+        private val originalIndex: Int,
+        private val originalParams: ViewGroup.LayoutParams,
     ) : FrameLayout(layout.context) {
+        fun restore() {
+            if (content.parent === this) {
+                removeView(content)
+                if (parent === layout) layout.removeView(this)
+                layout.addView(content, originalIndex.coerceAtMost(layout.childCount), originalParams)
+            }
+            if (contentField.get(layout) === this) contentField.set(layout, content)
+        }
         private val visibleBounds = Rect()
 
         fun stickyOffset(original: Int): Int {

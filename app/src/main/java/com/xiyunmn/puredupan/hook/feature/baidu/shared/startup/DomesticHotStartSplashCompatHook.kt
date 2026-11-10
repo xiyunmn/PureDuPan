@@ -46,7 +46,7 @@ internal object DomesticHotStartSplashCompatHook {
                 return
             }
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("DomesticHotStartSplashCompatHook:hook:method").intercept { chain ->
                 if (HookSettings.isSplashInterstitialBlockEnabled) {
                     XposedCompat.logD("[DomesticHotStartSplashCompatHook] hot resume splash blocked")
                     null

@@ -8,6 +8,7 @@ import com.xiyunmn.puredupan.hook.BuildConfig
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import java.util.zip.ZipFile
 import org.luckypray.dexkit.DexKitBridge
 
 internal object DexKitCompat {
@@ -25,6 +26,7 @@ internal object DexKitCompat {
     private const val TARGET_STATE_SCANNING = "scanning"
 
     @Volatile private var loadState: LoadState = LoadState.Unknown
+    @Volatile internal var hotReloaded = false
     @Volatile private var runtimeProvider: RuntimeProvider? = null
     private val memoryCache = ConcurrentHashMap<String, CacheEntry>()
     private val scanSession = ThreadLocal<ScanSession?>()
@@ -330,6 +332,8 @@ internal object DexKitCompat {
         XposedCompat.logD("[DexKitCompat] full scan pending: $reason")
     }
 
+    fun isFullScanPending(): Boolean = statePrefs()?.getBoolean(KEY_FORCE_FULL_SCAN, false) == true
+
     fun consumeFullScanPending(): Boolean {
         val prefs = statePrefs() ?: return false
         if (!prefs.getBoolean(KEY_FORCE_FULL_SCAN, false)) return false
@@ -428,7 +432,7 @@ internal object DexKitCompat {
                 LoadState.Unknown -> Unit
             }
 
-            val loaded = loadFromModuleNativeDir(tag) || loadFromLibraryPath(tag)
+            val loaded = if (hotReloaded) loadReloadLibrary(tag) else loadFromLibraryPath(tag)
             if (!loaded && loadState is LoadState.Unknown) {
                 markUnavailable("native library not loaded")
             }
@@ -436,24 +440,37 @@ internal object DexKitCompat {
         }
     }
 
-    private fun loadFromModuleNativeDir(tag: String): Boolean {
-        val hostContext = appContext() ?: return false
-        val moduleContext = runCatching {
-            hostContext.createPackageContext(BuildConfig.APPLICATION_ID, Context.CONTEXT_IGNORE_SECURITY)
-        }.getOrNull() ?: return false
-        val nativeDir = moduleContext.applicationInfo?.nativeLibraryDir?.takeIf { it.isNotBlank() } ?: return false
-        val libFile = File(nativeDir, LIB_FILE_NAME)
-        if (!libFile.isFile) return false
-
-        return runCatching {
-            System.load(libFile.absolutePath)
+    /** 每代使用独立路径，避免同一 APK 的原生库仍绑定旧 ClassLoader。 */
+    private fun loadReloadLibrary(tag: String): Boolean {
+        val context = appContext() ?: return false
+        val apkPath = XposedCompat.module?.moduleApplicationInfo?.sourceDir ?: return false
+        var library: File? = null
+        return try {
+            val target = File.createTempFile("puredupan-dexkit-", ".so", context.codeCacheDir)
+            library = target
+            ZipFile(apkPath).use { apk ->
+                val entry = checkNotNull(apk.getEntry("lib/arm64-v8a/$LIB_FILE_NAME")) {
+                    "DexKit library missing from current module APK"
+                }
+                apk.getInputStream(entry).use { input ->
+                    target.outputStream().use { output -> input.copyTo(output) }
+                }
+            }
+            check(target.setReadOnly()) { "Cannot protect DexKit library" }
+            System.load(target.absolutePath)
             loadState = LoadState.Available
-            XposedCompat.logD("[$tag] DexKit native loaded: ${libFile.absolutePath}")
+            XposedCompat.logD("[$tag] DexKit native loaded for reloaded generation")
             true
-        }.getOrElse {
-            markUnavailable("${it.javaClass.simpleName}: ${it.message}")
-            XposedCompat.logD("[$tag] DexKit native load failed: ${it.message}")
+        } catch (error: Exception) {
+            markUnavailable("${error.javaClass.simpleName}: ${error.message}")
+            XposedCompat.logW("[$tag] DexKit reload library failed: ${error.message}")
             false
+        } catch (error: UnsatisfiedLinkError) {
+            markUnavailable("${error.javaClass.simpleName}: ${error.message}")
+            XposedCompat.logW("[$tag] DexKit reload library failed: ${error.message}")
+            false
+        } finally {
+            library?.delete()
         }
     }
 

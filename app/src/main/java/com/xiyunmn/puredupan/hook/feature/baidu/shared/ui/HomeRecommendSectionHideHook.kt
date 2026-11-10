@@ -39,7 +39,7 @@ internal object HomeRecommendSectionHideHook {
                 if (method in installedMethods) return@methodLoop
                 runCatching {
                     method.isAccessible = true
-                    mod.hook(method).intercept { chain ->
+                    mod.hook(method).setId("HomeRecommendSectionHideHook:hook:method").intercept { chain ->
                         val result = chain.proceed()
                         if (isEnabled()) {
                             runCatching {
@@ -72,7 +72,7 @@ internal object HomeRecommendSectionHideHook {
             val method = clazz.getDeclaredMethod("onResume").apply { isAccessible = true }
             if (method.returnType != Void.TYPE || Modifier.isStatic(method.modifiers)) return 0
             if (method in installedMethods) return 0
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("HomeRecommendSectionHideHook:hookExpiredFeedRefresh:method").intercept { chain ->
                 // 推荐隐藏时跳过三小时过期刷新，保留手动下拉入口。
                 if (isEnabled()) null else chain.proceed()
             }

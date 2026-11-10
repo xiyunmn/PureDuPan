@@ -65,7 +65,7 @@ internal object SearchPageCustomizeHook {
         }
 
         if (method != null) {
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("SearchPageCustomizeHook:hookSearchRecommend:method").intercept { chain ->
                 if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageRecommendHidden) {
                     XposedCompat.logD("[SearchPageCustomizeHook] queryAIRecommend blocked")
                     null
@@ -95,7 +95,7 @@ internal object SearchPageCustomizeHook {
                 continue
             }
             methods.forEach { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("SearchPageCustomizeHook:hookSearchPlaceholder:method").intercept { chain ->
                     if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPagePlaceholderHidden) {
                         XposedCompat.logD(
                             "[SearchPageCustomizeHook] $className.${method.name} placeholder display blocked",
@@ -144,7 +144,7 @@ internal object SearchPageCustomizeHook {
         }
 
         methods.forEach { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("SearchPageCustomizeHook:hookVoiceSearch:method").intercept { chain ->
                 if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageVoiceSearchHidden) {
                     XposedCompat.logD(
                         "[SearchPageCustomizeHook] ${method.declaringClass.name}.${method.name} voice search blocked",
@@ -245,7 +245,7 @@ internal object SearchPageCustomizeHook {
         var installed = 0
         for (constructor in vmClass.declaredConstructors) {
             constructor.isAccessible = true
-            mod.hook(constructor).intercept { chain ->
+            mod.hook(constructor).setId("SearchPageCustomizeHook:hookMainPreSearchAiPowerTab:constructor").intercept { chain ->
                 val result = chain.proceed()
                 if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageAiEntryHidden) {
                     suppressAiPowerSearchTab(chain.thisObject, aiPowerSearchTab)
@@ -261,7 +261,7 @@ internal object SearchPageCustomizeHook {
             BaiduSearchPageHookPoints.UPDATE_TAB_VISIBILITY_METHOD,
             Boolean::class.javaPrimitiveType!!,
         )?.let { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("SearchPageCustomizeHook:hookMainPreSearchAiPowerTab:method").intercept { chain ->
                 if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageAiEntryHidden) {
                     val args = chain.args.toTypedArray()
                     if (args.firstOrNull() == true) {
@@ -281,7 +281,7 @@ internal object SearchPageCustomizeHook {
             BaiduSearchPageHookPoints.SHOW_GUIDE_BUBBLE_METHOD,
             tabClass,
         )?.let { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("SearchPageCustomizeHook:hookMainPreSearchAiPowerTab:method:2").intercept { chain ->
                 if (
                     HookSettings.isSearchPageCustomizeEnabled &&
                     HookSettings.isSearchPageAiEntryHidden &&
@@ -310,7 +310,7 @@ internal object SearchPageCustomizeHook {
             return 0
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("SearchPageCustomizeHook:hookSearchRecommendCard:method").intercept { chain ->
             if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageRecommendHidden) {
                 XposedCompat.logD("[SearchPageCustomizeHook] SearchAIRecommendCard blocked")
                 null
@@ -333,7 +333,7 @@ internal object SearchPageCustomizeHook {
             return 0
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("SearchPageCustomizeHook:hookAiSearch25InitData:method").intercept { chain ->
             if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageAiEntryHidden) {
                 XposedCompat.logD("[SearchPageCustomizeHook] AiSearch25VM.initData blocked")
                 null
@@ -355,7 +355,7 @@ internal object SearchPageCustomizeHook {
             return 0
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("SearchPageCustomizeHook:hookAiSearchResultCard:method").intercept { chain ->
             if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageAiEntryHidden) {
                 XposedCompat.logD("[SearchPageCustomizeHook] AiSearchCardKt.AiSearchCard blocked")
                 null
@@ -407,7 +407,7 @@ internal object SearchPageCustomizeHook {
             }
             methods.forEach { method ->
                 method.isAccessible = true
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("SearchPageCustomizeHook:hookComposeServiceMethod:method").intercept { chain ->
                     if (HookSettings.isSearchPageCustomizeEnabled && HookSettings.isSearchPageAiEntryHidden) {
                         XposedCompat.logD("[SearchPageCustomizeHook] $className.$logName blocked")
                         null

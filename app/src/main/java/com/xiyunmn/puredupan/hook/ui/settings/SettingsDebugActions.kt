@@ -115,7 +115,7 @@ internal object SettingsDebugActions {
                 if (details) copyDexKitStatusDetails(context, latestCopyText)
                 else showDexKitDialog(context, details = true)
             }
-            dialog.setOnDismissListener { refreshHandler.removeCallbacks(refreshRunnable) }
+            SettingsReloadCleanup.onDispose(dialog) { refreshHandler.removeCallbacks(refreshRunnable) }
             if (SettingsDexKitState.shouldContinueStatusRefresh(context)) {
                 refreshHandler.postDelayed(refreshRunnable, DEXKIT_STATUS_REFRESH_MS)
             }

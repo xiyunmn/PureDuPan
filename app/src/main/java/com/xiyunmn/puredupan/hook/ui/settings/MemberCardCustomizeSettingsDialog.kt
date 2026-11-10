@@ -391,7 +391,7 @@ internal object MemberCardCustomizeSettingsDialog {
                 .setView(SettingsDialogLayout.createDialogScrollContainer(context, root))
                 .setPositiveButton(UiText.Settings.DONE, null)
                 .create()
-            dialog.setOnDismissListener {
+            SettingsReloadCleanup.onDispose(dialog) {
                 MemberCardBackgroundEditorDialog.cancel(dialog)
                 MemberCardBackgroundSelectionState.clearIfSame(selectionListener)
             }

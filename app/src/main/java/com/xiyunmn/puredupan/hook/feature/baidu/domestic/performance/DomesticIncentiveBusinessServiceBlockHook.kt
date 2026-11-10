@@ -36,7 +36,7 @@ object DomesticIncentiveBusinessServiceBlockHook {
                 serviceClass,
                 BaiduDomesticHookPoints.INCENTIVE_BUSINESS_SERVICE_ON_CREATE_METHOD,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticIncentiveBusinessServiceBlockHook:hook:method").intercept { chain ->
                     if (isEnabled()) {
                         stopSelfQuietly(chain.thisObject)
                         XposedCompat.logD("[DomesticIncentiveBusinessServiceBlockHook] onCreate blocked")
@@ -55,7 +55,7 @@ object DomesticIncentiveBusinessServiceBlockHook {
                 Integer.TYPE,
                 Integer.TYPE,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticIncentiveBusinessServiceBlockHook:hook:method:2").intercept { chain ->
                     if (isEnabled()) {
                         val intent = chain.args.getOrNull(0) as? Intent
                         val startId = chain.args.getOrNull(2) as? Int
@@ -77,7 +77,7 @@ object DomesticIncentiveBusinessServiceBlockHook {
                 BaiduDomesticHookPoints.INCENTIVE_BUSINESS_SERVICE_ON_BIND_METHOD,
                 Intent::class.java,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticIncentiveBusinessServiceBlockHook:hook:method:3").intercept { chain ->
                     if (isEnabled()) {
                         stopSelfQuietly(chain.thisObject)
                         XposedCompat.logD("[DomesticIncentiveBusinessServiceBlockHook] onBind blocked")

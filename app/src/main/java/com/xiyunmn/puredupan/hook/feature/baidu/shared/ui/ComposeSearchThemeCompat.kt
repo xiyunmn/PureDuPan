@@ -7,6 +7,7 @@ import android.os.Looper
 import android.os.Build
 import android.view.View
 import android.view.WindowInsetsController
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduThemeHookPoints
 import java.lang.reflect.Method
@@ -18,6 +19,21 @@ internal object ComposeSearchThemeCompat {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val installed = mutableSetOf<Method>()
     private val states = WeakHashMap<Activity, Any>()
+
+    fun exportState(): ArrayList<Array<Any?>> = synchronized(states) {
+        ArrayList(states.map { (activity, state) ->
+            arrayOf<Any?>("compose", java.lang.ref.WeakReference(activity), java.lang.ref.WeakReference(state))
+        })
+    }
+
+    fun restoreTarget(activity: Activity, state: Any) {
+        synchronized(states) { states[activity] = state }
+    }
+
+    fun disposeForReload() {
+        mainHandler.removeCallbacksAndMessages(null)
+        synchronized(states) { states.clear() }
+    }
 
     @Synchronized
     fun hook(cl: ClassLoader) {
@@ -39,6 +55,7 @@ internal object ComposeSearchThemeCompat {
             ) ?: return
 
             val refresh = Runnable {
+                if (ModuleLifetime.isRetiring) return@Runnable
                 val targets = synchronized(states) { states.entries.map { it.key to it.value } }
                 targets.forEach { (activity, state) ->
                     if (activity.isDestroyed || activity.isFinishing) {
@@ -53,7 +70,8 @@ internal object ComposeSearchThemeCompat {
                 }
             }
             if (skinUpdate !in installed) {
-                mod.hook(skinUpdate).intercept { chain ->
+                mod.hook(skinUpdate).setId("ComposeSearchThemeCompat:skinUpdate:${skinUpdate.declaringClass.name}").intercept { chain ->
+                    if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     mainHandler.removeCallbacks(refresh)
                     mainHandler.post(refresh)
@@ -62,7 +80,8 @@ internal object ComposeSearchThemeCompat {
                 installed += skinUpdate
             }
             if (isDefaultSkin !in installed) {
-                mod.hook(isDefaultSkin).intercept { chain ->
+                mod.hook(isDefaultSkin).setId("ComposeSearchThemeCompat:readDefaultSkin:${isDefaultSkin.declaringClass.name}").intercept { chain ->
+                    if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val result = chain.proceed()
                     val activity = chain.args.firstOrNull() as? Activity
                     if (result is Boolean && activity != null && activityClass.isInstance(activity)) {
@@ -75,7 +94,8 @@ internal object ComposeSearchThemeCompat {
                                 // 保留 SkinConfig 的实际返回值。
                                 binding.read(state)
                                 // Android 11 及以上需更新 WindowInsetsController，补齐宿主旧式系统栏刷新。
-                                activity.window.decorView.postOnAnimation {
+                                mainHandler.post {
+                                    if (ModuleLifetime.isRetiring) return@post
                                     refreshStatusBar(activity, isDefaultSkin)
                                 }
                             }

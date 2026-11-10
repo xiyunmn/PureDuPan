@@ -20,8 +20,9 @@ internal object MemberCardBackgroundLayout {
     // 映射值也使用弱引用，避免待执行观察者持有整棵视图树。
     private val bindings = WeakHashMap<ImageView, WeakReference<Binding>>()
 
-    fun apply(view: ImageView, render: (ImageView) -> Unit) {
-        val binding = bindings[view]?.get() ?: Binding(view).also {
+    fun apply(view: ImageView, role: String, render: (ImageView) -> Unit) {
+        if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return
+        val binding = bindings[view]?.get() ?: Binding(view, role).also {
             bindings[view] = WeakReference(it)
             view.addOnLayoutChangeListener(it)
             view.addOnAttachStateChangeListener(it)
@@ -42,7 +43,19 @@ internal object MemberCardBackgroundLayout {
         bindings[view]?.get()?.applyDimming(view, percent.coerceIn(0, 100))
     }
 
-    private class Binding(view: ImageView) : View.OnLayoutChangeListener,
+    fun detachAll(): ArrayList<Array<Any?>> {
+        val targets = ArrayList<Array<Any?>>()
+        bindings.entries.toList().forEach { (view, ref) ->
+            ref.get()?.let { binding ->
+                targets.add(arrayOf(binding.role, WeakReference(view)))
+                binding.dispose(view)
+            }
+        }
+        bindings.clear()
+        return targets
+    }
+
+    private class Binding(view: ImageView, val role: String) : View.OnLayoutChangeListener,
         View.OnAttachStateChangeListener, ViewTreeObserver.OnPreDrawListener {
         private val target = WeakReference(view)
         private var observer: ViewTreeObserver? = null
@@ -105,7 +118,19 @@ internal object MemberCardBackgroundLayout {
             }
         }
 
+        fun dispose(view: ImageView) {
+            view.removeOnLayoutChangeListener(this)
+            view.removeOnAttachStateChangeListener(this)
+            unregisterTheme?.invoke()
+            unregisterTheme = null
+            cancel()
+            render = null
+            if (appliedImageFilter != null && view.colorFilter === appliedImageFilter) view.colorFilter = imageFilter
+            restoreBackgroundFilter()
+        }
+
         fun schedule() {
+            if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return
             val view = target.get() ?: return
             if (!view.isAttachedToWindow || observer != null) return
             view.viewTreeObserver.takeIf { it.isAlive }?.let {

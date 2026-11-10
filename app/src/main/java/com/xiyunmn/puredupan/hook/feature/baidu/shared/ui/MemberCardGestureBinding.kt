@@ -9,6 +9,7 @@ import java.util.WeakHashMap
 /** 独立管理点击拦截与长按预览，关闭时归还宿主原有监听器。 */
 internal object MemberCardGestureBinding {
     private data class Binding(
+        val role: String,
         val originalClick: View.OnClickListener?,
         val originalLongClick: View.OnLongClickListener?,
         val originallyClickable: Boolean,
@@ -19,7 +20,8 @@ internal object MemberCardGestureBinding {
 
     private val bindings = WeakHashMap<View, Binding>()
 
-    fun apply(view: View, snapshot: SettingsSnapshot, openImage: (View) -> Unit) {
+    fun apply(view: View, snapshot: SettingsSnapshot, role: String, openImage: (View) -> Unit) {
+        if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return
         restore(view)
         val removeClick = snapshot.isMemberCardCustomizeEnabled && snapshot.isMemberCardClickRemoved
         val preview = snapshot.isMemberCardCustomizeEnabled && snapshot.isMemberCardBackgroundViewedOnClick &&
@@ -33,11 +35,11 @@ internal object MemberCardGestureBinding {
             XposedCompat.getObjectField(it, "mOnLongClickListener") as? View.OnLongClickListener
         }
         val binding = Binding(
-            originalClick, originalLongClick, view.isClickable, view.isLongClickable,
+            role, originalClick, originalLongClick, view.isClickable, view.isLongClickable,
             View.OnClickListener { target ->
                 val current = HookSettings.memberCardSnapshot()
                 if (!current.isMemberCardCustomizeEnabled || !current.isMemberCardClickRemoved) {
-                    apply(target, current, openImage)
+                    apply(target, current, role, openImage)
                     target.performClick()
                 }
             },
@@ -49,7 +51,7 @@ internal object MemberCardGestureBinding {
                     openImage(target)
                     true
                 } else {
-                    apply(target, current, openImage)
+                    apply(target, current, role, openImage)
                     target.performLongClick()
                 }
             },
@@ -57,6 +59,15 @@ internal object MemberCardGestureBinding {
         bindings[view] = binding
         if (removeClick) view.setOnClickListener(binding.click)
         if (preview) view.setOnLongClickListener(binding.longClick)
+    }
+
+    fun detachAll(): ArrayList<Array<Any?>> {
+        val targets = ArrayList<Array<Any?>>()
+        bindings.entries.toList().forEach { (view, binding) ->
+            targets.add(arrayOf(binding.role, java.lang.ref.WeakReference(view)))
+            restore(view)
+        }
+        return targets
     }
 
     private fun restore(view: View) {

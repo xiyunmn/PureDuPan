@@ -87,23 +87,61 @@ internal object UiStyle {
         cachedHostNightAtMs = 0L
     }
 
-    /** 重绘已挂载的模块控件，保留状态和监听器。 */
-    internal fun <T : View> bindTheme(view: T, paint: T.(Tokens) -> Unit) {
-        fun repaint() = view.paint(tokens(view.context))
-        var unregister: (() -> Unit)? = null
+    private val themeBindings = java.util.WeakHashMap<View, MutableList<java.lang.ref.WeakReference<ThemeBinding<*>>>>()
+
+    private val valueAnimators = java.util.WeakHashMap<ValueAnimator, Boolean>()
+    private val animatedViews = java.util.WeakHashMap<View, Boolean>()
+
+    private fun animation(view: View): android.view.ViewPropertyAnimator {
+        animatedViews[view] = true
+        return view.animate()
+    }
+
+    internal fun detachThemes() {
+        valueAnimators.keys.toList().forEach {
+            it.removeAllUpdateListeners()
+            it.removeAllListeners()
+            it.cancel()
+        }
+        valueAnimators.clear()
+        animatedViews.keys.toList().forEach {
+            it.animate().withStartAction(null).withEndAction(null)
+                .setListener(null).setUpdateListener(null).cancel()
+        }
+        animatedViews.clear()
+        themeBindings.values.toList().flatMap { it.toList() }.forEach { it.get()?.dispose() }
+        themeBindings.clear()
+    }
+
+    private class ThemeBinding<T : View>(view: T, private val paint: T.(Tokens) -> Unit) : View.OnAttachStateChangeListener {
+        private val target = java.lang.ref.WeakReference(view)
+        private var unregister: (() -> Unit)? = null
+        fun repaint() { target.get()?.let { it.paint(tokens(it.context)) } }
         fun attach() {
+            if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return
             repaint()
             if (unregister == null) unregister = HostThemeChangeDispatcher.register { repaint() }
         }
-        repaint()
-        view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-            override fun onViewAttachedToWindow(v: View) = attach()
-            override fun onViewDetachedFromWindow(v: View) {
-                unregister?.invoke()
-                unregister = null
-            }
-        })
-        if (view.isAttachedToWindow) attach()
+        fun dispose() {
+            target.get()?.removeOnAttachStateChangeListener(this)
+            unregister?.invoke()
+            unregister = null
+        }
+        override fun onViewAttachedToWindow(v: View) = attach()
+        override fun onViewDetachedFromWindow(v: View) {
+            unregister?.invoke()
+            unregister = null
+        }
+    }
+
+    /** 重绘已挂载的模块控件，保留状态和监听器。 */
+    internal fun <T : View> bindTheme(view: T, paint: T.(Tokens) -> Unit) {
+        if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return
+        val binding = ThemeBinding(view, paint)
+        themeBindings.getOrPut(view) { mutableListOf() }.add(java.lang.ref.WeakReference(binding))
+        binding.repaint()
+        view.addOnAttachStateChangeListener(binding)
+        if (view.isAttachedToWindow) binding.attach()
     }
 
     internal fun isNight(context: Context): Boolean {
@@ -354,7 +392,7 @@ internal object UiStyle {
     internal fun animateDialogEntry(root: View, density: Float) {
         root.alpha = 0f
         root.translationY = 10f * density
-        root.animate()
+        animation(root)
             .alpha(1f)
             .translationY(0f)
             .setDuration(220)
@@ -368,7 +406,7 @@ internal object UiStyle {
         headers.forEachIndexed { index, view ->
             view.alpha = 0f
             view.translationX = 6f * density
-            view.animate()
+            animation(view)
                 .alpha(1f)
                 .translationX(0f)
                 .setStartDelay(40L + index * 36L)
@@ -382,7 +420,7 @@ internal object UiStyle {
         view.alpha = 0f
         view.scaleX = 0.94f
         view.scaleY = 0.94f
-        view.animate()
+        animation(view)
             .alpha(1f)
             .scaleX(1f)
             .scaleY(1f)
@@ -392,7 +430,7 @@ internal object UiStyle {
     }
 
     internal fun animateIconTap(view: View) {
-        view.animate()
+        animation(view)
             .rotationBy(360f)
             .setDuration(520)
             .setInterpolator(PathInterpolator(0.2f, 0f, 0f, 1f))
@@ -410,6 +448,7 @@ internal object UiStyle {
                 row.setBackgroundColor(v.animatedValue as Int)
             }
         }
+        valueAnimators[animator] = true
         animator.start()
     }
 
@@ -418,7 +457,7 @@ internal object UiStyle {
         button.scaleX = 0.88f
         button.scaleY = 0.88f
         button.alpha = 0f
-        button.animate()
+        animation(button)
             .scaleX(1f)
             .scaleY(1f)
             .alpha(1f)
@@ -434,7 +473,7 @@ internal object UiStyle {
         items.forEachIndexed { index, view ->
             view.alpha = 0f
             view.translationY = 8f * density
-            view.animate()
+            animation(view)
                 .alpha(1f)
                 .translationY(0f)
                 .setStartDelay(30L + index * 28L)
@@ -446,19 +485,19 @@ internal object UiStyle {
 
     /** 进度完成时播放亮度脉冲。 */
     internal fun animateProgressComplete(progressView: View) {
-        progressView.animate()
+        animation(progressView)
             .alpha(0.5f)
             .setDuration(150)
             .withEndAction {
-                progressView.animate()
+                animation(progressView)
                     .alpha(1f)
                     .setDuration(150)
                     .withEndAction {
-                        progressView.animate()
+                        animation(progressView)
                             .alpha(0.7f)
                             .setDuration(120)
                             .withEndAction {
-                                progressView.animate()
+                                animation(progressView)
                                     .alpha(1f)
                                     .setDuration(120)
                                     .start()
@@ -471,11 +510,11 @@ internal object UiStyle {
     }
 
     internal fun animateProgressRunningPulse(progressView: View) {
-        progressView.animate()
+        animation(progressView)
             .alpha(0.78f)
             .setDuration(280)
             .withEndAction {
-                progressView.animate()
+                animation(progressView)
                     .alpha(1f)
                     .setDuration(420)
                     .start()
@@ -485,7 +524,7 @@ internal object UiStyle {
 
     /** 对话框退出时轻微缩小并淡出。 */
     internal fun animateDialogExit(root: View, density: Float, onEnd: () -> Unit) {
-        root.animate()
+        animation(root)
             .alpha(0f)
             .translationY(6f * density)
             .scaleX(0.97f)
@@ -499,7 +538,7 @@ internal object UiStyle {
     /** 标题品牌标记首次显示时淡入。 */
     internal fun animateBrandTagShimmer(view: View) {
         view.alpha = 0f
-        view.animate()
+        animation(view)
             .alpha(1f)
             .setStartDelay(300)
             .setDuration(400)
@@ -509,10 +548,10 @@ internal object UiStyle {
 
     /** 为小型操作图标提供按压缩放反馈。 */
     internal fun animateActionPress(view: View) {
-        view.animate().cancel()
+        animation(view).cancel()
         view.scaleX = 0.82f
         view.scaleY = 0.82f
-        view.animate()
+        animation(view)
             .scaleX(1f)
             .scaleY(1f)
             .setDuration(180)
@@ -523,7 +562,7 @@ internal object UiStyle {
     /** 在展开和折叠状态间旋转箭头。 */
     internal fun animateExpandArrow(view: View, expanding: Boolean) {
         val target = if (expanding) 180f else 0f
-        view.animate()
+        animation(view)
             .rotation(target)
             .setDuration(200)
             .setInterpolator(DecelerateInterpolator(1.5f))
@@ -536,7 +575,7 @@ internal object UiStyle {
         view.alpha = 0f
         view.scaleY = 0.92f
         view.pivotY = 0f
-        view.animate()
+        animation(view)
             .alpha(1f)
             .scaleY(1f)
             .setDuration(220)
@@ -547,7 +586,7 @@ internal object UiStyle {
     /** 卡片收起时淡出并隐藏。 */
     internal fun animateCardCollapse(view: View) {
         view.pivotY = 0f
-        view.animate()
+        animation(view)
             .alpha(0f)
             .scaleY(0.92f)
             .setDuration(160)

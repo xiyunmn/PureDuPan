@@ -33,7 +33,7 @@ internal object IntlAlbumBackupBarBlockHook {
                 return
             }
 
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlAlbumBackupBarBlockHook:hook:method").intercept { chain ->
                 val result = chain.proceed()
                 if (HookSettings.isAlbumBackupBarBlocked && backupBarViewClass.isInstance(result)) {
                     XposedCompat.logD("[IntlAlbumBackupBarBlockHook] album backup bar view suppressed")

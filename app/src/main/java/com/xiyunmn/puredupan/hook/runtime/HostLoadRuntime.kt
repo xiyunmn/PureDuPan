@@ -9,6 +9,7 @@ import com.xiyunmn.puredupan.hook.host.HostDexKitRuntimeInfo
 import com.xiyunmn.puredupan.hook.host.HostProfile
 import com.xiyunmn.puredupan.hook.host.HostPackages
 import com.xiyunmn.puredupan.hook.host.HostRuntimeState
+import com.xiyunmn.puredupan.hook.host.HostRegistry
 import com.xiyunmn.puredupan.hook.plan.HookInstallPlan
 import com.xiyunmn.puredupan.hook.plan.HookInstallPlanner
 
@@ -36,6 +37,7 @@ internal class HostLoadSession(
         settings: SettingsSnapshot,
         classLoader: ClassLoader,
         onWarmUpFinished: (() -> Unit)? = null,
+        immediate: Boolean = false,
     ) {
         DexKitCacheWarmUp.startIfNeeded(
             host = DexKitHostContext.from(HostDexKitRuntimeInfo.from(host)),
@@ -43,15 +45,28 @@ internal class HostLoadSession(
             processName = processName,
             classLoader = classLoader,
             onWarmUpFinished = onWarmUpFinished,
+            immediate = immediate,
         )
     }
 }
 
 internal object HostLoadRuntime {
-    fun installSystemUiIfTarget(packageName: String, processName: String, cl: ClassLoader): Boolean {
+    fun handlesProcess(processName: String): Boolean =
+        (processName == HostPackages.SYSTEM_UI && android.os.Build.VERSION.SDK_INT >= 31) ||
+        HostRegistry.supportedPackageNames.any { packageName ->
+            HostRegistry.resolveByPackageName(packageName)?.shouldHandleProcess(processName) == true
+        }
+
+    fun installSystemUiIfTarget(
+        packageName: String,
+        processName: String,
+        cl: ClassLoader,
+        application: android.app.Application? = null,
+        onApplicationReady: ((android.app.Application) -> Unit)? = null,
+    ): Boolean {
         if (packageName != HostPackages.SYSTEM_UI || processName != HostPackages.SYSTEM_UI) return false
         XposedCompat.setCurrentPackageName(packageName)
-        SystemStartupSplashHook.hook(cl)
+        SystemStartupSplashHook.hook(cl, application, onApplicationReady)
         return true
     }
 

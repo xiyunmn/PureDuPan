@@ -222,7 +222,7 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         }
         val mod = XposedCompat.module ?: return 0
         method.isAccessible = true
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("IntlNonWifiDownloadDialogBlockHook:hookDialogMethod:method").intercept { chain ->
             if (!HookSettings.isNonWifiDownloadDialogBlocked) {
                 return@intercept chain.proceed()
             }
@@ -283,7 +283,7 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         )?.takeUnless { Modifier.isAbstract(it.modifiers) } ?: return 0
         val mod = XposedCompat.module ?: return 0
         method.isAccessible = true
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("IntlNonWifiDownloadDialogBlockHook:hookSingkilDialogMethod:method").intercept { chain ->
             if (!HookSettings.isNonWifiDownloadDialogBlocked) {
                 return@intercept chain.proceed()
             }
@@ -341,7 +341,7 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         val mod = XposedCompat.module ?: return 0
         method.isAccessible = true
         return try {
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlNonWifiDownloadDialogBlockHook:hookDownloadPushGuide:method").intercept { chain ->
                 if (!HookSettings.isNonWifiDownloadDialogBlocked) {
                     return@intercept chain.proceed()
                 }
@@ -378,7 +378,7 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         val mod = XposedCompat.module ?: return 0
         method.isAccessible = true
         return try {
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlNonWifiDownloadDialogBlockHook:hookDownloadPushGuideSceneGetter:method").intercept { chain ->
                 val result = chain.proceed()
                 (result as? String)?.let { downloadPushGuideScene = it }
                 result
@@ -410,7 +410,7 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         val mod = XposedCompat.module ?: return 0
         method.isAccessible = true
         return try {
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("IntlNonWifiDownloadDialogBlockHook:hookDownloadPushGuideWithCachedScene:method").intercept { chain ->
                 if (!HookSettings.isNonWifiDownloadDialogBlocked) {
                     return@intercept chain.proceed()
                 }
@@ -464,7 +464,7 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         )?.takeUnless { Modifier.isAbstract(it.modifiers) } ?: return 0
         val mod = XposedCompat.module ?: return 0
         method.isAccessible = true
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("IntlNonWifiDownloadDialogBlockHook:hookDownloadDoneToast:method").intercept { chain ->
             if (!HookSettings.isNonWifiDownloadDialogBlocked) {
                 return@intercept chain.proceed()
             }
@@ -524,7 +524,7 @@ internal object IntlNonWifiDownloadDialogBlockHook {
             return false
         }
 
-        mod.hook(setTypeMethod).intercept { chain ->
+        mod.hook(setTypeMethod).setId("IntlNonWifiDownloadDialogBlockHook:hookFlowAlertTransferFileDialog:setTypeMethod").intercept { chain ->
             val result = chain.proceed()
             val dialog = chain.thisObject
             val type = chain.args.firstOrNull() as? Int
@@ -533,7 +533,7 @@ internal object IntlNonWifiDownloadDialogBlockHook {
             }
             result
         }
-        mod.hook(setUseTrafficMethod).intercept { chain ->
+        mod.hook(setUseTrafficMethod).setId("IntlNonWifiDownloadDialogBlockHook:hookFlowAlertTransferFileDialog:setUseTrafficMethod").intercept { chain ->
             val result = chain.proceed()
             val dialog = chain.thisObject
             val listener = chain.args.firstOrNull()
@@ -553,7 +553,7 @@ internal object IntlNonWifiDownloadDialogBlockHook {
             }
             result
         }
-        mod.hook(showMethod).intercept { chain ->
+        mod.hook(showMethod).setId("IntlNonWifiDownloadDialogBlockHook:hookFlowAlertTransferFileDialog:showMethod").intercept { chain ->
             if (!HookSettings.isNonWifiDownloadDialogBlocked) {
                 return@intercept chain.proceed()
             }

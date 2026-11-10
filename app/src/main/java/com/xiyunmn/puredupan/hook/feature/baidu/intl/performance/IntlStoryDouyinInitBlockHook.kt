@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Activity
 import android.app.Application
 import android.content.Intent
@@ -15,6 +16,18 @@ import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.matchers.MethodMatcher
 
 internal object IntlStoryDouyinInitBlockHook {
+    fun disposeForReload() {
+        try {
+            if (pendingStoryApplication != null) restoreStoryIfPending("reload", null)
+            if (pendingDouyinConfig != null) restoreDouyinIfPending("reload")
+        } finally {
+            pendingStoryApplication = null
+            pendingDouyinConfig = null
+            storyInitMethod = null
+            douyinInitMethod = null
+        }
+    }
+
     const val STORY_INIT_CACHE_ID = "intl_story_douyin_story_init"
 
     private const val DOUYIN_OPEN_API_FACTORY_CLASS_NAME = BaiduIntlStoryHookPoints.DOUYIN_OPEN_API_FACTORY
@@ -53,6 +66,8 @@ internal object IntlStoryDouyinInitBlockHook {
     @Volatile private var douyinRestoreCount = 0
 
     internal fun hook(cl: ClassLoader) {
+        // 旧代已交还待恢复调用，热重载不重新进入冷启动抑制阶段。
+        if (ModuleLifetime.hotReloaded) return
         if (!isEnabled()) {
             XposedCompat.log("[IntlStoryDouyinInitBlockHook] skipped: config disabled")
             return
@@ -72,7 +87,8 @@ internal object IntlStoryDouyinInitBlockHook {
             douyinInitMethod = resolvedDouyinInit
 
             resolvedStoryInit?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("IntlStoryDouyinInitBlockHook:hook:method").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val application = chain.args.firstOrNull() as? Application
                     if (application == null || !shouldBlockStoryInit()) {
                         return@intercept chain.proceed()
@@ -92,7 +108,8 @@ internal object IntlStoryDouyinInitBlockHook {
             }
 
             resolvedDouyinInit?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("IntlStoryDouyinInitBlockHook:hook:method:2").intercept { chain ->
+                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
                     val config = chain.args.firstOrNull()
                     if (config == null || !shouldBlockDouyinInit()) {
                         return@intercept chain.proceed()
@@ -307,13 +324,13 @@ internal object IntlStoryDouyinInitBlockHook {
     }
 
     private fun shouldBlockStoryInit(): Boolean {
-        if (!isEnabled()) return false
+        if (ModuleLifetime.isRetiring || !isEnabled()) return false
         if (storyRestoring || storyRestored) return false
         return true
     }
 
     private fun shouldBlockDouyinInit(): Boolean {
-        if (!isEnabled()) return false
+        if (ModuleLifetime.isRetiring || !isEnabled()) return false
         if (douyinRestoring || douyinRestored) return false
         return true
     }
@@ -359,7 +376,8 @@ internal object IntlStoryDouyinInitBlockHook {
     ): Boolean {
         val mod = XposedCompat.module ?: return false
         val method = XposedCompat.findMethodOrNull(activityClass, "onCreate", Bundle::class.java) ?: return false
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("IntlStoryDouyinInitBlockHook:hookActivityOnCreate:method").intercept { chain ->
+            if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
             beforeProceed(chain.thisObject as? Activity, reason)
             chain.proceed()
         }
@@ -373,7 +391,8 @@ internal object IntlStoryDouyinInitBlockHook {
     ): Boolean {
         val mod = XposedCompat.module ?: return false
         val method = XposedCompat.findMethodOrNull(activityClass, "onNewIntent", Intent::class.java) ?: return false
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("IntlStoryDouyinInitBlockHook:hookActivityOnNewIntent:method").intercept { chain ->
+            if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
             beforeProceed(chain.thisObject as? Activity, reason)
             chain.proceed()
         }
@@ -381,7 +400,7 @@ internal object IntlStoryDouyinInitBlockHook {
     }
 
     private fun restoreStoryIfPending(reason: String, fallbackApplication: Application?) {
-        if (!isEnabled()) return
+        if (reason != "reload" && (ModuleLifetime.isRetiring || !isEnabled())) return
         val method = storyInitMethod ?: run {
             XposedCompat.logW("[IntlStoryDouyinInitBlockHook] story restore skipped: method missing, reason=$reason")
             return
@@ -416,7 +435,7 @@ internal object IntlStoryDouyinInitBlockHook {
     }
 
     private fun restoreDouyinIfPending(reason: String) {
-        if (!isEnabled()) return
+        if (reason != "reload" && (ModuleLifetime.isRetiring || !isEnabled())) return
         val method = douyinInitMethod ?: run {
             XposedCompat.logW("[IntlStoryDouyinInitBlockHook] douyin restore skipped: method missing, reason=$reason")
             return

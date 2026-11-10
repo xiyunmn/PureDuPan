@@ -64,7 +64,7 @@ object DomesticB2fGuidancePrefetchBlockHook {
             return 0
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DomesticB2fGuidancePrefetchBlockHook:hookNoArgMethod:method").intercept { chain ->
             if (isEnabled()) {
                 XposedCompat.logD("[DomesticB2fGuidancePrefetchBlockHook] $logName blocked")
                 null

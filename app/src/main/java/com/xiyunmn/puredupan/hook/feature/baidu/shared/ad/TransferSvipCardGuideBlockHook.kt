@@ -43,7 +43,7 @@ internal object TransferSvipCardGuideBlockHook {
             var installedCount = 0
             methods.forEach { method ->
                 try {
-                    mod.hook(method).intercept { chain ->
+                    mod.hook(method).setId("TransferSvipCardGuideBlockHook:hook:method").intercept { chain ->
                         if (isEnabled()) {
                             XposedCompat.logD(
                                 "[TransferSvipCardGuideBlockHook] SVIP card guide blocked",

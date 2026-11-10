@@ -59,7 +59,7 @@ object SplashBypassCore {
         }
 
         methods.forEach { method ->
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("SplashBypassCore:hookSetupSplashAdViewSkip:method").intercept { chain ->
                 val activity = chain.thisObject as? Activity
                 if (activity != null) {
                     try {

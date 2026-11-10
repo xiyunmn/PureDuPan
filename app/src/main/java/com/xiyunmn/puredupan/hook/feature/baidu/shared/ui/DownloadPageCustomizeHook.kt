@@ -76,7 +76,7 @@ internal object DownloadPageCustomizeHook {
             return 0
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DownloadPageCustomizeHook:hookGameGuide:method").intercept { chain ->
             if (isGameGuideEnabled()) {
                 XposedCompat.logD("[DownloadPageCustomizeHook] game guide display blocked")
                 return@intercept HookUtils.getDefaultReturnValue(method.returnType)
@@ -99,7 +99,7 @@ internal object DownloadPageCustomizeHook {
             return 0
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DownloadPageCustomizeHook:hookPromotionAd:method").intercept { chain ->
             if (isPromotionAdEnabled()) {
                 XposedCompat.logD("[DownloadPageCustomizeHook] promotion ad render blocked")
                 return@intercept HookUtils.getDefaultReturnValue(method.returnType)
@@ -129,7 +129,7 @@ internal object DownloadPageCustomizeHook {
             return 0
         }
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DownloadPageCustomizeHook:hookIntlPromotionAd:method").intercept { chain ->
             if (isPromotionAdEnabled()) {
                 XposedCompat.logD("[DownloadPageCustomizeHook] intl promotion ad creation blocked")
                 return@intercept HookUtils.getDefaultReturnValue(method.returnType)
@@ -191,7 +191,7 @@ internal object DownloadPageCustomizeHook {
             XposedCompat.log("[DownloadPageCustomizeHook] $methodName(${paramTypes.size}) NOT FOUND")
             return 0
         }
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DownloadPageCustomizeHook:hookMemberPromotionMethod:method").intercept { chain ->
             if (isMemberPromotionEnabled()) {
                 (chain.thisObject as? View)?.visibility = View.GONE
                 XposedCompat.logD("[DownloadPageCustomizeHook] member promotion render blocked: $methodName")

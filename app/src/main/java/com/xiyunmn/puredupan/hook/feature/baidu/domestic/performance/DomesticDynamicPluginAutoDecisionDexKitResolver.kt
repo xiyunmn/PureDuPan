@@ -302,7 +302,7 @@ internal object DomesticDynamicPluginAutoDecisionDexKitResolver {
         val installKey = "${decisionOwner.name}#$methodName"
         if (!installedDecisionHooks.add(installKey)) return 0
 
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("DomesticDynamicPluginAutoDecisionDexKitResolver:hookDecisionMethod:method").intercept { chain ->
             val plugin = chain.args.firstOrNull()
             val type = pluginTypeOf(plugin)
             if (isEnabled() && type != null && type in blockedPluginTypes) {

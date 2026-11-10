@@ -58,7 +58,7 @@ internal object FilePageCustomizeHook {
             XposedCompat.log("[FilePageCustomizeHook] legacy safety footer fields incompatible")
             return 0
         }
-        mod.hook(method).intercept { chain ->
+        mod.hook(method).setId("FilePageCustomizeHook:hookLegacySafetyFooter:method").intercept { chain ->
             // 视频、音频和文档页仍会更新安全提示，需保留原生对象和列表条目。
             val result = chain.proceed()
             if (isEnabled()) {
@@ -95,7 +95,7 @@ internal object FilePageCustomizeHook {
         }
         methods.forEach { method ->
             method.isAccessible = true
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("FilePageCustomizeHook:hookSafetyRecyclerView:method").intercept { chain ->
                 val result = chain.proceed()
                 val footer = chain.args.firstOrNull() as? View
                 if (isEnabled() && footer != null) {

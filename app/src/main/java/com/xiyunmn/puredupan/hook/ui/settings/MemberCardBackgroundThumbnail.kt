@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.ui.settings
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.drawable.GradientDrawable
@@ -48,7 +49,7 @@ internal class MemberCardBackgroundThumbnail(context: Context) : ImageView(conte
         val uri = imageUri?.takeIf { it.isNotBlank() } ?: return
         val currentRequest = ++request
         val target = (44 * resources.displayMetrics.density).toInt().coerceAtLeast(1)
-        Thread({
+        ModuleLifetime.launchWorker("PureDuPan-card-thumbnail") {
             val bitmap = runCatching {
                 val resolver = context.contentResolver
                 val parsed = Uri.parse(uri)
@@ -63,13 +64,13 @@ internal class MemberCardBackgroundThumbnail(context: Context) : ImageView(conte
                 options.inSampleSize = sample
                 resolver.openInputStream(parsed)?.use { BitmapFactory.decodeStream(it, null, options) }
             }.getOrNull()
-            post {
+            ModuleLifetime.postResult(android.os.Handler(android.os.Looper.getMainLooper())) {
                 if (currentRequest != request || !isAttachedToWindow) {
                     bitmap?.recycle()
                 } else {
                     setImageBitmap(bitmap)
                 }
             }
-        }, "PureDuPan-card-thumbnail").start()
+        }
     }
 }

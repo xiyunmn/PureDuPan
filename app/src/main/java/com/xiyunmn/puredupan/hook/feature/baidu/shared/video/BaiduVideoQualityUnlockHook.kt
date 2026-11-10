@@ -139,7 +139,7 @@ object BaiduVideoQualityUnlockHook {
         label: String,
     ): Boolean {
         return try {
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("BaiduVideoQualityUnlockHook:installBooleanForceTrue:method").intercept { chain ->
                 if (isEnabled()) {
                     XposedCompat.logD("[$TAG] $label forced true")
                     booleanReturnValue(method, true)

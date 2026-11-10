@@ -32,7 +32,7 @@ internal object DomesticHotStartSplashBlocker {
         }
 
         try {
-            mod.hook(method).intercept { chain ->
+            mod.hook(method).setId("DomesticHotStartSplashBlocker:hookHotStartManager:method").intercept { chain ->
                 if (HookSettings.isSplashInterstitialBlockEnabled) {
                     XposedCompat.logD("[$ownerTag] hot start splash blocked")
                     false
@@ -67,7 +67,7 @@ internal object DomesticHotStartSplashBlocker {
         var installed = 0
         try {
             XposedCompat.findMethodOrNull(splashActivityClass, "initView")?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticHotStartSplashBlocker:hookSplashAdActivityFallback:method").intercept { chain ->
                     if (HookSettings.isSplashInterstitialBlockEnabled) {
                         finishSplashActivity(chain.thisObject, ownerTag, "initView")
                         null
@@ -82,7 +82,7 @@ internal object DomesticHotStartSplashBlocker {
                 "onCreate",
                 Bundle::class.java,
             )?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticHotStartSplashBlocker:hookSplashAdActivityFallback:method:2").intercept { chain ->
                     val result = chain.proceed()
                     if (HookSettings.isSplashInterstitialBlockEnabled) {
                         finishSplashActivity(chain.thisObject, ownerTag, "onCreate")
@@ -92,7 +92,7 @@ internal object DomesticHotStartSplashBlocker {
                 installed++
             }
             XposedCompat.findMethodOrNull(splashActivityClass, "onResume")?.let { method ->
-                mod.hook(method).intercept { chain ->
+                mod.hook(method).setId("DomesticHotStartSplashBlocker:hookSplashAdActivityFallback:method:3").intercept { chain ->
                     val result = chain.proceed()
                     if (HookSettings.isSplashInterstitialBlockEnabled) {
                         finishSplashActivity(chain.thisObject, ownerTag, "onResume")

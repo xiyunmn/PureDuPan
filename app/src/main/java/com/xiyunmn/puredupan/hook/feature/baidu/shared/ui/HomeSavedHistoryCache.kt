@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduHomeCardHookPoints
@@ -15,10 +16,10 @@ internal object HomeSavedHistoryCache {
     private const val KEY = "home_saved_history_snapshot_v1"
     private const val MAX_JSON_CHARS = 128 * 1024
     private val writer = Executors.newSingleThreadExecutor { task ->
-        Thread({
-            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
-            task.run()
-        }, "PureDuPan-save-cache").apply { isDaemon = true }
+        Thread(task, "PureDuPan-save-cache").apply {
+            isDaemon = true
+            contextClassLoader = HookSettings.appContext()?.classLoader ?: ClassLoader.getSystemClassLoader()
+        }
     }
     private val codecs = mutableMapOf<ClassLoader, JsonCodec>()
     private val identityFields = mutableMapOf<Class<*>, Pair<Field, Field?>>()
@@ -36,6 +37,12 @@ internal object HomeSavedHistoryCache {
     private fun codec(type: Class<*>): JsonCodec = synchronized(codecs) {
         val cl = requireNotNull(type.classLoader)
         codecs.getOrPut(cl) { JsonCodec(cl) }
+    }
+
+    fun disposeForReload() {
+        writer.shutdown()
+        synchronized(codecs) { codecs.clear() }
+        synchronized(identityFields) { identityFields.clear() }
     }
 
     fun convert(source: Any, target: Class<*>): Any? = runCatching {
@@ -69,17 +76,26 @@ internal object HomeSavedHistoryCache {
         val version = hostVersion()
         val snapshot = items.take(SavedHistorySnapshotRules.MAX_ITEMS)
         // 在后台串行完成序列化和保存，避免滑动期间增加磁盘与 JSON 开销。
-        writer.execute {
-            runCatching {
-                val raw = JSONObject()
-                    .put("owner", ownerKey(uid))
-                    .put("itemClass", itemClass.name)
-                    .put("hostVersion", version)
-                    .put("writtenAt", System.currentTimeMillis())
-                    .put("items", codec(itemClass).encode(snapshot))
-                    .toString()
-                if (raw.length <= MAX_JSON_CHARS) prefs.edit().putString(KEY, raw).apply()
+        if (!ModuleLifetime.beginTask()) return
+        try {
+            writer.execute {
+                try {
+                    android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+                    runCatching {
+                        val raw = JSONObject()
+                            .put("owner", ownerKey(uid))
+                            .put("itemClass", itemClass.name)
+                            .put("hostVersion", version)
+                            .put("writtenAt", System.currentTimeMillis())
+                            .put("items", codec(itemClass).encode(snapshot))
+                            .toString()
+                        if (raw.length <= MAX_JSON_CHARS) prefs.edit().putString(KEY, raw).apply()
+                    }
+                } finally { ModuleLifetime.finishTask() }
             }
+        } catch (error: java.util.concurrent.RejectedExecutionException) {
+            ModuleLifetime.finishTask()
+            throw error
         }
     }
 

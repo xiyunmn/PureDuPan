@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.ui.settings
 
+import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
@@ -17,7 +18,6 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.concurrent.thread
 
 internal object ModuleSettingsBackupActions {
     private const val REQUEST_IMPORT_SETTINGS = 0x4D34
@@ -31,6 +31,7 @@ internal object ModuleSettingsBackupActions {
     }
 
     fun launchPicker(context: Context, importing: Boolean) {
+        val requestCode = if (importing) REQUEST_IMPORT_SETTINGS else REQUEST_EXPORT_SETTINGS
         try {
             val activity = context as? Activity ?: error("settings context is not Activity")
             val intent = Intent(if (importing) Intent.ACTION_OPEN_DOCUMENT else Intent.ACTION_CREATE_DOCUMENT).apply {
@@ -44,7 +45,7 @@ internal object ModuleSettingsBackupActions {
                     putExtra(Intent.EXTRA_TITLE, "PureDuPan-settings-${context.packageName}-$timestamp.json")
                 }
             }
-            val requestCode = if (importing) REQUEST_IMPORT_SETTINGS else REQUEST_EXPORT_SETTINGS
+            if (!ModuleLifetime.beginPicker(activity, requestCode)) return
             val preferred = SettingsMenuHook.resolvePreferredSystemDocumentPicker(context, intent)
             try {
                 activity.startActivityForResult(Intent(intent).apply { component = preferred }, requestCode)
@@ -54,6 +55,7 @@ internal object ModuleSettingsBackupActions {
                 activity.startActivityForResult(intent, requestCode)
             }
         } catch (e: Exception) {
+            ModuleLifetime.finishPicker(context as? Activity, requestCode)
             XposedCompat.logW("[ModuleSettingsBackup] picker failed: ${e.message}")
             Toast.makeText(context, UiText.Settings.EXPORT_LOGS_PICK_FAILED, Toast.LENGTH_SHORT).show()
         }
@@ -65,7 +67,7 @@ internal object ModuleSettingsBackupActions {
         val uri = data?.data ?: return true
         val context = activity.applicationContext
         if (requestCode == REQUEST_EXPORT_SETTINGS) {
-            thread(name = "WPH-SettingsExport") {
+            ModuleLifetime.launchWorker("WPH-SettingsExport") {
                 val message = try {
                     context.contentResolver.openOutputStream(uri, "wt").use { output ->
                         checkNotNull(output) { "无法打开目标文件" }
@@ -76,21 +78,21 @@ internal object ModuleSettingsBackupActions {
                     XposedCompat.logW("[ModuleSettingsBackup] export failed: ${e.message}")
                     UiText.Settings.EXPORT_SETTINGS_FAILED
                 }
-                mainHandler.post { Toast.makeText(context, message, Toast.LENGTH_LONG).show() }
+                ModuleLifetime.postResult(mainHandler) { Toast.makeText(context, message, Toast.LENGTH_LONG).show() }
             }
         } else {
-            thread(name = "WPH-SettingsImportRead") {
+            ModuleLifetime.launchWorker("WPH-SettingsImportRead") {
                 try {
                     val preview = context.contentResolver.openInputStream(uri).use { input ->
                         checkNotNull(input) { "无法读取备份文件" }
                         ModuleSettingsBackup.read(context, input)
                     }
-                    mainHandler.post {
+                    ModuleLifetime.postResult(mainHandler) {
                         if (!activity.isFinishing && !activity.isDestroyed) showImportConfirmation(activity, preview)
                     }
                 } catch (e: Exception) {
                     XposedCompat.logW("[ModuleSettingsBackup] import read failed: ${e.javaClass.simpleName}")
-                    mainHandler.post {
+                    ModuleLifetime.postResult(mainHandler) {
                         showImportMessage(activity, UiText.Settings.IMPORT_SETTINGS_INVALID)
                     }
                 }
@@ -116,7 +118,7 @@ internal object ModuleSettingsBackupActions {
 
     private fun restore(activity: Activity, preview: ModuleSettingsBackup.ImportPreview) {
         val context = activity.applicationContext
-        thread(name = "WPH-SettingsImportSave") {
+        ModuleLifetime.launchWorker("WPH-SettingsImportSave") {
             val success = try {
                 ModuleSettingsBackup.restore(context, preview)
             } catch (e: Exception) {
@@ -124,7 +126,7 @@ internal object ModuleSettingsBackupActions {
                 false
             }
             val needsDirectory = success && runCatching { needsDownloadDirectory(context) }.getOrDefault(true)
-            mainHandler.post {
+            ModuleLifetime.postResult(mainHandler) {
                 if (success) importedListener?.invoke()
                 if (needsDirectory) {
                     showImportMessage(
