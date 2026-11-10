@@ -4,7 +4,7 @@ plugins {
 
 val majorVersion = 1
 val minorVersion = 5
-val patchVersion = 1
+val patchVersion = 2
 
 val baseVersionName = "$majorVersion.$minorVersion.$patchVersion"
 val gitCommitCount = providers.exec {
