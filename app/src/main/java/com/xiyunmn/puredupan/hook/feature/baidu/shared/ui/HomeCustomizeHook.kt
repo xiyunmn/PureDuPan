@@ -1,6 +1,7 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
 import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
+import com.xiyunmn.puredupan.hook.runtime.HotReloadFailures
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -47,6 +48,8 @@ object HomeCustomizeHook {
     private val recentScrollRangeHookState = HookState()
     private val topPromotionRequestHooks = mutableSetOf<Method>()
     private val recentLimitForCall = ThreadLocal<List<*>?>()
+    private var recentMethodSets = emptyList<HomeRecentItemLimitDexKitResolver.ResolvedMethods>()
+    private val recentSources = WeakHashMap<Any, ArrayList<Any?>>()
     private val verticalSaveGroups = Collections.synchronizedMap(WeakHashMap<ViewGroup, Boolean>())
     private val verticalSaveHeightGuards = Collections.synchronizedMap(WeakHashMap<View, View.OnLayoutChangeListener>())
     private val subscriptionItemsForCall = ThreadLocal<Pair<Class<*>, List<*>>?>()
@@ -63,6 +66,8 @@ object HomeCustomizeHook {
     private val observers = mutableMapOf<Any, Pair<Any, Method>>()
     private const val FEED_ROOT_TARGET = "home:feed-root"
     private const val SAVE_CARD_TARGET = "home:save-card"
+    private const val RECENT_METHODS_TARGET = "home:recent-methods-v1"
+    private const val RECENT_STATE_TARGET = "home:recent-state-v1"
     private class SaveCardTarget(card: ViewGroup) {
         val card = WeakReference(card)
         var state: WeakReference<Any>? = null
@@ -79,6 +84,24 @@ object HomeCustomizeHook {
                 targets += arrayOf<Any?>(SAVE_CARD_TARGET, card, target.state?.get())
             }
         }
+        recentMethodSets.forEach { methods ->
+            targets += arrayOf<Any?>(RECENT_METHODS_TARGET, methods.source, methods.cacheWriter, methods.stateWriter)
+        }
+        synchronized(recentSources) {
+            recentSources.forEach { (model, source) ->
+                targets += arrayOf<Any?>(RECENT_STATE_TARGET, WeakReference(model), ArrayList(source))
+            }
+        }
+    }
+
+    fun prepareState(targets: List<Array<Any?>>, cl: ClassLoader) {
+        recentMethodSets = targets.mapNotNull { target ->
+            if (target.firstOrNull() != RECENT_METHODS_TARGET) return@mapNotNull null
+            val source = target.getOrNull(1) as? Method ?: return@mapNotNull null
+            val cacheWriter = target.getOrNull(2) as? Method ?: return@mapNotNull null
+            val stateWriter = target.getOrNull(3) as? Method ?: return@mapNotNull null
+            HomeRecentItemLimitDexKitResolver.fromReloadedMethods(source, cacheWriter, stateWriter, cl)
+        }
     }
 
     fun restoreState(targets: List<Array<Any?>>, cl: ClassLoader) {
@@ -86,6 +109,14 @@ object HomeCustomizeHook {
         val mod = XposedCompat.module ?: return
         for (target in targets) {
             when (target.firstOrNull()) {
+                RECENT_STATE_TARGET -> {
+                    val model = (target.getOrNull(1) as? WeakReference<*>)?.get() ?: continue
+                    val source = target.getOrNull(2) as? List<*> ?: continue
+                    synchronized(recentSources) { recentSources[model] = ArrayList(source) }
+                    if (!isRecentItemLimitCustomized() || HookSettings.isHomeRecentSectionHidden) continue
+                    val methods = recentMethodSets.firstOrNull { it.source.declaringClass.isInstance(model) } ?: continue
+                    rewriteRecentItems(model, methods, source.take(HookSettings.homeRecentItemLimit))
+                }
                 FEED_ROOT_TARGET -> {
                     val root = target.getOrNull(1) as? View ?: continue
                     scrollCompats.forEach { it.attach(root) }
@@ -102,27 +133,37 @@ object HomeCustomizeHook {
         }
     }
 
-    fun disposeForReload() {
+    internal fun disposeForReload(failures: HotReloadFailures) {
         mainHandler.removeCallbacksAndMessages(null)
-        observers.toMap().forEach { (observer, owner) -> owner.second.invoke(owner.first, observer) }
-        observers.clear()
-        verticalSaveHeightGuards.toMap().forEach { (view, listener) -> view.removeOnLayoutChangeListener(listener) }
+        observers.toMap().forEach { (observer, owner) ->
+            failures.run("home: remove observer ${owner.second.declaringClass.name}") {
+                owner.second.invoke(owner.first, observer)
+                observers.remove(observer)
+            }
+        }
+        verticalSaveHeightGuards.toMap().forEach { (view, listener) ->
+            failures.run("home: height listener") { view.removeOnLayoutChangeListener(listener) }
+        }
         verticalSaveHeightGuards.clear()
-        HomeSaveCardLongPressCompat.disposeForReload()
-        originalRowTags.toMap().forEach { (view, tag) -> view.tag = tag }
+        failures.run("HomeSaveCardLongPressCompat") { HomeSaveCardLongPressCompat.disposeForReload(failures) }
+        originalRowTags.toMap().forEach { (view, tag) -> failures.run("home: row tag") { view.tag = tag } }
         originalRowTags.clear()
-        wrappers.keys.toList().forEach { it.restore() }
+        wrappers.keys.toList().forEach { wrapper -> failures.run("home: vertical rows") { wrapper.restore() } }
         wrappers.clear()
         originalHeights.toMap().forEach { (view, height) ->
-            view.layoutParams?.let { it.height = height; view.layoutParams = it }
+            failures.run("home: original height") {
+                view.layoutParams?.let { it.height = height; view.layoutParams = it }
+            }
         }
         originalHeights.clear()
-        scrollCompats.forEach { it.disposeForReload() }
+        scrollCompats.forEach { compat -> failures.run("home: feed scroll") { compat.disposeForReload() } }
         scrollCompats.clear()
         verticalSaveGroups.clear()
         saveHistorySessions.clear()
         saveCardTargets.clear()
         recentLimitForCall.remove()
+        synchronized(recentSources) { recentSources.clear() }
+        recentMethodSets = emptyList()
         subscriptionItemsForCall.remove()
         publishingSavedHistory.remove()
     }
@@ -707,7 +748,7 @@ object HomeCustomizeHook {
     private fun hookRecentCardItemLimit(cl: ClassLoader): Int {
         if (!isRecentItemLimitCustomized() || HookSettings.isHomeRecentSectionHidden) return 0
         val mod = XposedCompat.module ?: return 0
-        val methodSets = HomeRecentItemLimitDexKitResolver.resolve(cl)
+        val methodSets = recentMethodSets.ifEmpty { HomeRecentItemLimitDexKitResolver.resolve(cl) }
         if (methodSets.isEmpty()) {
             XposedCompat.logD("[HomeCustomizeHook] recent item limit methods not resolved")
             return 0
@@ -718,10 +759,16 @@ object HomeCustomizeHook {
             methodSets.forEach { methods ->
                 mod.hook(methods.source).setId("HomeCustomizeHook:hookRecentCardItemLimit:methods-source").intercept { chain ->
                     if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
+                    val source = chain.args.firstOrNull() as? List<*>
+                    chain.thisObject?.let { model ->
+                        synchronized(recentSources) {
+                            if (source == null) recentSources.remove(model)
+                            else recentSources[model] = ArrayList(source)
+                        }
+                    }
                     if (!isRecentItemLimitCustomized() || HookSettings.isHomeRecentSectionHidden) {
                         return@intercept chain.proceed()
                     }
-                    val source = chain.args.firstOrNull() as? List<*>
                     val limited = source?.take(HookSettings.homeRecentItemLimit)
                     recentLimitForCall.set(limited)
                     XposedCompat.logD {
@@ -731,20 +778,7 @@ object HomeCustomizeHook {
                     try {
                         val result = chain.proceed()
                         if (limited != null) {
-                            runCatching {
-                                methods.cacheWriter.invoke(chain.thisObject, limited)
-                            }.onFailure { error ->
-                                XposedCompat.logW(
-                                    "[HomeCustomizeHook] recent cache rewrite failed: ${error.message}",
-                                )
-                            }
-                            runCatching {
-                                methods.stateWriter.invoke(chain.thisObject, limited)
-                            }.onFailure { error ->
-                                XposedCompat.logW(
-                                    "[HomeCustomizeHook] recent state rewrite failed: ${error.message}",
-                                )
-                            }
+                            rewriteRecentItems(chain.thisObject, methods, limited)
                             XposedCompat.logD {
                                 "[HomeCustomizeHook] recent final rewrite: " +
                                     "${methods.source.declaringClass.name}, size=${limited.size}"
@@ -780,6 +814,7 @@ object HomeCustomizeHook {
                     }
                 }
             }
+            recentMethodSets = methodSets
             XposedCompat.log(
                 "[HomeCustomizeHook] recent item limit hooks installed: " +
                     "${methodSets.joinToString { it.source.declaringClass.name }}, " +
@@ -790,6 +825,19 @@ object HomeCustomizeHook {
             recentItemLimitHookState.reset()
             XposedCompat.logW("[HomeCustomizeHook] recent item limit hook failed: ${t.message}")
             0
+        }
+    }
+
+    private fun rewriteRecentItems(
+        model: Any?,
+        methods: HomeRecentItemLimitDexKitResolver.ResolvedMethods,
+        items: List<*>,
+    ) {
+        runCatching { methods.cacheWriter.invoke(model, items) }.onFailure { error ->
+            XposedCompat.logW("[HomeCustomizeHook] recent cache rewrite failed: ${error.message}")
+        }
+        runCatching { methods.stateWriter.invoke(model, items) }.onFailure { error ->
+            XposedCompat.logW("[HomeCustomizeHook] recent state rewrite failed: ${error.message}")
         }
     }
 
@@ -1645,14 +1693,16 @@ object HomeCustomizeHook {
         val reference = WeakReference(viewModel)
         lateinit var observer: Any
         val timeout = Runnable {
-            observers.remove(observer)
-            runCatching { removeObserver.invoke(liveData, observer) }
+            runCatching {
+                removeObserver.invoke(liveData, observer)
+                observers.remove(observer)
+            }.onFailure { XposedCompat.logW("[HomeCustomizeHook] saved history observer removal failed: ${it.message}") }
             synchronized(requestState) { requestState.markTerminal() }
         }
         fun detach() {
-            observers.remove(observer)
             mainHandler.removeCallbacks(timeout)
             removeObserver.invoke(liveData, observer)
+            observers.remove(observer)
         }
         val handler = InvocationHandler { proxy, method, args ->
             when (method.name) {

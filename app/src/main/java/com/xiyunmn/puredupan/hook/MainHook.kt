@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookFileLogger
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -17,9 +18,11 @@ import com.xiyunmn.puredupan.hook.plan.HookInstaller
 import com.xiyunmn.puredupan.hook.runtime.HostLoadRuntime
 import com.xiyunmn.puredupan.hook.runtime.HostLoadSession
 import com.xiyunmn.puredupan.hook.runtime.HostResourceCleanup
+import com.xiyunmn.puredupan.hook.runtime.HotReloadFailures
 import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import com.xiyunmn.puredupan.hook.runtime.ThemeResourceCleanup
 import com.xiyunmn.puredupan.hook.ui.settings.SettingsReloadCleanup
+import com.xiyunmn.puredupan.hook.ui.UiText
 import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface.HotReloadedParam
 import io.github.libxposed.api.XposedModuleInterface.HotReloadingParam
@@ -108,38 +111,58 @@ class MainHook : XposedModule() {
                 reloadLog("deferred: $reason")
                 return@onMain false
             }
-            val systemUi = app.packageName == HostPackages.SYSTEM_UI
-            val views = if (systemUi) arrayListOf<Array<Any?>>() else {
-                SettingsReloadCleanup.closeDialogs()
-                SettingsReloadCleanup.detachHostViews().also { targets ->
-                    targets.addAll(HostResourceCleanup.exportState())
-                    HostResourceCleanup.disposeForReload()
-                    DexKitCacheWarmUp.disposeForReload()
+            val failures = HotReloadFailures(::reloadError)
+            var stage = "retire: prepare state"
+            try {
+                val systemUi = app.packageName == HostPackages.SYSTEM_UI
+                val views = arrayListOf<Array<Any?>>()
+                if (!systemUi) {
+                    failures.run("retire: dialogs") { SettingsReloadCleanup.closeDialogs(failures) }
+                    failures.run("retire: host bindings") { views.addAll(SettingsReloadCleanup.detachHostViews(failures)) }
+                    failures.run("retire: home state") { views.addAll(HostResourceCleanup.exportState()) }
+                    failures.run("retire: host resources") { HostResourceCleanup.disposeForReload(failures) }
+                    failures.run("retire: dexkit warm-up") { DexKitCacheWarmUp.disposeForReload() }
                 }
+                var splash = arrayListOf<Array<Any?>>()
+                var theme = arrayListOf<Array<Any?>>()
+                var pathState: Array<*>? = null
+                failures.run("retire: splash state") { splash = StartupSplashDrawable.exportState() }
+                if (!systemUi) {
+                    failures.run("retire: theme state") { theme = ThemeResourceCleanup.exportState() }
+                    failures.run("retire: storage state") { pathState = StorageRedirectHook.exportPathState() }
+                }
+                failures.run("retire: theme resources") { ThemeResourceCleanup.disposeForReload(failures, systemUi) }
+                if (failures.firstFailure != null) {
+                    requireRestart(failures.firstStage.orEmpty())
+                    return@onMain false
+                }
+                stage = "retire: save state"
+                // 容器及元素均由系统或宿主定义，不把旧代实现交给新代。
+                param.setSavedInstanceState(arrayOf(app, cl, app.packageName, views, splash, theme, pathState))
+                reloadLog("ready: external references released")
+                true
+            } catch (error: Throwable) {
+                reloadError(stage, error)
+                requireRestart(stage)
+                false
             }
-            val splash = StartupSplashDrawable.exportState()
-            val theme = if (systemUi) arrayListOf<Array<Any?>>() else ThemeResourceCleanup.exportState()
-            val pathState = if (systemUi) null else StorageRedirectHook.exportPathState()
-            ThemeResourceCleanup.disposeForReload(systemUi)
-            // 容器及元素均由系统或宿主定义，不把旧代实现交给新代。
-            param.setSavedInstanceState(arrayOf(app, cl, app.packageName, views, splash, theme, pathState))
-            reloadLog("ready: external references released")
-            true
         }
     }
 
     override fun onHotReloaded(param: HotReloadedParam) {
-        initializeEntry(param.processName)
-        ModuleLifetime.hotReloaded = true
         val oldHandles = param.oldHookHandles
         onMain {
+            val failures = HotReloadFailures(::reloadError)
+            var stage = "takeover: entry"
             try {
+                initializeEntry(param.processName)
+                ModuleLifetime.hotReloaded = true
+                stage = "takeover: saved state"
                 val state = param.savedInstanceState as Array<*>
-                val app = state[0] as Application
+                val app = (state[0] as Application).also { application = it }
                 val cl = state[1] as ClassLoader
                 val packageName = state[2] as String
                 check(app.packageName == packageName && HostLoadRuntime.handlesProcess(processName))
-                application = app
                 hostClassLoader = cl
                 ModuleLifetime.hostClassLoader = cl
                 XposedCompat.setCurrentPackageName(packageName)
@@ -148,29 +171,48 @@ class MainHook : XposedModule() {
                 @Suppress("UNCHECKED_CAST")
                 val splash = state[4] as List<Array<Any?>>
                 if (packageName == HostPackages.SYSTEM_UI) {
+                    stage = "takeover: SystemUI hooks"
                     HostLoadRuntime.installSystemUiIfTarget(packageName, processName, cl, app)
                     initialized = true
                 } else {
                     DexKitCompat.hotReloaded = true
+                    stage = "takeover: storage state"
                     StorageRedirectHook.restorePathState(state[6] as Array<*>)
                     val session = checkNotNull(HostLoadRuntime.resolve(packageName))
                     check(session.shouldHandleProcess(processName))
+                    stage = "takeover: home bindings"
+                    HostResourceCleanup.prepareState(views, cl)
+                    stage = "takeover: settings and hooks"
                     initializeAttached(app, session, cl)
+                    stage = "takeover: settings and member views"
                     SettingsReloadCleanup.restoreHostViews(views, cl)
+                    stage = "takeover: home views"
                     HostResourceCleanup.restoreState(views, cl)
+                    stage = "takeover: theme state"
                     @Suppress("UNCHECKED_CAST")
                     ThemeResourceCleanup.restoreState(state[5] as List<Array<Any?>>)
                 }
+                stage = "takeover: splash state"
                 StartupSplashDrawable.restoreState(splash)
+            } catch (error: Throwable) {
+                failures.record(stage, error)
             } finally {
                 // 同 ID 替换后的旧句柄已失效，unhook 仅移除本轮剩余旧 Hook。
-                oldHandles.forEach { it.unhook() }
+                oldHandles.forEachIndexed { index, handle ->
+                    failures.run("takeover: old hook[$index]") { handle.unhook() }
+                }
+            }
+            if (failures.firstFailure == null && application?.packageName != HostPackages.SYSTEM_UI) {
+                failures.run("takeover: dexkit warm-up") {
+                    val session = checkNotNull(HostLoadRuntime.resolve(checkNotNull(application).packageName))
+                    startWarmUp(session, checkNotNull(hostClassLoader), immediate = true)
+                }
+            }
+            failures.firstFailure?.let { error ->
+                requireRestart(failures.firstStage.orEmpty())
+                throw IllegalStateException("PureDuPan hot reload failed at ${failures.firstStage}; restart required", error)
             }
             reloadLog("installed: oldHooks=${oldHandles.size}, process=$processName")
-            if (application?.packageName != HostPackages.SYSTEM_UI) {
-                val session = checkNotNull(HostLoadRuntime.resolve(checkNotNull(application).packageName))
-                startWarmUp(session, checkNotNull(hostClassLoader), immediate = true)
-            }
         }
     }
 
@@ -189,10 +231,31 @@ class MainHook : XposedModule() {
         HookInstaller.install(session.postAttachPlan(processName, HookSettings.settingsSnapshot()), cl)
     }
 
-    private fun reloadLog(message: String) {
-        val context = application ?: return
-        HookFileLogger.initialize(context)
-        HookFileLogger.write(Log.INFO, "WangPanHook", "[HotReload] $message")
+    private fun reloadLog(message: String, priority: Int = Log.INFO) {
+        // 日志失败不能打断剩余资源清理。
+        try {
+            application?.let(HookFileLogger::initialize)
+            HookFileLogger.write(priority, "WangPanHook", "[HotReload] $message")
+        } catch (error: Exception) {
+            Log.e("WangPanHook", "[HotReload] private log unavailable: $message", error)
+        }
+    }
+
+    private fun reloadError(stage: String, error: Throwable) {
+        reloadLog("failed: stage=$stage\n${Log.getStackTraceString(error)}", Log.ERROR)
+    }
+
+    private fun requireRestart(stage: String) {
+        // 已拆除的资源无法原地回滚，保留当前代状态并拒绝后续交接。
+        initialized = false
+        reloadLog("incomplete: stage=$stage, restartRequired=true, process=$processName", Log.ERROR)
+        val app = application ?: return
+        if (app.packageName == HostPackages.SYSTEM_UI) return
+        try {
+            Toast.makeText(app, UiText.Settings.HOT_RELOAD_RESTART_HOST, Toast.LENGTH_LONG).show()
+        } catch (error: Exception) {
+            reloadError("restart notice", error)
+        }
     }
 
     private fun <T> onMain(block: () -> T): T {

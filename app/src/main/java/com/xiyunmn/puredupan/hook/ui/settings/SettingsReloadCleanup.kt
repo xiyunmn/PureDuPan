@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.ui.settings
 import android.app.Dialog
 import android.view.View
 import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
+import com.xiyunmn.puredupan.hook.runtime.HotReloadFailures
 import com.xiyunmn.puredupan.hook.ui.UiStyle
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.MemberCardGestureBinding
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.MemberCardBackgroundLayout
@@ -56,28 +57,31 @@ internal object SettingsReloadCleanup {
         }
     }
 
-    fun closeDialogs() {
-        DeferredSettingsSave.flushAll()
-        SettingsMainDialog.disposeForReload()
-        SettingsDialogShade.disposeForReload()
-        MemberCardBackgroundEditorDialog.disposeForReload()
+    fun closeDialogs(failures: HotReloadFailures) {
+        failures.run("settings: pending saves") { DeferredSettingsSave.flushAll() }
+        failures.run("SettingsMainDialog") { SettingsMainDialog.disposeForReload() }
+        failures.run("SettingsDialogShade") { SettingsDialogShade.disposeForReload() }
+        failures.run("MemberCardBackgroundEditorDialog") { MemberCardBackgroundEditorDialog.disposeForReload() }
         (dialogs.keys.toList() + dialogCleanups.keys.toList()).distinct().forEach {
-            disposeDialog(it)
-            it.setOnDismissListener(null)
-            it.dismiss()
+            failures.run("dialog: dispose ${it.javaClass.name}") { disposeDialog(it) }
+            failures.run("dialog: dismiss ${it.javaClass.name}") {
+                it.setOnDismissListener(null)
+                it.dismiss()
+            }
         }
         dialogCleanups.clear()
         dialogs.clear()
-        UiStyle.detachThemes()
+        failures.run("UiStyle: theme listeners") { UiStyle.detachThemes() }
     }
 
-    fun detachHostViews(): ArrayList<Array<Any?>> {
-        val targets = ModuleEntryBindingSupport.detachAll()
-        targets.addAll(MemberCardGestureBinding.detachAll())
-        targets.addAll(MemberCardBackgroundLayout.detachAll())
-        targets.addAll(DomesticMemberCardCustomizeHook.detachSizes())
-        targets.addAll(IntlMemberCardCustomizeHook.detachSizes())
-        targets.addAll(AboutMeBottomContentPositionHook.exportPositionTargets())
+    fun detachHostViews(failures: HotReloadFailures): ArrayList<Array<Any?>> {
+        val targets = arrayListOf<Array<Any?>>()
+        failures.run("views: settings entries") { targets.addAll(ModuleEntryBindingSupport.detachAll()) }
+        failures.run("views: member gestures") { targets.addAll(MemberCardGestureBinding.detachAll()) }
+        failures.run("views: member backgrounds") { targets.addAll(MemberCardBackgroundLayout.detachAll()) }
+        failures.run("views: domestic card sizes") { targets.addAll(DomesticMemberCardCustomizeHook.detachSizes()) }
+        failures.run("views: intl card sizes") { targets.addAll(IntlMemberCardCustomizeHook.detachSizes()) }
+        failures.run("views: aboutme positions") { targets.addAll(AboutMeBottomContentPositionHook.exportPositionTargets()) }
         return targets
     }
 

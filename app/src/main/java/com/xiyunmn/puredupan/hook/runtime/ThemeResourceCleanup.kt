@@ -32,15 +32,15 @@ internal object ThemeResourceCleanup {
         }
     }
 
-    fun disposeForReload(systemUi: Boolean = false) {
-        StartupSplashSettingsSync.disposeForReload()
-        StartupSplashDrawable.disposeForReload()
+    fun disposeForReload(failures: HotReloadFailures, systemUi: Boolean = false) {
+        failures.run("StartupSplashSettingsSync") { StartupSplashSettingsSync.disposeForReload() }
+        failures.run("StartupSplashDrawable") { StartupSplashDrawable.disposeForReload() }
         if (systemUi) return
-        ConfigManager.disposeForReload()
-        BaiduSystemNightModeSyncHook.disposeAllForReload()
-        ComposeSearchThemeCompat.disposeForReload()
-        FileFilterThemeCompat.disposeForReload()
-        FlutterSearchThemeRefresh.disposeForReload()
-        HostThemeChangeDispatcher.disposeForReload()
+        failures.run("ConfigManager") { ConfigManager.disposeForReload() }
+        failures.run("BaiduSystemNightModeSyncHook") { BaiduSystemNightModeSyncHook.disposeAllForReload() }
+        failures.run("ComposeSearchThemeCompat") { ComposeSearchThemeCompat.disposeForReload() }
+        failures.run("FileFilterThemeCompat") { FileFilterThemeCompat.disposeForReload() }
+        failures.run("FlutterSearchThemeRefresh") { FlutterSearchThemeRefresh.disposeForReload() }
+        failures.run("HostThemeChangeDispatcher") { HostThemeChangeDispatcher.disposeForReload() }
     }
 }

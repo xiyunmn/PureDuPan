@@ -457,6 +457,7 @@ object UiText {
         const val BUTTON_CONFIRM = "确定"
         const val SAVE_AND_RESTART = "完成并重启"
         const val SETTINGS_SAVED_RESTARTING = "设置已保存，正在重启宿主"
+        const val HOT_RELOAD_RESTART_HOST = "模块热重载失败，请重启宿主"
         const val SETTINGS_SAVE_FAILED = "模块设置保存失败"
         private const val RESTART_HINT = "，重启宿主后生效"
 

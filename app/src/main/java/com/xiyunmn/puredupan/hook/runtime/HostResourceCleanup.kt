@@ -22,29 +22,33 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlNonCoreDiff
 internal object HostResourceCleanup {
     fun exportState(): ArrayList<Array<Any?>> = HomeCustomizeHook.exportState()
 
+    fun prepareState(targets: List<Array<Any?>>, cl: ClassLoader) {
+        HomeCustomizeHook.prepareState(targets, cl)
+    }
+
     fun restoreState(targets: List<Array<Any?>>, cl: ClassLoader) {
         HomeCustomizeHook.restoreState(targets, cl)
     }
 
-    fun disposeForReload() {
-        com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.MarketingSearchTransferBlockHook.disposeForReload()
-        AutoDailySignInRuntime.disposeForReload()
-        AutoDailySignInScheduler.disposeForReload()
-        DomesticAutoDailySignInHook.disposeForReload()
-        IntlAutoDailySignInHook.disposeForReload()
-        HomeCustomizeHook.disposeForReload()
-        HomeSavedHistoryCache.disposeForReload()
-        DownloadOpenWithHook.disposeForReload()
-        AboutMeBottomContentPositionHook.disposeForReload()
-        DomesticSharePushGuideBlockHook.disposeForReload()
-        DomesticNotificationPromptBlockHook.disposeForReload()
-        IntlAlbumAiInitBlockHook.disposeForReload()
-        IntlStoryDouyinInitBlockHook.disposeForReload()
-        IntlOfflinePackageInitBlockHook.disposeForReload()
-        IntlFeedPreloadDelayHook.disposeForReload()
-        IntlTaskScoreRefreshDelayHook.disposeForReload()
-        IntlFloatViewStartupDelayHook.disposeForReload()
-        IntlNonCoreDiffSocketDelayHook.disposeForReload()
-        IntlHomeStableRestoreSignal.disposeForReload()
+    fun disposeForReload(failures: HotReloadFailures) {
+        failures.run("MarketingSearchTransferBlockHook") { com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.MarketingSearchTransferBlockHook.disposeForReload() }
+        failures.run("AutoDailySignInRuntime") { AutoDailySignInRuntime.disposeForReload() }
+        failures.run("AutoDailySignInScheduler") { AutoDailySignInScheduler.disposeForReload() }
+        failures.run("DomesticAutoDailySignInHook") { DomesticAutoDailySignInHook.disposeForReload() }
+        failures.run("IntlAutoDailySignInHook") { IntlAutoDailySignInHook.disposeForReload() }
+        failures.run("HomeCustomizeHook") { HomeCustomizeHook.disposeForReload(failures) }
+        failures.run("HomeSavedHistoryCache") { HomeSavedHistoryCache.disposeForReload() }
+        failures.run("DownloadOpenWithHook") { DownloadOpenWithHook.disposeForReload() }
+        failures.run("AboutMeBottomContentPositionHook") { AboutMeBottomContentPositionHook.disposeForReload() }
+        failures.run("DomesticSharePushGuideBlockHook") { DomesticSharePushGuideBlockHook.disposeForReload() }
+        failures.run("DomesticNotificationPromptBlockHook") { DomesticNotificationPromptBlockHook.disposeForReload() }
+        failures.run("IntlAlbumAiInitBlockHook") { IntlAlbumAiInitBlockHook.disposeForReload() }
+        failures.run("IntlStoryDouyinInitBlockHook") { IntlStoryDouyinInitBlockHook.disposeForReload() }
+        failures.run("IntlOfflinePackageInitBlockHook") { IntlOfflinePackageInitBlockHook.disposeForReload() }
+        failures.run("IntlFeedPreloadDelayHook") { IntlFeedPreloadDelayHook.disposeForReload() }
+        failures.run("IntlTaskScoreRefreshDelayHook") { IntlTaskScoreRefreshDelayHook.disposeForReload() }
+        failures.run("IntlFloatViewStartupDelayHook") { IntlFloatViewStartupDelayHook.disposeForReload() }
+        failures.run("IntlNonCoreDiffSocketDelayHook") { IntlNonCoreDiffSocketDelayHook.disposeForReload() }
+        failures.run("IntlHomeStableRestoreSignal") { IntlHomeStableRestoreSignal.disposeForReload() }
     }
 }

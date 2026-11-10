@@ -8,6 +8,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.os.Build
+import android.util.Log
+import com.xiyunmn.puredupan.hook.core.HookFileLogger
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
 import com.xiyunmn.puredupan.hook.host.HostPackages
@@ -78,7 +80,12 @@ internal object StartupSplashSettingsSync {
     }
 
     fun disposeForReload() {
-        receiver?.let { receiverContext?.unregisterReceiver(it) }
+        try {
+            receiver?.let { receiverContext?.unregisterReceiver(it) }
+        } catch (error: IllegalArgumentException) {
+            // Context 对已注销的 receiver 抛出此异常，引用可以直接释放。
+            HookFileLogger.write(Log.WARN, "WangPanHook", "[HotReload] splash receiver already unregistered: ${error.message}")
+        }
         receiver = null
         receiverContext = null
         sender = null

@@ -1,14 +1,13 @@
 # PureDuPan
 
-[![Release](https://img.shields.io/github/v/release/Xposed-Modules-Repo/com.xiyunmn.puredupan.hook?style=flat&labelColor=30363d&color=3867d6&label=Release&logo=github&logoColor=white)](https://github.com/Xposed-Modules-Repo/com.xiyunmn.puredupan.hook/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/Xposed-Modules-Repo/com.xiyunmn.puredupan.hook/total?style=flat&labelColor=30363d&color=16806a&label=Downloads)](https://github.com/Xposed-Modules-Repo/com.xiyunmn.puredupan.hook/releases/latest)
-[![Stars](https://img.shields.io/github/stars/xiyunmn/PureDuPan?style=flat&labelColor=30363d&color=9d6b00&label=Stars)](https://github.com/xiyunmn/PureDuPan/stargazers)
-[![License](https://img.shields.io/badge/License-GPL--3.0-7860a8?style=flat&labelColor=30363d&color=7860a8)](https://github.com/xiyunmn/PureDuPan/blob/main/LICENSE)
-<br>
-[![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B-358259?style=flat&labelColor=30363d&color=358259&logo=android&logoColor=white)](https://developer.android.com/about/versions/oreo)
-[![libxposed API 102](https://img.shields.io/badge/libxposed-API%20102-526fad?style=flat&labelColor=30363d&color=526fad)](https://github.com/libxposed/api)
-[![arm64-v8a](https://img.shields.io/badge/ABI-arm64--v8a-b45309?style=flat&labelColor=30363d&color=b45309)](https://developer.android.com/ndk/guides/abis#arm64-v8a)
-[![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=flat&labelColor=30363d&color=7f52ff&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Release](https://img.shields.io/github/v/release/Xposed-Modules-Repo/com.xiyunmn.puredupan.hook?style=flat-square&labelColor=334155&color=79c0ff&label=Release&logo=github&logoColor=white)](https://github.com/Xposed-Modules-Repo/com.xiyunmn.puredupan.hook/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Xposed-Modules-Repo/com.xiyunmn.puredupan.hook/total?style=flat-square&labelColor=334155&color=6ee7b7&label=Downloads)](https://github.com/Xposed-Modules-Repo/com.xiyunmn.puredupan.hook/releases/latest)
+[![Stars](https://img.shields.io/github/stars/xiyunmn/PureDuPan?style=flat-square&labelColor=334155&color=fcd34d&label=Stars)](https://github.com/xiyunmn/PureDuPan/stargazers)
+[![License](https://img.shields.io/badge/License-GPL--3.0-cbd5e1?style=flat-square&labelColor=334155&color=cbd5e1)](https://github.com/xiyunmn/PureDuPan/blob/main/LICENSE)
+[![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B-86efac?style=flat-square&labelColor=334155&color=86efac&logo=android&logoColor=white)](https://developer.android.com/about/versions/oreo)
+[![libxposed API 102](https://img.shields.io/badge/libxposed-API%20102-7dd3fc?style=flat-square&labelColor=334155&color=7dd3fc)](https://github.com/libxposed/api)
+[![arm64-v8a](https://img.shields.io/badge/ABI-arm64--v8a-94a3b8?style=flat-square&labelColor=334155&color=94a3b8)](https://developer.android.com/ndk/guides/abis#arm64-v8a)
+[![Kotlin](https://img.shields.io/badge/Kotlin-c4b5fd?style=flat-square&labelColor=334155&color=c4b5fd&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 
 PureDuPan 是一个百度网盘 Xposed 净化模块，提供广告屏蔽、页面定制、主题跟随系统、存储路径重定向等功能。
 
@@ -37,16 +36,13 @@ PureDuPan 是一个百度网盘 Xposed 净化模块，提供广告屏蔽、页�
 | 百度网盘三星版 | `13.25.2` ~ `13.36.7` |
 | 百度网盘国际版 | `13.11.15` |
 
-<details open>
-<summary>宿主包名</summary>
+**宿主包名**
 
 ```text
 百度网盘         com.baidu.netdisk
 百度网盘国际版   com.baidu.drive.app
 百度网盘三星版   com.baidu.netdisk.samsung
 ```
-
-</details>
 
 ## 安装与入口
 
@@ -55,7 +51,7 @@ PureDuPan 是一个百度网盘 Xposed 净化模块，提供广告屏蔽、页�
 1. **安装并启用模块**，在框架作用域中勾选需要净化的宿主。
 2. **重启宿主**，或强制停止后重新打开。
 3. **打开模块设置**：首页长按右上角“+”，或我的页长按右上角“扫一扫”。
-4. 部分功能默认隐藏，连续点击模块版本号 **5 次**可解锁。
+4. 部分功能默认隐藏，**连续点击模块版本号 5 次**可解锁。
 
 设置**自动保存**，部分功能需**重启宿主**后生效。
 
@@ -73,8 +69,7 @@ PureDuPan 是一个百度网盘 Xposed 净化模块，提供广告屏蔽、页�
 
 ### 页面定制
 
-- **首页**：隐藏工具栏、搜索框提示词，以及推荐、回忆、转存、最近等板块。
-- **首页列表**：调整“最近”显示数量，设置“转存/订阅”纵向列表及项目数量。
+- **首页**：隐藏工具栏、搜索框提示词及推荐等板块；调整“最近”条目数，设置“转存/订阅”纵向列表及条目数。
 - **搜索页**：隐藏 AI 入口、推荐提示词、历史记录、智能推荐、SVIP 横幅等。
 - **文件页**：隐藏相册备份提示栏、底部数据安全提示和转存成功弹窗中的 SVIP 优惠广告卡片。
 - **下载页**：隐藏游戏推荐浮窗动画、推广广告和底部会员推广区域；单选已下载文件或文件夹时，可用其它应用打开。
@@ -91,14 +86,14 @@ PureDuPan 是一个百度网盘 Xposed 净化模块，提供广告屏蔽、页�
 
 ### 底栏 Tab
 
-- 隐藏指定底栏 Tab，模块会**保留至少一项**。
-- **国内版、三星版**：可隐藏 AIGC、会员入口，也可将底栏 AI 入口替换为会员入口。
-- **国际版**：提供首页、文件、共享、我的四项。
+- 隐藏指定底栏 Tab，模块会保留至少一项。
+- 国内版、三星版：可隐藏 AIGC、会员入口，也可将底栏 AI 入口替换为会员入口。
+- 国际版：提供首页、文件、共享、我的四项。
 - 移除共享 Tab 红色角标，并可从宿主底栏选项中指定默认启动 Tab。
 
 ### 夜间模式
 
-- 支持**跟随系统深浅色**。
+- 支持跟随系统深浅色。
 - 启动图可跟随系统深浅色；适配系统启动画面需额外勾选“**系统界面（SystemUI）**”作用域。
 
 ### 拓展功能
@@ -131,12 +126,9 @@ DexKit 默认启用，模块或宿主变化后会自动预热，也可手动全�
 
 **[反馈问题 →](https://github.com/xiyunmn/PureDuPan/issues)**　·　**[提交 PR →](https://github.com/xiyunmn/PureDuPan/pulls)**
 
-反馈时请提供**宿主类型与版本、模块版本**，说明失效功能和复现步骤，并附相关日志或 DexKit 状态截图。
+反馈时请提供**宿主类型与版本、模块版本**，说明失效功能和复现步骤，并附**相关日志**或 DexKit 状态截图。
 
 ## 构建
-
-<details>
-<summary>查看构建命令与签名配置</summary>
 
 ```powershell
 .\gradlew.bat :app:assembleDebug
@@ -151,8 +143,6 @@ Release 签名通过 Gradle 属性配置：
 - `RELEASE_KEY_PASSWORD`
 
 未配置签名时生成未签名的 Release APK。
-
-</details>
 
 ## 致谢
 

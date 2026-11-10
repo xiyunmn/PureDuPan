@@ -1,6 +1,7 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ui
 
 import com.xiyunmn.puredupan.hook.runtime.ModuleLifetime
+import com.xiyunmn.puredupan.hook.runtime.HotReloadFailures
 import android.view.View
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
@@ -26,8 +27,10 @@ internal object HomeSaveCardLongPressCompat {
 
     private val attachListeners = WeakHashMap<View, View.OnAttachStateChangeListener>()
     private val originalTags = WeakHashMap<View, Any?>()
-    fun disposeForReload() {
-        activePopups.keys.toList().forEach(::dismiss)
+    fun disposeForReload(failures: HotReloadFailures) {
+        activePopups.toMap().forEach { (card, row) ->
+            failures.run("home: saved row popup") { updatePopup(card, row, true, failures) }
+        }
         attachListeners.toMap().forEach { (view, listener) -> view.removeOnAttachStateChangeListener(listener) }
         originalTags.toMap().forEach { (view, tag) -> view.tag = tag }
         attachListeners.clear()
@@ -122,7 +125,7 @@ internal object HomeSaveCardLongPressCompat {
         activePopups[card]?.let { updatePopup(card, it, true) }
     }
 
-    private fun updatePopup(card: Any, target: Row, remove: Boolean) {
+    private fun updatePopup(card: Any, target: Row, remove: Boolean, failures: HotReloadFailures? = null) {
         if (target.clearing) return // 原生关闭菜单可能同步触发清理回调。
         val row = target.view.get()
         val content = target.content.get()
@@ -135,7 +138,8 @@ internal object HomeSaveCardLongPressCompat {
             val cleanup = if (target.subscription) target.binding.subscriptionCleanup else target.binding.savedCleanup
             cleanup.invoke(card, remove, row, content)
         } catch (error: Exception) {
-            XposedCompat.logW("[HomeSaveCardLongPressCompat] popup cleanup failed: ${error.message}")
+            if (failures != null) failures.record("home: popup callback", error)
+            else XposedCompat.logW("[HomeSaveCardLongPressCompat] popup cleanup failed: ${error.message}")
         } finally {
             if (remove) {
                 if (activePopups[card] === target) activePopups.remove(card)

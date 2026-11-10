@@ -35,6 +35,16 @@ internal object HomeRecentItemLimitDexKitResolver {
         val stateWriter: DexKitCompat.MethodRef,
     )
 
+    /** 复用同一宿主进程中已解析的方法，包装对象由新代重新创建。 */
+    fun fromReloadedMethods(source: Method, cacheWriter: Method, stateWriter: Method, cl: ClassLoader): ResolvedMethods? {
+        val owner = source.declaringClass
+        if (cacheWriter.declaringClass != owner || stateWriter.declaringClass != owner ||
+            XposedCompat.findClassOrNull(owner.name, cl) !== owner ||
+            listOf(source, cacheWriter, stateWriter).any { !isListVoidInstanceMethod(it) }
+        ) return null
+        return ResolvedMethods(source, cacheWriter, stateWriter)
+    }
+
     fun warmUpDexKitCache(cl: ClassLoader): Boolean {
         return resolve(cl).isNotEmpty()
     }
