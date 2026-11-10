@@ -11,7 +11,7 @@ PureDuPan 是一个百度网盘 Xposed 净化模块，提供广告屏蔽、页�
 
 ## 支持范围
 
-模块基于 libxposed API 101 开发，仅支持 `arm64-v8a`，按宿主包名隔离适配：
+模块基于 libxposed API 102，支持热重载；仅支持 `arm64-v8a`，按宿主包名隔离适配：
 
 ```text
 百度网盘         com.baidu.netdisk
@@ -28,7 +28,7 @@ PureDuPan 是一个百度网盘 Xposed 净化模块，提供广告屏蔽、页�
 
 ## 安装与入口
 
-1. 在支持 libxposed API 101 的框架中安装模块。
+1. 在支持 libxposed API 102 的框架中安装模块。
 2. 在作用域中勾选需要净化的百度网盘宿主。
 3. 强制停止或重启对应宿主。
 4. 打开模块设置：
@@ -38,7 +38,7 @@ PureDuPan 是一个百度网盘 Xposed 净化模块，提供广告屏蔽、页�
 
 设置自动保存，部分功能重启宿主后生效。
 
-未 root 设备可尝试 [NPatch](https://github.com/7723mod/NPatch) 等支持 libxposed API 101 的框架。
+未 root 设备需要使用支持 libxposed API 102 的免 root 框架。
 
 ## 功能概览
 
