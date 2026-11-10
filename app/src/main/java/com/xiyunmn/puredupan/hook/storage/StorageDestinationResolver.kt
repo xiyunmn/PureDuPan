@@ -3,11 +3,14 @@ package com.xiyunmn.puredupan.hook.storage
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
+import android.os.SystemClock
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
+import android.util.LruCache
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import java.io.File
+import java.io.FileNotFoundException
 import java.util.Locale
 
 /** 在授权目录内解析下载目标，失败时返回明确原因。 */
@@ -63,20 +66,8 @@ class StorageDestinationResolver(
             return StorageDestination.Invalid(e.message ?: "路径不合法")
         }
         return try {
-            val parent = ensureDirectory(treeUri, relative)
-            if (fileName.isNullOrBlank()) {
-                StorageDestination.ReadyDocumentUri(parent.toString())
-            } else {
-                val name = StoragePathRules.validateName(fileName)
-                val existing = findChild(parent, name, isDirectory)
-                val fileUri = existing ?: DocumentsContract.createDocument(
-                    resolver,
-                    parent,
-                    if (isDirectory) DocumentsContract.Document.MIME_TYPE_DIR else "application/octet-stream",
-                    name,
-                ) ?: throw IllegalStateException("provider refused file creation")
-                StorageDestination.ReadyDocumentUri(fileUri.toString())
-            }
+            val name = fileName?.takeIf { it.isNotBlank() }?.let(StoragePathRules::validateName)
+            StorageDestination.ReadyDocumentUri(resolveDocument(treeUri, relative, name, isDirectory).toString())
         } catch (e: SecurityException) {
             StorageDestination.Invalid("下载目录不可写或权限已撤销")
         } catch (e: IllegalArgumentException) {
@@ -122,6 +113,59 @@ class StorageDestinationResolver(
                 android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
                     android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED)
+    }
+
+    private fun resolveDocument(treeUri: Uri, relative: String, name: String?, isDirectory: Boolean): Uri {
+        fun resolveIn(parent: Uri): Uri {
+            if (name == null) return parent
+            return findChild(parent, name, isDirectory) ?: DocumentsContract.createDocument(
+                resolver,
+                parent,
+                if (isDirectory) DocumentsContract.Document.MIME_TYPE_DIR else "application/octet-stream",
+                name,
+            ) ?: throw IllegalStateException("provider refused file creation")
+        }
+
+        // 系统外部存储的文档 ID 随路径变化，其它提供方沿用实时寻址。
+        val cacheable = relative.isNotEmpty() && treeUri.authority == "com.android.externalstorage.documents"
+        val key = treeUri to relative
+        val cached = if (cacheable) directoryCache.get(key) else null
+        if (cached != null) {
+            if (SystemClock.elapsedRealtime() - cached.resolvedAt < DIRECTORY_CACHE_TTL_MS) {
+                try {
+                    // 传统下载随后使用文件路径，返回前确认缓存目录仍存在。
+                    if (name == null && !directoryExists(cached.uri)) {
+                        throw FileNotFoundException("cached directory no longer exists")
+                    }
+                    return resolveIn(cached.uri)
+                } catch (error: Exception) {
+                    directoryCache.remove(key)
+                    // 目录被删除时从授权树重新寻址一次，其它错误交回原失败处理。
+                    if (error !is FileNotFoundException) throw error
+                }
+            } else {
+                directoryCache.remove(key)
+            }
+        }
+
+        val parent = ensureDirectory(treeUri, relative)
+        val result = resolveIn(parent)
+        if (cacheable) {
+            directoryCache.put(key, CachedDirectory(parent, SystemClock.elapsedRealtime()))
+        }
+        return result
+    }
+
+    private fun directoryExists(uri: Uri): Boolean {
+        return resolver.query(
+            uri,
+            arrayOf(DocumentsContract.Document.COLUMN_MIME_TYPE),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            cursor.moveToFirst() && cursor.getString(0) == DocumentsContract.Document.MIME_TYPE_DIR
+        } == true
     }
 
     private fun ensureDirectory(treeUri: Uri, relative: String): Uri {
@@ -195,6 +239,12 @@ class StorageDestinationResolver(
     }
 
     companion object {
+        private const val DIRECTORY_CACHE_TTL_MS = 30_000L
+        private data class CachedDirectory(val uri: Uri, val resolvedAt: Long)
+
+        // Resolver 随下载调用创建，目录缓存由本代实例共享，不持有宿主 Context。
+        private val directoryCache = LruCache<Pair<Uri, String>, CachedDirectory>(64)
+
         fun snapshotFor(
             hostPackageName: String,
             prefs: SharedPreferences,

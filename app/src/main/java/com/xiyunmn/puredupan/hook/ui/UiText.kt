@@ -465,30 +465,27 @@ object UiText {
         const val RESTRICTED_FEATURE_UNLOCKED_TEXT = "高级功能已解锁"
 
         const val DISCLAIMER_TITLE = "免责声明"
-        const val DISCLAIMER_MESSAGE = """本模块仅供学习与技术研究使用。
+        const val NOTICE_RISK_TITLE = "使用风险"
+        const val DISCLAIMER_RISK =
+            "仅供学习与技术研究，按现状提供。使用可能导致应用异常、功能不可用或账号风险，请遵守适用法律及相关服务条款。"
+        const val DISCLAIMER_RELATION =
+            "本模块为非官方工具，与百度及其关联公司无隶属或合作关系。相关名称、商标归各自权利人所有。"
+        const val DISCLAIMER_RESPONSIBILITY =
+            "在法律允许范围内，作者不对使用或无法使用模块造成的损失承担责任；违法、违规或不当使用的责任，由使用者自行承担。"
+        const val DISCLAIMER_ACCEPTANCE_HINT = "点击“同意”表示已阅读并接受以上声明。"
 
-使用本模块可能导致应用异常、功能不可用、账号风险或其它不可预期后果。
+        const val RESTRICTED_FEATURE_WARNING_TITLE = "解锁高级功能"
+        const val RESTRICTED_FEATURE_RISK =
+            "部分设置可能影响宿主运行，自动签到等可能涉及账号风控。请逐项开启，异常时关闭对应功能。"
+        const val RESTRICTED_FEATURE_SCOPE = "解锁当前宿主支持的高级设置，功能开关保持原有状态。"
+        const val RESTRICTED_FEATURE_RESET_HINT = "性能优化默认关闭。重置模块设置后，高级设置会重新隐藏。"
 
-作者不对使用本模块造成的任何后果承担责任。
-
-点击"同意"即表示您已阅读并接受以上声明。"""
-
-        const val RESTRICTED_FEATURE_WARNING_TITLE = "启用高级功能"
-        const val RESTRICTED_FEATURE_WARNING_MESSAGE = """解锁当前宿主支持的高级设置，包括界面定制、启动相关选项、自动签到、视频解锁和性能优化；具体项目以当前宿主设置页为准。
-
-注意事项：
-1. 这些功能可能影响应用正常使用，自动签到等功能还可能涉及账号风控
-2. 性能优化功能默认全部关闭，需逐项手动开启
-3. 如遇异常请关闭对应功能
-
-解锁后显示这些设置项，重置模块设置后会重新隐藏。"""
-
-        fun disclaimerCountdown(seconds: Int): String = "同意 ($seconds)"
-        fun restrictedFeatureWarningCountdown(seconds: Int): String = "启用 ($seconds)"
+        fun disclaimerCountdown(seconds: Int): String = "同意（${seconds}秒）"
+        fun restrictedFeatureWarningCountdown(seconds: Int): String = "解锁（${seconds}秒）"
 
         const val BUTTON_DISAGREE = "拒绝"
         const val BUTTON_AGREE = "同意"
-        const val BUTTON_ENABLE = "启用"
+        const val BUTTON_UNLOCK = "解锁"
         const val DISCLAIMER_REJECTED = "已取消"
 
         fun withUnsupportedSuffix(label: String): String = "$label（暂不可用）"

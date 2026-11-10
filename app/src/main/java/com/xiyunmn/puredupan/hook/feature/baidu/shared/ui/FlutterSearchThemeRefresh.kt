@@ -21,7 +21,9 @@ internal object FlutterSearchThemeRefresh {
     private val installed = mutableSetOf<Method>()
     private val transitions = mutableMapOf<Activity, Transition>()
 
-    private class Transition(val decor: ViewGroup, val cover: ImageView, val completed: (Boolean) -> Unit) {
+    private class Transition(val decor: ViewGroup, val cover: ImageView, bitmap: Bitmap, val completed: (Boolean) -> Unit) {
+        var bitmap: Bitmap? = bitmap
+        var displayed = false
         var fragment: Any? = null
         var cleanup: Runnable? = null
         var rebuilt = false
@@ -52,7 +54,7 @@ internal object FlutterSearchThemeRefresh {
 
     fun disposeForReload() {
         transitions.toMap().forEach { (activity, state) -> finish(activity, state) }
-        handler.removeCallbacksAndMessages(null)
+        // 保留 PixelCopy 完成回调，让缓冲区与任务计数正常收尾。
     }
 
     fun refresh(activity: Activity, isCurrent: () -> Boolean, completed: (Boolean) -> Unit) {
@@ -79,14 +81,17 @@ internal object FlutterSearchThemeRefresh {
             }
             val location = IntArray(2).also(content::getLocationInWindow)
             val rect = Rect(location[0], location[1], location[0] + content.width, location[1] + content.height)
-            val bitmap = Bitmap.createBitmap(rect.width(), rect.height(), Bitmap.Config.ARGB_8888)
             val cover = ImageView(activity).apply {
                 scaleType = ImageView.ScaleType.FIT_XY
                 isClickable = true
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }
-            val state = Transition(decor, cover, completed)
-            if (!ModuleLifetime.beginTask()) return
+            val bitmap = Bitmap.createBitmap(rect.width(), rect.height(), Bitmap.Config.ARGB_8888)
+            val state = Transition(decor, cover, bitmap, completed)
+            if (!ModuleLifetime.beginTask()) {
+                releaseBitmap(state)
+                return
+            }
             transitions[activity] = state
             state.cleanup = Runnable { finish(activity, state) }.also { handler.postDelayed(it, 3000L) }
             if (!ModuleLifetime.beginTask()) {
@@ -107,6 +112,7 @@ internal object FlutterSearchThemeRefresh {
                             return@request
                         }
                         runCatching {
+                            state.displayed = true
                             cover.setImageBitmap(bitmap)
                             decor.addView(cover, ViewGroup.LayoutParams(rect.width(), rect.height()))
                             val decorLocation = IntArray(2).also(decor::getLocationInWindow)
@@ -125,6 +131,7 @@ internal object FlutterSearchThemeRefresh {
                         }
                     } finally {
                         state.pixelPending = false
+                        if (transitions[activity] !== state) releaseBitmap(state)
                         ModuleLifetime.finishTask()
                     }
                 }, handler)
@@ -152,11 +159,20 @@ internal object FlutterSearchThemeRefresh {
         state.frame?.let(state.decor::removeCallbacks)
         (state.cover.parent as? ViewGroup)?.removeView(state.cover)
         state.cover.setImageDrawable(null)
-        // PixelCopy 回调前可能仍占用缓冲区，交由 GC 回收。
+        releaseBitmap(state)
         try {
             if (!ModuleLifetime.isRetiring) state.completed(state.rebuilt)
         } finally {
             ModuleLifetime.finishTask()
         }
+    }
+
+    private fun releaseBitmap(state: Transition) {
+        // 复制结束前缓冲区仍可能被写入，取消后由完成回调释放。
+        if (state.pixelPending) return
+        val bitmap = state.bitmap ?: return
+        state.bitmap = null
+        // 已交给 View 的图片可能仍被硬件绘制缓存引用，清除引用后交由 GC 回收。
+        if (!state.displayed) bitmap.recycle()
     }
 }

@@ -8,6 +8,8 @@ app/release/
 # IDE and local assistant state
 .idea/
 .claude/
+/.agents/
+/.codex/
 /AGENTS.md
 *.iml
 
@@ -27,6 +29,7 @@ log/
 # Reverse engineering materials and target app binaries
 target_app/
 tmp_jadx_async/
+/tmp_device/
 *.apk
 
 # Local backups and archives
