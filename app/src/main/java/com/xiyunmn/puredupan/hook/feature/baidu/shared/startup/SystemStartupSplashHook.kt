@@ -54,6 +54,7 @@ internal object SystemStartupSplashHook {
             val builder = Class.forName(BaiduStartupSplashHookPoints.SPLASH_BUILDER, false, cl)
             val view = Class.forName(BaiduStartupSplashHookPoints.SPLASH_VIEW, false, cl)
             val build = builder.getDeclaredMethod("build")
+            val backgroundColor = view.getDeclaredMethod("getInitBackgroundColor")
             val contextField = builder.getDeclaredField("mContext").apply { isAccessible = true }
             val overlay = builder.getDeclaredField("mOverlayDrawable").apply { isAccessible = true }
             val iconBackground = builder.getDeclaredField("mIconBackground").apply { isAccessible = true }
@@ -63,6 +64,16 @@ internal object SystemStartupSplashHook {
             }.onFailure { XposedCompat.logW("[$TAG] icon mask unavailable: ${it.message}") }.getOrNull()
             check(build.returnType == view && contextField.type == Context::class.java &&
                 overlay.type == Drawable::class.java && !Modifier.isFinal(overlay.modifiers))
+            module.hook(backgroundColor).setId("SystemStartupSplash:backgroundColor:${view.name}").intercept { chain ->
+                val original = chain.proceed()
+                if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept original
+                val splash = chain.thisObject as View
+                val info = splash.context.applicationInfo
+                // 退场遮挡条和系统栏明暗判断共用此颜色，需与自适应背景一致。
+                if (StartupSplashSettingsSync.isEnabled(info) && StartupSplashDrawable.isSystemDark()) {
+                    StartupSplashDrawable.DARK_BACKGROUND
+                } else original
+            }
             module.hook(build).setId("SystemStartupSplash:build:${build.declaringClass.name}").intercept { chain ->
                 if (com.xiyunmn.puredupan.hook.runtime.ModuleLifetime.isRetiring) return@intercept chain.proceed()
                 safely {

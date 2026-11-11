@@ -6,11 +6,12 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduVideoSpeedHookPoints
 import io.github.libxposed.api.XposedModule
 import java.lang.reflect.Method
+import java.util.concurrent.ConcurrentHashMap
 
 /** 开放非会员的客户端倍速入口，同时处理业务权限接口和播放器局部判断。 */
 object BaiduVideoSpeedUnlockHook {
     private const val TAG = "BaiduVideoSpeedUnlockHook"
-    private val hookState = HookState()
+    private val hookStates = ConcurrentHashMap<Method, HookState>()
 
     fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
@@ -18,22 +19,20 @@ object BaiduVideoSpeedUnlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!hookState.markInstalled()) return
-
         var installed = 0
         try {
             installed += hookPrivilegeMediaSpeedEnable(mod, cl)
             installed += hookPresentBooleanGates(mod, cl)
             installed += hookVideoPrivilegeGates(mod, cl)
 
-            if (installed == 0) {
+            if (installed == 0 && hookStates.values.none { it.isInstalled() }) {
                 XposedCompat.logW("[$TAG] no speed unlock targets found")
-                hookState.reset()
                 return
             }
-            XposedCompat.log("[$TAG] hook INSTALLED targets=$installed")
+            if (installed > 0) {
+                XposedCompat.log("[$TAG] hook INSTALLED newTargets=$installed")
+            }
         } catch (e: Exception) {
-            hookState.reset()
             XposedCompat.log("[$TAG] FAILED: ${e.message}")
             XposedCompat.log(e)
         }
@@ -65,7 +64,7 @@ object BaiduVideoSpeedUnlockHook {
                 count++
             }
         }
-        if (count == 0) {
+        if (methods.isEmpty()) {
             XposedCompat.logW("[$TAG] privilegeMediaSpeedEnable NOT FOUND")
         }
         return count
@@ -74,8 +73,8 @@ object BaiduVideoSpeedUnlockHook {
     private fun hookPresentBooleanGates(mod: XposedModule, cl: ClassLoader): Int {
         var count = 0
         val online = BaiduVideoSpeedUnlockDexKitResolver.resolveIsSpeedUpOnlineEnable(cl)
-        if (online != null && installBooleanForceTrue(mod, online, "isSpeedUpOnlineEnable")) {
-            count++
+        if (online != null) {
+            if (installBooleanForceTrue(mod, online, "isSpeedUpOnlineEnable")) count++
         } else {
             XposedCompat.logD(
                 "[$TAG] isSpeedUpOnlineEnable unresolved " +
@@ -84,8 +83,8 @@ object BaiduVideoSpeedUnlockHook {
         }
 
         val privilege = BaiduVideoSpeedUnlockDexKitResolver.resolveHasSpeedPrivilege(cl)
-        if (privilege != null && installBooleanForceTrue(mod, privilege, "hasSpeedPrivilege")) {
-            count++
+        if (privilege != null) {
+            if (installBooleanForceTrue(mod, privilege, "hasSpeedPrivilege")) count++
         } else {
             XposedCompat.logD(
                 "[$TAG] hasSpeedPrivilege unresolved " +
@@ -115,6 +114,8 @@ object BaiduVideoSpeedUnlockHook {
         method: Method,
         label: String,
     ): Boolean {
+        val hookState = hookStates.computeIfAbsent(method) { HookState() }
+        if (!hookState.markInstalled()) return false
         return try {
             mod.hook(method).setId("BaiduVideoSpeedUnlockHook:installBooleanForceTrue:method").intercept { chain ->
                 if (isEnabled()) {
@@ -127,6 +128,7 @@ object BaiduVideoSpeedUnlockHook {
             XposedCompat.logD("[$TAG] hooked $label: ${method.declaringClass.name}.${method.name}")
             true
         } catch (e: Exception) {
+            hookState.reset()
             XposedCompat.logW("[$TAG] failed to hook $label: ${e.message}")
             false
         }

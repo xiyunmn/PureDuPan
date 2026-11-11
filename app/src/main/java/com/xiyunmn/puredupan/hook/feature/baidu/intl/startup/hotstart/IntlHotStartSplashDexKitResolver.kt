@@ -76,9 +76,9 @@ internal object IntlHotStartSplashDexKitResolver {
                         usingStrings = methodData.usingStrings.toSet(),
                     )
                 }
-        }
+        } ?: return resolveStableFallback(cl)
 
-        val rankedCandidates = methods.orEmpty().mapNotNull { methodData ->
+        val rankedCandidates = methods.mapNotNull { methodData ->
                 if (!methodData.isHotStartShape()) return@mapNotNull null
                 val result = validateCachedResult(
                     cl,
