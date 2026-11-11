@@ -129,7 +129,10 @@ internal object IntlFloatViewStartupDelayHook {
         }
 
         val ownerClasses = ownerClasses(clazz)
-        if (ownerClasses.any { metadataTokens(it).contains("TaskQueryTip") }) {
+        if (ownerClasses.any { owner ->
+                metadataTokens(owner).contains("TaskQueryTip") || hasTaskQueryTipFields(owner)
+            }
+        ) {
             return Chain.TASK_QUERY
         }
         if (ownerClasses.any { staticStringConstants(it).contains("AudioCircleViewHelper") }) {
@@ -139,6 +142,13 @@ internal object IntlFloatViewStartupDelayHook {
             return Chain.RETURN_THIRD_APP
         }
         return null
+    }
+
+    /** 新版移除了 Metadata，保留任务提示视图及广播模型的字段组合。 */
+    private fun hasTaskQueryTipFields(owner: Class<*>): Boolean {
+        val types = owner.declaredFields.map { it.type.name }.toSet()
+        return "com.baidu.netdisk.ui.widget.taskquerytip.LoadingToastView" in types &&
+            "com.baidu.netdisk.cloudfile.io.model.FileManagerBroadcastBean" in types
     }
 
     private fun ownerClasses(clazz: Class<*>): List<Class<*>> {

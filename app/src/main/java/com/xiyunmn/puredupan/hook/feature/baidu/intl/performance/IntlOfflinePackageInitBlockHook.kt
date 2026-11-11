@@ -5,7 +5,9 @@ import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
+import java.lang.reflect.Constructor
 import java.lang.reflect.Method
+import java.util.concurrent.ConcurrentHashMap
 
 internal object IntlOfflinePackageInitBlockHook {
     fun disposeForReload() {
@@ -17,12 +19,12 @@ internal object IntlOfflinePackageInitBlockHook {
     }
 
     private const val DYNAMIC_CONTEXT_CLASS_NAME = BaiduIntlHookPoints.DYNAMIC_CONTEXT
-    private const val FAST_WEB_VIEW_CLIENT_CLASS_NAME = BaiduIntlHookPoints.FAST_WEB_VIEW_CLIENT
     private const val OFFLINE_H5_PACKAGE_ACTIVITY_CLASS_NAME = BaiduIntlHookPoints.OFFLINE_H5_PACKAGE_ACTIVITY
     private const val START_SYNC_METHOD_NAME = "startSyncOfflinePackages"
 
     private val hookState = HookState()
     private val lock = Any()
+    private val installedClientConstructors = ConcurrentHashMap.newKeySet<Constructor<*>>()
 
     @Volatile private var startSyncMethod: Method? = null
     @Volatile private var skipped = false
@@ -39,7 +41,10 @@ internal object IntlOfflinePackageInitBlockHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!hookState.markInstalled()) return
+        if (!hookState.markInstalled()) {
+            hookClientRestoreSignals(cl)
+            return
+        }
 
         try {
             val syncMethod = resolveStartSyncMethod(cl)
@@ -89,26 +94,15 @@ internal object IntlOfflinePackageInitBlockHook {
 
     private fun shouldBlockStartupInit(): Boolean {
         if (ModuleLifetime.isRetiring || !isEnabled()) return false
+        // 客户端恢复入口尚未就绪时，保留宿主初始化。
+        if (installedClientConstructors.isEmpty()) return false
         if (restoring || restored) return false
         return true
     }
 
     private fun hookH5RestoreSignals(cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
-        var installed = 0
-
-        XposedCompat.findClassOrNull(FAST_WEB_VIEW_CLIENT_CLASS_NAME, cl)?.let { fastClientClass ->
-            for (constructor in fastClientClass.declaredConstructors) {
-                if (constructor.parameterTypes.size < 3) continue
-                constructor.isAccessible = true
-                mod.hook(constructor).setId("IntlOfflinePackageInitBlockHook:hookH5RestoreSignals:constructor").intercept { chain ->
-                    if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
-                    restoreForH5Entry("fast_webview_client:${constructor.parameterTypes.joinToString { it.simpleName }}")
-                    chain.proceed()
-                }
-                installed++
-            }
-        } ?: XposedCompat.log("[IntlOfflinePackageInitBlockHook] FastWebViewClient class NOT FOUND")
+        var installed = hookClientRestoreSignals(cl)
 
         XposedCompat.findClassOrNull(OFFLINE_H5_PACKAGE_ACTIVITY_CLASS_NAME, cl)?.let { activityClass ->
             listOf("initFragment", "onResume").forEach { methodName ->
@@ -123,6 +117,26 @@ internal object IntlOfflinePackageInitBlockHook {
             }
         } ?: XposedCompat.log("[IntlOfflinePackageInitBlockHook] OfflineH5PackageActivity class NOT FOUND")
 
+        return installed
+    }
+
+    private fun hookClientRestoreSignals(cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val client = IntlOfflinePackageClientDexKitResolver.resolve(cl) ?: return 0
+        var installed = 0
+        for (constructor in client.declaredConstructors) {
+            if (constructor.parameterTypes.size < 3 || constructor in installedClientConstructors) continue
+            constructor.isAccessible = true
+            mod.hook(constructor).setId("IntlOfflinePackageInitBlockHook:hookH5RestoreSignals:constructor").intercept { chain ->
+                if (ModuleLifetime.isRetiring) return@intercept chain.proceed()
+                // 客户端构造会立即查询离线包，需先恢复同步入口。
+                restoreForH5Entry("fast_webview_client:${constructor.parameterTypes.joinToString { it.simpleName }}")
+                chain.proceed()
+            }
+            installedClientConstructors += constructor
+            installed++
+        }
+        if (installed > 0) XposedCompat.log("[IntlOfflinePackageInitBlockHook] H5 client hooks INSTALLED: ${client.name}, count=$installed")
         return installed
     }
 

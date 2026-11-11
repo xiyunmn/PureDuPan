@@ -73,6 +73,7 @@ internal object IntlMemberCardCustomizeHook {
     private const val MEMBER_CARD_USER_CENTER_BENEFIT_BAR_ID = "ll_card_root"
     private const val MEMBER_CARD_SVIP_LEVEL_ID = "iv_vip_image"
     private const val MEMBER_CARD_SVIP_NUMBER_ID = "tv_vip_number"
+    private const val MEMBER_CARD_SVIP_TITLE_ID = "tv_title"
     private const val MEMBER_CARD_UNLOCK_SVIP_ROOT_ID = "rl_root"
     private const val MEMBER_CARD_SVIP_STATUS_ID = "tv_duration_content"
     private const val MEMBER_CARD_RENEW_BUTTON_ID = "tv_enter"
@@ -347,10 +348,6 @@ internal object IntlMemberCardCustomizeHook {
         }
 
         if (snapshot.isIntlMemberCardSvipLevelHidden) {
-            hideByEntryName(root, resources, packageName, MEMBER_CARD_SVIP_LEVEL_ID) {
-                XposedCompat.logD("[IntlMemberCardCustomizeHook] intl svip level hidden")
-            }
-            hideByEntryName(root, resources, packageName, MEMBER_CARD_SVIP_NUMBER_ID)
             hideTopSvipLevelBadge(root)
         }
 
@@ -381,9 +378,12 @@ internal object IntlMemberCardCustomizeHook {
         if (!snapshot.isMemberCardCustomizeEnabled || !snapshot.isIntlMemberCardSvipLevelHidden) return
         val resources = root.resources ?: return
         val packageName = root.context?.packageName ?: return
-        hideByEntryName(root, resources, packageName, MEMBER_CARD_UNLOCK_SVIP_ROOT_ID) {
+        // rl_root 同时容纳升级按钮，分别隐藏等级及联网前的解锁标题。
+        hideByEntryName(root, resources, packageName, MEMBER_CARD_SVIP_LEVEL_ID) {
             XposedCompat.logD("[IntlMemberCardCustomizeHook] intl top svip level badge hidden")
         }
+        hideByEntryName(root, resources, packageName, MEMBER_CARD_SVIP_NUMBER_ID)
+        hideByEntryName(root, resources, packageName, MEMBER_CARD_SVIP_TITLE_ID)
     }
 
     private fun hasEnabledOption(snapshot: SettingsSnapshot): Boolean {

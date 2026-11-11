@@ -5,7 +5,7 @@ internal object BaiduDeviceFingerprintSymbols {
     const val DEVICE_ID = "com.baidu.android.common.util.DeviceId"
     const val COMMON_PARAM = "com.baidu.android.common.util.CommonParam"
     const val PERSONAL_CONFIG = "com.baidu.netdisk.config.PersonalConfig"
-    const val INTL_APP_COMMON = "dw._"
+    val INTL_APP_COMMON_CANDIDATES = listOf("ew._", "dw._")
     const val INTL_PERSONAL_CONFIG = "xk.p"
     const val INTL_OAID_FIELD = "B"
     const val INTL_HONOR_OAID_FIELD = "k"

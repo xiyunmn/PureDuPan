@@ -9,6 +9,7 @@ import com.xiyunmn.puredupan.hook.dexkit.DexKitWarmUpTask
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.automation.IntlCookieByBdussDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAlbumAiInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlNonCoreDiffSocketDelayHook
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlOfflinePackageClientDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlStoryDouyinInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.IntlColdStartSplashDexKitResolver
@@ -58,6 +59,12 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             target = "intl album init method",
             featureKey = FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT,
             feature = "阻止相册 AI 初始化",
+        ),
+        DexKitTargetDescriptor(
+            id = IntlOfflinePackageClientDexKitResolver.CACHE_ID,
+            target = "intl offline package WebView client constructors",
+            featureKey = FeatureKeys.KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT,
+            feature = "延后 H5 离线包初始化",
         ),
         DexKitTargetDescriptor(
             id = BaiduChangeSkinDexKitResolver.CACHE_ID,
@@ -171,6 +178,13 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT)) {
             tasks += DexKitWarmUpTask(IntlAlbumAiInitBlockHook.DIRECT_ALBUM_AI_INIT_CACHE_ID) {
                 IntlAlbumAiInitBlockHook.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (available(FeatureKeys.KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT) &&
+            settings.isPerformanceOptimizeEnabled && settings.isIntlOfflinePackageInitBlocked
+        ) {
+            tasks += DexKitWarmUpTask(IntlOfflinePackageClientDexKitResolver.CACHE_ID) {
+                IntlOfflinePackageClientDexKitResolver.resolve(classLoader) != null
             }
         }
         if (available(FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE)) {

@@ -202,7 +202,8 @@ internal object IntlNonCoreDiffSocketDelayHook {
                 }
             }
         }
-        val result = scanned.orEmpty()
+        // bridge 暂不可用时尚未扫描，保留后续预热机会。
+        val result = scanned ?: return null
 
         if (result.isEmpty()) {
             XposedCompat.logD("[IntlNonCoreDiffSocketDelayHook] socket register candidate not found by DexKit")
