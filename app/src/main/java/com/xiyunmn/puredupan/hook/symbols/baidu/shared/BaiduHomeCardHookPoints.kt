@@ -1,7 +1,7 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.shared
 
 internal object BaiduHomeCardHookPoints {
-    const val ACCOUNT_UTILS = "com.baidu.netdisk.account.AccountUtils"
+    const val EXTERNAL_ACCOUNT_UTILS = "com.baidu.netdisk.account.external.AccountUtils"
     const val EVIDENCE = "com.baidu.netdisk.account.Evidence"
     const val TRANSFER_SAVED_SERVICE_KT = "com.baidu.netdisk.logic.ITransferSavedServiceKt"
     const val TRANSFER_SAVED_MANAGER = "com.baidu.netdisk.logic.TransferSavedManager"

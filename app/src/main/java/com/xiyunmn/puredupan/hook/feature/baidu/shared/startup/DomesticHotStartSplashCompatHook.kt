@@ -45,6 +45,7 @@ internal object DomesticHotStartSplashCompatHook {
                 )
                 return
             }
+            if (method.returnType != Void.TYPE) return
 
             mod.hook(method).setId("DomesticHotStartSplashCompatHook:hook:method").intercept { chain ->
                 if (HookSettings.isSplashInterstitialBlockEnabled) {

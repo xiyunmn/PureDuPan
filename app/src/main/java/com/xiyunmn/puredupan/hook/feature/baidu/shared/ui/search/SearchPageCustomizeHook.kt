@@ -115,14 +115,14 @@ internal object SearchPageCustomizeHook {
     }
 
     private fun findSearchPlaceholderDisplayMethods(clazz: Class<*>): List<Method> {
-        return BaiduSearchPageHookPoints.showSearchPlaceholderMethods.mapNotNull { methodName ->
-            clazz.declaredMethods.firstOrNull { method ->
-                method.name == methodName &&
+        return listOfNotNull(
+            clazz.declaredMethods.singleOrNull { method ->
+                method.name == BaiduSearchPageHookPoints.SHOW_SEARCH_PLACEHOLDER_METHOD &&
                     method.returnType == Void.TYPE &&
                     method.parameterTypes.isEmpty() &&
                     !Modifier.isStatic(method.modifiers)
-            }?.apply { isAccessible = true }
-        }.distinct()
+            }?.apply { isAccessible = true },
+        )
     }
 
     private fun hookVoiceSearch(cl: ClassLoader): Int {

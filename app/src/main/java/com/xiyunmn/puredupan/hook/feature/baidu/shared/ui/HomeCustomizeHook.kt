@@ -1790,46 +1790,22 @@ object HomeCustomizeHook {
 
     private fun resolveAccountCredentials(cl: ClassLoader): AccountCredentials {
         val accountClass = XposedCompat.findClassOrNull(
-            BaiduHomeCardHookPoints.ACCOUNT_UTILS,
+            BaiduHomeCardHookPoints.EXTERNAL_ACCOUNT_UTILS,
             cl,
         ) ?: error("AccountUtils unavailable")
-        val singletonMethods = (accountClass.methods.asSequence() +
-            accountClass.declaredMethods.asSequence()).filter { method ->
-            Modifier.isStatic(method.modifiers) &&
-                method.parameterTypes.isEmpty() &&
-                method.returnType == accountClass
-        }.distinctBy { it.name }.sortedBy { method ->
-            when (method.name) {
-                "getInstance" -> 0
-                "k" -> 1
-                else -> 2
-            }
-        }.toList()
-        if (singletonMethods.isEmpty()) error("AccountUtils singleton accessor unavailable")
-        val account = singletonMethods.firstNotNullOfOrNull { method ->
-            method.isAccessible = true
-            runCatching { method.invoke(null) }.getOrNull()
-        } ?: throw SavedHistoryNotReadyException("AccountUtils instance unavailable")
-        val stringGetters = (accountClass.methods.asSequence() +
-            accountClass.declaredMethods.asSequence()).filter { method ->
-            !Modifier.isStatic(method.modifiers) &&
-                method.parameterTypes.isEmpty() &&
-                method.returnType == String::class.java
-        }.distinctBy { it.name }.onEach { it.isAccessible = true }.toList()
-        fun namedValue(names: List<String>, predicate: (String) -> Boolean): String? {
-            return names.firstNotNullOfOrNull { name ->
-                stringGetters.firstOrNull { it.name == name }?.let { method ->
-                    runCatching { method.invoke(account) as? String }.getOrNull()?.takeIf(predicate)
-                }
-            }
+        val account = accountClass.getDeclaredConstructor().newInstance()
+        fun namedValue(name: String, predicate: (String) -> Boolean): String? {
+            val getter = XposedCompat.findMethodOrNull(accountClass, name) ?: return null
+            if (Modifier.isStatic(getter.modifiers) || getter.returnType != String::class.java) return null
+            return runCatching { getter.invoke(account) as? String }.getOrNull()?.takeIf(predicate)
         }
         val uidPredicate: (String) -> Boolean = { value ->
             value.isNotEmpty() && value.all(Char::isDigit)
         }
         val bdussPredicate: (String) -> Boolean = { value -> value.length >= 32 }
-        val uid = namedValue(listOf("getUid", "x"), uidPredicate)
+        val uid = namedValue("getUid", uidPredicate)
             ?: throw SavedHistoryNotReadyException("uid unavailable")
-        val bduss = namedValue(listOf("getBduss", "d"), bdussPredicate)
+        val bduss = namedValue("getBduss", bdussPredicate)
             ?: throw SavedHistoryNotReadyException("bduss unavailable")
         return AccountCredentials(uid, bduss)
     }

@@ -22,8 +22,23 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeMiddleV
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoQualityUnlockDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.video.BaiduVideoSpeedUnlockDexKitResolver
 
+import com.xiyunmn.puredupan.hook.host.runtime.baidu.IntlDeviceFingerprintDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.storage.IntlStorageBindingsResolver
+
 internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
     override val descriptors = listOf(
+        DexKitTargetDescriptor(
+            id = IntlDeviceFingerprintDexKitResolver.CACHE_ID,
+            target = "intl OAID fields and personal config bindings",
+            feature = "设备指纹",
+            featureKey = FeatureKeys.KEY_SHOW_DEVICE_FINGERPRINT,
+        ),
+        DexKitTargetDescriptor(
+            id = IntlStorageBindingsResolver.CACHE_ID,
+            target = "intl storage download and path bindings",
+            feature = "下载存储重定向",
+            featureKey = FeatureKeys.KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED,
+        ),
         DexKitTargetDescriptor(
             id = DownloadOpenWithBindingsResolver.CACHE_ID,
             target = "current download page edit model bindings",
@@ -148,6 +163,20 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
     ): List<DexKitWarmUpTask> {
         val tasks = mutableListOf<DexKitWarmUpTask>()
         fun available(featureKey: String): Boolean = host.isFeatureAvailable(featureKey)
+
+        if (available(FeatureKeys.KEY_SHOW_DEVICE_FINGERPRINT)) {
+            tasks += DexKitWarmUpTask(IntlDeviceFingerprintDexKitResolver.CACHE_ID) {
+                IntlDeviceFingerprintDexKitResolver.resolve(classLoader) != null
+            }
+        }
+
+        if (available(FeatureKeys.KEY_STORAGE_DOWNLOAD_REDIRECT_ENABLED) &&
+            settings.isStorageRedirectEnabled && settings.isStorageDownloadRedirectEnabled
+        ) {
+            tasks += DexKitWarmUpTask(IntlStorageBindingsResolver.CACHE_ID, IntlStorageBindingsResolver.cacheIds) {
+                IntlStorageBindingsResolver.resolve(classLoader).complete
+            }
+        }
 
         if (available(FeatureKeys.KEY_DOWNLOAD_OPEN_WITH)) {
             tasks += DexKitWarmUpTask(DownloadOpenWithBindingsResolver.CACHE_ID, DownloadOpenWithBindingsResolver.cacheIds) {

@@ -36,6 +36,8 @@ object StorageRedirectHook {
     private const val TAG = "StorageRedirectHook"
     private val installState = HookState()
     private var installedTargetCount = 0
+    private val installedPathMethods = mutableSetOf<Method>()
+    private var sdkInstalled = false
     private val rootGuardInstalled = AtomicBoolean(false)
     private var downloadItemContext = ThreadLocal<Array<Any?>>()
     private val downloadUnavailableNotified = AtomicBoolean(false)
@@ -62,85 +64,77 @@ object StorageRedirectHook {
             return
         }
         val mod = XposedCompat.module ?: return
-        if (!installState.markInstalled()) return
         val international = XposedCompat.currentPackageName() == HostPackages.BAIDU_INTL
+        if (!international && !installState.markInstalled()) return
         if (HookSettings.isStorageRedirectEnabled && HookSettings.isStorageDownloadRedirectEnabled) {
             try {
-                val partitionStorage = if (international) {
-                    XposedCompat.findMethodOrNull(
-                        BaiduStorageHookPoints.INTL_TARGET30_STORAGE, cl,
-                        BaiduStorageHookPoints.INTL_IS_PARTITION_STORAGE, Context::class.java,
-                    )?.takeIf { Modifier.isStatic(it.modifiers) && it.returnType == Boolean::class.javaPrimitiveType }
-                } else null
-                internationalStorageMode = partitionStorage
-                val installed = mutableSetOf<String>()
-                // 国际版类名随版本替换，检查当前实际存在的实现。
-                val extensionOwners = (if (international) BaiduStorageHookPoints.INTL_DOWNLOAD_EXTENSIONS
-                    else listOf(BaiduStorageHookPoints.DOMESTIC_DOWNLOAD_EXTENSION))
-                    .filter { XposedCompat.findClassOrNull(it, cl) != null }
-                val pathNames = if (international) {
-                    setOf(BaiduStorageHookPoints.INTL_DOWNLOAD_PATH, BaiduStorageHookPoints.INTL_LINK_DOWNLOAD_PATH)
-                } else setOf("getDownloadPath", "getLinkDownloadPath")
-                // 各组独立安装，按全部关键入口的结果决定是否启用重定向。
-                val extensions = extensionOwners.sumOf { owner -> installDownloadBinding(owner) {
-                    hookDownloadExtension(mod, cl, owner, pathNames, partitionStorage, installed)
-                } }
-                val creators = installDownloadBinding("URI creator") {
-                    hookUriCreator(
-                        mod, cl,
-                        if (international) BaiduStorageHookPoints.INTL_TARGET30_STORAGE else BaiduStorageHookPoints.DOMESTIC_TARGET30_STORAGE,
-                        if (international) BaiduStorageHookPoints.INTL_URI_CREATOR else BaiduStorageHookPoints.URI_CREATOR,
-                    )
-                }
-                val folderOwners = (if (international) BaiduStorageHookPoints.INTL_FOLDER_TASK_BINDINGS
-                    else listOf(BaiduStorageHookPoints.FOLDER_TASK_STATE_UTIL to null))
-                    .filter { XposedCompat.findClassOrNull(it.first, cl) != null }
-                val folders = folderOwners.sumOf { (owner, folderType) -> installDownloadBinding(owner) {
-                    hookFolderTaskBinding(mod, cl, international, owner, folderType).also {
-                        if (it > 0) installed.add(owner)
+                if (international) {
+                    installInternationalDownloadBindings(mod, cl)
+                } else {
+                    val partitionStorage: Method? = null
+                    internationalStorageMode = partitionStorage
+                    val installed = mutableSetOf<String>()
+                    val extensionOwners = listOf(BaiduStorageHookPoints.DOMESTIC_DOWNLOAD_EXTENSION)
+                        .filter { XposedCompat.findClassOrNull(it, cl) != null }
+                    val pathNames = setOf("getDownloadPath", "getLinkDownloadPath")
+                    // 各组独立安装，按全部关键入口的结果决定是否启用重定向。
+                    val extensions = extensionOwners.sumOf { owner -> installDownloadBinding(owner) {
+                        hookDownloadExtension(mod, cl, owner, pathNames, partitionStorage, installed)
+                    } }
+                    val creators = installDownloadBinding("URI creator") {
+                        hookUriCreator(
+                            mod, cl,
+                            BaiduStorageHookPoints.DOMESTIC_TARGET30_STORAGE,
+                            BaiduStorageHookPoints.URI_CREATOR,
+                        )
                     }
-                } }
-                val legacyOwner = if (international) BaiduStorageHookPoints.DEFAULT_SETTING_INTL else BaiduStorageHookPoints.DEFAULT_SETTING
-                val legacyNames = if (international) {
-                    setOf(BaiduStorageHookPoints.INTL_DEFAULT_SAVE_DIR, BaiduStorageHookPoints.INTL_LEGACY_SAVE_DIR)
-                } else setOf(BaiduStorageHookPoints.DEFAULT_SAVE_DIR)
-                val legacy = installDownloadBinding(legacyOwner) {
-                    hookLegacyDefaultSaveDir(mod, cl, legacyOwner, legacyNames, installed)
+                    val folderOwners = listOf(BaiduStorageHookPoints.FOLDER_TASK_STATE_UTIL to null)
+                        .filter { XposedCompat.findClassOrNull(it.first, cl) != null }
+                    val folders = folderOwners.sumOf { (owner, folderType) -> installDownloadBinding(owner) {
+                        hookFolderTaskBinding(mod, cl, owner, folderType).also {
+                            if (it > 0) installed.add(owner)
+                        }
+                    } }
+                    val legacyOwner = BaiduStorageHookPoints.DEFAULT_SETTING
+                    val legacyNames = setOf(BaiduStorageHookPoints.DEFAULT_SAVE_DIR)
+                    val legacy = installDownloadBinding(legacyOwner) {
+                        hookLegacyDefaultSaveDir(mod, cl, legacyOwner, legacyNames, installed)
+                    }
+                    uriCreatorReady = creators > 0
+                    downloadBindingsReady = extensionOwners.isNotEmpty() &&
+                        extensionOwners.all { owner -> pathNames.all { "$owner#$it" in installed } } &&
+                        uriCreatorReady
+                    val missingLegacy = legacyNames.filter { "$legacyOwner#$it" !in installed }
+                    folderBindingsReady = folderOwners.isNotEmpty() && folderOwners.all { it.first in installed }
+                    XposedCompat.logD("[$TAG] download bindings: creators=$creators extensions=$extensions folders=$folders legacy=$legacy")
+                    val context = HookSettings.appContext()
+                    val active = isDownloadRedirectActive(context)
+                    val removeOuter = active && shouldRemoveOuterPath(context)
+                    // BT 等入口独立读取默认目录，普通下载扩展可直接返回目标路径。
+                    val legacyState = when (missingLegacy.size) {
+                        0 -> if (active) "redirect" else "host"
+                        legacyNames.size -> "unavailable"
+                        else -> "partial"
+                    }
+                    XposedCompat.logD(
+                        "[$TAG] download capabilities: primary=${if (active) "redirect" else "host"} " +
+                            "uriCreator=$uriCreatorReady legacy=$legacyState removeOuter=$removeOuter " +
+                            "extensions=$extensionOwners folders=${folderOwners.map { it.first }} " +
+                            "bindingFailure=host-directory targetFailure=reject",
+                    )
+                    if (missingLegacy.isNotEmpty()) {
+                        XposedCompat.logW("[$TAG] legacy directory bindings missing: owner=$legacyOwner methods=$missingLegacy")
+                        if (active) showFailure(context, "部分下载可能使用宿主目录")
+                    }
+                    installDownloadBinding("download path queries") { hookStoragePathQueries(
+                        mod,
+                        cl,
+                        BaiduStorageHookPoints.DOMESTIC_TARGET30_STORAGE,
+                        emptySet(),
+                        setOf(BaiduStorageHookPoints.QUERY_ABSOLUTE_PATH),
+                        setOf(BaiduStorageHookPoints.QUERY_PATH),
+                    ) }
                 }
-                uriCreatorReady = creators > 0
-                downloadBindingsReady = extensionOwners.isNotEmpty() &&
-                    extensionOwners.all { owner -> pathNames.all { "$owner#$it" in installed } } &&
-                    (if (international) partitionStorage != null else uriCreatorReady)
-                val missingLegacy = legacyNames.filter { "$legacyOwner#$it" !in installed }
-                folderBindingsReady = folderOwners.isNotEmpty() && folderOwners.all { it.first in installed }
-                XposedCompat.logD("[$TAG] download bindings: creators=$creators extensions=$extensions folders=$folders legacy=$legacy")
-                val context = HookSettings.appContext()
-                val active = isDownloadRedirectActive(context)
-                val removeOuter = active && shouldRemoveOuterPath(context)
-                // BT 等入口独立读取默认目录，普通下载扩展可直接返回目标路径。
-                val legacyState = when (missingLegacy.size) {
-                    0 -> if (active) "redirect" else "host"
-                    legacyNames.size -> "unavailable"
-                    else -> "partial"
-                }
-                XposedCompat.logD(
-                    "[$TAG] download capabilities: primary=${if (active) "redirect" else "host"} " +
-                        "uriCreator=$uriCreatorReady legacy=$legacyState removeOuter=$removeOuter " +
-                        "extensions=$extensionOwners folders=${folderOwners.map { it.first }} " +
-                        "bindingFailure=host-directory targetFailure=reject",
-                )
-                if (missingLegacy.isNotEmpty()) {
-                    XposedCompat.logW("[$TAG] legacy directory bindings missing: owner=$legacyOwner methods=$missingLegacy")
-                    if (active) showFailure(context, "部分下载可能使用宿主目录")
-                }
-                installDownloadBinding("download path queries") { hookStoragePathQueries(
-                    mod,
-                    cl,
-                    if (international) BaiduStorageHookPoints.INTL_TARGET30_STORAGE else BaiduStorageHookPoints.DOMESTIC_TARGET30_STORAGE,
-                    if (international) setOf(BaiduStorageHookPoints.INTL_GET_PARTITION_LOCAL_PATH) else emptySet(),
-                    setOf(if (international) BaiduStorageHookPoints.INTL_QUERY_ABSOLUTE_PATH else BaiduStorageHookPoints.QUERY_ABSOLUTE_PATH),
-                    setOf(if (international) BaiduStorageHookPoints.INTL_QUERY_PATH else BaiduStorageHookPoints.QUERY_PATH),
-                ) }
             } catch (error: Throwable) {
                 // 已安装的入口保持旁路，继续安装 SDK 和根目录保护。
                 downloadBindingsReady = false
@@ -149,7 +143,7 @@ object StorageRedirectHook {
             }
         }
         if (HookSettings.isStorageRedirectEnabled && HookSettings.isStorageReaderSdkRedirectEnabled) {
-            installDownloadBinding("SDK public directory") { hookSdkPublicDirectory(mod, cl) }
+            if (!sdkInstalled) sdkInstalled = installDownloadBinding("SDK public directory") { hookSdkPublicDirectory(mod, cl) } > 0
         }
         if (HookSettings.isStorageRootGuardEnabled) {
             installDownloadBinding("root directory protection") { hookRootGuard(mod) }
@@ -161,6 +155,41 @@ object StorageRedirectHook {
         } else {
             XposedCompat.log("[$TAG] hook INSTALLED targets=$installedTargetCount")
         }
+    }
+
+    private fun installInternationalDownloadBindings(mod: XposedModule, cl: ClassLoader) {
+        val bindings = IntlStorageBindingsResolver.resolve(cl)
+        val installed = mutableSetOf<String>()
+        val mode = bindings["mode"]
+        internationalStorageMode = mode
+        val extensions = (if (bindings.primaryReady) listOfNotNull(bindings["download"], bindings["link"]) else emptyList()).sumOf { method ->
+            installDownloadBinding("download extension") {
+                hookDownloadExtension(mod, cl, method.declaringClass.name, setOf(method.name), mode, installed, listOf(method))
+            }
+        }
+        val creators = bindings["creator"]?.let { method -> installDownloadBinding("URI creator") {
+            hookUriCreator(mod, cl, method.declaringClass.name, method.name, listOf(method))
+        } } ?: 0
+        val folders = if (bindings.folderReady) bindings["folder"]?.let { method -> installDownloadBinding("folder task") {
+            hookFolderTaskBinding(mod, cl, method.declaringClass.name, method.parameterTypes[2].name,
+                listOf(method), bindings["parent"], bindings["name"])
+        } } ?: 0 else 0
+        val legacy = listOfNotNull(bindings["legacy"], bindings["default"]).sumOf { method -> installDownloadBinding("legacy directory") {
+            hookLegacyDefaultSaveDir(mod, cl, method.declaringClass.name, setOf(method.name), installed, listOf(method))
+        } }
+        uriCreatorReady = creators > 0
+        downloadBindingsReady = bindings.primaryReady && extensions == 2
+        folderBindingsReady = folders > 0
+        listOf("absolute", "file", "directory").forEach { role -> bindings[role]?.let { method ->
+            installDownloadBinding("path query $role") {
+                hookStoragePathQueries(mod, cl, method.declaringClass.name,
+                    if (role == "absolute") setOf(method.name) else emptySet(),
+                    if (role == "file") setOf(method.name) else emptySet(),
+                    if (role == "directory") setOf(method.name) else emptySet(), listOf(method))
+            }
+        } }
+        XposedCompat.logD("[$TAG] international download bindings: creators=$creators extensions=$extensions folders=$folders legacy=$legacy")
+        if (legacy < 2 && downloadBindingsReady) showFailure(HookSettings.appContext(), "部分下载可能使用宿主目录")
     }
 
     /** 嵌套路径调用使用同一代上下文，安装期间只暂停这些同步调用。 */
@@ -186,17 +215,18 @@ object StorageRedirectHook {
     private fun resolver(context: Context): StorageDestinationResolver =
         StorageDestinationResolver(context, snapshot())
 
-    private fun hookUriCreator(mod: XposedModule, cl: ClassLoader, className: String, methodName: String): Int {
+    private fun hookUriCreator(mod: XposedModule, cl: ClassLoader, className: String, methodName: String, resolved: List<Method>? = null): Int {
         val clazz = XposedCompat.findClassOrNull(className, cl) ?: return 0
         var count = 0
-        clazz.declaredMethods.filter { method ->
+        (resolved ?: clazz.declaredMethods.filter { method ->
             method.name == methodName && method.parameterTypes.size == 3 &&
                 Modifier.isStatic(method.modifiers) && !method.isSynthetic &&
                 Context::class.java.isAssignableFrom(method.parameterTypes[0]) &&
                 method.parameterTypes[1] == String::class.java &&
                 method.parameterTypes[2] == String::class.java &&
                 method.returnType == String::class.java
-        }.forEach { method ->
+        }).forEach { method ->
+            if (method in installedPathMethods) { count++; return@forEach }
             method.isAccessible = true
             mod.hook(method).setId("StorageRedirectHook:hookUriCreator:method").setExceptionMode(ExceptionMode.PASSTHROUGH).interceptPath { chain ->
                 val context = chain.args.getOrNull(0) as? Context ?: return@interceptPath chain.proceed()
@@ -230,6 +260,7 @@ object StorageRedirectHook {
                     }
                 }
             }
+            installedPathMethods.add(method)
             installedTargetCount++
             count++
             XposedCompat.logD("[$TAG] URI creator hooked: ${clazz.name}.${method.name}")
@@ -243,15 +274,21 @@ object StorageRedirectHook {
         className: String,
         methodNames: Set<String>,
         installed: MutableSet<String>,
+        resolved: List<Method>? = null,
     ): Int {
         val clazz = XposedCompat.findClassOrNull(className, cl) ?: return 0
         var count = 0
-        clazz.declaredMethods.filter { method ->
+        (resolved ?: clazz.declaredMethods.filter { method ->
             method.name in methodNames &&
                 method.parameterTypes.size == 1 &&
                 Context::class.java.isAssignableFrom(method.parameterTypes[0]) &&
                 method.returnType == String::class.java && Modifier.isStatic(method.modifiers)
-        }.forEach { method ->
+        }).forEach { method ->
+            if (method in installedPathMethods) {
+                installed.add("$className#${method.name}")
+                count++
+                return@forEach
+            }
             method.isAccessible = true
             mod.hook(method).setId("StorageRedirectHook:hookLegacyDefaultSaveDir:method").setExceptionMode(ExceptionMode.PASSTHROUGH).interceptPath { chain ->
                 if (!HookSettings.isStorageRedirectEnabled || !HookSettings.isStorageDownloadRedirectEnabled) {
@@ -268,6 +305,7 @@ object StorageRedirectHook {
                     }
                 }
             }
+            installedPathMethods.add(method)
             installedTargetCount++
             count++
             installed.add("$className#${method.name}")
@@ -283,27 +321,20 @@ object StorageRedirectHook {
         methodNames: Set<String>,
         partitionStorage: Method?,
         installed: MutableSet<String>,
+        resolved: List<Method>? = null,
     ): Int {
         val clazz = XposedCompat.findClassOrNull(className, cl) ?: return 0
         var count = 0
-        clazz.declaredMethods.filter { method ->
+        (resolved ?: clazz.declaredMethods.filter { method ->
             method.name in methodNames && method.returnType == String::class.java &&
                 Modifier.isStatic(method.modifiers) && !method.isSynthetic &&
-                if (className in BaiduStorageHookPoints.INTL_DOWNLOAD_EXTENSIONS) {
-                    val parameters = listOf(
-                        Context::class.java.name, BaiduStorageHookPoints.DOWNLOADABLE,
-                        String::class.java.name, "boolean", "int",
-                    )
-                    val expected = if (method.name == BaiduStorageHookPoints.INTL_LINK_DOWNLOAD_PATH) {
-                        listOf(BaiduStorageHookPoints.FILE_INFO_GENERATOR) + parameters
-                    } else {
-                        parameters
-                    }
-                    method.parameterTypes.map { it.name } == expected
-                } else {
-                    method.parameterTypes.any { Context::class.java.isAssignableFrom(it) }
-                }
-        }.forEach { method ->
+                method.parameterTypes.any { Context::class.java.isAssignableFrom(it) }
+        }).forEach { method ->
+            if (method in installedPathMethods) {
+                installed.add("$className#${method.name}")
+                count++
+                return@forEach
+            }
             method.isAccessible = true
             mod.hook(method).setId("StorageRedirectHook:hookDownloadExtension:method").setExceptionMode(ExceptionMode.PASSTHROUGH).interceptPath { chain ->
                 if (!HookSettings.isStorageRedirectEnabled || !HookSettings.isStorageDownloadRedirectEnabled) {
@@ -374,6 +405,7 @@ object StorageRedirectHook {
                     }
                 }
             }
+            installedPathMethods.add(method)
             installedTargetCount++
             count++
             installed.add("$className#${method.name}")
@@ -406,16 +438,18 @@ object StorageRedirectHook {
         absoluteLocalMethodNames: Set<String>,
         relativeFileMethodNames: Set<String>,
         relativeDirectoryMethodNames: Set<String>,
+        resolved: List<Method>? = null,
     ): Int {
         val clazz = XposedCompat.findClassOrNull(className, cl) ?: return 0
         var count = 0
-        clazz.declaredMethods.filter { method ->
+        (resolved ?: clazz.declaredMethods.filter { method ->
             method.name in (absoluteLocalMethodNames + relativeFileMethodNames + relativeDirectoryMethodNames) &&
                 method.parameterTypes.size == 2 &&
                 Context::class.java.isAssignableFrom(method.parameterTypes[0]) &&
                 method.parameterTypes[1] == String::class.java &&
                 method.returnType == String::class.java
-        }.forEach { method ->
+        }).forEach { method ->
+            if (method in installedPathMethods) { count++; return@forEach }
             method.isAccessible = true
             mod.hook(method).setId("StorageRedirectHook:hookStoragePathQueries:method").interceptPath { chain ->
                 val context = chain.args.getOrNull(0) as? Context
@@ -437,6 +471,7 @@ object StorageRedirectHook {
                     if (slash < 0) "" else relative.substring(0, slash + 1)
                 }
             }
+            installedPathMethods.add(method)
             installedTargetCount++
             count++
             XposedCompat.logD("[$TAG] path query hooked: ${clazz.name}.${method.name}")
@@ -502,30 +537,31 @@ object StorageRedirectHook {
     }
 
     private fun hookFolderTaskBinding(
-        mod: XposedModule, cl: ClassLoader, international: Boolean,
+        mod: XposedModule, cl: ClassLoader,
         className: String, folderClassName: String?,
+        resolved: List<Method>? = null, parentMethod: Method? = null, nameMethod: Method? = null,
     ): Int {
-        val methodName = if (international) BaiduStorageHookPoints.INTL_ADD_DOWNLOAD_FOLDER_TASK
-            else BaiduStorageHookPoints.ADD_DOWNLOAD_FOLDER_TASK
+        val methodName = BaiduStorageHookPoints.ADD_DOWNLOAD_FOLDER_TASK
         val clazz = XposedCompat.findClassOrNull(className, cl) ?: return 0
         var count = 0
-        clazz.declaredMethods.filter { method ->
+        (resolved ?: clazz.declaredMethods.filter { method ->
             method.name == methodName && Modifier.isStatic(method.modifiers) && !method.isSynthetic &&
                 method.parameterTypes.size == 6 &&
                 ContentResolver::class.java.isAssignableFrom(method.parameterTypes[0]) &&
                 Uri::class.java.isAssignableFrom(method.parameterTypes[1]) &&
-                (!international || method.parameterTypes[2].name == folderClassName) &&
+                (folderClassName == null || method.parameterTypes[2].name == folderClassName) &&
                 method.parameterTypes[3] == Boolean::class.javaPrimitiveType &&
                 method.parameterTypes[4] == Int::class.javaPrimitiveType &&
                 method.parameterTypes[5] == Boolean::class.javaPrimitiveType &&
                 method.returnType == Uri::class.java
-        }.forEach { method ->
+        }).forEach { method ->
+            if (method in installedPathMethods) { count++; return@forEach }
             val folderType = method.parameterTypes[2]
-            val parentName = if (international) BaiduStorageHookPoints.INTL_FOLDER_TRANSFER_PARENT else "getTransferParentPath"
-            val nameName = if (international) BaiduStorageHookPoints.INTL_FOLDER_NAME else "getName"
+            val parentName = "getTransferParentPath"
+            val nameName = "getName"
             val getters = folderType.methods.filter { it.parameterTypes.isEmpty() && it.returnType == String::class.java }
-            val parentGetter = getters.singleOrNull { it.name == parentName }
-            val nameGetter = getters.singleOrNull { it.name == nameName }
+            val parentGetter = parentMethod ?: getters.singleOrNull { it.name == parentName }
+            val nameGetter = nameMethod ?: getters.singleOrNull { it.name == nameName }
             if (parentGetter == null || nameGetter == null) {
                 XposedCompat.logW("[$TAG] folder task getters unavailable: ${folderType.name}")
                 return@forEach
@@ -579,6 +615,7 @@ object StorageRedirectHook {
                 )
                 result
             }
+            installedPathMethods.add(method)
             installedTargetCount++
             count++
             XposedCompat.logD("[$TAG] folder task hooked: ${clazz.name}.${method.name}")

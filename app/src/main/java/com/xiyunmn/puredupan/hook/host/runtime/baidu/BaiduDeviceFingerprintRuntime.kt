@@ -121,34 +121,28 @@ private object BaiduDeviceFingerprintCollector {
     }
 
     private fun readOaid(context: Context, international: Boolean, honor: Boolean): String? {
-        val className = if (international) resolveIntlAppCommon(context)
-            else BaiduDeviceFingerprintSymbols.APP_COMMON
-        val fieldName = if (international) {
-            if (honor) BaiduDeviceFingerprintSymbols.INTL_HONOR_OAID_FIELD else BaiduDeviceFingerprintSymbols.INTL_OAID_FIELD
-        } else {
-            if (honor) "HONOR_OAID" else "OAID"
-        }
         val key = if (honor) BaiduDeviceFingerprintSymbols.HONOR_OAID_CONFIG_KEY
             else BaiduDeviceFingerprintSymbols.OAID_CONFIG_KEY
-        val cached = (className?.let { readStaticField(context, it, fieldName).getOrNull() } as? String)
+        val bindings = if (international) IntlDeviceFingerprintDexKitResolver.cached(context.classLoader) else null
+        val current = if (international) {
+            runCatching { (if (honor) bindings?.honorOaid else bindings?.oaid)?.get(null) }.getOrNull()
+        } else {
+            readStaticField(context, BaiduDeviceFingerprintSymbols.APP_COMMON, if (honor) "HONOR_OAID" else "OAID").getOrNull()
+        }
+        val cached = (current as? String)
             ?.takeIf { it.isNotBlank() }
-            ?: (readPersonalConfigString(context, key, international).getOrNull() as? String)
+            ?: if (international) {
+                runCatching {
+                    bindings?.let { resolved ->
+                        val instance = resolved.configFactory.invoke(null)
+                        instance?.let { resolved.configString.invoke(it, key) } as? String
+                    }
+                }.getOrNull()
+            } else {
+                readPersonalConfigString(context, key).getOrNull() as? String
+            }
         // 当前字段返回失败标记时，保留失败结果，避免读取旧缓存标识。
         return originalOaid(cached)
-    }
-
-    private fun resolveIntlAppCommon(context: Context): String? {
-        // 按字段契约选定本版 owner，空值或失败标记不切换到另一版本。
-        return BaiduDeviceFingerprintSymbols.INTL_APP_COMMON_CANDIDATES.firstOrNull { className ->
-            runCatching {
-                val owner = loadClass(context, className)
-                listOf(BaiduDeviceFingerprintSymbols.INTL_OAID_FIELD,
-                    BaiduDeviceFingerprintSymbols.INTL_HONOR_OAID_FIELD).all { name ->
-                    val field = owner.getDeclaredField(name)
-                    Modifier.isStatic(field.modifiers) && field.type == String::class.java
-                }
-            }.getOrDefault(false)
-        }
     }
 
     /** Helios 格式为 A10-Base32(UTF-8 OAID)-BDCC，读取中间段获取标识。 */
@@ -201,17 +195,14 @@ private object BaiduDeviceFingerprintCollector {
         }
     }
 
-    private fun readPersonalConfigString(context: Context, key: String, international: Boolean): Result<Any?> {
+    private fun readPersonalConfigString(context: Context, key: String): Result<Any?> {
         return runCatching {
-            val clazz = loadClass(context, if (international) BaiduDeviceFingerprintSymbols.INTL_PERSONAL_CONFIG
-                else BaiduDeviceFingerprintSymbols.PERSONAL_CONFIG)
-            val getInstanceMethod = clazz.getDeclaredMethod(
-                if (international) BaiduDeviceFingerprintSymbols.INTL_CONFIG_INSTANCE else "getInstance",
-            )
+            val clazz = loadClass(context, BaiduDeviceFingerprintSymbols.PERSONAL_CONFIG)
+            val getInstanceMethod = clazz.getDeclaredMethod("getInstance")
             getInstanceMethod.isAccessible = true
             val instance = getInstanceMethod.invoke(null) ?: return@runCatching null
             val getStringMethod = clazz.getMethod(
-                if (international) BaiduDeviceFingerprintSymbols.INTL_CONFIG_STRING else "getString", String::class.java,
+                "getString", String::class.java,
             )
             getStringMethod.isAccessible = true
             getStringMethod.invoke(instance, key)

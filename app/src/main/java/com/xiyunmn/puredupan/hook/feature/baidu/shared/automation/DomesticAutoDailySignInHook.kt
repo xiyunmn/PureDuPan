@@ -8,7 +8,6 @@ import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.runtime.AutoDailySignInRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAutomationHookPoints
-import java.lang.reflect.Method
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal object DomesticAutoDailySignInHook {
@@ -218,24 +217,18 @@ internal object DomesticAutoDailySignInHook {
         private fun resolveInternal(cl: ClassLoader): AccountState? {
             return runCatching {
                 val clazz = XposedCompat.findClassOrNull(BaiduAutomationHookPoints.ACCOUNT_UTILS, cl) ?: return null
-                val getInstance = findFirstMethod(clazz, "getInstance", "k") ?: return null
+                val getInstance = XposedCompat.findMethodOrNull(clazz, "getInstance") ?: return null
                 val instance = getInstance.invoke(null) ?: return null
-                val isLogin = findFirstMethod(clazz, "isLogin", "Q")
+                val isLogin = XposedCompat.findMethodOrNull(clazz, "isLogin")
                     ?.invoke(instance) as? Boolean ?: return null
-                val uid = findFirstMethod(clazz, "getUid", "x")
+                val uid = XposedCompat.findMethodOrNull(clazz, "getUid")
                     ?.invoke(instance) as? String
-                val bduss = findFirstMethod(clazz, "getBduss", "d")
+                val bduss = XposedCompat.findMethodOrNull(clazz, "getBduss")
                     ?.invoke(instance) as? String
                 AccountState(isLogin = isLogin, uid = uid, bduss = bduss)
             }.getOrElse { t ->
                 XposedCompat.logD("[$TAG] account state resolve failed: ${t.message}")
                 null
-            }
-        }
-
-        private fun findFirstMethod(clazz: Class<*>, vararg names: String): Method? {
-            return names.firstNotNullOfOrNull { name ->
-                XposedCompat.findMethodOrNull(clazz, name)
             }
         }
     }
